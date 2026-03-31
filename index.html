@@ -619,6 +619,8 @@ function renderTbar(){
 
 <!-- Hidden file input for logo upload -->
 <input type="file" id="logo-file-input" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+<!-- Hidden file input for JSON import -->
+<input type="file" id="json-import-input" accept=".json,application/json" style="display:none;" onchange="handleJSONImport(event)">
 
 <!-- LOADER -->
 <div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
@@ -635,6 +637,10 @@ function renderTbar(){
     <div class="vsep"></div>
     <select id="stage-sel" class="hsel"></select>
     <button class="hbtn" onclick="openStageModal()" title="Stages beheren" style="padding:5px 8px;">⚙ Stages</button>
+    <button class="hbtn" onclick="document.getElementById('json-import-input').click()" title="Lineup importeren via JSON" style="padding:5px 9px;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Import
+    </button>
     <div style="display:flex;align-items:center;gap:4px;">
       <div id="day-tabs" style="display:flex;gap:4px;"></div>
       <button class="daybtn" onclick="openDayModal()" title="Dagen beheren" style="padding:4px 8px;font-size:13px;line-height:1;">+</button>
@@ -1545,6 +1551,87 @@ function delStage(id){
   G.stages=G.stages.filter(s=>s.id!==id);
   if(G.activeStage===id)G.activeStage=G.stages[0]?.id||null;
   save();renderAll();renderStageList();
+}
+
+// ══ JSON IMPORT
+function handleJSONImport(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      importLineup(data);
+    }catch(err){
+      alert('Ongeldig JSON bestand: '+err.message);
+    }
+    event.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function importLineup(data){
+  // data format: { "dagNaam": [ {stage, acts:[{time, artist}]} ] }
+  if(!G.stages)G.stages=[];
+  if(!G.shows)G.shows=[];
+  if(!G.days)G.days=[];
+
+  let imported=0;
+  const dayNames=Object.keys(data);
+
+  for(const dayName of dayNames){
+    // Find or create day
+    let day=G.days.find(d=>d.name.toLowerCase()===dayName.toLowerCase());
+    if(!day){
+      day={id:uid(),name:dayName.charAt(0).toUpperCase()+dayName.slice(1)};
+      G.days.push(day);
+    }
+
+    const stages=data[dayName];
+    if(!Array.isArray(stages))continue;
+
+    for(const stageBlock of stages){
+      const stageName=(stageBlock.stage||'').trim();
+      if(!stageName)continue;
+
+      // Find or create stage
+      let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
+      if(!stage){
+        stage={id:uid(),name:stageName,emoji:'🎵'};
+        G.stages.push(stage);
+      }
+
+      const acts=stageBlock.acts||[];
+      for(const act of acts){
+        if(!act.artist||!act.time)continue;
+        // Parse time "16:45-17:30"
+        const parts=act.time.split('-');
+        if(parts.length<2)continue;
+        const start=parts[0].trim().includes(':')?parts[0].trim()+':00':parts[0].trim();
+        const end=parts[1].trim().includes(':')?parts[1].trim()+':00':parts[1].trim();
+        // Avoid duplicate (same artist + stage + day)
+        const exists=G.shows.find(s=>s.stage===stage.id&&s.day===day.id&&s.artist===act.artist);
+        if(!exists){
+          G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
+          imported++;
+        }
+      }
+    }
+  }
+
+  // Set active day to first imported day if not set
+  if(G.days.length&&(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))){
+    G.activeDay=G.days[0].id;
+  }
+  if(G.stages.length&&!G.activeStage){
+    G.activeStage=G.stages[0].id;
+  }
+
+  save();
+  renderAll();
+  if(document.getElementById('foh').classList.contains('open'))renderFOH();
+  if(document.getElementById('bs').classList.contains('open'))renderBS();
+  alert(`Import geslaagd! ${imported} acts toegevoegd${G.stages.length?' over '+G.stages.length+' stages':''}.`);
 }
 
 // ══ DAY MANAGEMENT
