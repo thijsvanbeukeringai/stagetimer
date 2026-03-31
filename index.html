@@ -71,14 +71,17 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .hero-proof-item{display:flex;align-items:center;gap:8px;font-size:13px;color:rgba(255,255,255,.38);font-weight:500;}
 .hero-proof-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.2);}
 
-/* ── SCREENSHOT ── */
-.ss-wrap{max-width:1060px;margin:0 auto;padding:0 40px;position:relative;z-index:3;}
-.ss-glow{position:absolute;inset:-40px;background:radial-gradient(ellipse at 50% 0%,rgba(99,102,241,.2) 0%,transparent 70%);pointer-events:none;}
-.ss-browser{background:#0d0d1a;border-radius:18px;overflow:hidden;box-shadow:0 60px 120px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08),0 0 60px rgba(99,102,241,.08);position:relative;}
-.ss-bar{background:#0a0a14;padding:12px 18px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.05);}
-.ss-dot{width:11px;height:11px;border-radius:50%;}
-.ss-url{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:5px 12px;font-size:11px;color:rgba(255,255,255,.25);font-family:var(--ffm);margin:0 16px;text-align:center;}
+/* ── SCREENSHOT / MACBOOK ── */
+.ss-wrap{max-width:1100px;margin:0 auto;padding:0 40px;position:relative;z-index:3;}
+.ss-glow{position:absolute;inset:-60px;background:radial-gradient(ellipse at 50% 20%,rgba(99,102,241,.25) 0%,transparent 70%);pointer-events:none;}
+.mb-device{position:relative;filter:drop-shadow(0 60px 80px rgba(0,0,0,.7));}
+.mb-lid{background:linear-gradient(160deg,#2d2d2f 0%,#1c1c1e 60%,#111 100%);border-radius:14px 14px 0 0;border:1px solid rgba(255,255,255,.12);border-bottom:none;padding:18px 18px 6px;position:relative;}
+.mb-lid::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#2a2a2e;box-shadow:0 0 0 1px rgba(255,255,255,.06);}
+.mb-screen-inner{border-radius:6px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.8);}
 .ss-img{display:block;width:100%;height:auto;}
+.mb-hinge{height:10px;background:linear-gradient(180deg,#1a1a1c 0%,#2a2a2e 100%);border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08);}
+.mb-base{background:linear-gradient(180deg,#2a2a2e 0%,#232325 50%,#1c1c1e 100%);height:22px;border-radius:0 0 6px 6px;border:1px solid rgba(255,255,255,.08);border-top:none;position:relative;display:flex;align-items:center;justify-content:center;}
+.mb-base::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:160px;height:5px;background:#151517;border-radius:3px 3px 0 0;}
 
 /* ── PILLARS ── */
 .pillars-section{padding:100px 40px;background:var(--bg);position:relative;overflow:hidden;}
@@ -300,14 +303,14 @@ footer{padding:36px 48px;background:var(--bg);}
 <div class="ss-wrap">
   <div style="position:relative;">
     <div class="ss-glow"></div>
-    <div class="ss-browser">
-      <div class="ss-bar">
-        <div class="ss-dot" style="background:#ef4444;"></div>
-        <div class="ss-dot" style="background:#f59e0b;"></div>
-        <div class="ss-dot" style="background:#22c55e;"></div>
-        <div class="ss-url">stagetimer.nl/app</div>
+    <div class="mb-device">
+      <div class="mb-lid">
+        <div class="mb-screen-inner">
+          <img class="ss-img" src="foh-view.jpg" alt="Stagetimer — FOH overzicht">
+        </div>
       </div>
-      <img class="ss-img" src="foh-view.jpg" alt="Stagetimer — FOH overzicht">
+      <div class="mb-hinge"></div>
+      <div class="mb-base"></div>
     </div>
   </div>
 </div>

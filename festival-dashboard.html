@@ -585,6 +585,7 @@ function loadAPPCache(){
   }
   if(!APP.companies)APP.companies=[];
   if(!APP.users)APP.users=[];
+  if(!APP.timers)APP.timers=[];
 }
 
 // Load from Supabase (async, merges into APP)
@@ -2566,11 +2567,16 @@ function removeProjectLogo(projId){
 }
 
 // ══ ONE-OFF TIMERS
-const OT_KEY='st_timers_v1';
 let OT=[];
-function loadOT(){try{OT=JSON.parse(localStorage.getItem(OT_KEY))||[];}catch{OT=[];}const now=Date.now();OT=OT.filter(t=>otExpiry(t)>now);localStorage.setItem(OT_KEY,JSON.stringify(OT));}
+function loadOT(){
+  // migrate from legacy key if present
+  try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch{}
+  OT=APP.timers||[];
+  const now=Date.now();OT=OT.filter(t=>otExpiry(t)>now);
+  APP.timers=OT;saveAPP();
+}
 function otExpiry(t){try{const d=new Date(t.date+'T'+t.end);return d.getTime()+86400000;}catch{return 0;}}
-function saveOTData(){localStorage.setItem(OT_KEY,JSON.stringify(OT));}
+function saveOTData(){APP.timers=OT;saveAPP();}
 function isOTLive(t){if(todayStr()!==t.date)return false;const nm=nowMin(),sm=t2m(t.start),em=t2m(t.end)+(t2m(t.end)<=t2m(t.start)?1440:0);return nm>=sm&&nm<em;}
 function otRemSec(t){if(todayStr()!==t.date){try{return(new Date(t.date+'T'+t.start).getTime()-Date.now())/1000;}catch{return 99999;}}const em=t2m(t.end)+(t2m(t.end)<=t2m(t.start)?1440:0);return em*60-nowSec();}
 function otStartSec(t){return t2m(t.start)*60;}
