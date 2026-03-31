@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stagetimer — Festival productie, op orde.</title>
-<meta name="description" content="Realtime productieplanning voor festivals en events. Van backstage tot FOH, iedereen op hetzelfde schema. Vanaf €49 per project.">
+<meta name="description" content="Realtime productieplanning voor festivals en events. Van backstage tot FOH, iedereen op hetzelfde schema. Vanaf €15 per maand.">
 <meta name="theme-color" content="#ffffff">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -142,26 +142,27 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .pricing-section{padding:0 40px 100px;background:var(--bg);position:relative;overflow:hidden;}
 .pricing-section::before{content:'';position:absolute;top:-60px;left:-80px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.05),transparent 70%);pointer-events:none;}
 .pricing-inner{max-width:1060px;margin:0 auto;padding-top:80px;position:relative;}
-.pricing-layout{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;margin-top:56px;}
-.price-card{background:var(--bg);border:2px solid rgba(99,102,241,.22);border-radius:24px;padding:44px;position:relative;overflow:hidden;box-shadow:0 8px 48px rgba(99,102,241,.1);}
-.price-card::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.08),transparent 70%);}
-.price-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.22);color:var(--green);font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;margin-bottom:24px;}
-.price-amount{font-size:72px;font-weight:900;letter-spacing:-4px;line-height:1;color:var(--text);margin-bottom:4px;}
-.price-amount sup{font-size:28px;font-weight:700;vertical-align:top;margin-top:16px;display:inline-block;color:var(--sub);}
-.price-per{font-size:13px;color:var(--sub);margin-bottom:32px;}
-.price-list{list-style:none;margin-bottom:36px;display:flex;flex-direction:column;gap:4px;}
-.price-list li{display:flex;align-items:center;gap:12px;font-size:14px;padding:10px 0;border-bottom:1px solid var(--border);color:var(--text);}
+.pricing-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-top:56px;}
+.price-card{background:var(--bg);border:1px solid var(--border2);border-radius:24px;padding:40px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);}
+.price-card::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.06),transparent 70%);}
+.price-card.featured{border:2px solid rgba(99,102,241,.4);box-shadow:0 12px 56px rgba(99,102,241,.15);}
+.price-card.featured::before{background:radial-gradient(circle,rgba(99,102,241,.12),transparent 70%);}
+.price-best{position:absolute;top:20px;right:20px;background:var(--accentg);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:99px;letter-spacing:.5px;}
+.price-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.22);color:var(--green);font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;margin-bottom:20px;}
+.price-name{font-size:14px;font-weight:700;color:var(--sub);margin-bottom:20px;}
+.price-amount{font-size:64px;font-weight:900;letter-spacing:-3px;line-height:1;color:var(--text);margin-bottom:4px;}
+.price-amount sup{font-size:24px;font-weight:700;vertical-align:top;margin-top:12px;display:inline-block;color:var(--sub);}
+.price-per{font-size:13px;color:var(--sub);margin-bottom:28px;}
+.price-saving{display:inline-block;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.18);color:var(--accent);font-size:11px;font-weight:700;padding:3px 10px;border-radius:99px;margin-bottom:28px;}
+.price-list{list-style:none;margin-bottom:32px;display:flex;flex-direction:column;gap:2px;}
+.price-list li{display:flex;align-items:center;gap:12px;font-size:13px;padding:9px 0;border-bottom:1px solid var(--border);color:var(--text);}
 .price-list li:last-child{border-bottom:none;}
-.pcheck{width:20px;height:20px;border-radius:6px;background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.btn-price{display:block;width:100%;background:var(--accentg);border:none;color:#fff;padding:16px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;transition:all .2s;box-shadow:0 4px 24px rgba(99,102,241,.35);}
+.pcheck{width:18px;height:18px;border-radius:5px;background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.22);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.btn-price{display:block;width:100%;background:var(--accentg);border:none;color:#fff;padding:15px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;transition:all .2s;box-shadow:0 4px 20px rgba(99,102,241,.3);}
 .btn-price:hover{opacity:.9;transform:translateY(-1px);}
-.price-note{font-size:12px;color:var(--sub2);text-align:center;margin-top:14px;}
-.price-right{display:flex;flex-direction:column;gap:16px;}
-.price-bullet{display:flex;align-items:flex-start;gap:16px;padding:20px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;transition:all .2s;}
-.price-bullet:hover{border-color:rgba(99,102,241,.2);background:var(--bg);}
-.price-bullet-icon{font-size:22px;flex-shrink:0;margin-top:2px;}
-.price-bullet-title{font-size:14px;font-weight:700;margin-bottom:4px;color:var(--text);}
-.price-bullet-desc{font-size:13px;color:var(--sub);line-height:1.6;}
+.btn-price-ghost{display:block;width:100%;background:transparent;border:1.5px solid var(--border2);color:var(--text);padding:15px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center;transition:all .2s;}
+.btn-price-ghost:hover{border-color:rgba(99,102,241,.3);background:var(--bg2);}
+.price-note{font-size:12px;color:var(--sub2);text-align:center;margin-top:12px;}
 
 /* ── MOBILE SECTION ── */
 .mobile-section{padding:0 40px 120px;background:var(--bg2);position:relative;overflow:hidden;}
@@ -285,9 +286,9 @@ footer{padding:36px 48px;background:var(--bg);}
     <a class="btn-outline" href="#features">Bekijk hoe het werkt</a>
   </div>
   <div class="hero-proof">
-    <span class="hero-proof-item">Geen abonnement</span>
+    <span class="hero-proof-item">Vanaf €15 per maand</span>
     <span class="hero-proof-dot"></span>
-    <span class="hero-proof-item">€49 excl. btw per project</span>
+    <span class="hero-proof-item">Maandelijks opzegbaar</span>
     <span class="hero-proof-dot"></span>
     <span class="hero-proof-item">Unlimited stages &amp; shows</span>
     <span class="hero-proof-dot"></span>
@@ -474,59 +475,48 @@ footer{padding:36px 48px;background:var(--bg);}
 <section class="pricing-section" id="pricing">
   <div class="pricing-inner">
     <div class="s-label">Tarieven</div>
-    <h2 class="s-title">Eén helder tarief.<br>Geen verrassingen.</h2>
-    <p class="s-sub">Geen maandelijks abonnement, geen per-gebruiker kosten. Betaal eenmalig per project.</p>
+    <h2 class="s-title">Kies wat bij jou past.</h2>
+    <p class="s-sub">Kies het basisplan voor losse festivals of ga onbeperkt met het Pro-abonnement.</p>
     <div class="pricing-layout">
+
+      <!-- Basis -->
       <div class="price-card">
-        <div class="price-badge">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Eenmalig per project
-        </div>
-        <div class="price-amount"><sup>€</sup>49</div>
-        <div class="price-per">per festival of event &nbsp;·&nbsp; excl. btw</div>
+        <div class="price-name">Basis</div>
+        <div class="price-amount"><sup>€</sup>15</div>
+        <div class="price-per">per maand &nbsp;·&nbsp; excl. btw</div>
         <ul class="price-list">
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited shows &amp; acts</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere festivaldag en</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor heel je team</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare links — geen account nodig</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Installeerbaar als mobiele app</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>1 actief project</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere festivaldagen</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor je team</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare crew-links</li>
         </ul>
-        <a class="btn-price" href="/app">Start jouw project</a>
-        <p class="price-note">Aanmelden is gratis &nbsp;·&nbsp; Betaling via factuur of Tikkie</p>
+        <a class="btn-price-ghost" href="/app">Start Basis</a>
+        <p class="price-note">Maandelijks opzegbaar &nbsp;·&nbsp; excl. btw</p>
       </div>
-      <div class="price-right">
-        <div class="price-bullet">
-          <div class="price-bullet-icon">🎯</div>
-          <div>
-            <div class="price-bullet-title">Geen abonnement, nooit</div>
-            <div class="price-bullet-desc">Betaal alleen voor de festivals die je daadwerkelijk draait. Geen doorlopende kosten tussen evenementen in.</div>
-          </div>
-        </div>
-        <div class="price-bullet">
-          <div class="price-bullet-icon">👥</div>
-          <div>
-            <div class="price-bullet-title">Onbeperkte teamleden</div>
-            <div class="price-bullet-desc">Geen extra kosten per gebruiker. Voeg je hele productieteam toe zonder dat de rekening oploopt.</div>
-          </div>
-        </div>
-        <div class="price-bullet">
-          <div class="price-bullet-icon">🔒</div>
-          <div>
-            <div class="price-bullet-title">Transparante facturatie</div>
-            <div class="price-bullet-desc">Factuur op naam, betaling via Tikkie of overschrijving. Simpel en geschikt voor ieder productiebedrijf.</div>
-          </div>
-        </div>
-        <div class="price-bullet">
-          <div class="price-bullet-icon">⚡</div>
-          <div>
-            <div class="price-bullet-title">Direct aan de slag</div>
-            <div class="price-bullet-desc">Aanmelden is gratis. Maak een project aan, verken de app en activeer pas als je klaar bent voor je eerste festival.</div>
-          </div>
-        </div>
+
+      <!-- Pro -->
+      <div class="price-card featured">
+        <div class="price-best">Meeste waarde</div>
+        <div class="price-name">Pro</div>
+        <div class="price-amount"><sup>€</sup>35</div>
+        <div class="price-per">per maand &nbsp;·&nbsp; excl. btw</div>
+        <div class="price-saving">Onbeperkt projecten</div>
+        <ul class="price-list">
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>Onbeperkt projecten</strong></li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere festivaldagen</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor je team</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare crew-links</li>
+        </ul>
+        <a class="btn-price" href="/app">Start Pro</a>
+        <p class="price-note">Maandelijks opzegbaar &nbsp;·&nbsp; excl. btw</p>
       </div>
+
     </div>
   </div>
 </section>
