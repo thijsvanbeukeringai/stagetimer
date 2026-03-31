@@ -1889,7 +1889,14 @@ async function loadPublicView(){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('bs-close-btn');
     if(closeBtn)closeBtn.style.display='none';
-    // Stage selector stays visible so user can switch stages
+    // Populate stage selector (normally done by renderAll)
+    const bsSel=document.getElementById('bs-ssel');
+    bsSel.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
+    bsSel.value=G.activeStage;
+    bsSel.onchange=()=>{G.activeStage=bsSel.value;renderBS();};
+    // Populate day tabs
+    document.getElementById('bs-dtabs').innerHTML=getDays().map(d=>`
+      <button class="bshbtn ${d===G.activeDay?'on':''}" onclick="G.activeDay='${d}';renderBS();document.querySelectorAll('#bs-dtabs .bshbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on');">${fmtDayShort(d)}</button>`).join('');
     openBS();
     // Realtime updates
     setInterval(()=>renderBS(),8000);
