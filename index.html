@@ -1591,12 +1591,21 @@ function doJSONImport(){
   alert(`Import geslaagd! ${result.imported} acts toegevoegd over ${result.stages} stages en ${result.days} dag(en).`);
 }
 
+const _maanden=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+const _dagen=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+
 function fmtDateNL(dateStr){
   // "2025-06-20" → "20 juni 2025"
+  try{const[y,m,d]=dateStr.split('-').map(Number);return`${d} ${_maanden[m-1]} ${y}`;}
+  catch{return dateStr;}
+}
+function fmtDateNLFull(dateStr){
+  // "2025-06-20" → "Vrijdag 20 juni 2025"
   try{
-    const [y,m,d]=dateStr.split('-').map(Number);
-    const maanden=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
-    return `${d} ${maanden[m-1]} ${y}`;
+    const[y,m,d]=dateStr.split('-').map(Number);
+    const dow=new Date(y,m-1,d).getDay();
+    const name=_dagen[dow];
+    return name.charAt(0).toUpperCase()+name.slice(1)+' '+d+' '+_maanden[m-1]+' '+y;
   }catch{return dateStr;}
 }
 
@@ -1606,56 +1615,75 @@ function importLineup(data){
   if(!G.days)G.days=[];
 
   let imported=0,newStages=0,newDays=0;
-  const dayKeys=Object.keys(data);
-  if(!dayKeys.length)return{error:'Geen dagen gevonden in de JSON.'};
 
-  for(const dayKey of dayKeys){
-    const dayData=data[dayKey];
-    // Support both array format (old) and object with date+stages (new)
-    const stageList=Array.isArray(dayData)?dayData:(dayData.stages||[]);
-    const dateStr=(!Array.isArray(dayData)&&dayData.date)||null;
-
-    // Build day label: "Vrijdag 20 juni 2025" or just key name
-    let dayLabel=dayKey.charAt(0).toUpperCase()+dayKey.slice(1);
-    if(dateStr)dayLabel=dayLabel+' '+fmtDateNL(dateStr);
-
-    // Find or create day (match by label or date)
-    let day=G.days.find(d=>
-      d.name.toLowerCase()===dayLabel.toLowerCase()||
-      (dateStr&&d.date===dateStr)
-    );
-    if(!day){
-      day={id:uid(),name:dayLabel,...(dateStr?{date:dateStr}:{})};
-      G.days.push(day);
-      newDays++;
-    } else {
-      // Day exists — remove all existing shows for this day (full overwrite)
-      G.shows=G.shows.filter(s=>s.day!==day.id);
+  // ── Flat array format: [{stage, artist, start:"2026-04-03T16:00", end:...}]
+  if(Array.isArray(data)){
+    // Group by start-date
+    const byDate={};
+    for(const row of data){
+      if(!row.start)continue;
+      const dateStr=row.start.slice(0,10); // "2026-04-03"
+      if(!byDate[dateStr])byDate[dateStr]=[];
+      byDate[dateStr].push(row);
     }
+    if(!Object.keys(byDate).length)return{error:'Geen geldige entries gevonden.'};
 
-    for(const stageBlock of stageList){
-      const stageName=(stageBlock.stage||'').trim();
-      if(!stageName)continue;
-
-      // Find or create stage
-      let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
-      if(!stage){
-        stage={id:uid(),name:stageName,emoji:'🎵'};
-        G.stages.push(stage);
-        newStages++;
+    for(const dateStr of Object.keys(byDate).sort()){
+      const dayLabel=fmtDateNLFull(dateStr);
+      let day=G.days.find(d=>d.date===dateStr||d.name===dayLabel);
+      if(!day){
+        day={id:uid(),name:dayLabel,date:dateStr};
+        G.days.push(day);newDays++;
+      } else {
+        G.shows=G.shows.filter(s=>s.day!==day.id);
       }
 
-      for(const act of (stageBlock.acts||[])){
-        if(!act.artist||!act.time)continue;
-        // Parse "16:45-17:30" — split on last '-' to handle midnight like "23:30-01:00"
-        const dashIdx=act.time.lastIndexOf('-');
-        if(dashIdx<1)continue;
-        const rawStart=act.time.slice(0,dashIdx).trim();
-        const rawEnd=act.time.slice(dashIdx+1).trim();
-        const start=rawStart.length===5?rawStart+':00':rawStart;
-        const end=rawEnd.length===5?rawEnd+':00':rawEnd;
-        G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
+      for(const row of byDate[dateStr]){
+        const stageName=(row.stage||'').trim();if(!stageName)continue;
+        let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
+        if(!stage){stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;}
+        // Extract HH:MM:SS from ISO datetime
+        const start=(row.start.includes('T')?row.start.split('T')[1]:'00:00')+':00';
+        const end=(row.end.includes('T')?row.end.split('T')[1]:'00:00')+':00';
+        G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:row.artist||'?',start,end,genre:'',booth:'',note:'',crew:[]});
         imported++;
+      }
+    }
+
+  // ── Nested object format: {"dagNaam":{"date":"...","stages":[...]}}
+  } else {
+    const dayKeys=Object.keys(data);
+    if(!dayKeys.length)return{error:'Geen dagen gevonden in de JSON.'};
+
+    for(const dayKey of dayKeys){
+      const dayData=data[dayKey];
+      const stageList=Array.isArray(dayData)?dayData:(dayData.stages||[]);
+      const dateStr=(!Array.isArray(dayData)&&dayData.date)||null;
+      let dayLabel=dayKey.charAt(0).toUpperCase()+dayKey.slice(1);
+      if(dateStr)dayLabel=fmtDateNLFull(dateStr);
+
+      let day=G.days.find(d=>d.name.toLowerCase()===dayLabel.toLowerCase()||(dateStr&&d.date===dateStr));
+      if(!day){
+        day={id:uid(),name:dayLabel,...(dateStr?{date:dateStr}:{})};
+        G.days.push(day);newDays++;
+      } else {
+        G.shows=G.shows.filter(s=>s.day!==day.id);
+      }
+
+      for(const stageBlock of stageList){
+        const stageName=(stageBlock.stage||'').trim();if(!stageName)continue;
+        let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
+        if(!stage){stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;}
+        for(const act of (stageBlock.acts||[])){
+          if(!act.artist||!act.time)continue;
+          const dashIdx=act.time.lastIndexOf('-');if(dashIdx<1)continue;
+          const rawStart=act.time.slice(0,dashIdx).trim();
+          const rawEnd=act.time.slice(dashIdx+1).trim();
+          const start=rawStart.length===5?rawStart+':00':rawStart;
+          const end=rawEnd.length===5?rawEnd+':00':rawEnd;
+          G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
+          imported++;
+        }
       }
     }
   }
@@ -1663,8 +1691,7 @@ function importLineup(data){
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.activeStage&&G.stages.length)G.activeStage=G.stages[0].id;
 
-  save();
-  renderAll();
+  save();renderAll();
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
   if(document.getElementById('bs').classList.contains('open'))renderBS();
   return{imported,stages:newStages,days:newDays};
