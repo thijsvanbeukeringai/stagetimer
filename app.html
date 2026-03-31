@@ -2098,7 +2098,10 @@ async function renameProject(id){
 // ── Project modal
 function openProjModal(){
   const sel=document.getElementById('pm-co');
-  sel.innerHTML=`<option value="">— Geen bedrijf —</option>`+APP.companies.map(c=>`<option value="${c.id}">${escH(c.name)}</option>`).join('');
+  const coId=CURRENT_USER?.companyId||'';
+  const companies=CURRENT_USER?.role==='super_admin'?APP.companies:APP.companies.filter(c=>c.id===coId);
+  sel.innerHTML=companies.map(c=>`<option value="${c.id}"${c.id===coId?' selected':''}>${escH(c.name)}</option>`).join('');
+  sel.style.display=companies.length<=1?'none':'block';
   document.getElementById('pm-name').value='';
   document.getElementById('proj-modal-ov').classList.add('open');
   setTimeout(()=>document.getElementById('pm-name').focus(),120);
