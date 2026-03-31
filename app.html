@@ -2205,6 +2205,10 @@ async function addUser(){
   const role=document.getElementById('adm-usr-role').value;
   const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
   if(addBtn){addBtn.textContent='Bezig…';addBtn.disabled=true;}
+
+  // Save admin session before signUp overwrites it
+  const{data:{session:adminSession}}=await supa.auth.getSession();
+
   APP.users.push({id:uid(),name,email,companyId,role});
   saveAPP();
   await supa.auth.signUp({
@@ -2212,10 +2216,19 @@ async function addUser(){
     password:pw,
     options:{emailRedirectTo:location.origin+location.pathname,data:{display_name:name}}
   });
+
+  // Restore admin session immediately (signUp replaces the active session)
+  if(adminSession){
+    await supa.auth.setSession({
+      access_token:adminSession.access_token,
+      refresh_token:adminSession.refresh_token
+    });
+  }
+
   document.getElementById('adm-usr-name').value='';
   document.getElementById('adm-usr-email').value='';
   document.getElementById('adm-usr-pw').value='';
-  if(addBtn){addBtn.textContent='Toevoegen';addBtn.disabled=false;}
+  if(addBtn){addBtn.textContent='+ Toevoegen';addBtn.disabled=false;}
   renderAdmin();
 }
 async function delUser(id){
