@@ -1175,7 +1175,7 @@ function renderTbar(){
 <div id="otv">
   <div id="otv-btns">
     <button class="otv-act" onclick="editCurrentOT()">✏️ Bewerken</button>
-    <button class="otv-act" onclick="closeOTV()">ESC — Sluiten</button>
+    <button class="otv-act" onclick="closeOTV()">ESC Sluiten</button>
   </div>
   <div id="otv-artist"></div>
   <div id="otv-time"></div>
@@ -1183,6 +1183,10 @@ function renderTbar(){
   <div id="otv-lbl">resterend</div>
   <div id="otv-bw"><div id="otv-bar"></div></div>
   <div id="otv-clock"></div>
+  <div id="otv-ios-hint" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:10px 16px;gap:8px;align-items:center;font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap;backdrop-filter:blur(8px);">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+    Deel → Zet op beginscherm voor volledig scherm
+  </div>
 </div>
 
 <!-- STAGE VIEW -->
@@ -2628,8 +2632,26 @@ function delOT(id){
   if(_currentOTId===id)closeOTV();
 }
 let _currentOTId=null;
-function openOTV(id){_currentOTId=id;renderOTV();document.getElementById('otv').classList.add('open');}
-function closeOTV(){document.getElementById('otv').classList.remove('open');_currentOTId=null;}
+const _isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+const _isStandalone=()=>window.navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
+function openOTV(id){
+  _currentOTId=id;renderOTV();
+  document.getElementById('otv').classList.add('open');
+  // Try fullscreen (works on Chrome/Android/desktop, not iOS Safari)
+  const el=document.documentElement;
+  if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});
+  else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+  // Show iOS hint if not already installed as PWA
+  if(_isIOS()&&!_isStandalone()){
+    const hint=document.getElementById('otv-ios-hint');
+    if(hint){hint.style.display='flex';setTimeout(()=>hint.style.display='none',5000);}
+  }
+}
+function closeOTV(){
+  document.getElementById('otv').classList.remove('open');_currentOTId=null;
+  if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+  else if(document.webkitFullscreenElement&&document.webkitExitFullscreen)document.webkitExitFullscreen();
+}
 function editCurrentOT(){openOTModal(_currentOTId);}
 function renderOTV(){
   const t=OT.find(x=>x.id===_currentOTId);if(!t){closeOTV();return;}
