@@ -164,19 +164,29 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .price-bullet-desc{font-size:13px;color:var(--sub);line-height:1.6;}
 
 /* ── MOBILE SECTION ── */
-.mobile-section{padding:0 40px 100px;background:var(--bg2);position:relative;overflow:hidden;}
-.mobile-section::before{content:'';position:absolute;top:40px;left:-80px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.06),transparent 70%);pointer-events:none;}
-.mobile-inner{max-width:1060px;margin:0 auto;padding-top:80px;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;position:relative;}
-.mobile-text{display:flex;flex-direction:column;gap:0;}
-.mobile-text .s-title{margin-bottom:16px;}
-.mobile-text .s-sub{margin-bottom:28px;}
-.mobile-list{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:32px;}
-.mobile-list li{display:flex;align-items:flex-start;gap:12px;font-size:14px;color:var(--sub);line-height:1.5;}
-.mobile-check{color:var(--accent);font-weight:800;font-size:14px;flex-shrink:0;margin-top:1px;}
-.mobile-phone{display:flex;justify-content:center;align-items:flex-end;}
-.mobile-phone-wrap{position:relative;max-width:280px;width:100%;}
-.mobile-phone-wrap::before{content:'';position:absolute;inset:-20px;border-radius:50px;background:radial-gradient(ellipse at 50% 60%,rgba(99,102,241,.12),transparent 70%);z-index:0;}
-.mobile-phone-img{width:100%;height:auto;display:block;border-radius:36px;box-shadow:0 32px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);position:relative;z-index:1;}
+.mobile-section{padding:0 40px 120px;background:var(--bg2);position:relative;overflow:hidden;}
+.mobile-section::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:700px;height:500px;background:radial-gradient(ellipse,rgba(99,102,241,.07),transparent 70%);pointer-events:none;}
+.mobile-top{max-width:1060px;margin:0 auto;padding-top:80px;text-align:center;position:relative;}
+.mobile-top .s-sub{max-width:520px;margin:0 auto;}
+.mobile-fans{max-width:900px;margin:52px auto 0;position:relative;height:560px;}
+.mphone{position:absolute;bottom:0;width:220px;}
+.mphone img{width:100%;height:auto;display:block;border-radius:32px;box-shadow:0 24px 60px rgba(0,0,0,.2),0 0 0 1px rgba(0,0,0,.08);}
+.mphone-label{text-align:center;margin-top:14px;}
+.mphone-label-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.18);padding:3px 10px;border-radius:99px;margin-bottom:5px;}
+.mphone-label-name{font-size:13px;font-weight:700;color:var(--text);}
+/* Left phone */
+.mphone-left{left:calc(50% - 340px);transform:rotate(-8deg);transform-origin:bottom center;}
+/* Center phone — slightly larger and raised */
+.mphone-center{left:50%;transform:translateX(-50%);width:240px;z-index:2;}
+.mphone-center img{box-shadow:0 40px 80px rgba(99,102,241,.2),0 0 0 1px rgba(0,0,0,.08);}
+/* Right phone */
+.mphone-right{right:calc(50% - 340px);transform:rotate(8deg);transform-origin:bottom center;}
+/* Glow under center */
+.mobile-fans::before{content:'';position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);width:300px;height:60px;background:radial-gradient(ellipse,rgba(99,102,241,.2),transparent 70%);pointer-events:none;}
+.mobile-cta{text-align:center;margin-top:40px;position:relative;}
+.mobile-sub-list{display:flex;justify-content:center;gap:28px;flex-wrap:wrap;margin-bottom:28px;}
+.mobile-sub-item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--sub);}
+.mobile-sub-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
 
 /* ── CTA STRIP ── */
 .cta-strip{margin:0 40px 100px;border-radius:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:72px 60px;text-align:center;position:relative;overflow:hidden;box-shadow:0 16px 64px rgba(99,102,241,.35);}
@@ -211,9 +221,11 @@ footer{padding:36px 48px;background:var(--bg);}
   .steps-grid::before{display:none;}
   .pricing-layout{grid-template-columns:1fr;}
   .price-right{display:none;}
-  .mobile-inner{grid-template-columns:1fr;gap:40px;}
-  .mobile-phone{order:-1;}
-  .mobile-phone-wrap{max-width:220px;}
+  .mobile-fans{height:440px;}
+  .mphone{width:170px;}
+  .mphone-center{width:190px;}
+  .mphone-left{left:calc(50% - 270px);}
+  .mphone-right{right:calc(50% - 270px);}
 }
 @media(max-width:700px){
   nav{padding:0 20px;}
@@ -221,6 +233,14 @@ footer{padding:36px 48px;background:var(--bg);}
   .hero h1{letter-spacing:-2.5px;}
   .ss-wrap,.pillars-section,.screens-section,.features-section,.steps-section,.pricing-section,.mobile-section{padding-left:20px;padding-right:20px;}
   .pillars-section,.screens-section,.features-section,.steps-section,.mobile-section{padding-top:72px;}
+  .mobile-fans{height:360px;}
+  .mphone{width:130px;}
+  .mphone-center{width:148px;}
+  .mphone-left{left:calc(50% - 210px);}
+  .mphone-right{right:calc(50% - 210px);}
+  .mphone img{border-radius:22px;}
+  .mobile-sub-list{gap:14px;}
+  .mobile-sub-item{font-size:12px;}
   .screens-grid{grid-template-columns:1fr;}
   .pricing-section{padding-top:0;padding-bottom:72px;}
   .steps-grid{grid-template-columns:1fr;}
@@ -513,24 +533,41 @@ footer{padding:36px 48px;background:var(--bg);}
 
 <!-- MOBILE SECTION -->
 <section class="mobile-section">
-  <div class="mobile-inner">
-    <div class="mobile-text">
-      <div class="s-label">Mobiel</div>
-      <h2 class="s-title">Altijd bij de hand.<br>Op elk apparaat.</h2>
-      <p class="s-sub">Installeer Stagetimer als app via je browser — geen App Store nodig. Werkt op iPhone, Android en tablet. Volledig bruikbaar met één hand, ook backstage.</p>
-      <ul class="mobile-list">
-        <li><span class="mobile-check">✓</span>Installeerbaar als webapp op thuisscherm</li>
-        <li><span class="mobile-check">✓</span>Stage selector met live countdown in header</li>
-        <li><span class="mobile-check">✓</span>Verticale tijdlijn per stage</li>
-        <li><span class="mobile-check">✓</span>Werkt op elke telefoon, geen account nodig voor crew</li>
-      </ul>
-      <a class="btn-hero" href="/app" style="display:inline-block;margin-top:8px;">Open de app</a>
-    </div>
-    <div class="mobile-phone">
-      <div class="mobile-phone-wrap">
-        <img src="mobile-app.png" alt="Stagetimer mobiele app" class="mobile-phone-img">
+  <div class="mobile-top">
+    <div class="s-label">Mobiel</div>
+    <h2 class="s-title">Altijd bij de hand.</h2>
+    <p class="s-sub">Installeer als app via je browser — geen App Store nodig. Werkt op iPhone, Android en tablet, ook backstage.</p>
+  </div>
+  <div class="mobile-fans">
+    <div class="mphone mphone-left">
+      <img src="mobile-app.png" alt="Programma overzicht">
+      <div class="mphone-label">
+        <div class="mphone-label-tag">Programma</div>
+        <div class="mphone-label-name">Shows &amp; planning</div>
       </div>
     </div>
+    <div class="mphone mphone-center">
+      <img src="mobile-2.png" alt="Stage countdown">
+      <div class="mphone-label">
+        <div class="mphone-label-tag">Stage display</div>
+        <div class="mphone-label-name">Live countdown</div>
+      </div>
+    </div>
+    <div class="mphone mphone-right">
+      <img src="mobile-3.png" alt="Tijdlijn">
+      <div class="mphone-label">
+        <div class="mphone-label-tag">Tijdlijn</div>
+        <div class="mphone-label-name">Alle stages</div>
+      </div>
+    </div>
+  </div>
+  <div class="mobile-cta">
+    <div class="mobile-sub-list">
+      <span class="mobile-sub-item"><span class="mobile-sub-dot"></span>Installeerbaar op thuisscherm</span>
+      <span class="mobile-sub-item"><span class="mobile-sub-dot"></span>Geen App Store nodig</span>
+      <span class="mobile-sub-item"><span class="mobile-sub-dot"></span>Crew heeft geen account nodig</span>
+    </div>
+    <a class="btn-hero" href="/app">Open de app</a>
   </div>
 </section>
 
