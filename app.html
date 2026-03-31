@@ -633,6 +633,7 @@ function setupRealtime(){
 
 const getShows=(stage,day)=>(G.shows||[]).filter(s=>s.stage===stage&&s.day===day).sort((a,b)=>t2s(a.start)-t2s(b.start));
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
+// Returns true only if the active day has no date set (no restriction) OR its date matches today
 const isActiveDayToday=()=>{const day=(G.days||[]).find(d=>d.id===G.activeDay);if(!day||!day.date)return true;return day.date===todayStr();};
 function curShow(shows){if(!isActiveDayToday())return null;const n=nowMin();for(const s of shows){const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);if(n>=sm&&n<em)return{s,startSec:sm*60,endSec:em*60};}return null;}
 function nxtShow(shows){if(!isActiveDayToday())return null;const n=nowMin();for(const s of shows){if(t2m(s.start)>n)return{s,startsIn:(t2m(s.start)-n)*60};}return null;}

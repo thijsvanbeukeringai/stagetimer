@@ -1,4 +1,7 @@
 {
   "outputDirectory": ".",
-  "buildCommand": null
+  "buildCommand": null,
+  "rewrites": [
+    { "source": "/app", "destination": "/app.html" }
+  ]
 }
