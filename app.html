@@ -2234,13 +2234,25 @@ async function addUser(){
 async function delUser(id){
   const u=APP.users.find(x=>x.id===id);
   if(!u)return;
+  if(!confirm(`${u.name} verwijderen?`))return;
   APP.users=APP.users.filter(x=>x.id!==id);
-  localStorage.setItem(AKEY,JSON.stringify(APP)); // instant local update (no _pushMeta to avoid re-upsert)
-  // Delete from Supabase by both id and email to be safe
+  localStorage.setItem(AKEY,JSON.stringify(APP));
+  // Delete from app_users table
   await Promise.all([
     supa.from('app_users').delete().eq('id',id),
     supa.from('app_users').delete().eq('email',u.email)
   ]);
+  // Delete from Supabase Auth via Edge Function
+  try{
+    const{data:{session}}=await supa.auth.getSession();
+    if(session&&u.email){
+      await fetch(`${SUPA_URL}/functions/v1/delete-auth-user`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
+        body:JSON.stringify({email:u.email})
+      });
+    }
+  }catch(e){console.warn('auth delete failed:',e);}
   renderAdmin();
 }
 
