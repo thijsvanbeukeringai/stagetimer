@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stagetimer — Realtime productietiming voor elk event</title>
+<title>Stagetimer · Realtime productietiming voor elk event</title>
 <meta name="description" content="Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema. Vanaf €15 per maand.">
 <meta name="theme-color" content="#ffffff">
 <style>
@@ -81,14 +81,43 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .hero-proof-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.2);}
 
 /* ── MACBOOK MOCKUP ── */
-.mb-device{position:relative;filter:drop-shadow(0 60px 80px rgba(0,0,0,.7));}
-.mb-lid{background:linear-gradient(160deg,#2d2d2f 0%,#1c1c1e 60%,#111 100%);border-radius:14px 14px 0 0;border:1px solid rgba(255,255,255,.12);border-bottom:none;padding:18px 18px 6px;position:relative;}
-.mb-lid::before{content:'';position:absolute;top:10px;left:50%;transform:translateX(-50%);width:6px;height:6px;border-radius:50%;background:#2a2a2e;box-shadow:0 0 0 1px rgba(255,255,255,.06);}
-.mb-screen-inner{border-radius:6px;overflow:hidden;background:#000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.8);}
+.mb-device{position:relative;}
+/* Outer shell — lid */
+.mb-lid{
+  background:linear-gradient(145deg,#3a3a3c 0%,#2a2a2c 30%,#1c1c1e 100%);
+  border-radius:16px 16px 0 0;
+  border:1.5px solid rgba(255,255,255,.18);
+  border-bottom:none;
+  padding:22px 20px 8px;
+  position:relative;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.6),
+    0 -1px 0 rgba(255,255,255,.1) inset,
+    0 50px 100px rgba(0,0,0,.8),
+    0 20px 40px rgba(99,102,241,.12);
+}
+/* Camera dot */
+.mb-lid::before{content:'';position:absolute;top:9px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;background:rgba(0,0,0,.5);box-shadow:0 0 0 1.5px rgba(255,255,255,.1),0 0 0 2.5px rgba(0,0,0,.3);}
+/* Screen shine line at top */
+.mb-lid::after{content:'';position:absolute;top:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);}
+.mb-screen-inner{border-radius:4px;overflow:hidden;background:#000;box-shadow:0 0 0 1px rgba(0,0,0,.9),inset 0 0 30px rgba(0,0,0,.4);}
 .ss-img{display:block;width:100%;height:auto;}
-.mb-hinge{height:10px;background:linear-gradient(180deg,#1a1a1c 0%,#2a2a2e 100%);border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08);}
-.mb-base{background:linear-gradient(180deg,#2a2a2e 0%,#232325 50%,#1c1c1e 100%);height:22px;border-radius:0 0 6px 6px;border:1px solid rgba(255,255,255,.08);border-top:none;position:relative;display:flex;align-items:center;justify-content:center;}
-.mb-base::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:160px;height:5px;background:#151517;border-radius:3px 3px 0 0;}
+/* Hinge */
+.mb-hinge{height:5px;background:linear-gradient(180deg,#0d0d0f 0%,#1a1a1c 100%);border-left:1.5px solid rgba(255,255,255,.1);border-right:1.5px solid rgba(255,255,255,.1);}
+/* Keyboard deck / base */
+.mb-base{
+  background:linear-gradient(180deg,#323234 0%,#282829 60%,#1e1e20 100%);
+  height:32px;
+  border-radius:0 0 12px 12px;
+  border:1.5px solid rgba(255,255,255,.14);
+  border-top:none;
+  position:relative;
+  box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 20px 40px rgba(0,0,0,.5);
+}
+/* Vent notch at bottom center */
+.mb-base::before{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:220px;height:8px;background:rgba(0,0,0,.4);border-radius:4px 4px 0 0;}
+/* Foot reflection */
+.mb-base::after{content:'';position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);}
 
 /* ── PILLARS ── */
 .pillars-section{padding:100px 40px;background:var(--bg);position:relative;overflow:hidden;}
@@ -291,7 +320,7 @@ footer{padding:36px 48px;background:var(--bg);}
 <!-- NAV -->
 <nav id="nav">
   <a class="nav-logo" href="/">
-    <img class="nav-logo-icon" src="stagetimer logo nieuw.png" alt="Stagetimer">
+    <img class="nav-logo-icon" src="stagetimer-logo.png" alt="Stagetimer">
     <span class="nav-logo-name">Stagetimer</span>
   </a>
   <div class="nav-links">
@@ -353,19 +382,19 @@ footer{padding:36px 48px;background:var(--bg);}
     <div class="pillars-grid">
       <div class="pillar">
         <div class="pillar-icon">🎯</div>
-        <div class="pillar-num">01 — FOCUS</div>
+        <div class="pillar-num">01 · FOCUS</div>
         <div class="pillar-title">Gemaakt voor de dag zelf</div>
-        <div class="pillar-desc">Elk scherm, elke knop en elke workflow is afgestemd op hoe productieteams daadwerkelijk werken — op het podium, achter de tafel, in de coulissen.</div>
+        <div class="pillar-desc">Elk scherm, elke knop en elke workflow is afgestemd op hoe productieteams daadwerkelijk werken. Op het podium, achter de tafel, in de coulissen.</div>
       </div>
       <div class="pillar">
         <div class="pillar-icon">⚡</div>
-        <div class="pillar-num">02 — SNELHEID</div>
+        <div class="pillar-num">02 · SNELHEID</div>
         <div class="pillar-title">Binnen vijf minuten live</div>
         <div class="pillar-desc">Project aanmaken, lineup invullen, links delen. Je hele team staat op hetzelfde schema zonder installaties, trainingen of langdurige onboarding.</div>
       </div>
       <div class="pillar">
         <div class="pillar-icon">🎚️</div>
-        <div class="pillar-num">03 — CONTROLE</div>
+        <div class="pillar-num">03 · CONTROLE</div>
         <div class="pillar-title">Live of handmatige start</div>
         <div class="pillar-desc">Kies per show of de timer automatisch start op geplande tijd, of dat jij hem handmatig triggert vanuit de FOH. De controle blijft bij jou.</div>
       </div>
@@ -403,7 +432,7 @@ footer{padding:36px 48px;background:var(--bg);}
         <div class="screen-body">
           <div class="screen-tag">Backstage</div>
           <div class="screen-title">Live overzicht voor de crew</div>
-          <div class="screen-desc">Deelbare link voor backstage crew. Geen account nodig — werkt direct op elke telefoon via de browser.</div>
+          <div class="screen-desc">Deelbare link voor backstage crew. Geen account nodig, werkt direct op elke telefoon via de browser.</div>
         </div>
       </div>
     </div>
@@ -437,7 +466,7 @@ footer{padding:36px 48px;background:var(--bg);}
       <div class="feat">
         <div class="feat-icon" style="background:rgba(34,197,94,.08);">🎭</div>
         <div class="feat-title">Backstage view</div>
-        <div class="feat-desc">Deelbare link voor backstage crew. Geen app nodig, werkt op elke telefoon via de browser — direct open, direct bruikbaar.</div>
+        <div class="feat-desc">Deelbare link voor backstage crew. Geen app nodig, werkt op elke telefoon via de browser. Direct open, direct bruikbaar.</div>
       </div>
       <div class="feat">
         <div class="feat-icon" style="background:rgba(251,191,36,.08);">📺</div>
@@ -447,7 +476,7 @@ footer{padding:36px 48px;background:var(--bg);}
       <div class="feat">
         <div class="feat-icon" style="background:rgba(139,92,246,.08);">📅</div>
         <div class="feat-title">Meerdaags festival</div>
-        <div class="feat-desc">Vrijdag, zaterdag, zondag — elk met eigen lineup, eigen stages. Timer loopt alleen op de dag dat het ook echt zover is.</div>
+        <div class="feat-desc">Vrijdag, zaterdag, zondag: elk met eigen lineup, eigen stages. Timer loopt alleen op de dag dat het ook echt zover is.</div>
       </div>
       <div class="feat">
         <div class="feat-icon" style="background:rgba(99,102,241,.08);">📱</div>
@@ -479,19 +508,19 @@ footer{padding:36px 48px;background:var(--bg);}
         <div class="uc-icon">🎤</div>
         <div class="uc-tag">Conferenties</div>
         <div class="uc-title">Confidence monitor voor sprekers</div>
-        <div class="uc-desc">Stuur berichten zoals "Wrap up" of "Q&A start nu" die alleen jij en de spreker zien — niet het publiek. De spreker kijkt op zijn scherm, de zaal merkt niets.</div>
+        <div class="uc-desc">Stuur berichten zoals "Wrap up" of "Q&A start nu" die alleen jij en de spreker zien. Niet het publiek. De spreker kijkt op zijn scherm, de zaal merkt niets.</div>
       </div>
       <div class="uc-card">
         <div class="uc-icon">⛪</div>
         <div class="uc-tag">Kerkdiensten</div>
         <div class="uc-title">Regie voor diensten</div>
-        <div class="uc-desc">Synchroniseer zang, preek en mededelingen. De regie stuurt berichten naar de voorganger, de timer loopt op het scherm — rustig en overzichtelijk voor iedereen.</div>
+        <div class="uc-desc">Synchroniseer zang, preek en mededelingen. De regie stuurt berichten naar de voorganger, de timer loopt op het scherm. Rustig en overzichtelijk voor iedereen.</div>
       </div>
       <div class="uc-card">
         <div class="uc-icon">🎙️</div>
         <div class="uc-tag">Webinars & Livestreams</div>
         <div class="uc-title">Weet exact wanneer je live gaat</div>
-        <div class="uc-desc">Open de timer als browserlink op een tweede scherm of tablet naast je camera. Geen gedoe, geen aparte software — gewoon een link openen en weten hoeveel tijd je hebt.</div>
+        <div class="uc-desc">Open de timer als browserlink op een tweede scherm of tablet naast je camera. Geen gedoe, geen aparte software. Gewoon een link openen en weten hoeveel tijd je hebt.</div>
       </div>
     </div>
   </div>
@@ -524,7 +553,7 @@ footer{padding:36px 48px;background:var(--bg);}
       <div class="step">
         <div class="step-num">04</div>
         <div class="step-title">Ga live</div>
-        <div class="step-desc">Zet de stage display aan. Timer start automatisch of op jouw teken — en schuift door naar de volgende act.</div>
+        <div class="step-desc">Zet de stage display aan. Timer start automatisch of op jouw teken en schuift door naar de volgende act.</div>
       </div>
     </div>
   </div>
@@ -640,7 +669,7 @@ footer{padding:36px 48px;background:var(--bg);}
 <footer>
   <div class="footer-inner">
     <a class="footer-logo" href="/">
-      <img class="footer-logo-icon" src="stagetimer logo nieuw.png" alt="Stagetimer">
+      <img class="footer-logo-icon" src="stagetimer-logo.png" alt="Stagetimer">
       <span class="footer-logo-name">Stagetimer</span>
     </a>
     <span class="footer-copy">© 2026 Stagetimer &nbsp;·&nbsp; Gebouwd voor productieteams</span>
