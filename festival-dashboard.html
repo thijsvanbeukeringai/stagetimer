@@ -901,7 +901,7 @@ function renderTbar(){
     <div style="display:flex;gap:5px;flex-shrink:0;" id="tl-dtabs"></div>
     <div style="flex:1;"></div>
     <div id="tl-clock" style="font-family:var(--ffm);font-size:13px;color:rgba(255,255,255,.3);flex-shrink:0;margin-right:4px;"></div>
-    <button class="fhbtn" onclick="closeTL()">✕ Sluiten</button>
+    <button class="fhbtn" id="tl-close-btn" onclick="closeTL()">✕ Sluiten</button>
   </div>
   <div id="tl-scroll"><div id="tl-content"></div></div>
 </div>
@@ -1422,7 +1422,7 @@ function openBS(){document.getElementById('bs').classList.add('open');renderBS()
 function closeBS(){document.getElementById('bs').classList.remove('open');}
 function openSV(){document.getElementById('sv').classList.add('open');renderSV();}
 function closeSV(){document.getElementById('sv').classList.remove('open');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();closeTL();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -1839,9 +1839,20 @@ const _shareBase=()=>location.origin+location.pathname;
 function openShareModal(projId){
   const proj=APP.projects.find(p=>p.id===projId);if(!proj)return;
   const stages=proj.data?.stages||[];
+  const base=_shareBase();
   document.getElementById('share-modal-title').textContent='🔗 Links — '+escH(proj.name);
-  document.getElementById('share-stage-list').innerHTML=stages.length?stages.map(st=>{
-    const base=_shareBase();
+  // Timeline link (whole project, no stage)
+  const tlUrl=`${base}?mode=timeline&pid=${projId}`;
+  const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
+    <div class="share-stage-name">▦ Tijdlijn</div>
+    <div class="share-link-row">
+      <span class="share-link-label">Tijdlijn</span>
+      <span class="share-link-url" title="${tlUrl}">${tlUrl}</span>
+      <button class="share-copy-btn" onclick="copyLink(this,'${tlUrl}')">Kopieer</button>
+    </div>
+  </div>`;
+  // Per-stage links
+  const stageBlocks=stages.length?stages.map(st=>{
     const stageUrl=`${base}?mode=stage&pid=${projId}&sid=${st.id}`;
     const bsUrl=`${base}?mode=backstage&pid=${projId}&sid=${st.id}`;
     return`<div class="share-stage-block">
@@ -1858,6 +1869,7 @@ function openShareModal(projId){
       </div>
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">Geen stages aangemaakt in dit project.</div>`;
+  document.getElementById('share-stage-list').innerHTML=tlBlock+stageBlocks;
   document.getElementById('share-ov').classList.add('open');
 }
 function closeShareModal(){document.getElementById('share-ov').classList.remove('open');}
@@ -1884,6 +1896,13 @@ async function loadPublicView(){
   document.getElementById('loader').style.display='none';
   if(PUBLIC_MODE==='stage'){
     openSV();
+  } else if(PUBLIC_MODE==='timeline'){
+    document.getElementById('app').style.display='none';
+    const closeBtn=document.getElementById('tl-close-btn');
+    if(closeBtn)closeBtn.style.display='none';
+    openTL();
+    setInterval(()=>renderTL(),8000);
+    setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
     // Standalone backstage: hide main app, hide close button
     document.getElementById('app').style.display='none';
