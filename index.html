@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stage Timer">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Stage Timer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -399,6 +404,86 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .ot{animation:blink .7s ease-in-out infinite;}
 @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .fia{animation:fi .18s ease both;}
+
+/* ── MOBILE FAB timer button (hidden on desktop) ── */
+#mob-timer-fab{display:none;position:fixed;bottom:20px;right:16px;z-index:87;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;font-size:22px;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(99,102,241,.5);transition:transform .15s;}
+#mob-timer-fab:active{transform:scale(.9);}
+#mob-sheet-ov{display:none;position:fixed;inset:0;z-index:87;background:rgba(0,0,0,.5);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  /* Header */
+  #hdr{padding:0 10px;gap:5px;height:50px;}
+  #logo-name{display:none;}
+  #clock-hdr{display:none;}
+
+  /* Body: hide timer panel by default, show as bottom sheet */
+  #tpanel{
+    position:fixed;bottom:0;left:0;right:0;
+    width:100%!important;max-height:70vh;height:auto;
+    z-index:88;border-right:none;
+    border-top:1px solid var(--border2);
+    border-radius:18px 18px 0 0;
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.2,.9,.3,1);
+    box-shadow:0 -8px 40px rgba(0,0,0,.5);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  #tpanel::before{content:'';display:block;width:36px;height:4px;background:rgba(255,255,255,.18);border-radius:99px;margin:10px auto 0;flex-shrink:0;}
+  #tpanel.mob-open{transform:translateY(0);}
+  #mob-sheet-ov.open{display:block;}
+  #mob-timer-fab{display:flex;}
+  #spanel{width:100%;}
+
+  /* Drawer full-width */
+  #drawer{width:100%;border-radius:0;}
+
+  /* Show cards */
+  .scard-crew{flex-wrap:wrap;}
+
+  /* Login */
+  #login-box{width:min(340px,92vw);}
+
+  /* Dashboard */
+  #dash-hdr{padding:0 14px;height:54px;}
+  #dash-body{padding:18px 14px;}
+  .proj-grid{grid-template-columns:1fr;gap:10px;}
+  .dash-section-hdr{flex-direction:column;align-items:flex-start;gap:8px;}
+
+  /* Admin */
+  #admin-hdr{padding:0 14px;height:54px;}
+  #admin-body{padding:14px;}
+  .admin-cols{grid-template-columns:1fr;}
+
+  /* Backstage */
+  #bs-hdr{padding:0 12px;gap:6px;height:auto;min-height:50px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px;}
+  #bs-body{padding:10px 12px;}
+  .bs-row{padding:14px 14px!important;}
+
+  /* Timeline header */
+  #tl-hdr{padding:0 10px;gap:6px;}
+
+  /* FOH header */
+  #foh-hdr{padding:0 12px;gap:6px;}
+
+  /* Modals */
+  #share-modal{width:95vw;padding:18px;}
+  #proj-modal{width:92vw;padding:20px;}
+  #json-modal-ov > div{width:95vw;padding:16px;}
+  #json-input-area{height:160px;}
+
+  /* Stage/Day modals */
+  #stage-modal-ov > div, #day-modal-ov > div{width:92vw;padding:18px;}
+
+  /* Bottom padding for FAB */
+  #slist{padding-bottom:80px;}
+}
+
+@media(max-width:400px){
+  #hdr{gap:4px;}
+  .hbtn{padding:5px 8px;font-size:10px;}
+  .daybtn{padding:3px 7px;font-size:10px;}
+}
 </style>
 </head>
 <body>
@@ -533,6 +618,14 @@ function setupRealtime(){
         localStorage.setItem(AKEY,JSON.stringify(APP));
         if(p.id===APP.activeProjectId){loadG();renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
         if(document.getElementById('dash').classList.contains('open'))renderDash();
+      } else if(payload.eventType==='DELETE'){
+        const deletedId=payload.old?.id;
+        if(deletedId){
+          APP.projects=APP.projects.filter(p=>p.id!==deletedId);
+          if(APP.activeProjectId===deletedId)APP.activeProjectId=null;
+          localStorage.setItem(AKEY,JSON.stringify(APP));
+          if(document.getElementById('dash').classList.contains('open'))renderDash();
+        }
       }
     })
     .subscribe();
@@ -636,6 +729,10 @@ function renderTbar(){
     </div>
   </div>
 </div>
+
+<!-- Mobile timer sheet overlay + FAB -->
+<div id="mob-sheet-ov" onclick="closeMobTimer()"></div>
+<button id="mob-timer-fab" onclick="toggleMobTimer()" title="Timer">⏱</button>
 
 <!-- LOADER -->
 <div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
@@ -1688,6 +1785,18 @@ function importLineup(data){
     }
   }
 
+  // Dedup stages by name (case-insensitive) — merge duplicates created by repeated imports
+  const _stageMap=new Map(),_stageRemap=new Map();
+  for(const st of G.stages){
+    const k=st.name.trim().toLowerCase();
+    if(_stageMap.has(k)){_stageRemap.set(st.id,_stageMap.get(k).id);}
+    else{_stageMap.set(k,st);}
+  }
+  if(_stageRemap.size){
+    G.stages=G.stages.filter(st=>!_stageRemap.has(st.id));
+    G.shows=G.shows.map(s=>_stageRemap.has(s.stage)?{...s,stage:_stageRemap.get(s.stage)}:s);
+  }
+
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.activeStage&&G.stages.length)G.activeStage=G.stages[0].id;
 
@@ -1797,11 +1906,13 @@ function openProject(id){
   document.getElementById('logo-name').textContent=APP.projects.find(p=>p.id===id)?.name||'Stage Timer';
 }
 
-function deleteProject(id){
+async function deleteProject(id){
   if(!confirm('Project verwijderen?'))return;
+  const{error}=await supa.from('projects').delete().eq('id',id);
+  if(error){alert('Fout bij verwijderen: '+error.message);return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
-  saveAPP();supa.from('projects').delete().eq('id',id);renderDash();
+  saveAPP();renderDash();
 }
 
 // ── Project modal
@@ -1971,8 +2082,9 @@ function renderTL(){
 
   const nm=nowMin();
 
-  // Stage rows
-  const rows=stages.map(stage=>{
+  // Stage rows — only show stages that have at least one show on the active day
+  const activeStages=stages.filter(stage=>shows.some(s=>s.stage===stage.id));
+  const rows=activeStages.map(stage=>{
     const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>t2s(a.start)-t2s(b.start));
     const blocks=stShows.map(s=>{
       const ss=t2s(s.start),es=t2s(s.end)+(t2s(s.end)<=t2s(s.start)?86400:0);
@@ -2158,6 +2270,19 @@ async function loadPublicView(){
     setupRealtime();
   }
   setInterval(tick,250);
+}
+
+// ══ MOBILE TIMER SHEET
+function toggleMobTimer(){
+  const panel=document.getElementById('tpanel');
+  const ov=document.getElementById('mob-sheet-ov');
+  const isOpen=panel.classList.contains('mob-open');
+  panel.classList.toggle('mob-open',!isOpen);
+  ov.classList.toggle('open',!isOpen);
+}
+function closeMobTimer(){
+  document.getElementById('tpanel').classList.remove('mob-open');
+  document.getElementById('mob-sheet-ov').classList.remove('open');
 }
 
 // ══ PROJECT LOGO
