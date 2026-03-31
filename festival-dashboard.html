@@ -131,8 +131,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .btn-p{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:700;background:var(--blue);border:none;color:#fff;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .btn-p:hover{background:#4f52df;}
 .btn-p:active{transform:scale(.96);}
-@keyframes pulse-btn{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.7);}60%{box-shadow:0 0 0 7px rgba(99,102,241,0);}}
-#new-show-btn.pulse{animation:pulse-btn 2s ease-in-out infinite;}
+@keyframes pulse-btn{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.9);opacity:1;}50%{box-shadow:0 0 0 10px rgba(99,102,241,0);opacity:.7;}}
+#new-show-btn.pulse{animation:pulse-btn 1.4s ease-in-out infinite;}
 .btn-g{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:600;background:var(--s2);border:1px solid var(--border2);color:var(--sub);cursor:pointer;transition:all .15s;}
 .btn-g:hover{background:var(--s3);color:var(--text);}
 
@@ -2740,13 +2740,12 @@ async function doLogin(){
   errEl.style.display='none';
   if(!email||!pw){errEl.textContent='Vul e-mail en wachtwoord in.';errEl.style.display='block';return;}
   btn.textContent='Bezig…';btn.disabled=true;
-  const{error}=await supa.auth.signInWithPassword({email,password:pw});
+  const{data:{session},error}=await supa.auth.signInWithPassword({email,password:pw});
   if(error){
     errEl.textContent='Inloggen mislukt: '+error.message;
     errEl.style.display='block';
     btn.textContent='Inloggen';btn.disabled=false;
   }else{
-    const{data:{session}}=await supa.auth.getSession();
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
     _showLogoutBtn(true);
@@ -2830,25 +2829,24 @@ async function _startApp(session){
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
-  try{
-    const{data:{session}}=await supa.auth.getSession();
-    if(session){
-      document.getElementById('login').classList.remove('open');
-      document.getElementById('loader').style.display='flex';
-      _showLogoutBtn(true);
-      await _startApp(session);
-    }
-  }catch(e){console.error('auth:',e);_hideLoader();}
-  // else: login screen stays open
 
-  // Handle password recovery (reset link) and invite acceptance
+  let _appStarted=false;
+  // INITIAL_SESSION fires on every page load — this is the reliable way to detect a persisted session
   supa.auth.onAuthStateChange(async(event,sess)=>{
-    if(event==='PASSWORD_RECOVERY'){
-      // User clicked password reset link
+    if(event==='INITIAL_SESSION'){
+      if(sess&&!_appStarted){
+        _appStarted=true;
+        document.getElementById('login').classList.remove('open');
+        document.getElementById('loader').style.display='flex';
+        _showLogoutBtn(true);
+        await _startApp(sess);
+      } else if(!sess){
+        _hideLoader();// no session — login screen stays open
+      }
+    } else if(event==='PASSWORD_RECOVERY'){
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
     } else if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited){
-      // Invited user clicked their email link
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
     }
