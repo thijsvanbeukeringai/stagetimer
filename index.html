@@ -415,6 +415,7 @@ const durSec=(s,e)=>{let sm=t2s(s),em=t2s(e);if(em<=sm)em+=86400;return em-sm;};
 const fmtDur=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;if(h>0)return sc>0?`${h}u ${m}m ${sc}s`:`${h}u ${m>0?m+'m':''}`;return sc>0?`${m}m ${sc}s`:`${m}m`;};
 const todayStr=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function fmtDateLabel(d){try{const dt=new Date(d+'T12:00:00');return['zo','ma','di','wo','do','vr','za'][dt.getDay()]+' '+dt.getDate()+'/'+String(dt.getMonth()+1);}catch{return d;}}
 
 // tColor: green > 10min, orange 5-10min, red < 5min
 const tColor=s=>{
@@ -469,9 +470,14 @@ async function loadAPPRemote(){
 
 function loadG(){
   const proj=APP.projects.find(p=>p.id===APP.activeProjectId);
-  if(proj&&proj.data&&proj.data.stages){G=proj.data;}else{G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:todayStr(),timerMode:'live'};}
+  if(proj&&proj.data&&proj.data.stages){G=proj.data;}else{G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:null,days:[],timerMode:'live'};}
   if(!G.activeStage&&G.stages&&G.stages.length)G.activeStage=G.stages[0].id;
-  if(!G.activeDay)G.activeDay=todayStr();
+  // Migrate old date-based days to named days
+  if(!G.days||!G.days.length){
+    const existingDates=[...new Set((G.shows||[]).map(s=>s.day).filter(Boolean))].sort();
+    G.days=existingDates.length?existingDates.map(d=>({id:d,name:fmtDateLabel(d)})):[{id:uid(),name:'Dag 1'}];
+  }
+  if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.timerMode)G.timerMode='live';
   if(!G.fohNotes)G.fohNotes={};
 }
@@ -536,8 +542,8 @@ const getShows=(stage,day)=>(G.shows||[]).filter(s=>s.stage===stage&&s.day===day
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
 function curShow(shows){const n=nowMin();for(const s of shows){const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);if(n>=sm&&n<em)return{s,startSec:sm*60,endSec:em*60};}return null;}
 function nxtShow(shows){const n=nowMin();for(const s of shows){if(t2m(s.start)>n)return{s,startsIn:(t2m(s.start)-n)*60};}return null;}
-function getDays(){const all=[...new Set((G.shows||[]).map(s=>s.day))].sort();if(!all.includes(todayStr()))all.unshift(todayStr());return all;}
-function fmtDayShort(d){const dt=new Date(d+'T12:00:00'),t=new Date();t.setHours(12,0,0,0);if(dt.toDateString()===t.toDateString())return'Vandaag';return['zo','ma','di','wo','do','vr','za'][dt.getDay()]+' '+dt.getDate()+'/'+String(dt.getMonth()+1);}
+function getDays(){return G.days||[];}
+function fmtDayShort(id){const d=(G.days||[]).find(x=>x.id===id);return d?d.name:id;}
 
 // ══ MANUAL TIMER
 let M={state:'idle',idx:0,remMs:0,durMs:0,startMs:0,nudge:0};
@@ -629,7 +635,10 @@ function renderTbar(){
     <div class="vsep"></div>
     <select id="stage-sel" class="hsel"></select>
     <button class="hbtn" onclick="openStageModal()" title="Stages beheren" style="padding:5px 8px;">⚙ Stages</button>
-    <div id="day-tabs" style="display:flex;gap:4px;"></div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <div id="day-tabs" style="display:flex;gap:4px;"></div>
+      <button class="daybtn" onclick="openDayModal()" title="Dagen beheren" style="padding:4px 8px;font-size:13px;line-height:1;">+</button>
+    </div>
     <div style="flex:1;"></div>
     <div id="clock-hdr"></div>
     <button class="hbtn gr" onclick="openBS()">🎭 Backstage</button>
@@ -879,6 +888,22 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- DAY MODAL -->
+<div id="day-modal-ov" onclick="if(event.target===this)closeDayModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:360px;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:14px;font-weight:800;">Dagen beheren</div>
+      <button onclick="closeDayModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div id="day-list" style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto;"></div>
+    <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:7px;">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);">Nieuwe dag</div>
+      <input class="fi" id="dm-name" type="text" placeholder="Bijv. Vrijdag 20 juni…" onkeydown="if(event.key==='Enter')addDay()">
+      <button class="btn-p" onclick="addDay()">+ Toevoegen</button>
+    </div>
+  </div>
+</div>
+
 <!-- FOH note add modal -->
 <div id="fohn-ov" onclick="if(event.target===this)closeFohnModal()">
   <div id="fohn-modal">
@@ -1087,7 +1112,7 @@ function renderHeader(){
   sel.value=G.activeStage;sel.onchange=()=>{G.activeStage=sel.value;M.idx=0;mReset();save();renderAll();};
 
   document.getElementById('day-tabs').innerHTML=getDays().map(d=>`
-    <button class="daybtn ${d===G.activeDay?'on':''}" onclick="setDay('${d}')">${fmtDayShort(d)}</button>`).join('');
+    <button class="daybtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}')">${escH(d.name)}</button>`).join('');
 
   // FOH selects
   const fs=document.getElementById('foh-ssel');
@@ -1103,11 +1128,11 @@ function renderHeader(){
   bs.value=G.activeStage;bs.onchange=()=>{G.activeStage=bs.value;save();renderBS();renderAll();};
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   document.getElementById('bs-dtabs').innerHTML=getDays().map(d=>`
-    <button class="bshbtn ${d===G.activeDay?'on':''}" onclick="setDay('${d}');renderBS();">${fmtDayShort(d)}</button>`).join('');
+    <button class="bshbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderBS();">${escH(d.name)}</button>`).join('');
 
   // Timeline day tabs
   document.getElementById('tl-dtabs').innerHTML=getDays().map(d=>`
-    <button class="fhbtn ${d===G.activeDay?'on':''}" onclick="setDay('${d}');renderTL();">${fmtDayShort(d)}</button>`).join('');
+    <button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderTL();">${escH(d.name)}</button>`).join('');
 }
 function setDay(d){G.activeDay=d;M.idx=0;mReset();save();renderAll();}
 
@@ -1522,6 +1547,39 @@ function delStage(id){
   save();renderAll();renderStageList();
 }
 
+// ══ DAY MANAGEMENT
+function openDayModal(){
+  renderDayList();
+  document.getElementById('day-modal-ov').style.display='flex';
+  document.getElementById('dm-name').value='';
+  setTimeout(()=>document.getElementById('dm-name').focus(),50);
+}
+function closeDayModal(){document.getElementById('day-modal-ov').style.display='none';}
+function renderDayList(){
+  document.getElementById('day-list').innerHTML=(G.days||[]).map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s3);border-radius:8px;">
+      <span style="font-size:12px;font-weight:700;flex:1;">${escH(d.name)}</span>
+      ${(G.days.length>1)?`<button onclick="delDay('${d.id}')" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Verwijderen">×</button>`:''}
+    </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">Nog geen dagen aangemaakt.</div>`;
+}
+function addDay(){
+  const name=document.getElementById('dm-name').value.trim();if(!name)return;
+  if(!G.days)G.days=[];
+  const id=uid();
+  G.days.push({id,name});
+  if(!G.activeDay)G.activeDay=id;
+  save();renderAll();renderDayList();
+  document.getElementById('dm-name').value='';
+  document.getElementById('dm-name').focus();
+}
+function delDay(id){
+  if(G.days.length<=1){alert('Je kunt de laatste dag niet verwijderen.');return;}
+  if(!confirm('Dag verwijderen? Shows op deze dag blijven bewaard maar zijn niet meer zichtbaar.'))return;
+  G.days=G.days.filter(d=>d.id!==id);
+  if(G.activeDay===id)G.activeDay=G.days[0].id;
+  save();renderAll();renderDayList();
+}
+
 // ══ DASHBOARD
 function showDash(){
   document.getElementById('dash').classList.add('open');
@@ -1609,7 +1667,8 @@ function createProject(){
   const name=document.getElementById('pm-name').value.trim();if(!name)return;
   const companyId=document.getElementById('pm-co').value;
   const id=uid();
-  const emptyData={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:todayStr(),timerMode:'live'};
+  const firstDayId=uid();
+  const emptyData={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:firstDayId,days:[{id:firstDayId,name:'Dag 1'}],timerMode:'live'};
   const proj={id,name,companyId,createdAt:Date.now(),data:emptyData};
   APP.projects.push(proj);
   saveAPP();
@@ -1942,7 +2001,7 @@ async function loadPublicView(){
     bsSel.onchange=()=>{G.activeStage=bsSel.value;renderBS();};
     // Populate day tabs
     document.getElementById('bs-dtabs').innerHTML=getDays().map(d=>`
-      <button class="bshbtn ${d===G.activeDay?'on':''}" onclick="G.activeDay='${d}';renderBS();document.querySelectorAll('#bs-dtabs .bshbtn').forEach(b=>b.classList.remove('on'));this.classList.add('on');">${fmtDayShort(d)}</button>`).join('');
+      <button class="bshbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderBS();">${escH(d.name)}</button>`).join('');
     openBS();
     // Realtime updates
     setInterval(()=>renderBS(),8000);
@@ -2074,11 +2133,11 @@ async function setNewPassword(){
 
 // ══ INIT
 function _initUI(){
-  G=G||{stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:todayStr(),timerMode:'live'};
+  if(!G){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
   if(!APP.activeProjectId||!APP.projects.find(p=>p.id===APP.activeProjectId)){
     document.getElementById('dash').classList.add('open');
     renderDash();
-    if(!G.stages)G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:todayStr(),timerMode:'live'};
+    if(!G.stages){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
   }else{
     loadG();
     document.getElementById('logo-name').textContent=APP.projects.find(p=>p.id===APP.activeProjectId)?.name||'Stage Timer';
