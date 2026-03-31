@@ -572,7 +572,7 @@ const tBg=(col,a)=>`rgba(${_crgb[col]||'255,255,255'},${Math.min(1,a).toFixed(3)
 // ══ SUPABASE
 const SUPA_URL='https://bamjpsquhdzxvsymldpq.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbWpwc3F1aGR6eHZzeW1sZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTQ2ODUsImV4cCI6MjA5MDUzMDY4NX0.657ty4HprURSCfdwfORQejBjXCcj6nK81rN9WoOOwiQ';
-const supa=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'implicit'}});
+const supa=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage}});
 
 function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.className=s;}
 
@@ -2219,23 +2219,25 @@ async function addUser(){
   const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
   if(addBtn){addBtn.textContent='Bezig…';addBtn.disabled=true;}
 
-  // Save admin session before signUp overwrites it
-  const{data:{session:adminSession}}=await supa.auth.getSession();
-
   APP.users.push({id:uid(),name,email,companyId,role});
   saveAPP();
-  await supa.auth.signUp({
-    email,
-    password:pw,
-    options:{emailRedirectTo:location.origin+location.pathname,data:{display_name:name}}
-  });
 
-  // Restore admin session immediately (signUp replaces the active session)
-  if(adminSession){
-    await supa.auth.setSession({
-      access_token:adminSession.access_token,
-      refresh_token:adminSession.refresh_token
+  // Use Edge Function to create auth user — avoids touching the admin session
+  try{
+    const{data:{session:adminSession}}=await supa.auth.getSession();
+    await fetch(`${SUPA_URL}/functions/v1/create-auth-user`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${adminSession.access_token}`,'apikey':SUPA_KEY},
+      body:JSON.stringify({email,password:pw,display_name:name})
     });
+  }catch(e){
+    // Fallback: signUp (will briefly replace session, then restore)
+    const{data:{session:adminSession}}=await supa.auth.getSession();
+    await supa.auth.signUp({email,password:pw,options:{data:{display_name:name}}});
+    if(adminSession){
+      await supa.auth.setSession({access_token:adminSession.access_token,refresh_token:adminSession.refresh_token});
+      await supa.auth.refreshSession();
+    }
   }
 
   document.getElementById('adm-usr-name').value='';
