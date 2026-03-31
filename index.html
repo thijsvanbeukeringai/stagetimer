@@ -619,8 +619,23 @@ function renderTbar(){
 
 <!-- Hidden file input for logo upload -->
 <input type="file" id="logo-file-input" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
-<!-- Hidden file input for JSON import -->
-<input type="file" id="json-import-input" accept=".json,application/json" style="display:none;" onchange="handleJSONImport(event)">
+<!-- JSON IMPORT MODAL -->
+<div id="json-modal-ov" onclick="if(event.target===this)closeJSONModal()" style="position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:560px;max-width:95vw;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:14px;font-weight:800;">Lineup importeren via JSON</div>
+      <button onclick="closeJSONModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="font-size:11px;color:var(--sub);line-height:1.6;">Verwacht formaat — elke dag als sleutel met <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> en <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
+    <code style="font-size:10px;color:var(--sub);">{"vrijdag":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code></div>
+    <textarea id="json-input-area" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"vrijdag":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artiest naam"}]}]}}'></textarea>
+    <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-g" onclick="closeJSONModal()" style="flex:1;">Annuleer</button>
+      <button class="btn-p" onclick="doJSONImport()" style="flex:1;">Importeren</button>
+    </div>
+  </div>
+</div>
 
 <!-- LOADER -->
 <div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
@@ -637,7 +652,7 @@ function renderTbar(){
     <div class="vsep"></div>
     <select id="stage-sel" class="hsel"></select>
     <button class="hbtn" onclick="openStageModal()" title="Stages beheren" style="padding:5px 8px;">⚙ Stages</button>
-    <button class="hbtn" onclick="document.getElementById('json-import-input').click()" title="Lineup importeren via JSON" style="padding:5px 9px;">
+    <button class="hbtn" onclick="openJSONModal()" title="Lineup importeren via JSON" style="padding:5px 9px;">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Import
     </button>
@@ -1554,43 +1569,68 @@ function delStage(id){
 }
 
 // ══ JSON IMPORT
-function handleJSONImport(event){
-  const file=event.target.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      importLineup(data);
-    }catch(err){
-      alert('Ongeldig JSON bestand: '+err.message);
-    }
-    event.target.value='';
-  };
-  reader.readAsText(file);
+function openJSONModal(){
+  document.getElementById('json-modal-ov').style.display='flex';
+  document.getElementById('json-import-err').style.display='none';
+  document.getElementById('json-input-area').value='';
+  setTimeout(()=>document.getElementById('json-input-area').focus(),50);
+}
+function closeJSONModal(){document.getElementById('json-modal-ov').style.display='none';}
+
+function doJSONImport(){
+  const raw=document.getElementById('json-input-area').value.trim();
+  const errEl=document.getElementById('json-import-err');
+  errEl.style.display='none';
+  if(!raw){errEl.textContent='Plak eerst JSON in het veld.';errEl.style.display='block';return;}
+  let data;
+  try{data=JSON.parse(raw);}
+  catch(e){errEl.textContent='Ongeldige JSON: '+e.message;errEl.style.display='block';return;}
+  const result=importLineup(data);
+  if(result.error){errEl.textContent=result.error;errEl.style.display='block';return;}
+  closeJSONModal();
+  alert(`Import geslaagd! ${result.imported} acts toegevoegd over ${result.stages} stages en ${result.days} dag(en).`);
+}
+
+function fmtDateNL(dateStr){
+  // "2025-06-20" → "20 juni 2025"
+  try{
+    const [y,m,d]=dateStr.split('-').map(Number);
+    const maanden=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+    return `${d} ${maanden[m-1]} ${y}`;
+  }catch{return dateStr;}
 }
 
 function importLineup(data){
-  // data format: { "dagNaam": [ {stage, acts:[{time, artist}]} ] }
   if(!G.stages)G.stages=[];
   if(!G.shows)G.shows=[];
   if(!G.days)G.days=[];
 
-  let imported=0;
-  const dayNames=Object.keys(data);
+  let imported=0,newStages=0,newDays=0;
+  const dayKeys=Object.keys(data);
+  if(!dayKeys.length)return{error:'Geen dagen gevonden in de JSON.'};
 
-  for(const dayName of dayNames){
-    // Find or create day
-    let day=G.days.find(d=>d.name.toLowerCase()===dayName.toLowerCase());
+  for(const dayKey of dayKeys){
+    const dayData=data[dayKey];
+    // Support both array format (old) and object with date+stages (new)
+    const stageList=Array.isArray(dayData)?dayData:(dayData.stages||[]);
+    const dateStr=(!Array.isArray(dayData)&&dayData.date)||null;
+
+    // Build day label: "Vrijdag 20 juni 2025" or just key name
+    let dayLabel=dayKey.charAt(0).toUpperCase()+dayKey.slice(1);
+    if(dateStr)dayLabel=dayLabel+' '+fmtDateNL(dateStr);
+
+    // Find or create day (match by label or date)
+    let day=G.days.find(d=>
+      d.name.toLowerCase()===dayLabel.toLowerCase()||
+      (dateStr&&d.date===dateStr)
+    );
     if(!day){
-      day={id:uid(),name:dayName.charAt(0).toUpperCase()+dayName.slice(1)};
+      day={id:uid(),name:dayLabel,...(dateStr?{date:dateStr}:{})};
       G.days.push(day);
+      newDays++;
     }
 
-    const stages=data[dayName];
-    if(!Array.isArray(stages))continue;
-
-    for(const stageBlock of stages){
+    for(const stageBlock of stageList){
       const stageName=(stageBlock.stage||'').trim();
       if(!stageName)continue;
 
@@ -1599,39 +1639,34 @@ function importLineup(data){
       if(!stage){
         stage={id:uid(),name:stageName,emoji:'🎵'};
         G.stages.push(stage);
+        newStages++;
       }
 
-      const acts=stageBlock.acts||[];
-      for(const act of acts){
+      for(const act of (stageBlock.acts||[])){
         if(!act.artist||!act.time)continue;
-        // Parse time "16:45-17:30"
-        const parts=act.time.split('-');
-        if(parts.length<2)continue;
-        const start=parts[0].trim().includes(':')?parts[0].trim()+':00':parts[0].trim();
-        const end=parts[1].trim().includes(':')?parts[1].trim()+':00':parts[1].trim();
-        // Avoid duplicate (same artist + stage + day)
-        const exists=G.shows.find(s=>s.stage===stage.id&&s.day===day.id&&s.artist===act.artist);
-        if(!exists){
-          G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
-          imported++;
-        }
+        // Parse "16:45-17:30" — split on last '-' to handle midnight like "23:30-01:00"
+        const dashIdx=act.time.lastIndexOf('-');
+        if(dashIdx<1)continue;
+        const rawStart=act.time.slice(0,dashIdx).trim();
+        const rawEnd=act.time.slice(dashIdx+1).trim();
+        const start=rawStart.length===5?rawStart+':00':rawStart;
+        const end=rawEnd.length===5?rawEnd+':00':rawEnd;
+        // Skip duplicate
+        if(G.shows.find(s=>s.stage===stage.id&&s.day===day.id&&s.artist===act.artist))continue;
+        G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
+        imported++;
       }
     }
   }
 
-  // Set active day to first imported day if not set
-  if(G.days.length&&(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))){
-    G.activeDay=G.days[0].id;
-  }
-  if(G.stages.length&&!G.activeStage){
-    G.activeStage=G.stages[0].id;
-  }
+  if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
+  if(!G.activeStage&&G.stages.length)G.activeStage=G.stages[0].id;
 
   save();
   renderAll();
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
   if(document.getElementById('bs').classList.contains('open'))renderBS();
-  alert(`Import geslaagd! ${imported} acts toegevoegd${G.stages.length?' over '+G.stages.length+' stages':''}.`);
+  return{imported,stages:newStages,days:newDays};
 }
 
 // ══ DAY MANAGEMENT
