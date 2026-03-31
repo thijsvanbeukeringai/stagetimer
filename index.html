@@ -331,6 +331,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .role-admin{background:rgba(239,68,68,.15);color:#fca5a5;}
 .role-co-admin{background:rgba(249,115,22,.15);color:#fdba74;}
 .role-op{background:rgba(99,102,241,.15);color:#a5b4fc;}
+/* Set password screen */
+#set-pw{position:fixed;inset:0;z-index:1001;background:var(--bg);display:none;align-items:center;justify-content:center;}
+#set-pw.open{display:flex;}
 /* Share links modal */
 #share-ov{position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 #share-ov.open{display:flex;}
@@ -549,6 +552,21 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- SET PASSWORD (invite / password reset) -->
+<div id="set-pw">
+  <div id="login-box">
+    <div id="login-logo">
+      <div id="login-logo-icon">⏱</div>
+      <div id="login-logo-name">Stage Timer</div>
+      <div id="login-logo-sub" id="set-pw-sub">Stel je wachtwoord in</div>
+    </div>
+    <div id="set-pw-err" style="display:none;padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
+    <input class="fi" id="new-pw" type="password" placeholder="Nieuw wachtwoord (min. 6 tekens)" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <input class="fi" id="new-pw2" type="password" placeholder="Herhaal wachtwoord" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <button class="btn-p" id="set-pw-btn" onclick="setNewPassword()">Wachtwoord instellen</button>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div id="login" class="open">
   <div id="login-box">
@@ -558,10 +576,20 @@ function renderTbar(){
       <div id="login-logo-sub">Inloggen om door te gaan</div>
     </div>
     <div id="login-err"></div>
-    <input class="fi" id="li-email" type="email" placeholder="E-mailadres" onkeydown="if(event.key==='Enter')document.getElementById('li-pw').focus()">
-    <input class="fi" id="li-pw" type="password" placeholder="Wachtwoord" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn-p" id="login-btn" onclick="doLogin()">Inloggen</button>
-    <div style="text-align:center;font-size:11px;color:var(--sub);">Geen toegang? Neem contact op met de beheerder.</div>
+    <div id="login-form">
+      <input class="fi" id="li-email" type="email" placeholder="E-mailadres" onkeydown="if(event.key==='Enter')document.getElementById('li-pw').focus()">
+      <input class="fi" id="li-pw" type="password" placeholder="Wachtwoord" onkeydown="if(event.key==='Enter')doLogin()" style="margin-top:8px;">
+      <button class="btn-p" id="login-btn" onclick="doLogin()" style="margin-top:8px;width:100%;">Inloggen</button>
+      <button onclick="showForgotPw()" style="background:none;border:none;color:var(--sub);font-size:11px;cursor:pointer;padding:6px 0;width:100%;margin-top:2px;">Wachtwoord vergeten?</button>
+    </div>
+    <div id="forgot-form" style="display:none;">
+      <div style="font-size:12px;color:var(--sub);margin-bottom:10px;">Vul je e-mailadres in. Je ontvangt een link om je wachtwoord in te stellen.</div>
+      <input class="fi" id="li-reset-email" type="email" placeholder="E-mailadres" onkeydown="if(event.key==='Enter')sendReset()">
+      <button class="btn-p" id="reset-btn" onclick="sendReset()" style="margin-top:8px;width:100%;">Reset link sturen</button>
+      <div id="reset-ok" style="display:none;padding:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:7px;font-size:12px;color:#86efac;margin-top:8px;">E-mail verstuurd! Controleer je inbox.</div>
+      <button onclick="showLoginForm()" style="background:none;border:none;color:var(--sub);font-size:11px;cursor:pointer;padding:6px 0;width:100%;margin-top:4px;">← Terug naar inloggen</button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--sub);margin-top:4px);">Geen toegang? Neem contact op met de beheerder.</div>
   </div>
 </div>
 
@@ -1530,13 +1558,19 @@ function delCompany(id){
   APP.companies=APP.companies.filter(c=>c.id!==id);
   saveAPP();supa.from('companies').delete().eq('id',id);renderAdmin();
 }
-function addUser(){
+async function addUser(){
   const name=document.getElementById('adm-usr-name').value.trim();if(!name)return;
-  const email=document.getElementById('adm-usr-email').value.trim();
+  const email=document.getElementById('adm-usr-email').value.trim();if(!email)return;
   const companyId=document.getElementById('adm-usr-co').value;
   const role=document.getElementById('adm-usr-role').value;
   APP.users.push({id:uid(),name,email,companyId,role});
   saveAPP();
+  // Create Supabase Auth account + send invite email
+  await supa.auth.signUp({
+    email,
+    password:uid()+uid()+uid(), // random — user will set their own via the invite link
+    options:{emailRedirectTo:location.origin,data:{invited:true,display_name:name}}
+  });
   document.getElementById('adm-usr-name').value='';
   document.getElementById('adm-usr-email').value='';
   renderAdmin();
@@ -1781,6 +1815,45 @@ function _showLogoutBtn(session){
   const btn=document.getElementById('logout-btn');
   if(btn)btn.style.display=session?'flex':'none';
 }
+function showForgotPw(){
+  document.getElementById('login-form').style.display='none';
+  document.getElementById('forgot-form').style.display='block';
+}
+function showLoginForm(){
+  document.getElementById('forgot-form').style.display='none';
+  document.getElementById('login-form').style.display='block';
+  document.getElementById('reset-ok').style.display='none';
+}
+async function sendReset(){
+  const email=document.getElementById('li-reset-email').value.trim();
+  const btn=document.getElementById('reset-btn');
+  if(!email)return;
+  btn.textContent='Bezig…';btn.disabled=true;
+  await supa.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  document.getElementById('reset-ok').style.display='block';
+  btn.textContent='Reset link sturen';btn.disabled=false;
+}
+async function setNewPassword(){
+  const pw=document.getElementById('new-pw').value;
+  const pw2=document.getElementById('new-pw2').value;
+  const errEl=document.getElementById('set-pw-err');
+  const btn=document.getElementById('set-pw-btn');
+  errEl.style.display='none';
+  if(pw.length<6){errEl.textContent='Wachtwoord moet minimaal 6 tekens zijn.';errEl.style.display='block';return;}
+  if(pw!==pw2){errEl.textContent='Wachtwoorden komen niet overeen.';errEl.style.display='block';return;}
+  btn.textContent='Bezig…';btn.disabled=true;
+  const{error}=await supa.auth.updateUser({password:pw,data:{invited:false}});
+  if(error){
+    errEl.textContent='Fout: '+error.message;errEl.style.display='block';
+    btn.textContent='Wachtwoord instellen';btn.disabled=false;
+    return;
+  }
+  document.getElementById('set-pw').classList.remove('open');
+  document.getElementById('loader').style.display='flex';
+  const{data:{session}}=await supa.auth.getSession();
+  _showLogoutBtn(true);
+  await _startApp(session);
+}
 
 // ══ INIT
 function _initUI(){
@@ -1820,6 +1893,19 @@ async function _startApp(session){
     await _startApp(session);
   }
   // else: login screen stays open
+
+  // Handle password recovery (reset link) and invite acceptance
+  supa.auth.onAuthStateChange(async(event,sess)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      // User clicked password reset link
+      document.getElementById('login').classList.remove('open');
+      document.getElementById('set-pw').classList.add('open');
+    } else if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited){
+      // Invited user clicked their email link
+      document.getElementById('login').classList.remove('open');
+      document.getElementById('set-pw').classList.add('open');
+    }
+  });
 })();
 updateClock();
 setInterval(tick,250);
