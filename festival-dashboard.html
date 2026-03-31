@@ -1293,23 +1293,25 @@ function tickSched(){
     }
   });
   // Update mobile header mini-countdown
-  const mobCd=document.getElementById('mob-hdr-cd');if(!mobCd)return;
+  const mobCd=document.getElementById('mob-hdr-cd');
   const cur=curShow(shows);
-  if(cur){
-    const remSec=cur.endSec-nowSec();
-    mobCd.textContent=s2cd(remSec>0?remSec:0);
-    mobCd.style.background='rgba(99,102,241,.15)';
-    mobCd.style.borderColor='rgba(99,102,241,.3)';
-    mobCd.style.color='#a5b4fc';
-  } else {
-    const nxt=nxtShow(shows);
-    if(nxt){
-      mobCd.textContent=s2cd(nxt.startsIn);
-      mobCd.style.background='rgba(255,255,255,.06)';
-      mobCd.style.borderColor='rgba(255,255,255,.12)';
-      mobCd.style.color='rgba(255,255,255,.35)';
+  if(mobCd){
+    if(cur){
+      const remSec=cur.endSec-nowSec();
+      mobCd.textContent=s2cd(remSec>0?remSec:0);
+      mobCd.style.background='rgba(99,102,241,.15)';
+      mobCd.style.borderColor='rgba(99,102,241,.3)';
+      mobCd.style.color='#a5b4fc';
     } else {
-      mobCd.textContent='';
+      const nxt=nxtShow(shows);
+      if(nxt){
+        mobCd.textContent=s2cd(nxt.startsIn);
+        mobCd.style.background='rgba(255,255,255,.06)';
+        mobCd.style.borderColor='rgba(255,255,255,.12)';
+        mobCd.style.color='rgba(255,255,255,.35)';
+      } else {
+        mobCd.textContent='';
+      }
     }
   }
 }
