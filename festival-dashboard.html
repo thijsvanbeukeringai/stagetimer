@@ -1790,6 +1790,7 @@ function renderAll(){renderHeader();renderTP();renderSched();}
 
 // ══ TICK (every 250ms)
 function tick(){
+  if(!G)return; // app not initialized yet
   updateClock();
   renderTP();
   renderSV();
@@ -2607,6 +2608,7 @@ function removeProjectLogo(projId){
 // ══ ONE-OFF TIMERS
 let OT=[];
 function loadOT(){
+  if(!APP)return; // APP not initialized yet
   // migrate from legacy key if present
   try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch{}
   const coId=CURRENT_USER?.companyId||'';
@@ -2828,6 +2830,7 @@ async function _startApp(session){
   }catch(e){console.error('startApp:',e);}
 }
 (async()=>{
+  try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
   setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none')_hideLoader();},12000);
   // Public share link — skip auth entirely
