@@ -2796,14 +2796,9 @@ async function setNewPassword(){
 // ══ INIT
 function _initUI(){
   if(!G){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
-  if(!APP.activeProjectId||!APP.projects.find(p=>p.id===APP.activeProjectId)){
-    document.getElementById('dash').classList.add('open');
-    renderDash();
-    if(!G.stages){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
-  }else{
-    loadG();
-    document.getElementById('logo-name').textContent=APP.projects.find(p=>p.id===APP.activeProjectId)?.name||'Stage Timer';
-  }
+  // Always land on the projects dashboard after login
+  document.getElementById('dash').classList.add('open');
+  renderDash();
   renderAll();updateClock();
 }
 function _hideLoader(){document.getElementById('loader').style.display='none';}
