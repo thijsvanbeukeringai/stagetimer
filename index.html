@@ -1628,6 +1628,9 @@ function importLineup(data){
       day={id:uid(),name:dayLabel,...(dateStr?{date:dateStr}:{})};
       G.days.push(day);
       newDays++;
+    } else {
+      // Day exists — remove all existing shows for this day (full overwrite)
+      G.shows=G.shows.filter(s=>s.day!==day.id);
     }
 
     for(const stageBlock of stageList){
@@ -1651,8 +1654,6 @@ function importLineup(data){
         const rawEnd=act.time.slice(dashIdx+1).trim();
         const start=rawStart.length===5?rawStart+':00':rawStart;
         const end=rawEnd.length===5?rawEnd+':00':rawEnd;
-        // Skip duplicate
-        if(G.shows.find(s=>s.stage===stage.id&&s.day===day.id&&s.artist===act.artist))continue;
         G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
         imported++;
       }
