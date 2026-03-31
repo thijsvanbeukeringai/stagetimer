@@ -40,38 +40,46 @@
   .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .18s;box-shadow:0 2px 12px rgba(91,94,244,.35);}
   .btn-primary:hover{opacity:.88;}
 
-  /* HERO — full viewport with photo background */
-  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 40px 100px;overflow:hidden;}
-  .hero-bg{position:absolute;inset:0;background-image:url('event.jpg');background-size:cover;background-position:center 30%;z-index:0;}
-  .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,15,.55) 0%,rgba(5,5,15,.7) 50%,rgba(5,5,15,.88) 85%,rgba(5,5,15,1) 100%);z-index:1;}
+  /* HERO */
+  .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 40px 80px;overflow:hidden;}
+  .hero-bg{position:absolute;inset:0;background-image:url('backstage.jpg');background-size:cover;background-position:center 20%;z-index:0;}
+  .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,3,10,.6) 0%,rgba(3,3,10,.72) 50%,rgba(3,3,10,.92) 80%,rgba(3,3,10,1) 100%);z-index:1;}
   .hero>*:not(.hero-bg):not(.hero-overlay){position:relative;z-index:2;}
-  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);font-size:11px;font-weight:700;padding:6px 14px;border-radius:99px;margin-bottom:32px;letter-spacing:.6px;text-transform:uppercase;backdrop-filter:blur(6px);}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.75);font-size:11px;font-weight:700;padding:6px 14px;border-radius:99px;margin-bottom:28px;letter-spacing:.8px;text-transform:uppercase;backdrop-filter:blur(6px);}
   .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7);animation:pulse 2s infinite;}
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5);}50%{box-shadow:0 0 0 6px rgba(34,197,94,0);}}
-  .hero h1{font-size:clamp(42px,7vw,82px);font-weight:900;letter-spacing:-3px;line-height:1.02;margin-bottom:24px;color:#fff;}
+  .hero h1{font-size:clamp(44px,7.5vw,88px);font-weight:900;letter-spacing:-3.5px;line-height:1.0;margin-bottom:26px;color:#fff;}
   .hero h1 em{font-style:normal;background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-  .hero-sub{font-size:clamp(16px,2.2vw,20px);color:rgba(255,255,255,.65);max-width:520px;margin:0 auto 44px;line-height:1.65;font-weight:400;}
-  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;}
-  .btn-hero{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:16px 36px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;box-shadow:0 4px 28px rgba(91,94,244,.5);letter-spacing:-.3px;}
+  .hero-sub{font-size:clamp(16px,2vw,19px);color:rgba(255,255,255,.6);max-width:500px;margin:0 auto 40px;line-height:1.7;font-weight:400;}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+  .btn-hero{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:16px 38px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;box-shadow:0 4px 28px rgba(91,94,244,.5);letter-spacing:-.3px;}
   .btn-hero:hover{opacity:.9;transform:translateY(-2px);box-shadow:0 8px 40px rgba(91,94,244,.55);}
-  .btn-hero-ghost{background:rgba(255,255,255,.1);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.85);padding:16px 30px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;}
-  .btn-hero-ghost:hover{background:rgba(255,255,255,.18);}
-  .hero-note{font-size:13px;color:rgba(255,255,255,.35);}
-  /* Stat pills */
-  .hero-stats{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:60px;}
-  .hero-stat{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px);border-radius:10px;padding:14px 22px;text-align:center;}
-  .hero-stat-val{font-size:22px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1;}
-  .hero-stat-lbl{font-size:11px;color:rgba(255,255,255,.4);margin-top:4px;font-weight:500;}
+  .btn-hero-ghost{background:rgba(255,255,255,.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);padding:16px 30px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;}
+  .btn-hero-ghost:hover{background:rgba(255,255,255,.15);}
 
-  /* MAIN SCREENSHOT */
-  .screenshot-wrap{max-width:980px;margin:-60px auto 0;padding:0 40px;position:relative;z-index:3;}
+  /* SCREENSHOT */
+  .screenshot-wrap{max-width:980px;margin:-20px auto 0;padding:0 40px;position:relative;z-index:3;}
   .screenshot-browser{background:#111118;border-radius:16px;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.06);}
   .screenshot-bar{background:#0d0d14;padding:10px 16px;display:flex;align-items:center;gap:7px;border-bottom:1px solid rgba(255,255,255,.05);}
   .sc-dot{width:10px;height:10px;border-radius:50%;}
   .screenshot-url{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:5px;padding:4px 10px;font-size:11px;color:rgba(255,255,255,.28);font-family:var(--ffm);margin:0 12px;text-align:center;}
   .screenshot-img{display:block;width:100%;height:auto;}
 
+  /* VALUE STRIP */
+  .value-strip{background:var(--bg);padding:60px 40px;}
+  .value-strip-inner{max-width:1020px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:0;}
+  .value-item{padding:32px 36px;border-right:1px solid var(--border);}
+  .value-item:last-child{border-right:none;}
+  .value-icon{font-size:26px;margin-bottom:14px;}
+  .value-title{font-size:16px;font-weight:800;color:var(--text);margin-bottom:8px;letter-spacing:-.3px;}
+  .value-desc{font-size:13px;color:var(--sub);line-height:1.65;}
+
   /* SCREENSHOTS GRID */
+  section{padding:80px 40px;}
+  .section-inner{max-width:1020px;margin:0 auto;}
+  .section-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+  .section-title{font-size:clamp(24px,3.5vw,36px);font-weight:800;letter-spacing:-1px;line-height:1.15;margin-bottom:12px;color:var(--text);}
+  .section-sub{font-size:15px;color:var(--sub);max-width:460px;line-height:1.7;}
   .screens-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:44px;}
   .screen-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
   .screen-card-img{width:100%;height:auto;display:block;}
@@ -80,14 +88,10 @@
   .screen-card-desc{font-size:13px;color:var(--sub);line-height:1.55;}
 
   /* FEATURES */
-  section{padding:80px 40px;}
-  .section-inner{max-width:1020px;margin:0 auto;}
-  .section-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
-  .section-title{font-size:clamp(24px,3.5vw,36px);font-weight:800;letter-spacing:-1px;line-height:1.15;margin-bottom:12px;color:var(--text);}
-  .section-sub{font-size:15px;color:var(--sub);max-width:460px;line-height:1.7;}
   .features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:44px;}
   .feat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;transition:box-shadow .2s,border-color .2s;}
   .feat-card:hover{border-color:rgba(91,94,244,.2);box-shadow:0 4px 24px rgba(91,94,244,.07);}
+  .feat-card.feat-highlight{background:linear-gradient(135deg,rgba(91,94,244,.05),rgba(124,58,237,.06));border-color:rgba(91,94,244,.2);}
   .feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:16px;}
   .feat-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
   .feat-desc{font-size:13px;color:var(--sub);line-height:1.6;}
@@ -130,11 +134,12 @@
   /* RESPONSIVE */
   @media(max-width:700px){
     nav{padding:0 18px;}
-    .hero{padding:110px 20px 80px;min-height:100svh;}
-    .hero-stats{gap:8px;}
-    .hero-stat{padding:10px 16px;}
-    .hero-stat-val{font-size:18px;}
-    .screenshot-wrap{padding:0 16px;margin-top:-40px;}
+    .hero{padding:110px 20px 70px;min-height:100svh;}
+    .screenshot-wrap{padding:0 16px;margin-top:-10px;}
+    .value-strip{padding:0;}
+    .value-strip-inner{grid-template-columns:1fr;}
+    .value-item{border-right:none;border-bottom:1px solid var(--border);padding:26px 22px;}
+    .value-item:last-child{border-bottom:none;}
     section{padding:60px 20px;}
     .screens-grid{grid-template-columns:1fr;}
     .price-card{padding:28px 22px;}
@@ -162,18 +167,11 @@
   <div class="hero-bg"></div>
   <div class="hero-overlay"></div>
   <div class="hero-badge"><span class="hero-badge-dot"></span>Voor event professionals</div>
-  <h1>Alles op het podium<br>begint <em>hier.</em></h1>
-  <p class="hero-sub">Realtime productieplanning voor festivals en events. Van backstage-crew tot FOH, iedereen werkt vanuit hetzelfde schema. Live, op de dag zelf.</p>
+  <h1>Festivalproductie.<br><em>Strak geregeld.</em></h1>
+  <p class="hero-sub">Gebouwd vanuit de branche. Werkt direct. Van aanmaken tot live op de dag zelf in een paar minuten.</p>
   <div class="hero-cta">
     <a class="btn-hero" href="/app">Start jouw project</a>
     <a class="btn-hero-ghost" href="#features">Bekijk hoe het werkt</a>
-  </div>
-  <p class="hero-note">Geen abonnement &nbsp;&nbsp; €15 per project &nbsp;&nbsp; Unlimited shows &amp; stages</p>
-  <div class="hero-stats">
-    <div class="hero-stat"><div class="hero-stat-val">∞</div><div class="hero-stat-lbl">Stages per project</div></div>
-    <div class="hero-stat"><div class="hero-stat-val">∞</div><div class="hero-stat-lbl">Shows per dag</div></div>
-    <div class="hero-stat"><div class="hero-stat-val">Realtime</div><div class="hero-stat-lbl">Sync voor je team</div></div>
-    <div class="hero-stat"><div class="hero-stat-val">€15</div><div class="hero-stat-lbl">Per project</div></div>
   </div>
 </section>
 
@@ -189,6 +187,29 @@
     <img class="screenshot-img" src="foh-view.jpg" alt="Stagetimer FOH view">
   </div>
 </div>
+
+<!-- VALUE STRIP -->
+<div class="value-strip">
+  <div class="value-strip-inner">
+    <div class="value-item">
+      <div class="value-icon">🎪</div>
+      <div class="value-title">Van de branche, voor de branche</div>
+      <div class="value-desc">Stagetimer is gemaakt door mensen die zelf in de festivalproductie werken. Geen overbodige knoppen, geen complexe setup.</div>
+    </div>
+    <div class="value-item">
+      <div class="value-icon">⚡</div>
+      <div class="value-title">Makkelijk en razendsnel</div>
+      <div class="value-desc">Project aanmaken, lineup invullen, links delen aan je crew. Binnen vijf minuten is je hele team gesynchroniseerd.</div>
+    </div>
+    <div class="value-item">
+      <div class="value-icon">🎚️</div>
+      <div class="value-title">Live of handmatige start</div>
+      <div class="value-desc">Kies per show of de timer automatisch start op de geplande tijd, of dat jij handmatig op start drukt vanuit de FOH.</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
 
 <!-- SCREENSHOTS GRID -->
 <section>
@@ -224,6 +245,11 @@
     <h2 class="section-title">Alles wat je nodig hebt<br>voor een strakke festivaldag</h2>
     <p class="section-sub">Gebouwd voor productieteams die geen tijd hebben voor gedoe.</p>
     <div class="features-grid">
+      <div class="feat-card feat-highlight">
+        <div class="feat-icon" style="background:rgba(91,94,244,.1);">🔴</div>
+        <div class="feat-title">Live of handmatige start</div>
+        <div class="feat-desc">Timer start automatisch op de geplande tijd, of jij triggert hem handmatig. Per show instelbaar.</div>
+      </div>
       <div class="feat-card">
         <div class="feat-icon" style="background:rgba(91,94,244,.1);">📋</div>
         <div class="feat-title">Realtime schema</div>
@@ -260,14 +286,14 @@
         <div class="feat-desc">Plak je lineup direct als JSON en hij maakt stages, dagen en shows automatisch aan.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(245,158,11,.08);">👥</div>
-        <div class="feat-title">Meerdere gebruikers</div>
-        <div class="feat-desc">Geef je hele team toegang. Koppel gebruikers aan een bedrijf en beheer wie wat ziet.</div>
-      </div>
-      <div class="feat-card">
         <div class="feat-icon" style="background:rgba(239,68,68,.08);">🗓</div>
         <div class="feat-title">Meerdaags festival</div>
         <div class="feat-desc">Maak aparte dagen aan met eigen naam. Vrijdag, Zaterdag, Zondag, elk met een eigen volledige lineup.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon" style="background:rgba(245,158,11,.08);">👥</div>
+        <div class="feat-title">Meerdere gebruikers</div>
+        <div class="feat-desc">Geef je hele team toegang. Koppel gebruikers aan een bedrijf en beheer wie wat ziet.</div>
       </div>
     </div>
   </div>
@@ -326,6 +352,7 @@
           <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited shows &amp; acts</li>
           <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere projectdagen</li>
           <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
           <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare links voor je crew</li>
           <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor heel je team</li>
           <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Mobiel webapp, installeerbaar</li>
@@ -351,7 +378,6 @@
 </footer>
 
 <script>
-  // Nav: transparent over hero, white when scrolled
   const nav=document.querySelector('nav');
   const onScroll=()=>nav.classList.toggle('scrolled',window.scrollY>60);
   window.addEventListener('scroll',onScroll,{passive:true});

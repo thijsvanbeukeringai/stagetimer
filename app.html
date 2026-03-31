@@ -2581,31 +2581,34 @@ function _initUI(){
   }
   renderAll();updateClock();
 }
+function _hideLoader(){document.getElementById('loader').style.display='none';}
 async function _startApp(session){
-  loadAPPCache();
-  _initUI();
-  document.getElementById('loader').style.display='none';
-  await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
-  _initUI();
-  updateRoleUI();
-  refreshLogo();
-  setupRealtime();
+  try{loadAPPCache();_initUI();}catch(e){console.error('init:',e);}
+  _hideLoader();
+  try{
+    await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
+    _initUI();updateRoleUI();refreshLogo();setupRealtime();
+  }catch(e){console.error('startApp:',e);}
 }
 (async()=>{
+  // Fallback: if loader is still showing after 12s, hide it
+  setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none')_hideLoader();},12000);
   // Public share link — skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
-    await loadPublicView();
+    try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
-  const{data:{session}}=await supa.auth.getSession();
-  if(session){
-    document.getElementById('login').classList.remove('open');
-    document.getElementById('loader').style.display='flex';
-    _showLogoutBtn(true);
-    await _startApp(session);
-  }
+  try{
+    const{data:{session}}=await supa.auth.getSession();
+    if(session){
+      document.getElementById('login').classList.remove('open');
+      document.getElementById('loader').style.display='flex';
+      _showLogoutBtn(true);
+      await _startApp(session);
+    }
+  }catch(e){console.error('auth:',e);_hideLoader();}
   // else: login screen stays open
 
   // Handle password recovery (reset link) and invite acceptance
