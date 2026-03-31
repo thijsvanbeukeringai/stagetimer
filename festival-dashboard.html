@@ -574,6 +574,23 @@ const SUPA_URL='https://bamjpsquhdzxvsymldpq.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbWpwc3F1aGR6eHZzeW1sZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTQ2ODUsImV4cCI6MjA5MDUzMDY4NX0.657ty4HprURSCfdwfORQejBjXCcj6nK81rN9WoOOwiQ';
 const supa=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage}});
 
+// ── Own session backup (works even if Supabase internal storage fails)
+const ST_AUTH='st_auth_v1';
+function saveAuthSession(sess){
+  if(sess)localStorage.setItem(ST_AUTH,JSON.stringify({access_token:sess.access_token,refresh_token:sess.refresh_token}));
+  else localStorage.removeItem(ST_AUTH);
+}
+async function restoreAuthSession(){
+  try{
+    const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
+    if(!stored)return null;
+    const{data:{session},error}=await supa.auth.setSession({access_token:stored.access_token,refresh_token:stored.refresh_token});
+    if(error||!session){localStorage.removeItem(ST_AUTH);return null;}
+    saveAuthSession(session);
+    return session;
+  }catch(e){return null;}
+}
+
 function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.className=s;}
 
 // ══ APP STATE (multi-project)
@@ -2760,10 +2777,12 @@ async function doLogin(){
     errEl.style.display='block';
     btn.textContent='Inloggen';btn.disabled=false;
   }else{
+    saveAuthSession(session);
     await _tryStartFromSession(session);
   }
 }
 async function doLogout(){
+  saveAuthSession(null);
   await supa.auth.signOut();
   localStorage.removeItem('st_active_proj');
   location.reload();
@@ -2844,6 +2863,7 @@ async function _startApp(session){
   // Layer 1: onAuthStateChange — catches INITIAL_SESSION (stored session on page load)
   // and SIGNED_IN (after manual login or token refresh)
   supa.auth.onAuthStateChange(async(event,sess)=>{
+    if(event==='TOKEN_REFRESHED'&&sess){saveAuthSession(sess);return;}
     if(event==='PASSWORD_RECOVERY'){
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
@@ -2858,13 +2878,21 @@ async function _startApp(session){
     if(event==='INITIAL_SESSION'&&!_appStarted){_hideLoader();}
   });
 
-  // Layer 2: explicit getSession() — fallback for library versions that may not emit INITIAL_SESSION
-  try{
-    const{data:{session}}=await supa.auth.getSession();
-    if(session)await _tryStartFromSession(session);
-  }catch(e){console.error('getSession:',e);}
+  // Layer 2: restore from our own session backup (most reliable)
+  if(!_appStarted){
+    const sess=await restoreAuthSession();
+    if(sess)await _tryStartFromSession(sess);
+  }
 
-  // Layer 3: if nothing worked yet, show login screen
+  // Layer 3: fallback to Supabase getSession
+  if(!_appStarted){
+    try{
+      const{data:{session}}=await supa.auth.getSession();
+      if(session)await _tryStartFromSession(session);
+    }catch(e){}
+  }
+
+  // Layer 4: nothing worked — show login screen
   if(!_appStarted)_hideLoader();
 })();
 updateClock();
