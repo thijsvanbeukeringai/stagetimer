@@ -131,6 +131,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .btn-p{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:700;background:var(--blue);border:none;color:#fff;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .btn-p:hover{background:#4f52df;}
 .btn-p:active{transform:scale(.96);}
+@keyframes pulse-btn{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.7);}60%{box-shadow:0 0 0 7px rgba(99,102,241,0);}}
+#new-show-btn.pulse{animation:pulse-btn 2s ease-in-out infinite;}
 .btn-g{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:600;background:var(--s2);border:1px solid var(--border2);color:var(--sub);cursor:pointer;transition:all .15s;}
 .btn-g:hover{background:var(--s3);color:var(--text);}
 
@@ -881,7 +883,7 @@ function renderTbar(){
         <h2>Programma</h2>
         <span class="cpill" id="show-cnt">0 shows</span>
         <div style="flex:1;"></div>
-        <button class="btn-p" onclick="openDrawer(null)">
+        <button class="btn-p" id="new-show-btn" onclick="openDrawer(null)">
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           Nieuwe show
         </button>
@@ -1285,6 +1287,9 @@ function renderSched(){
   const shows=getShows(G.activeStage,G.activeDay);
   const n=nowMin();
   document.getElementById('show-cnt').textContent=shows.length===1?'1 show':shows.length+' shows';
+  const nsBtn=document.getElementById('new-show-btn');
+  const hasStages=G.stages&&G.stages.length>0;
+  if(nsBtn)nsBtn.classList.toggle('pulse',hasStages&&!shows.length);
   const list=document.getElementById('slist');
   if(!shows.length){
     list.innerHTML=`<div id="empty"><div class="ei">📋</div><p style="font-size:13px;">Geen shows gepland.<br>Klik op <strong>Nieuwe show</strong>.</p></div>`;
