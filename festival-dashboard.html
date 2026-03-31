@@ -889,7 +889,7 @@ function renderTbar(){
     <div style="display:flex;gap:5px;" id="bs-dtabs"></div>
     <select id="bs-ssel" class="hsel" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
     <div id="bs-clock"></div>
-    <button class="bshbtn" onclick="closeBS()">✕ Sluiten</button>
+    <button class="bshbtn" id="bs-close-btn" onclick="closeBS()">✕ Sluiten</button>
   </div>
   <div id="bs-body"></div>
 </div>
@@ -1422,7 +1422,7 @@ function openBS(){document.getElementById('bs').classList.add('open');renderBS()
 function closeBS(){document.getElementById('bs').classList.remove('open');}
 function openSV(){document.getElementById('sv').classList.add('open');renderSV();}
 function closeSV(){document.getElementById('sv').classList.remove('open');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeFOH();closeBS();closeTL();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();closeTL();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -1882,12 +1882,20 @@ async function loadPublicView(){
   if(PUBLIC_SID)G.activeStage=PUBLIC_SID;
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='none';
-  // Hide the main app controls, show only the requested view
-  if(PUBLIC_MODE==='stage'){openSV();}
-  else if(PUBLIC_MODE==='backstage'){openBS();}
-  // Keep ticking
+  if(PUBLIC_MODE==='stage'){
+    openSV();
+  } else if(PUBLIC_MODE==='backstage'){
+    // Standalone backstage: hide main app, hide close button
+    document.getElementById('app').style.display='none';
+    const closeBtn=document.getElementById('bs-close-btn');
+    if(closeBtn)closeBtn.style.display='none';
+    // Stage selector stays visible so user can switch stages
+    openBS();
+    // Realtime updates
+    setInterval(()=>renderBS(),8000);
+    setupRealtime();
+  }
   setInterval(tick,250);
-  setInterval(()=>{if(document.getElementById('bs').classList.contains('open'))renderBS();},8000);
 }
 
 // ══ AUTH
