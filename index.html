@@ -3,139 +3,131 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stagetimer — Festival productie, op orde.</title>
+<title>Stagetimer | Festival productie, op orde.</title>
 <meta name="description" content="De digitale regie voor jouw festival. Realtime planning, backstage views, tijdlijn en meer. Vanaf €15 per project.">
-<meta name="theme-color" content="#0b0b0e">
+<meta name="theme-color" content="#ffffff">
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   :root{
-    --bg:#0b0b0e;
-    --bg2:#111116;
-    --bg3:#17171e;
-    --border:rgba(255,255,255,.07);
-    --border2:rgba(255,255,255,.12);
-    --text:rgba(255,255,255,.92);
-    --sub:rgba(255,255,255,.42);
-    --sub2:rgba(255,255,255,.22);
-    --accent:#6366f1;
-    --accent2:#8b5cf6;
-    --green:#22c55e;
+    --bg:#ffffff;
+    --bg2:#f7f7f9;
+    --bg3:#f0f0f4;
+    --border:rgba(0,0,0,.08);
+    --border2:rgba(0,0,0,.14);
+    --text:#0f0f14;
+    --sub:#6b6b80;
+    --sub2:#a0a0b4;
+    --accent:#5b5ef4;
+    --accent2:#7c3aed;
+    --green:#16a34a;
     --ffm:'SF Mono','Fira Mono','Cascadia Mono',monospace;
   }
   html{scroll-behavior:smooth;}
   body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;overflow-x:hidden;}
 
   /* ── NAV ── */
-  nav{position:fixed;top:0;left:0;right:0;z-index:100;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:rgba(11,11,14,.82);backdrop-filter:blur(18px);border-bottom:1px solid var(--border);}
+  nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;background:rgba(255,255,255,.88);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
   .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
   .nav-logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
   .nav-logo-name{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.3px;}
   .nav-right{display:flex;align-items:center;gap:10px;}
   .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--sub);padding:7px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .18s;}
-  .btn-ghost:hover{border-color:rgba(255,255,255,.28);color:var(--text);}
-  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .18s;box-shadow:0 2px 16px rgba(99,102,241,.3);}
+  .btn-ghost:hover{border-color:rgba(0,0,0,.28);color:var(--text);}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:opacity .18s;box-shadow:0 2px 12px rgba(91,94,244,.25);}
   .btn-primary:hover{opacity:.88;}
 
   /* ── HERO ── */
-  .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 24px 80px;position:relative;overflow:hidden;}
-  .hero::before{content:'';position:absolute;top:-20%;left:50%;transform:translateX(-50%);width:900px;height:600px;background:radial-gradient(ellipse at center,rgba(99,102,241,.12) 0%,transparent 70%);pointer-events:none;}
-  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.28);color:rgba(139,92,246,.9);font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;margin-bottom:28px;letter-spacing:.3px;}
-  .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:0 0 6px rgba(139,92,246,.6);}
-  .hero h1{font-size:clamp(36px,7vw,72px);font-weight:800;letter-spacing:-2px;line-height:1.08;margin-bottom:22px;color:#fff;}
-  .hero h1 span{background:linear-gradient(135deg,#818cf8,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-  .hero-sub{font-size:clamp(15px,2.2vw,19px);color:var(--sub);max-width:520px;line-height:1.65;margin-bottom:40px;}
-  .hero-cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
-  .btn-hero{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;box-shadow:0 4px 28px rgba(99,102,241,.4);letter-spacing:-.2px;}
-  .btn-hero:hover{opacity:.88;transform:translateY(-1px);box-shadow:0 6px 36px rgba(99,102,241,.5);}
+  .hero{padding:130px 40px 80px;text-align:center;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:800px;height:500px;background:radial-gradient(ellipse at top,rgba(91,94,244,.07) 0%,transparent 70%);pointer-events:none;}
+  .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(91,94,244,.08);border:1px solid rgba(91,94,244,.2);color:var(--accent);font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;margin-bottom:28px;letter-spacing:.3px;}
+  .hero-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px rgba(91,94,244,.5);}
+  .hero h1{font-size:clamp(36px,6.5vw,68px);font-weight:800;letter-spacing:-2.5px;line-height:1.06;margin-bottom:22px;color:var(--text);}
+  .hero h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+  .hero-sub{font-size:clamp(15px,2vw,18px);color:var(--sub);max-width:480px;margin:0 auto 40px;line-height:1.7;}
+  .hero-cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:16px;}
+  .btn-hero{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;transition:all .2s;box-shadow:0 4px 22px rgba(91,94,244,.35);letter-spacing:-.2px;}
+  .btn-hero:hover{opacity:.88;transform:translateY(-1px);}
   .btn-hero-ghost{background:transparent;border:1px solid var(--border2);color:var(--sub);padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;letter-spacing:-.2px;}
-  .btn-hero-ghost:hover{border-color:rgba(255,255,255,.28);color:var(--text);}
-  .hero-note{margin-top:18px;font-size:12px;color:var(--sub2);}
+  .btn-hero-ghost:hover{border-color:rgba(0,0,0,.28);color:var(--text);}
+  .hero-note{font-size:12px;color:var(--sub2);}
 
-  /* ── MOCKUP ── */
-  .mockup-wrap{width:100%;max-width:900px;margin:60px auto 0;padding:0 24px;}
-  .mockup{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;overflow:hidden;box-shadow:0 30px 100px rgba(0,0,0,.6);}
-  .mockup-bar{background:var(--bg3);padding:10px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);}
-  .mockup-dot{width:10px;height:10px;border-radius:50%;}
-  .mockup-url{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:5px;padding:4px 10px;font-size:11px;color:var(--sub2);font-family:var(--ffm);margin:0 12px;}
-  .mockup-screen{padding:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;min-height:200px;}
-  .mock-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;}
-  .mock-card-label{font-size:9px;font-weight:600;color:var(--sub2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
-  .mock-bar{height:4px;border-radius:99px;background:rgba(255,255,255,.06);margin-bottom:6px;overflow:hidden;}
-  .mock-bar-fill{height:100%;border-radius:99px;}
-  .mock-act{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);}
-  .mock-act:last-child{border-bottom:none;}
-  .mock-act-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-  .mock-act-name{font-size:10px;color:rgba(255,255,255,.6);}
-  .mock-act-time{font-size:9px;color:var(--sub2);font-family:var(--ffm);margin-left:auto;}
-  .mock-countdown{font-size:28px;font-weight:800;font-family:var(--ffm);color:#fff;letter-spacing:-1px;text-align:center;margin:12px 0 4px;}
-  .mock-cd-label{font-size:9px;color:var(--sub2);text-align:center;}
-  .mock-stage{font-size:11px;font-weight:600;color:rgba(99,102,241,.8);margin-bottom:4px;}
+  /* ── SCREENSHOT ── */
+  .screenshot-wrap{max-width:960px;margin:56px auto 0;padding:0 40px;}
+  .screenshot-browser{background:#1a1a22;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.1);}
+  .screenshot-bar{background:#111118;padding:10px 16px;display:flex;align-items:center;gap:7px;border-bottom:1px solid rgba(255,255,255,.06);}
+  .sc-dot{width:10px;height:10px;border-radius:50%;}
+  .screenshot-url{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:4px 10px;font-size:11px;color:rgba(255,255,255,.3);font-family:var(--ffm);margin:0 12px;text-align:center;}
+  .screenshot-img{display:block;width:100%;height:auto;}
 
-  /* ── SECTION ── */
-  section{padding:80px 24px;}
-  .section-inner{max-width:1000px;margin:0 auto;}
-  .section-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
-  .section-title{font-size:clamp(24px,4vw,38px);font-weight:800;letter-spacing:-1px;line-height:1.15;margin-bottom:14px;}
-  .section-sub{font-size:15px;color:var(--sub);max-width:500px;line-height:1.7;}
+  /* ── EVENT PHOTO ── */
+  .event-section{position:relative;overflow:hidden;height:420px;margin:80px 0 0;}
+  .event-photo{width:100%;height:100%;object-fit:cover;display:block;}
+  .event-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(91,94,244,.75),rgba(124,58,237,.6));}
+  .event-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;}
+  .event-content h2{font-size:clamp(26px,4.5vw,46px);font-weight:800;color:#fff;letter-spacing:-1.5px;margin-bottom:14px;line-height:1.1;}
+  .event-content p{font-size:16px;color:rgba(255,255,255,.8);max-width:420px;line-height:1.65;margin-bottom:28px;}
+  .event-placeholder{width:100%;height:100%;background:linear-gradient(135deg,#e0e0f0,#c8c8e8);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;}
+  .event-placeholder-icon{font-size:48px;opacity:.3;}
+  .event-placeholder-text{font-size:13px;color:var(--sub2);}
 
   /* ── FEATURES ── */
-  .features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:48px;}
-  .feat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .2s;}
-  .feat-card:hover{border-color:var(--border2);}
+  section{padding:80px 40px;}
+  .section-inner{max-width:1020px;margin:0 auto;}
+  .section-label{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+  .section-title{font-size:clamp(24px,3.5vw,36px);font-weight:800;letter-spacing:-1px;line-height:1.15;margin-bottom:12px;color:var(--text);}
+  .section-sub{font-size:15px;color:var(--sub);max-width:460px;line-height:1.7;}
+  .features-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:44px;}
+  .feat-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;transition:box-shadow .2s,border-color .2s;}
+  .feat-card:hover{border-color:rgba(91,94,244,.2);box-shadow:0 4px 24px rgba(91,94,244,.06);}
   .feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:16px;}
-  .feat-title{font-size:14px;font-weight:700;margin-bottom:6px;}
+  .feat-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
   .feat-desc{font-size:13px;color:var(--sub);line-height:1.6;}
 
   /* ── HOW IT WORKS ── */
-  .steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px;margin-top:48px;}
-  .step{position:relative;}
-  .step-num{width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent);font-family:var(--ffm);margin-bottom:14px;}
-  .step-title{font-size:14px;font-weight:700;margin-bottom:6px;}
+  .steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:28px;margin-top:44px;}
+  .step-num{width:34px;height:34px;border-radius:9px;background:rgba(91,94,244,.1);border:1px solid rgba(91,94,244,.2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent);font-family:var(--ffm);margin-bottom:14px;}
+  .step-title{font-size:14px;font-weight:700;margin-bottom:6px;color:var(--text);}
   .step-desc{font-size:13px;color:var(--sub);line-height:1.6;}
 
   /* ── PRICING ── */
-  .pricing-wrap{display:flex;justify-content:center;margin-top:48px;}
-  .price-card{background:var(--bg2);border:1px solid rgba(99,102,241,.35);border-radius:20px;padding:36px 40px;max-width:420px;width:100%;position:relative;box-shadow:0 0 60px rgba(99,102,241,.08);}
-  .price-card::before{content:'';position:absolute;inset:0;border-radius:20px;background:linear-gradient(135deg,rgba(99,102,241,.05),transparent);pointer-events:none;}
-  .price-badge{display:inline-block;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green);font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;margin-bottom:20px;letter-spacing:.3px;}
-  .price-name{font-size:18px;font-weight:700;margin-bottom:6px;}
+  .pricing-wrap{display:flex;justify-content:center;margin-top:44px;}
+  .price-card{background:var(--bg);border:2px solid rgba(91,94,244,.25);border-radius:20px;padding:36px 40px;max-width:420px;width:100%;box-shadow:0 8px 48px rgba(91,94,244,.1);}
+  .price-badge{display:inline-block;background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.25);color:var(--green);font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;margin-bottom:20px;letter-spacing:.3px;}
+  .price-name{font-size:18px;font-weight:700;margin-bottom:6px;color:var(--text);}
   .price-desc{font-size:13px;color:var(--sub);margin-bottom:24px;line-height:1.6;}
-  .price-amount{font-size:52px;font-weight:800;letter-spacing:-2px;color:#fff;line-height:1;}
-  .price-amount sup{font-size:22px;font-weight:700;vertical-align:top;margin-top:10px;display:inline-block;color:rgba(255,255,255,.6);}
+  .price-amount{font-size:54px;font-weight:800;letter-spacing:-2px;color:var(--text);line-height:1;}
+  .price-amount sup{font-size:22px;font-weight:700;vertical-align:top;margin-top:12px;display:inline-block;color:var(--sub);}
   .price-per{font-size:13px;color:var(--sub);margin-top:4px;margin-bottom:28px;}
   .price-list{list-style:none;margin-bottom:32px;}
-  .price-list li{display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);color:rgba(255,255,255,.75);}
+  .price-list li{display:flex;align-items:center;gap:10px;font-size:13px;padding:9px 0;border-bottom:1px solid var(--border);color:var(--text);}
   .price-list li:last-child{border-bottom:none;}
-  .price-check{width:18px;height:18px;border-radius:5px;background:rgba(34,197,94,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .price-check{width:18px;height:18px;border-radius:5px;background:rgba(22,163,74,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .price-check svg{color:var(--green);}
-  .btn-price{display:block;width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;transition:opacity .18s;box-shadow:0 4px 24px rgba(99,102,241,.35);}
+  .btn-price{display:block;width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;padding:14px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;transition:opacity .18s;box-shadow:0 4px 20px rgba(91,94,244,.3);}
   .btn-price:hover{opacity:.88;}
   .price-note{font-size:11px;color:var(--sub2);text-align:center;margin-top:12px;}
 
+  /* ── DIVIDER ── */
+  .divider{width:100%;height:1px;background:var(--border);}
+
   /* ── FOOTER ── */
-  footer{border-top:1px solid var(--border);padding:32px 24px;text-align:center;}
-  .footer-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+  footer{border-top:1px solid var(--border);padding:28px 40px;}
+  .footer-inner{max-width:1020px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
   .footer-logo{display:flex;align-items:center;gap:8px;text-decoration:none;}
   .footer-logo-icon{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;}
   .footer-logo-name{font-size:13px;font-weight:700;color:var(--sub);}
   .footer-copy{font-size:12px;color:var(--sub2);}
 
-  /* ── DIVIDER ── */
-  .divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0;}
-
   /* ── RESPONSIVE ── */
-  @media(max-width:640px){
+  @media(max-width:700px){
     nav{padding:0 18px;}
-    .hero{padding:90px 18px 60px;}
-    .mockup-screen{grid-template-columns:1fr 1fr;}
-    .mockup-screen .mock-card:last-child{display:none;}
-    .price-card{padding:28px 24px;}
-    .price-amount{font-size:44px;}
-    .footer-inner{justify-content:center;}
-  }
-  @media(max-width:400px){
-    .mockup-screen{grid-template-columns:1fr;}
-    .mockup-screen .mock-card:not(:first-child){display:none;}
+    .hero{padding:100px 20px 60px;}
+    .screenshot-wrap{padding:0 18px;}
+    section{padding:60px 20px;}
+    .price-card{padding:28px 22px;}
+    footer{padding:24px 20px;}
+    .footer-inner{justify-content:center;text-align:center;}
+    .event-section{height:340px;}
   }
 </style>
 </head>
@@ -157,62 +149,41 @@
 <section class="hero">
   <div class="hero-badge"><span class="hero-badge-dot"></span>Festival productie tool</div>
   <h1>De regie voor jouw<br><span>festival, op orde.</span></h1>
-  <p class="hero-sub">Realtime planning voor heel je team. Van backstage tot FOH — iedereen kijkt naar hetzelfde schema.</p>
+  <p class="hero-sub">Realtime planning voor heel je team. Van backstage tot FOH, iedereen kijkt naar hetzelfde schema.</p>
   <div class="hero-cta">
     <a class="btn-hero" href="/app">Start jouw project</a>
     <a class="btn-hero-ghost" href="#features">Bekijk functies</a>
   </div>
-  <p class="hero-note">Geen abonnement · €15 per project · Unlimited shows & stages</p>
-
-  <!-- MOCKUP -->
-  <div class="mockup-wrap">
-    <div class="mockup">
-      <div class="mockup-bar">
-        <div class="mockup-dot" style="background:#ef4444;"></div>
-        <div class="mockup-dot" style="background:#f59e0b;"></div>
-        <div class="mockup-dot" style="background:#22c55e;"></div>
-        <div class="mockup-url">stagetimer.nl/app</div>
-      </div>
-      <div class="mockup-screen">
-        <div class="mock-card">
-          <div class="mock-card-label">Main Stage</div>
-          <div class="mock-act">
-            <div class="mock-act-dot" style="background:#6366f1;"></div>
-            <span class="mock-act-name">Headliner</span>
-            <span class="mock-act-time">22:00</span>
-          </div>
-          <div class="mock-act">
-            <div class="mock-act-dot" style="background:#22c55e;box-shadow:0 0 5px rgba(34,197,94,.5);"></div>
-            <span class="mock-act-name" style="color:#fff;font-weight:600;">DJ Support ▶</span>
-            <span class="mock-act-time" style="color:#22c55e;">Nu</span>
-          </div>
-          <div class="mock-act">
-            <div class="mock-act-dot" style="background:rgba(255,255,255,.15);"></div>
-            <span class="mock-act-name">Opener</span>
-            <span class="mock-act-time">18:00</span>
-          </div>
-        </div>
-        <div class="mock-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <div class="mock-stage">MAIN STAGE</div>
-          <div class="mock-countdown">01:24:07</div>
-          <div class="mock-cd-label">tot wissel</div>
-          <div style="margin-top:12px;width:100%;height:3px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;"><div style="width:38%;height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:99px;"></div></div>
-        </div>
-        <div class="mock-card">
-          <div class="mock-card-label">Tijdlijn</div>
-          <div style="position:relative;height:120px;">
-            <div style="position:absolute;top:10px;left:0;right:0;height:22px;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.35);border-radius:4px;display:flex;align-items:center;padding:0 6px;"><span style="font-size:9px;color:rgba(139,92,246,.9);font-weight:600;">Opener</span></div>
-            <div style="position:absolute;top:40px;left:30%;right:5%;height:22px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);border-radius:4px;display:flex;align-items:center;padding:0 6px;"><span style="font-size:9px;color:rgba(34,197,94,.8);font-weight:600;">DJ Support</span></div>
-            <div style="position:absolute;top:70px;left:60%;right:0;height:22px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:4px;display:flex;align-items:center;padding:0 6px;"><span style="font-size:9px;color:rgba(139,92,246,.7);font-weight:600;">Headliner</span></div>
-            <div style="position:absolute;top:0;bottom:0;left:38%;width:1.5px;background:rgba(239,68,68,.6);"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+  <p class="hero-note">Geen abonnement &nbsp;&nbsp; €15 per project &nbsp;&nbsp; Unlimited shows &amp; stages</p>
 </section>
 
-<div class="divider"></div>
+<!-- APP SCREENSHOT -->
+<div class="screenshot-wrap">
+  <div class="screenshot-browser">
+    <div class="screenshot-bar">
+      <div class="sc-dot" style="background:#ef4444;"></div>
+      <div class="sc-dot" style="background:#f59e0b;"></div>
+      <div class="sc-dot" style="background:#22c55e;"></div>
+      <div class="screenshot-url">stagetimer.nl/app</div>
+    </div>
+    <img class="screenshot-img" src="screenshot.png" alt="Stagetimer app — realtime festival planning" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div style="display:none;height:280px;background:#111118;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+      <div style="font-size:32px;opacity:.2;">📸</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.2);">screenshot.png toevoegen aan de map</div>
+    </div>
+  </div>
+</div>
+
+<!-- EVENT PHOTO SECTION -->
+<div class="event-section" style="margin-top:80px;">
+  <img class="event-photo" src="event.jpg" alt="Festival" onerror="this.style.display='none'">
+  <div class="event-overlay"></div>
+  <div class="event-content">
+    <h2>Gebouwd voor de festivalvloer</h2>
+    <p>Geen gedoe met WhatsApp-groepen en Excel-sheets. Eén tool voor je hele productie­team, live op het festival.</p>
+    <a class="btn-hero" href="/app" style="background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.3);box-shadow:none;">Start gratis &rarr;</a>
+  </div>
+</div>
 
 <!-- FEATURES -->
 <section id="features">
@@ -223,49 +194,49 @@
 
     <div class="features-grid">
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(99,102,241,.12);">📋</div>
+        <div class="feat-icon" style="background:rgba(91,94,244,.1);">📋</div>
         <div class="feat-title">Realtime schema</div>
         <div class="feat-desc">Iedereen in je team ziet hetzelfde draaiboek. Wijzigingen zijn direct zichtbaar op alle apparaten.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(239,68,68,.1);">⏱</div>
+        <div class="feat-icon" style="background:rgba(239,68,68,.08);">⏱</div>
         <div class="feat-title">Countdown timers</div>
         <div class="feat-desc">Automatische aftelling per act. FOH, backstage en stage view tonen elk hun eigen timer.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(34,197,94,.1);">🎭</div>
+        <div class="feat-icon" style="background:rgba(22,163,74,.08);">🎭</div>
         <div class="feat-title">Backstage view</div>
         <div class="feat-desc">Deelbare link voor backstage crew. Eigen schermpje, geen app nodig, werkt op elke telefoon.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(251,191,36,.1);">📺</div>
+        <div class="feat-icon" style="background:rgba(245,158,11,.08);">📺</div>
         <div class="feat-title">Stage display</div>
         <div class="feat-desc">Volledig scherm weergave voor op het podium. Grote timer, huidige en volgende act in één oogopslag.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(139,92,246,.1);">📅</div>
+        <div class="feat-icon" style="background:rgba(124,58,237,.08);">📅</div>
         <div class="feat-title">Tijdlijn / Gantt</div>
         <div class="feat-desc">Overzicht van alle stages en acts per dag. Direct zien of er overlap zit of een stage leeg staat.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(99,102,241,.1);">📱</div>
-        <div class="feat-title">Mobiel vriendelijk</div>
-        <div class="feat-desc">Volledig te gebruiken als webapp op je telefoon. Installeer als app via je browser — geen App Store nodig.</div>
+        <div class="feat-icon" style="background:rgba(91,94,244,.08);">📱</div>
+        <div class="feat-title">Mobiel webapp</div>
+        <div class="feat-desc">Volledig te gebruiken op je telefoon. Installeer als app via je browser, geen App Store nodig.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(34,197,94,.1);">📥</div>
+        <div class="feat-icon" style="background:rgba(22,163,74,.08);">📥</div>
         <div class="feat-title">JSON import</div>
-        <div class="feat-desc">Plak je lineup direct als JSON en hij maakt stages, dagen en shows automatisch aan. Snel je data inladen.</div>
+        <div class="feat-desc">Plak je lineup direct als JSON en hij maakt stages, dagen en shows automatisch aan.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(251,191,36,.1);">👥</div>
+        <div class="feat-icon" style="background:rgba(245,158,11,.08);">👥</div>
         <div class="feat-title">Meerdere gebruikers</div>
         <div class="feat-desc">Geef je hele team toegang. Koppel gebruikers aan een bedrijf en beheer wie wat ziet.</div>
       </div>
       <div class="feat-card">
-        <div class="feat-icon" style="background:rgba(239,68,68,.1);">🗓</div>
+        <div class="feat-icon" style="background:rgba(239,68,68,.08);">🗓</div>
         <div class="feat-title">Meerdaags festival</div>
-        <div class="feat-desc">Maak aparte dagen aan met eigen naam. Vrijdag, Zaterdag, Zondag — elk met een eigen volledige lineup.</div>
+        <div class="feat-desc">Maak aparte dagen aan met eigen naam. Vrijdag, Zaterdag, Zondag, elk met een eigen volledige lineup.</div>
       </div>
     </div>
   </div>
@@ -279,7 +250,6 @@
     <div class="section-label">Werkwijze</div>
     <h2 class="section-title">In een paar stappen live</h2>
     <p class="section-sub">Van aanmaken tot je hele team op hetzelfde scherm.</p>
-
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
@@ -294,7 +264,7 @@
       <div class="step">
         <div class="step-num">03</div>
         <div class="step-title">Deel de links</div>
-        <div class="step-desc">Elke stage heeft een eigen backstage link. Stuur die door — je crew heeft geen account nodig.</div>
+        <div class="step-desc">Elke stage heeft een eigen backstage link. Stuur die door, je crew heeft geen account nodig.</div>
       </div>
       <div class="step">
         <div class="step-num">04</div>
@@ -313,48 +283,24 @@
     <div class="section-label">Tarieven</div>
     <h2 class="section-title">Eén helder tarief</h2>
     <p class="section-sub">Geen abonnement, geen verborgen kosten. Betaal per project.</p>
-
     <div class="pricing-wrap">
       <div class="price-card">
         <div class="price-badge">Per project</div>
         <div class="price-name">Stagetimer Project</div>
         <div class="price-desc">Alles wat je nodig hebt voor één festival of event. Geen limieten op het aantal acts of stages.</div>
-        <div>
-          <div class="price-amount"><sup>€</sup>15</div>
-          <div class="price-per">eenmalig per project</div>
-        </div>
+        <div class="price-amount"><sup>€</sup>15</div>
+        <div class="price-per">eenmalig per project</div>
         <ul class="price-list">
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            Unlimited stages
-          </li>
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            Unlimited shows & acts
-          </li>
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            Meerdere projectdagen
-          </li>
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            FOH, backstage &amp; stage views
-          </li>
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            Deelbare links voor crew
-          </li>
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            Realtime sync voor heel je team
-          </li>
-          <li>
-            <div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            Mobiel webapp (installeerbaar)
-          </li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited shows &amp; acts</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere projectdagen</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare links voor je crew</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor heel je team</li>
+          <li><div class="price-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Mobiel webapp (installeerbaar)</li>
         </ul>
         <a class="btn-price" href="/app">Start jouw project</a>
-        <p class="price-note">Aanmelden is gratis · Betaling per project via factuur of Tikkie</p>
+        <p class="price-note">Aanmelden is gratis &nbsp;&nbsp; Betaling via factuur of Tikkie</p>
       </div>
     </div>
   </div>
@@ -369,7 +315,7 @@
       <div class="footer-logo-icon">⏱</div>
       <span class="footer-logo-name">Stagetimer</span>
     </a>
-    <span class="footer-copy">© 2026 Stagetimer · Gebouwd voor de festivalindustrie</span>
+    <span class="footer-copy">© 2026 Stagetimer &nbsp;&nbsp; Gebouwd voor de festivalindustrie</span>
   </div>
 </footer>
 
