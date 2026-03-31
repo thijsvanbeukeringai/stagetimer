@@ -2072,6 +2072,7 @@ function openProject(id){
   APP.activeProjectId=id;saveAPP();
   loadG();hideDash();refreshLogo();
   renderAll();updateClock();
+  if(!(G.stages&&G.stages.length))setTimeout(openStageModal,150);
   // update header project name
   document.getElementById('logo-name').textContent=APP.projects.find(p=>p.id===id)?.name||'Stage Timer';
 }
