@@ -2734,6 +2734,16 @@ function tickOTV(){
 }
 
 // ══ AUTH
+let _appStarted=false;
+async function _tryStartFromSession(sess){
+  if(!sess||_appStarted)return;
+  _appStarted=true;
+  document.getElementById('login').classList.remove('open');
+  document.getElementById('loader').style.display='flex';
+  _showLogoutBtn(true);
+  await _startApp(sess);
+}
+
 async function doLogin(){
   const email=document.getElementById('li-email').value.trim();
   const pw=document.getElementById('li-pw').value;
@@ -2748,10 +2758,7 @@ async function doLogin(){
     errEl.style.display='block';
     btn.textContent='Inloggen';btn.disabled=false;
   }else{
-    document.getElementById('login').classList.remove('open');
-    document.getElementById('loader').style.display='flex';
-    _showLogoutBtn(true);
-    await _startApp(session);
+    await _tryStartFromSession(session);
   }
 }
 async function doLogout(){
@@ -2822,7 +2829,6 @@ async function _startApp(session){
 }
 (async()=>{
   loadOT();
-  // Fallback: if loader is still showing after 12s, hide it
   setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none')_hideLoader();},12000);
   // Public share link — skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
@@ -2832,27 +2838,31 @@ async function _startApp(session){
     return;
   }
 
-  let _appStarted=false;
-  // INITIAL_SESSION fires on every page load — this is the reliable way to detect a persisted session
+  // Layer 1: onAuthStateChange — catches INITIAL_SESSION (stored session on page load)
+  // and SIGNED_IN (after manual login or token refresh)
   supa.auth.onAuthStateChange(async(event,sess)=>{
-    if(event==='INITIAL_SESSION'){
-      if(sess&&!_appStarted){
-        _appStarted=true;
-        document.getElementById('login').classList.remove('open');
-        document.getElementById('loader').style.display='flex';
-        _showLogoutBtn(true);
-        await _startApp(sess);
-      } else if(!sess){
-        _hideLoader();// no session — login screen stays open
-      }
-    } else if(event==='PASSWORD_RECOVERY'){
+    if(event==='PASSWORD_RECOVERY'){
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
-    } else if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited){
-      document.getElementById('login').classList.remove('open');
-      document.getElementById('set-pw').classList.add('open');
+      return;
     }
+    if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited){
+      document.getElementById('login').classList.remove('open');
+      document.getElementById('set-pw').classList.add('open');
+      return;
+    }
+    if(sess){await _tryStartFromSession(sess);return;}
+    if(event==='INITIAL_SESSION'&&!_appStarted){_hideLoader();}
   });
+
+  // Layer 2: explicit getSession() — fallback for library versions that may not emit INITIAL_SESSION
+  try{
+    const{data:{session}}=await supa.auth.getSession();
+    if(session)await _tryStartFromSession(session);
+  }catch(e){console.error('getSession:',e);}
+
+  // Layer 3: if nothing worked yet, show login screen
+  if(!_appStarted)_hideLoader();
 })();
 updateClock();
 setInterval(tick,250);
