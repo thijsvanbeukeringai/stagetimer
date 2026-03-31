@@ -1028,19 +1028,22 @@ function renderTbar(){
         <div class="admin-form">
           <div class="admin-form-row">
             <input class="admin-fi" id="adm-usr-name" type="text" placeholder="Naam…" style="flex:1;">
-            <input class="admin-fi" id="adm-usr-email" type="email" placeholder="E-mailadres…" style="flex:1.5;" onkeydown="if(event.key==='Enter')addUser()">
+            <input class="admin-fi" id="adm-usr-email" type="email" placeholder="E-mailadres…" style="flex:1;">
           </div>
           <div class="admin-form-row">
-            <select class="admin-fi admin-fi-sel" id="adm-usr-co" style="flex:1;"></select>
-            <select class="admin-fi admin-fi-sel" id="adm-usr-role" style="width:130px;">
+            <input class="admin-fi" id="adm-usr-pw" type="password" placeholder="Wachtwoord…" style="flex:1;" onkeydown="if(event.key==='Enter')addUser()">
+            <select class="admin-fi admin-fi-sel" id="adm-usr-role" style="flex:1;">
               <option value="operator">Operator</option>
               <option value="company_admin">Co. Admin</option>
               <option value="admin">Admin</option>
             </select>
           </div>
+          <div class="admin-form-row">
+            <select class="admin-fi admin-fi-sel" id="adm-usr-co" style="flex:1;"></select>
+          </div>
           <button class="admin-add-btn" onclick="addUser()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Uitnodigen &amp; toevoegen
+            Toevoegen
           </button>
         </div>
       </div>
@@ -2193,24 +2196,23 @@ function delCompany(id){
 async function addUser(){
   const name=document.getElementById('adm-usr-name').value.trim();if(!name)return;
   const email=document.getElementById('adm-usr-email').value.trim();if(!email)return;
+  const pw=document.getElementById('adm-usr-pw').value;
+  if(!pw||pw.length<6){document.getElementById('adm-usr-pw').focus();document.getElementById('adm-usr-pw').style.borderColor='rgba(239,68,68,.5)';setTimeout(()=>document.getElementById('adm-usr-pw').style.borderColor='',2000);return;}
   const companyId=document.getElementById('adm-usr-co').value;
   const role=document.getElementById('adm-usr-role').value;
   const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
   if(addBtn){addBtn.textContent='Bezig…';addBtn.disabled=true;}
   APP.users.push({id:uid(),name,email,companyId,role});
   saveAPP();
-  // Step 1: create the Auth account (silent — no confirmation email needed)
   await supa.auth.signUp({
     email,
-    password:uid()+uid()+uid(),
-    options:{emailRedirectTo:location.origin+location.pathname,data:{invited:true,display_name:name}}
+    password:pw,
+    options:{emailRedirectTo:location.origin+location.pathname,data:{display_name:name}}
   });
-  // Step 2: send password-reset email — works regardless of email-confirm setting
-  // This is the email the user receives to set their password
-  await supa.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
   document.getElementById('adm-usr-name').value='';
   document.getElementById('adm-usr-email').value='';
-  if(addBtn){addBtn.textContent='Uitnodigen & toevoegen';addBtn.disabled=false;}
+  document.getElementById('adm-usr-pw').value='';
+  if(addBtn){addBtn.textContent='Toevoegen';addBtn.disabled=false;}
   renderAdmin();
 }
 async function delUser(id){
