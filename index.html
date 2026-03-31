@@ -343,6 +343,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .role-admin{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.2);}
 .role-co-admin{background:rgba(249,115,22,.12);color:#fdba74;border:1px solid rgba(249,115,22,.2);}
 .role-op{background:rgba(99,102,241,.12);color:#a5b4fc;border:1px solid rgba(99,102,241,.2);}
+/* Company logo */
+.co-logo{height:26px;max-width:100px;object-fit:contain;border-radius:4px;display:none;flex-shrink:0;}
+.co-logo.vis{display:block;}
+.co-logo-upload{width:28px;height:28px;border-radius:7px;border:1px dashed rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.co-logo-upload:hover{border-color:rgba(99,102,241,.5);color:#a5b4fc;background:rgba(99,102,241,.08);}
+.co-logo-thumb{height:22px;max-width:60px;object-fit:contain;border-radius:3px;cursor:pointer;}
 /* Set password screen */
 #set-pw{position:fixed;inset:0;z-index:1001;background:var(--bg);display:none;align-items:center;justify-content:center;}
 #set-pw.open{display:flex;}
@@ -519,7 +525,7 @@ function setupRealtime(){
         if(proj){proj.data=p.data;proj.name=p.name;}
         else{APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}});}
         localStorage.setItem(AKEY,JSON.stringify(APP));
-        if(p.id===APP.activeProjectId){loadG();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
+        if(p.id===APP.activeProjectId){loadG();renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
         if(document.getElementById('dash').classList.contains('open'))renderDash();
       }
     })
@@ -605,6 +611,9 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- Hidden file input for logo upload -->
+<input type="file" id="logo-file-input" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
+
 <!-- LOADER -->
 <div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
   <div style="font-size:32px;">⏱</div>
@@ -614,6 +623,12 @@ function renderTbar(){
 <!-- ══ APP ══ -->
 <div id="app">
   <div id="hdr">
+    <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;" id="logo-area">
+      <img class="co-logo" id="co-logo-main" alt="logo" title="Logo wijzigen" style="cursor:pointer;" onclick="triggerLogoUpload()">
+      <button class="co-logo-upload" id="logo-upload-btn" onclick="triggerLogoUpload()" title="Logo uploaden" style="display:none;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </button>
+    </div>
     <div id="logo" style="cursor:pointer;" onclick="goToDash()" title="Terug naar dashboard"><div id="logo-icon">⏱</div><div id="logo-name">Stage Timer</div></div>
     <div id="sync-dot" title="Sync status"></div>
     <div class="vsep"></div>
@@ -739,6 +754,7 @@ function renderTbar(){
 <!-- DASHBOARD -->
 <div id="dash">
   <div id="dash-hdr">
+    <img class="co-logo" id="co-logo-dash" alt="logo">
     <div id="dash-logo"><div id="dash-logo-icon">⏱</div>Stage Timer</div>
     <div style="flex:1;"></div>
     <button class="hbtn admin-only" id="dash-admin-btn" onclick="openAdmin()" style="display:none;">
@@ -885,6 +901,7 @@ function renderTbar(){
 <!-- BACKSTAGE -->
 <div id="bs">
   <div id="bs-hdr">
+    <img class="co-logo" id="co-logo-bs" alt="logo">
     <div id="bs-title">🎭 Backstage — <span id="bs-sname">—</span></div>
     <div style="display:flex;gap:5px;" id="bs-dtabs"></div>
     <select id="bs-ssel" class="hsel" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
@@ -897,6 +914,7 @@ function renderTbar(){
 <!-- TIMELINE -->
 <div id="tl">
   <div id="tl-hdr">
+    <img class="co-logo" id="co-logo-tl" alt="logo">
     <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;">▦ Tijdlijn</div>
     <div style="display:flex;gap:5px;flex-shrink:0;" id="tl-dtabs"></div>
     <div style="flex:1;"></div>
@@ -1557,7 +1575,7 @@ function renderDash(){
 
 function openProject(id){
   APP.activeProjectId=id;saveAPP();
-  loadG();hideDash();
+  loadG();hideDash();refreshLogo();
   renderAll();updateClock();
   // update header project name
   document.getElementById('logo-name').textContent=APP.projects.find(p=>p.id===id)?.name||'Stage Timer';
@@ -1891,6 +1909,7 @@ async function loadPublicView(){
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project niet gevonden.</div>';return;}
   APP={companies:[],users:[],projects:[{id:proj.id,name:proj.name,companyId:proj.company_id,data:proj.data||{}}],activeProjectId:proj.id};
   loadG();
+  refreshLogo();
   if(PUBLIC_SID)G.activeStage=PUBLIC_SID;
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='none';
@@ -1922,6 +1941,46 @@ async function loadPublicView(){
     setupRealtime();
   }
   setInterval(tick,250);
+}
+
+// ══ PROJECT LOGO
+function applyLogo(logo){
+  ['co-logo-main','co-logo-dash','co-logo-bs','co-logo-tl'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(logo){el.src=logo;el.classList.add('vis');}
+    else{el.src='';el.classList.remove('vis');}
+  });
+  // Show/hide upload button (only visible when logged in, not public mode)
+  const btn=document.getElementById('logo-upload-btn');
+  if(btn)btn.style.display=PUBLIC_MODE?'none':'flex';
+}
+
+function refreshLogo(){
+  applyLogo(G?.logo||null);
+}
+
+function triggerLogoUpload(){
+  document.getElementById('logo-file-input').click();
+}
+
+function handleLogoUpload(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    G.logo=e.target.result;
+    save();
+    refreshLogo();
+  };
+  reader.readAsDataURL(file);
+  event.target.value='';
+}
+
+function removeProjectLogo(){
+  G.logo=null;
+  save();
+  refreshLogo();
 }
 
 // ══ AUTH
@@ -2015,6 +2074,7 @@ async function _startApp(session){
   await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
   _initUI();
   updateRoleUI();
+  refreshLogo();
   setupRealtime();
 }
 (async()=>{
