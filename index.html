@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Stagetimer — Festival productie, op orde.</title>
-<meta name="description" content="Realtime productieplanning voor festivals en events. Van backstage tot FOH, iedereen op hetzelfde schema. Vanaf €15 per maand.">
+<title>Stagetimer — Realtime productietiming voor elk event</title>
+<meta name="description" content="Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema. Vanaf €15 per maand.">
 <meta name="theme-color" content="#ffffff">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -137,6 +137,19 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .feat-title{font-size:15px;font-weight:700;margin-bottom:7px;letter-spacing:-.2px;color:var(--text);}
 .feat-desc{font-size:13px;color:var(--sub);line-height:1.65;}
 
+/* ── USE CASES ── */
+.usecases-section{padding:100px 40px;background:var(--bg2);position:relative;overflow:hidden;}
+.usecases-inner{max-width:1060px;margin:0 auto;position:relative;}
+.uc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:56px;}
+.uc-card{background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:36px 32px;transition:all .2s;position:relative;overflow:hidden;}
+.uc-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accentg);opacity:0;transition:opacity .2s;}
+.uc-card:hover{border-color:rgba(99,102,241,.25);box-shadow:0 8px 32px rgba(99,102,241,.09);transform:translateY(-3px);}
+.uc-card:hover::before{opacity:1;}
+.uc-icon{font-size:30px;margin-bottom:20px;}
+.uc-tag{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.uc-title{font-size:18px;font-weight:800;letter-spacing:-.3px;margin-bottom:12px;color:var(--text);}
+.uc-desc{font-size:14px;color:var(--sub);line-height:1.7;}
+
 /* ── STEPS ── */
 .steps-section{padding:0 40px 100px;background:var(--bg2);position:relative;overflow:hidden;}
 .steps-section::before{content:'';position:absolute;bottom:-80px;right:-60px;width:350px;height:350px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.05),transparent 70%);pointer-events:none;}
@@ -227,6 +240,7 @@ footer{padding:36px 48px;background:var(--bg);}
 @media(max-width:900px){
   .nav-links{display:none;}
   .pillars-grid{grid-template-columns:1fr;}
+  .uc-grid{grid-template-columns:1fr;}
   .screens-grid{grid-template-columns:1fr 1fr;}
   .steps-grid{grid-template-columns:1fr 1fr;gap:28px;}
   .steps-grid::before{display:none;}
@@ -297,9 +311,9 @@ footer{padding:36px 48px;background:var(--bg);}
   <div class="hero-overlay"></div>
   <div class="hero-inner">
     <div class="hero-left">
-      <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>Voor event professionals</div>
-      <h1>Jouw festival.<br><span class="line2">Strak geregeld.</span></h1>
-      <p class="hero-sub">Realtime productieplanning voor festivals en events. Van backstage tot FOH, iedereen werkt vanuit hetzelfde schema, live op de dag zelf.</p>
+      <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>Voor productieteams</div>
+      <h1>Jouw event.<br><span class="line2">Strak geregeld.</span></h1>
+      <p class="hero-sub">Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema, live op de dag zelf.</p>
       <div class="hero-cta">
         <a class="btn-hero" href="/app">Start jouw project</a>
         <a class="btn-outline" href="#features">Bekijk hoe het werkt</a>
@@ -334,14 +348,14 @@ footer{padding:36px 48px;background:var(--bg);}
 <section class="pillars-section" id="features">
   <div class="pillars-inner">
     <div class="s-label">Waarom Stagetimer</div>
-    <h2 class="s-title">Gebouwd door de branche. Voor de branche.</h2>
-    <p class="s-sub">Geen generieke planningssoftware. Stagetimer is ontwikkeld door mensen die zelf op festivals werken en precies weten wat er op de dag zelf nodig is.</p>
+    <h2 class="s-title">Gebouwd voor productieteams.</h2>
+    <p class="s-sub">Geen generieke software met twintig functies die je nooit gebruikt. Stagetimer is ontworpen door mensen die zelf op de vloer staan en weten wat timing op de dag zelf betekent.</p>
     <div class="pillars-grid">
       <div class="pillar">
-        <div class="pillar-icon">🎪</div>
-        <div class="pillar-num">01 — BRANCHE</div>
-        <div class="pillar-title">Van de branche, voor de branche</div>
-        <div class="pillar-desc">Ontwikkeld vanuit echte festivalproductie. Elk scherm, elke knop en elke workflow is afgestemd op hoe productieteams daadwerkelijk werken.</div>
+        <div class="pillar-icon">🎯</div>
+        <div class="pillar-num">01 — FOCUS</div>
+        <div class="pillar-title">Gemaakt voor de dag zelf</div>
+        <div class="pillar-desc">Elk scherm, elke knop en elke workflow is afgestemd op hoe productieteams daadwerkelijk werken — op het podium, achter de tafel, in de coulissen.</div>
       </div>
       <div class="pillar">
         <div class="pillar-icon">⚡</div>
@@ -402,7 +416,7 @@ footer{padding:36px 48px;background:var(--bg);}
 <section class="features-section">
   <div class="features-inner">
     <div class="s-label">Functies</div>
-    <h2 class="s-title">Alles wat je nodig hebt op de festivaldag</h2>
+    <h2 class="s-title">Alles wat je nodig hebt op de dag zelf</h2>
     <p class="s-sub">Gebouwd voor productieteams zonder ruimte voor gedoe.</p>
     <div class="feat-grid">
       <div class="feat featured">
@@ -454,6 +468,35 @@ footer{padding:36px 48px;background:var(--bg);}
   </div>
 </section>
 
+<!-- USE CASES -->
+<section class="usecases-section">
+  <div class="usecases-inner">
+    <div class="s-label">Wie gebruikt het</div>
+    <h2 class="s-title">Niet alleen voor festivals.</h2>
+    <p class="s-sub">Overal waar timing en regie samenkomen, doet Stagetimer zijn werk. Van de mainstage tot de boardroom.</p>
+    <div class="uc-grid">
+      <div class="uc-card">
+        <div class="uc-icon">🎤</div>
+        <div class="uc-tag">Conferenties</div>
+        <div class="uc-title">Confidence monitor voor sprekers</div>
+        <div class="uc-desc">Stuur berichten zoals "Wrap up" of "Q&A start nu" die alleen jij en de spreker zien — niet het publiek. De spreker kijkt op zijn scherm, de zaal merkt niets.</div>
+      </div>
+      <div class="uc-card">
+        <div class="uc-icon">⛪</div>
+        <div class="uc-tag">Kerkdiensten</div>
+        <div class="uc-title">Regie voor diensten</div>
+        <div class="uc-desc">Synchroniseer zang, preek en mededelingen. De regie stuurt berichten naar de voorganger, de timer loopt op het scherm — rustig en overzichtelijk voor iedereen.</div>
+      </div>
+      <div class="uc-card">
+        <div class="uc-icon">🎙️</div>
+        <div class="uc-tag">Webinars & Livestreams</div>
+        <div class="uc-title">Weet exact wanneer je live gaat</div>
+        <div class="uc-desc">Open de timer als browserlink op een tweede scherm of tablet naast je camera. Geen gedoe, geen aparte software — gewoon een link openen en weten hoeveel tijd je hebt.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div class="div"></div>
 
 <!-- HOW IT WORKS -->
@@ -466,7 +509,7 @@ footer{padding:36px 48px;background:var(--bg);}
       <div class="step">
         <div class="step-num">01</div>
         <div class="step-title">Maak een project aan</div>
-        <div class="step-desc">Geef je festival een naam, voeg stages toe en maak de festivaldag of meerdere dagen aan die je nodig hebt.</div>
+        <div class="step-desc">Geef je event een naam, voeg stages of zalen toe en maak de dag of meerdere dagen aan die je nodig hebt.</div>
       </div>
       <div class="step">
         <div class="step-num">02</div>
@@ -505,7 +548,7 @@ footer{padding:36px 48px;background:var(--bg);}
         <ul class="price-list">
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>1 actief project</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere festivaldagen</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere dagen</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor je team</li>
@@ -525,7 +568,7 @@ footer{padding:36px 48px;background:var(--bg);}
         <ul class="price-list">
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>Onbeperkt projecten</strong></li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere festivaldagen</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere dagen</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor je team</li>
@@ -585,7 +628,7 @@ footer{padding:36px 48px;background:var(--bg);}
 <!-- CTA STRIP -->
 <div class="cta-strip">
   <div class="cta-strip-eyebrow">Klaar om te beginnen?</div>
-  <div class="cta-strip-title">Jouw volgende festival. Strak geregeld.</div>
+  <div class="cta-strip-title">Jouw volgende event. Strak geregeld.</div>
   <div class="cta-strip-sub">Gratis aanmelden. Binnen vijf minuten live met je hele team.</div>
   <div class="cta-strip-btns">
     <a class="btn-strip-primary" href="/app">Start jouw project</a>
@@ -600,7 +643,7 @@ footer{padding:36px 48px;background:var(--bg);}
       <img class="footer-logo-icon" src="stagetimer logo nieuw.png" alt="Stagetimer">
       <span class="footer-logo-name">Stagetimer</span>
     </a>
-    <span class="footer-copy">© 2026 Stagetimer &nbsp;·&nbsp; Gebouwd voor de festivalindustrie</span>
+    <span class="footer-copy">© 2026 Stagetimer &nbsp;·&nbsp; Gebouwd voor productieteams</span>
   </div>
 </footer>
 
