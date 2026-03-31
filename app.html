@@ -1223,11 +1223,11 @@ function renderSched(){
   }
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
+    const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
     if(G.timerMode==='manual'){
       isNow=i===M.idx&&M.state==='running';isPast=i<M.idx;
       pct=isNow?Math.max(0,Math.min(100,(1-mRem()/M.durMs)*100)):0;
     }else{
-      const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
       isNow=n>=sm&&n<em;isPast=n>=em;
       pct=isNow?Math.min(100,(n-sm)/(em-sm)*100):0;
     }
