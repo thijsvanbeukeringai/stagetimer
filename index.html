@@ -1155,7 +1155,7 @@ function renderHeader(){
   document.getElementById('tl-dtabs').innerHTML=getDays().map(d=>`
     <button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderTL();">${escH(d.name)}</button>`).join('');
 }
-function setDay(d){G.activeDay=d;M.idx=0;mReset();save();renderAll();}
+function setDay(d){G.activeDay=d;M.idx=0;mReset();save();renderAll();if(document.getElementById('tl').classList.contains('open'))renderTL();}
 
 // ══ CREW
 const CREW_ROLES=[{id:'vj',label:'VJ'},{id:'light',label:'Light'},{id:'sound',label:'Sound'},{id:'sfx',label:'SFX'},{id:'laser',label:'Laser'}];
