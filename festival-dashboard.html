@@ -81,10 +81,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 #tp-nt{font-family:var(--ffm);font-size:10px;color:var(--sub);margin-top:1px;}
 
 /* Transport */
-#tbar{flex-shrink:0;padding:10px 12px 12px;border-top:1px solid var(--border);display:none;}
+#tbar{flex-shrink:0;padding:10px 10px 12px;border-top:1px solid var(--border);display:none;}
 #tbar.vis{display:block;}
-#trow{display:flex;align-items:center;gap:4px;justify-content:center;margin-bottom:5px;}
-.tb{height:34px;padding:0 10px;border-radius:6px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-family:var(--ff);font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#trow{display:flex;align-items:center;gap:4px;margin-bottom:5px;}
+.tb{height:34px;padding:0 10px;border-radius:6px;border:1px solid var(--border2);background:var(--s2);color:var(--text);font-family:var(--ff);font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;flex:1;}
 .tb:hover{background:var(--s3);}
 .tb:active{transform:scale(.92);}
 .tb.go{background:var(--green);border-color:var(--green);color:#000;}
@@ -915,14 +915,10 @@ function renderTbar(){
       </div>
       <div id="tbar">
         <div id="trow">
-          <button class="tb" onclick="nudge(-60)">−1m</button>
-          <button class="tb" onclick="nudge(-30)">−30s</button>
           <button class="tb" onclick="mPrev()">⏮</button>
           <button class="tb stp" onclick="mStop()">⏹</button>
           <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
           <button class="tb" onclick="mNext()">⏭</button>
-          <button class="tb" onclick="nudge(30)">+30s</button>
-          <button class="tb" onclick="nudge(60)">+1m</button>
         </div>
         <div id="t-inf"><span id="t-cs">—</span><span id="t-cn">—</span><span id="t-ce">—</span></div>
       </div>
