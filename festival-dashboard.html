@@ -997,6 +997,10 @@ function renderTbar(){
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       Beheer
     </button>
+    <div id="dash-user-info" style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.2;padding:0 4px;">
+      <span id="dash-user-name" style="font-size:12px;font-weight:700;color:var(--text);"></span>
+      <span id="dash-user-co" style="font-size:11px;color:var(--sub);"></span>
+    </div>
     <button class="hbtn" onclick="doLogout()" style="display:flex;align-items:center;gap:5px;">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Uitloggen
@@ -2146,10 +2150,6 @@ function renderDash(){
   if(!visibleProjects.length){
     grid.innerHTML=`<div style="padding:0 0 16px;color:var(--sub);font-size:13px;grid-column:1/-1;">Nog geen projecten aangemaakt.</div>`+grid.innerHTML;
   }
-  // Use addEventListener (not inline onclick) — reliable on iOS PWA
-  grid.querySelectorAll('.open-proj-btn').forEach(btn=>{
-    btn.addEventListener('click',function(e){e.stopPropagation();openProject(this.dataset.pid);});
-  });
   renderOTSection();
 }
 
@@ -2954,11 +2954,19 @@ function _showLogoutBtn(session){
   const info=document.getElementById('user-info');
   if(info)info.style.display=session?'flex':'none';
   if(session&&CURRENT_USER){
+    const co=APP?.companies?.find(c=>c.id===CURRENT_USER.companyId);
+    const name=CURRENT_USER.name||CURRENT_USER.email||'';
+    const coName=co?.name||CURRENT_USER.email||'';
+    // App header (desktop)
     const nameEl=document.getElementById('user-info-name');
     const coEl=document.getElementById('user-info-co');
-    if(nameEl)nameEl.textContent=CURRENT_USER.name||CURRENT_USER.email||'';
-    const co=APP?.companies?.find(c=>c.id===CURRENT_USER.companyId);
-    if(coEl)coEl.textContent=co?.name||'';
+    if(nameEl)nameEl.textContent=name;
+    if(coEl)coEl.textContent=coName;
+    // Dashboard header (mobile + desktop)
+    const dName=document.getElementById('dash-user-name');
+    const dCo=document.getElementById('dash-user-co');
+    if(dName)dName.textContent=name;
+    if(dCo)dCo.textContent=coName;
   }
 }
 function showForgotPw(){
@@ -3002,8 +3010,17 @@ async function setNewPassword(){
 }
 
 // ══ INIT
+let _dashListenerSet=false;
 function _initUI(){
   if(!G){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
+  // Permanent delegate listener on dash-body — set once, survives innerHTML rewrites
+  if(!_dashListenerSet){
+    _dashListenerSet=true;
+    document.getElementById('dash-body').addEventListener('click',function(e){
+      const btn=e.target.closest('.open-proj-btn');
+      if(btn){e.preventDefault();e.stopPropagation();openProject(btn.dataset.pid);}
+    });
+  }
   // Always land on the projects dashboard after login
   document.getElementById('dash').classList.add('open');
   renderDash();
