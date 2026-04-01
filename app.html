@@ -667,14 +667,9 @@ function saveAPP(){
 }
 
 async function _pushMeta(){
-  setSyncDot('ing');
-  try{
-    const tasks=[];
-    if(APP.companies.length)tasks.push(supa.from('companies').upsert(APP.companies));
-    if(APP.users.length)tasks.push(supa.from('app_users').upsert(APP.users.map(u=>({id:u.id,name:u.name,email:u.email||'',role:u.role,company_id:u.companyId||''}))));
-    await Promise.all(tasks);
-    setSyncDot('ok');
-  }catch(e){setSyncDot('err');console.warn('Meta sync failed:',e);}
+  // Companies and users are synced explicitly on add/delete — no bulk upsert here
+  // to avoid re-inserting records deleted directly in Supabase.
+  setSyncDot('ok');
 }
 
 function save(){
@@ -2077,6 +2072,21 @@ function delDay(id){
 }
 
 // ══ DASHBOARD
+// Touch delegation for proj-grid: fires openProject on tap (not scroll) — fixes iOS Chrome
+(function(){
+  let _tMoved=false;
+  document.addEventListener('touchstart',function(e){_tMoved=false;},{passive:true});
+  document.addEventListener('touchmove',function(){_tMoved=true;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(_tMoved)return;
+    const card=e.target.closest('[data-proj-id]');
+    if(card&&card.classList.contains('proj-card')){
+      e.preventDefault();
+      openProject(card.dataset.projId);
+    }
+  },{passive:false});
+})();
+
 function showDash(){
   document.getElementById('dash').classList.add('open');
   renderDash();
@@ -2095,7 +2105,7 @@ function renderDash(){
     const showCount=(p.data?.shows||[]).length;
     const stageCount=(p.data?.stages||[]).length;
     const logo=p.data?.logo;
-    return`<div class="proj-card" onclick="openProject('${p.id}')">
+    return`<div class="proj-card" data-proj-id="${p.id}" onclick="openProject('${p.id}')">
       <div class="proj-card-accent"></div>
       <div class="proj-card-body">
         <div class="proj-card-actions">
