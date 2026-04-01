@@ -542,6 +542,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .hbtn{padding:5px 8px;font-size:10px;}
   .daybtn{padding:3px 7px;font-size:10px;}
 }
+@media(max-width:768px){
+  .hbtn{min-height:36px;padding:6px 10px;}
+  .btn-p,.btn-g{min-height:40px;font-size:13px;padding:8px 14px;}
+  .daybtn{min-height:32px;padding:5px 10px;}
+  .proj-card-btn{min-height:32px;padding:0 10px;}
+}
 </style>
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
@@ -2116,7 +2122,7 @@ function renderDash(){
           <span class="proj-card-stat">${showCount} show${showCount!==1?'s':''}</span>
           <span class="proj-card-stat">${stageCount} stage${stageCount!==1?'s':''}</span>
         </div>
-        <button class="btn-p" onclick="openProject('${p.id}')" style="width:100%;margin-top:10px;justify-content:center;">Open project</button>
+        <button class="btn-p open-proj-btn" data-pid="${p.id}" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;">Open project</button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);" onclick="event.stopPropagation()">
           ${logo
             ?`<img src="${logo}" style="height:24px;max-width:80px;object-fit:contain;border-radius:3px;cursor:pointer;" title="Logo wijzigen" onclick="triggerLogoUpload('${p.id}')">
@@ -2140,6 +2146,10 @@ function renderDash(){
   if(!visibleProjects.length){
     grid.innerHTML=`<div style="padding:0 0 16px;color:var(--sub);font-size:13px;grid-column:1/-1;">Nog geen projecten aangemaakt.</div>`+grid.innerHTML;
   }
+  // Use addEventListener (not inline onclick) — reliable on iOS PWA
+  grid.querySelectorAll('.open-proj-btn').forEach(btn=>{
+    btn.addEventListener('click',function(e){e.stopPropagation();openProject(this.dataset.pid);});
+  });
   renderOTSection();
 }
 
@@ -2576,16 +2586,15 @@ async function initOneSignalUser(userId){
   }catch(e){console.warn('OneSignal login:',e);}
 }
 async function requestPushPermission(){
+  if(!window._OS){
+    alert('Pushmeldingen worden nog geladen. Probeer over een paar seconden opnieuw.');
+    return;
+  }
   try{
-    // Wait up to 10s for OneSignal to initialize
-    await new Promise(resolve=>{
-      if(window._OS){resolve();return;}
-      const t=setInterval(()=>{if(window._OS){clearInterval(t);resolve();}},200);
-      setTimeout(()=>{clearInterval(t);resolve();},10000);
-    });
-    if(!window._OS){alert('Pushmeldingen niet beschikbaar op dit apparaat of browser.');return;}
+    // Must call requestPermission directly from click — no async wait before this
     await window._OS.Notifications.requestPermission();
     if(CURRENT_USER?.id)await window._OS.login(CURRENT_USER.id);
+    updateCrewPermBtn();
   }catch(e){console.warn('OneSignal permission:',e);}
 }
 

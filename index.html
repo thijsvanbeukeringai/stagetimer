@@ -193,10 +193,19 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 /* ── PRICING ── */
 .pricing-section{padding:0 40px 100px;background:var(--bg);position:relative;overflow:hidden;}
 .pricing-section::before{content:'';position:absolute;top:-60px;left:-80px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.05),transparent 70%);pointer-events:none;}
-.pricing-inner{max-width:1060px;margin:0 auto;padding-top:80px;position:relative;}
+.pricing-inner{max-width:1200px;margin:0 auto;padding-top:80px;position:relative;}
 .pricing-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;margin-top:56px;}
+.price-wrap{display:grid;grid-template-columns:420px 1fr;gap:80px;align-items:center;max-width:1060px;margin:56px auto 0;}
 .price-card{background:var(--bg);border:1px solid var(--border2);border-radius:24px;padding:40px;position:relative;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.06);}
 .price-card.featured{border:2px solid rgba(99,102,241,.4);box-shadow:0 12px 56px rgba(99,102,241,.15);}
+.price-mb{display:flex;align-items:center;justify-content:center;}
+@media(max-width:900px){
+  .price-wrap{grid-template-columns:1fr;gap:48px;}
+  .price-mb{display:none;}
+}
+@media(max-width:700px){
+  .price-card{padding:32px 26px;}
+}
 .price-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.22);color:var(--green);font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;margin-bottom:20px;}
 .price-name{font-size:14px;font-weight:700;color:var(--sub);margin-bottom:20px;}
 .price-amount{font-size:64px;font-weight:900;letter-spacing:-3px;line-height:1;color:var(--text);margin-bottom:4px;}
@@ -560,9 +569,9 @@ footer{padding:36px 48px;background:var(--bg);}
     <div class="s-label">Tarieven</div>
     <h2 class="s-title">Één prijs. Alles inbegrepen.</h2>
     <p class="s-sub">Geen verborgen kosten, geen tiers. Gewoon Stagetimer, compleet.</p>
-    <div style="display:flex;justify-content:center;margin-top:56px;">
+    <div class="price-wrap">
 
-      <div class="price-card featured" style="max-width:420px;width:100%;">
+      <div class="price-card featured">
         <div class="price-name">Stagetimer</div>
         <div class="price-amount"><sup>€</sup>15</div>
         <div class="price-per">per maand &nbsp;·&nbsp; excl. btw</div>
@@ -579,6 +588,19 @@ footer{padding:36px 48px;background:var(--bg);}
         </ul>
         <a class="btn-price" href="/app">Aan de slag</a>
         <p class="price-note">Maandelijks opzegbaar &nbsp;·&nbsp; excl. btw</p>
+      </div>
+
+      <div class="price-mb">
+        <div class="mb-device">
+          <div class="mb-lid">
+            <div class="mb-screen-inner">
+              <img class="ss-img" src="foh-view.jpg" alt="Stagetimer app">
+            </div>
+          </div>
+          <div class="mb-base">
+            <div class="mb-foot"></div>
+          </div>
+        </div>
       </div>
 
     </div>
