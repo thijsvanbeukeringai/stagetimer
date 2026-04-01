@@ -2513,7 +2513,8 @@ function isCompanyAdmin(){return['admin','super_admin','company_admin'].includes
 async function loadCurrentUser(session){
   if(!session)return;
   // Try to find by email in app_users
-  const{data:found}=await supa.from('app_users').select('*').eq('email',session.user.email).maybeSingle();
+  const{data:rows}=await supa.from('app_users').select('*').eq('email',session.user.email).limit(1);
+  const found=rows?.[0]||null;
   if(found){
     CURRENT_USER={id:found.id,name:found.name,email:found.email,role:found.role,companyId:found.company_id};
   }else{
