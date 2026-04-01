@@ -128,6 +128,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 #empty .ei{font-size:34px;opacity:.3;}
 
 /* ── BUTTONS ── */
+button,a{touch-action:manipulation;}
 .btn-p{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:700;background:var(--blue);border:none;color:#fff;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .btn-p:hover{background:#4f52df;}
 .btn-p:active{transform:scale(.96);}
@@ -3015,24 +3016,8 @@ async function setNewPassword(){
 }
 
 // ══ INIT
-let _iosTapHandlerSet=false;
 function _initUI(){
   if(!G){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
-  // iOS PWA: one global tap handler on document — catches all buttons regardless of nesting depth.
-  // Fires on touchend, checks it was a tap (not a scroll), then calls .click() on the target.
-  if(!_iosTapHandlerSet&&_isIOS()&&_isStandalone()){
-    _iosTapHandlerSet=true;
-    let _tapY=0;
-    document.addEventListener('touchstart',e=>{_tapY=e.touches[0].clientY;},{passive:true});
-    document.addEventListener('touchend',e=>{
-      if(Math.abs(e.changedTouches[0].clientY-_tapY)>10)return; // was a scroll
-      if(e.target.matches('input,select,textarea'))return; // let form elements handle themselves
-      const el=e.target.closest('button:not([disabled]),a,[onclick]');
-      if(!el)return;
-      e.preventDefault(); // prevent the 300ms delayed ghost click
-      el.click();
-    },{passive:false});
-  }
   // Always land on the projects dashboard after login
   document.getElementById('dash').classList.add('open');
   renderDash();
@@ -3044,9 +3029,12 @@ async function _startApp(session){
   _hideLoader();
   try{
     await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
-    // Don't call _initUI() again — it would force-reopen dashboard even if user already opened a project
     updateRoleUI();refreshLogo();setupRealtime();
-    if(document.getElementById('dash').classList.contains('open'))renderDash();
+    // Always re-render dash with fresh data — only open it if user hasn't navigated to a project yet
+    if(!APP.activeProjectId||document.getElementById('dash').classList.contains('open')){
+      document.getElementById('dash').classList.add('open');
+      renderDash();
+    }
     renderAll();updateClock();
     _showLogoutBtn(true);
     initOneSignalUser(CURRENT_USER?.id);
