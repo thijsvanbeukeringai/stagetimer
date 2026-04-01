@@ -3016,7 +3016,14 @@ function _initUI(){
   // Permanent delegate listener on dash-body — set once, survives innerHTML rewrites
   if(!_dashListenerSet){
     _dashListenerSet=true;
-    document.getElementById('dash-body').addEventListener('click',function(e){
+    const db=document.getElementById('dash-body');
+    // touchstart fires before iOS scroll recognizer can cancel the event
+    db.addEventListener('touchstart',function(e){
+      const btn=e.target.closest('.open-proj-btn');
+      if(btn){e.preventDefault();e.stopPropagation();openProject(btn.dataset.pid);}
+    },{passive:false});
+    // click fallback for non-touch (desktop)
+    db.addEventListener('click',function(e){
       const btn=e.target.closest('.open-proj-btn');
       if(btn){e.preventDefault();e.stopPropagation();openProject(btn.dataset.pid);}
     });
