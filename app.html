@@ -865,6 +865,10 @@ function renderTbar(){
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span class="hbtn-lbl">Projecten</span>
     </button>
+    <div id="user-info" style="display:none;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.2;padding:0 4px;">
+      <span id="user-info-name" style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;"></span>
+      <span id="user-info-co" style="font-size:10px;color:var(--sub);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;"></span>
+    </div>
     <button class="hbtn" id="logout-btn" onclick="doLogout()" style="display:none;" title="Uitloggen">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       <span class="hbtn-lbl">Uitloggen</span>
@@ -2914,6 +2918,15 @@ async function doLogout(){
 function _showLogoutBtn(session){
   const btn=document.getElementById('logout-btn');
   if(btn)btn.style.display=session?'flex':'none';
+  const info=document.getElementById('user-info');
+  if(info)info.style.display=session?'flex':'none';
+  if(session&&CURRENT_USER){
+    const nameEl=document.getElementById('user-info-name');
+    const coEl=document.getElementById('user-info-co');
+    if(nameEl)nameEl.textContent=CURRENT_USER.name||CURRENT_USER.email||'';
+    const co=APP?.companies?.find(c=>c.id===CURRENT_USER.companyId);
+    if(coEl)coEl.textContent=co?.name||'';
+  }
 }
 function showForgotPw(){
   document.getElementById('login-form').style.display='none';
@@ -2970,6 +2983,7 @@ async function _startApp(session){
   try{
     await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
     _initUI();updateRoleUI();refreshLogo();setupRealtime();
+    _showLogoutBtn(true);
     initOneSignalUser(CURRENT_USER?.id);
   }catch(e){console.error('startApp:',e);}
 }
