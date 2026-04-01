@@ -549,6 +549,13 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .daybtn{min-height:32px;padding:5px 10px;}
   .proj-card-btn{min-height:32px;padding:0 10px;}
 }
+/* iOS PWA standalone: move scroll from #dash-body to #dash so touch events reach buttons */
+@media(display-mode:standalone){
+  #dash{overflow-y:scroll;-webkit-overflow-scrolling:touch;}
+  #dash.open{display:block;}
+  #dash-hdr{position:sticky;top:0;z-index:10;}
+  #dash-body{overflow:visible;flex:none;}
+}
 </style>
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
