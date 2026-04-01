@@ -2079,8 +2079,11 @@ function hideDash(){document.getElementById('dash').classList.remove('open');}
 
 function renderDash(){
   const grid=document.getElementById('proj-grid');
-  // Non-admins only see projects from their own company
-  const visibleProjects=isAdmin()?APP.projects:APP.projects.filter(p=>p.companyId===CURRENT_USER?.companyId);
+  const myCoId=CURRENT_USER?.companyId||'';
+  // Show projects from own company, projects with no company set, and all if admin
+  const visibleProjects=isAdmin()
+    ?APP.projects
+    :APP.projects.filter(p=>!p.companyId||p.companyId===myCoId);
   grid.innerHTML=visibleProjects.map(p=>{
     const co=APP.companies.find(c=>c.id===p.companyId);
     const showCount=(p.data?.shows||[]).length;
