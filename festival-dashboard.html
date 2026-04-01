@@ -1352,15 +1352,19 @@ function setNxt(nxt){
 
 // ══ RENDER SCHEDULE (FOH-style cards)
 function renderSched(){
-  const shows=getShows(G.activeStage,G.activeDay);
+  const allShows=getShows(G.activeStage,G.activeDay);
   const n=nowMin();
-  document.getElementById('show-cnt').textContent=shows.length===1?'1 show':shows.length+' shows';
+  const isMob=window.innerWidth<=700;
+  const shows=isMob&&G.timerMode==='live'
+    ?allShows.filter(s=>{const em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);return n<em;})
+    :allShows;
+  document.getElementById('show-cnt').textContent=allShows.length===1?'1 show':allShows.length+' shows';
   const nsBtn=document.getElementById('new-show-btn');
   const hasStages=G.stages&&G.stages.length>0;
-  if(nsBtn)nsBtn.classList.toggle('pulse',hasStages&&!shows.length);
+  if(nsBtn)nsBtn.classList.toggle('pulse',hasStages&&!allShows.length);
   const list=document.getElementById('slist');
   if(!shows.length){
-    list.innerHTML=`<div id="empty"><div class="ei">📋</div><p style="font-size:13px;">Geen shows gepland.<br>Klik op <strong>Nieuwe show</strong>.</p></div>`;
+    list.innerHTML=`<div id="empty"><div class="ei">📋</div><p style="font-size:13px;">${isMob?'Geen aankomende shows.':'Geen shows gepland.<br>Klik op <strong>Nieuwe show</strong>.'}</p></div>`;
     return;
   }
   list.innerHTML=shows.map((s,i)=>{
