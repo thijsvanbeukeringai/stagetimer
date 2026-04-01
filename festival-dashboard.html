@@ -2513,19 +2513,19 @@ function isCompanyAdmin(){return['admin','super_admin','company_admin'].includes
 async function loadCurrentUser(session){
   if(!session)return;
   // Try to find by email in app_users
-  const{data:rows}=await supa.from('app_users').select('*').eq('email',session.user.email).limit(1);
+  const{data:rows,error:findErr}=await supa.from('app_users').select('*').eq('email',session.user.email).limit(1);
+  if(findErr){console.warn('app_users lookup failed:',findErr);return;}
   const found=rows?.[0]||null;
   if(found){
     CURRENT_USER={id:found.id,name:found.name,email:found.email,role:found.role,companyId:found.company_id};
   }else{
-    // First ever user → auto-create as admin
-    const{data:all}=await supa.from('app_users').select('id').limit(1);
-    if(!all||all.length===0){
-      const newAdmin={id:uid(),name:session.user.email.split('@')[0],email:session.user.email,role:'admin',company_id:''};
-      await supa.from('app_users').insert([newAdmin]);
-      CURRENT_USER={...newAdmin,companyId:''};
-      APP.users.push(CURRENT_USER);
-    }
+    // Only auto-create if the entire table is empty (very first user ever)
+    const{data:all,error:allErr}=await supa.from('app_users').select('id').limit(1);
+    if(allErr||!all||all.length>0)return; // table has users → don't auto-create
+    const newAdmin={id:uid(),name:session.user.email.split('@')[0],email:session.user.email,role:'admin',company_id:''};
+    await supa.from('app_users').insert([newAdmin]);
+    CURRENT_USER={...newAdmin,companyId:''};
+    APP.users.push(CURRENT_USER);
   }
   // Cache current user so it's available immediately on next page load
   if(CURRENT_USER)localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
