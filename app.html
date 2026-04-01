@@ -39,6 +39,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .daybtn:not(.on):hover{background:var(--s3);color:var(--text);}
 #clock-hdr{font-family:var(--ffm);font-size:12px;color:var(--sub);white-space:nowrap;}
 #mob-hdr-break{display:none;}
+#mob-nav{display:none;}
 #mob-hdr-cd{display:none;font-family:var(--ffm);font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;white-space:nowrap;flex-shrink:0;}
 .hbtn{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:700;cursor:pointer;border:1px solid var(--border2);background:var(--s2);color:var(--sub);white-space:nowrap;flex-shrink:0;transition:all .15s;}
 .hbtn:hover{background:var(--s3);color:var(--text);}
@@ -435,46 +436,41 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 /* ── RESPONSIVE ── */
 @media(max-width:700px){
   /* Header: two rows */
-  #hdr{
-    flex-wrap:wrap;
-    height:auto;
-    padding:6px 10px 0;
-    gap:5px;
-    overflow-x:visible;
-  }
-  /* Row 1 items */
+  /* Header: two clean rows */
+  #hdr{flex-wrap:wrap;height:auto;padding:8px 12px 6px;gap:6px;overflow-x:visible;}
+  /* Row 1: logo + sync + spacer + clock */
   #co-logo-main{order:1;}
   #logo{order:2;}
   #sync-dot{order:3;}
   #hdr-vsep1{display:none;}
-  #hdr-daywrap{order:4;flex:1;min-width:0;overflow-x:auto;}
-  #hdr-daywrap::-webkit-scrollbar{display:none;}
-  #hdr-spacer1{display:none;}
-  #clock-hdr{order:5;display:block;font-size:11px;}
-  /* Force line break between row 1 and row 2 */
-  #mob-hdr-break{display:block;width:100%;height:0;order:6;margin:0;}
-  /* Row 2 items */
+  #hdr-spacer1{order:4;flex:1;}
+  #clock-hdr{order:5;font-size:12px;}
+  #mob-hdr-break{display:block;width:100%;height:0;order:6;}
+  /* Row 2: stage select + day tabs */
   #stage-sel{order:7;flex:1;min-width:0;font-size:12px;}
-  #mob-hdr-cd{order:8;display:flex;align-items:center;}
-  #hdr-stages-btn{order:9;padding:5px 7px;}
-  #hdr-import-btn{order:10;padding:5px 7px;}
-  #hdr-spacer2{display:none;}
-  #hdr-bs-btn{order:11;padding:5px 7px;}
-  #hdr-foh-btn{order:12;padding:5px 7px;}
-  #hdr-sv-btn{order:13;padding:5px 7px;}
-  #hdr-tl-btn{order:14;padding:5px 7px;}
-  #logout-btn{order:15;padding:5px 7px;}
-  /* Hide text labels, keep icons only for view buttons */
-  #hdr-bs-btn .hbtn-lbl,
-  #hdr-foh-btn .hbtn-lbl,
-  #hdr-sv-btn .hbtn-lbl,
-  #hdr-tl-btn .hbtn-lbl,
-  #hdr-stages-btn .hbtn-lbl,
-  #hdr-import-btn .hbtn-lbl,
-  #logout-btn .hbtn-lbl{display:none;}
-  /* Row 2 bottom padding */
-  #hdr::after{content:'';display:block;width:100%;height:6px;order:99;}
+  #hdr-daywrap{order:8;overflow-x:auto;flex-shrink:0;}
+  #hdr-daywrap::-webkit-scrollbar{display:none;}
+  /* Hide everything else from header on mobile */
+  #mob-hdr-cd,#hdr-stages-btn,#hdr-crew-btn,#hdr-import-btn,
+  #hdr-spacer2,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
+  #user-info,#logout-btn,.vsep{display:none!important;}
   #logo-name{display:none;}
+  /* Bottom nav */
+  #mob-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;
+    background:var(--s1);border-top:1px solid var(--border);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    justify-content:space-around;
+  }
+  .mob-nav-btn{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;color:var(--sub);font-family:var(--ff);
+    font-size:9px;font-weight:700;cursor:pointer;padding:4px 6px;border-radius:8px;
+    flex:1;letter-spacing:.03em;
+  }
+  .mob-nav-btn:active{background:var(--s2);}
+  /* Add bottom padding to body content so it's not hidden behind nav */
+  #body{padding-bottom:60px;}
 
   /* Body: vertical stack on mobile */
   #body{flex-direction:column;}
@@ -873,6 +869,16 @@ function renderTbar(){
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       <span class="hbtn-lbl">Uitloggen</span>
     </button>
+  </div>
+
+  <!-- Mobile bottom navigation (hidden on desktop) -->
+  <div id="mob-nav">
+    <button class="mob-nav-btn" onclick="openBS()">🎭<span>Backstage</span></button>
+    <button class="mob-nav-btn" onclick="openFOH()">📺<span>FOH</span></button>
+    <button class="mob-nav-btn" onclick="openSV()">⛶<span>Stage View</span></button>
+    <button class="mob-nav-btn" onclick="openTL()">▦<span>Tijdlijn</span></button>
+    <button class="mob-nav-btn" onclick="goToDash()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Projecten</span></button>
+    <button class="mob-nav-btn" id="mob-logout-btn" onclick="doLogout()" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Uitloggen</span></button>
   </div>
 
   <div id="body">
@@ -2958,6 +2964,8 @@ function doLogout(){
 function _showLogoutBtn(session){
   const btn=document.getElementById('logout-btn');
   if(btn)btn.style.display=session?'flex':'none';
+  const mobBtn=document.getElementById('mob-logout-btn');
+  if(mobBtn)mobBtn.style.display=session?'flex':'none';
   const info=document.getElementById('user-info');
   if(info)info.style.display=session?'flex':'none';
   if(session&&CURRENT_USER){
