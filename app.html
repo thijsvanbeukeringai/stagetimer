@@ -455,6 +455,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #hdr-spacer2,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
   #user-info,#logout-btn,.vsep{display:none!important;}
   #logo-name{display:none;}
+  #hdr-proj-btn{display:none!important;}
+  #clock-hdr{display:none!important;}
+  #hdr-add-show-btn{display:flex!important;}
+  #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
   /* Bottom nav */
   #mob-nav{
     display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;
@@ -860,9 +864,13 @@ function renderTbar(){
     <button class="hbtn" onclick="openSV()" id="hdr-sv-btn">⛶ <span class="hbtn-lbl">Stage View</span></button>
     <button class="hbtn" onclick="openTL()" id="hdr-tl-btn">▦ <span class="hbtn-lbl">Tijdlijn</span></button>
     <div class="vsep"></div>
-    <button class="hbtn" onclick="goToDash()" title="Terug naar projecten">
+    <button class="hbtn" id="hdr-proj-btn" onclick="goToDash()" title="Terug naar projecten">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span class="hbtn-lbl">Projecten</span>
+    </button>
+    <button class="hbtn" id="hdr-add-show-btn" onclick="openDrawer(null)" style="display:none;">
+      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      Show toevoegen
     </button>
     <div id="user-info" style="display:none;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.2;padding:0 4px;">
       <span id="user-info-name" style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;"></span>
@@ -1805,11 +1813,12 @@ function delShow(id,e){e.stopPropagation();if(!confirm('Show verwijderen?'))retu
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();save();renderAll();}
 
 // ══ OPEN/CLOSE screens
-function openFOH(){document.getElementById('foh').classList.add('open');renderFOH();}
+function _closeAllScreens(){['foh','bs','sv','tl'].forEach(id=>document.getElementById(id).classList.remove('open'));}
+function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();}
 function closeFOH(){document.getElementById('foh').classList.remove('open');}
-function openBS(){document.getElementById('bs').classList.add('open');renderBS();}
+function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();}
 function closeBS(){document.getElementById('bs').classList.remove('open');}
-function openSV(){document.getElementById('sv').classList.add('open');renderSV();}
+function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();}
 function closeSV(){document.getElementById('sv').classList.remove('open');}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();}});
 
@@ -2367,6 +2376,7 @@ async function delUser(id){
 const TL_PX=180,TL_LW=130,TL_ROW=76,TL_RH=40;
 
 function openTL(){
+  _closeAllScreens();
   document.getElementById('tl').classList.add('open');
   renderTL();
   requestAnimationFrame(()=>{
