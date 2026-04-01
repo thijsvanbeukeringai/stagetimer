@@ -302,8 +302,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
 .dash-section-title{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--sub);}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-.proj-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:0;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;position:relative;}
-.proj-card:hover{border-color:rgba(99,102,241,.35);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.proj-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:0;cursor:pointer;transition:border-color .15s,box-shadow .15s;position:relative;width:100%;text-align:left;font-family:var(--ff);color:var(--text);display:block;}
+.proj-card:hover{border-color:rgba(99,102,241,.35);box-shadow:0 8px 24px rgba(0,0,0,.3);}
 .proj-card-accent{height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);width:100%;border-radius:14px 14px 0 0;}
 .proj-card-body{padding:18px 20px 16px;}
 .proj-card-name{font-size:16px;font-weight:800;letter-spacing:-.4px;margin-bottom:5px;color:var(--text);}
@@ -2109,7 +2109,7 @@ function renderDash(){
     const showCount=(p.data?.shows||[]).length;
     const stageCount=(p.data?.stages||[]).length;
     const logo=p.data?.logo;
-    return`<div class="proj-card" onclick="openProject('${p.id}')" style="cursor:pointer;">
+    return`<button class="proj-card" onclick="openProject('${p.id}')">
       <div class="proj-card-accent"></div>
       <div class="proj-card-body">
         <div class="proj-card-actions">
@@ -2143,7 +2143,7 @@ function renderDash(){
           }
         </div>
       </div>
-    </div>`;
+    </button>`;
   }).join('');
   // Always append "new project" card
   grid.innerHTML+=`<div class="new-proj-card" onclick="openProjModal()">
