@@ -2502,8 +2502,8 @@ function goToDash(){
 
 // ══ CURRENT USER & ROLES
 let CURRENT_USER=null;
-function isAdmin(){return CURRENT_USER?.role==='admin';}
-function isCompanyAdmin(){return['admin','company_admin'].includes(CURRENT_USER?.role);}
+function isAdmin(){return['admin','super_admin'].includes(CURRENT_USER?.role);}
+function isCompanyAdmin(){return['admin','super_admin','company_admin'].includes(CURRENT_USER?.role);}
 
 async function loadCurrentUser(session){
   if(!session)return;
