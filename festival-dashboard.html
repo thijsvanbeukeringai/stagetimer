@@ -2902,7 +2902,11 @@ async function doLogin(){
 }
 async function doLogout(){
   saveAuthSession(null);
-  try{if(window.OneSignal?.logout)await window.OneSignal.logout();}catch(e){}
+  try{
+    if(window.OneSignal?.logout){
+      await Promise.race([window.OneSignal.logout(),new Promise(r=>setTimeout(r,1500))]);
+    }
+  }catch(e){}
   await supa.auth.signOut();
   localStorage.removeItem('st_active_proj');
   location.reload();
