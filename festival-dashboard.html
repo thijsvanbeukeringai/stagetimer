@@ -1008,7 +1008,7 @@ function renderTbar(){
       Uitloggen
     </button>
   </div>
-  <div id="dash-body" onclick="">
+  <div id="dash-body">
     <div class="dash-section">
       <div class="dash-section-hdr">
         <span class="dash-section-title">Projecten</span>
@@ -2128,7 +2128,7 @@ function renderDash(){
           <span class="proj-card-stat">${showCount} show${showCount!==1?'s':''}</span>
           <span class="proj-card-stat">${stageCount} stage${stageCount!==1?'s':''}</span>
         </div>
-        <button class="btn-p open-proj-btn" onclick="event.stopPropagation();openProject('${p.id}')" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;touch-action:manipulation;cursor:pointer;">Open project</button>
+        <button class="btn-p open-proj-btn" onclick="openProject('${p.id}')" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;">Open project</button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);" onclick="event.stopPropagation()">
           ${logo
             ?`<img src="${logo}" style="height:24px;max-width:80px;object-fit:contain;border-radius:3px;cursor:pointer;" title="Logo wijzigen" onclick="triggerLogoUpload('${p.id}')">
@@ -3015,34 +3015,23 @@ async function setNewPassword(){
 }
 
 // ══ INIT
-let _dashListenerSet=false;
+let _iosTapHandlerSet=false;
 function _initUI(){
   if(!G){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Dag 1'}],timerMode:'live'};}
-  // Permanent delegate listener on dash-body — set once, survives innerHTML rewrites
-  if(!_dashListenerSet){
-    _dashListenerSet=true;
-    const db=document.getElementById('dash-body');
-    db.addEventListener('touchstart',function(e){
-      const btn=e.target.closest('.open-proj-btn');
-      if(btn){e.preventDefault();e.stopPropagation();openProject(btn.dataset.pid);}
+  // iOS PWA: one global tap handler on document — catches all buttons regardless of nesting depth.
+  // Fires on touchend, checks it was a tap (not a scroll), then calls .click() on the target.
+  if(!_iosTapHandlerSet&&_isIOS()&&_isStandalone()){
+    _iosTapHandlerSet=true;
+    let _tapY=0;
+    document.addEventListener('touchstart',e=>{_tapY=e.touches[0].clientY;},{passive:true});
+    document.addEventListener('touchend',e=>{
+      if(Math.abs(e.changedTouches[0].clientY-_tapY)>10)return; // was a scroll
+      if(e.target.matches('input,select,textarea'))return; // let form elements handle themselves
+      const el=e.target.closest('button:not([disabled]),a,[onclick]');
+      if(!el)return;
+      e.preventDefault(); // prevent the 300ms delayed ghost click
+      el.click();
     },{passive:false});
-    db.addEventListener('click',function(e){
-      const btn=e.target.closest('.open-proj-btn');
-      if(btn){e.preventDefault();e.stopPropagation();openProject(btn.dataset.pid);}
-    });
-    // iOS PWA: nested overflow-y:scroll inside position:fixed swallows all touch events.
-    // Fix: move scroll to #dash itself, make #dash-body overflow visible.
-    if(_isIOS()&&_isStandalone()){
-      const dash=document.getElementById('dash');
-      dash.style.overflowY='scroll';
-      dash.style.webkitOverflowScrolling='touch';
-      db.style.overflow='visible';
-      db.style.flex='none';
-      // Make header sticky
-      document.getElementById('dash-hdr').style.position='sticky';
-      document.getElementById('dash-hdr').style.top='0';
-      document.getElementById('dash-hdr').style.zIndex='10';
-    }
   }
   // Always land on the projects dashboard after login
   document.getElementById('dash').classList.add('open');
