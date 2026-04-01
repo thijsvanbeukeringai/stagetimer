@@ -2104,6 +2104,7 @@ function openProjectOnce(id){const now=Date.now();if(now-_lastProjOpen<400)retur
   document.addEventListener('touchmove',function(){_tMoved=true;},{passive:true});
   document.addEventListener('touchend',function(e){
     if(_tMoved)return;
+    if(e.target.closest('.proj-card-btn,.mob-nav-btn,button'))return;
     const card=e.target.closest('[data-proj-id]');
     if(card&&card.classList.contains('proj-card'))openProjectOnce(card.dataset.projId);
   },{passive:true});
@@ -2829,19 +2830,19 @@ function loadOT(){
   if(!APP)return; // APP not initialized yet
   // migrate from legacy key if present
   try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch{}
-  const coId=CURRENT_USER?.companyId||'';
+  const uid=CURRENT_USER?.id||'';
   const now=Date.now();
-  // Remove expired timers from all companies
+  // Remove expired timers
   APP.timers=(APP.timers||[]).filter(t=>otExpiry(t)>now);
-  // Only show timers belonging to current company
-  OT=APP.timers.filter(t=>(t.companyId||'')===coId);
+  // Only show timers belonging to current user
+  OT=APP.timers.filter(t=>(t.createdBy||t.companyId||'')===uid||(uid===''&&!(t.createdBy)));
   saveAPP();
 }
 function otExpiry(t){try{const d=new Date(t.date+'T'+t.end);return d.getTime()+86400000;}catch{return 0;}}
 function saveOTData(){
-  const coId=CURRENT_USER?.companyId||'';
-  // Keep other companies' timers, replace current company's timers
-  const others=(APP.timers||[]).filter(t=>(t.companyId||'')!==coId);
+  const uid=CURRENT_USER?.id||'';
+  // Keep other users' timers, replace current user's timers
+  const others=(APP.timers||[]).filter(t=>(t.createdBy||'')!==uid&&!(uid===''&&!(t.createdBy)));
   APP.timers=[...others,...OT];
   saveAPP();
 }
@@ -2896,7 +2897,7 @@ function saveOTTimer(){
   const end=document.getElementById('otm-end').value;if(!end){document.getElementById('otm-end').focus();return;}
   const note=document.getElementById('otm-note').value.trim();
   if(_otEditId){const t=OT.find(x=>x.id===_otEditId);if(t)Object.assign(t,{artist,date,start:start+':00',end:end+':00',note});}
-  else{OT.push({id:uid(),artist,date,start:start+':00',end:end+':00',note,companyId:CURRENT_USER?.companyId||'',createdAt:Date.now()});}
+  else{OT.push({id:uid(),artist,date,start:start+':00',end:end+':00',note,companyId:CURRENT_USER?.companyId||'',createdBy:CURRENT_USER?.id||'',createdAt:Date.now()});}
   saveOTData();closeOTModal();renderOTSection();
   if(_currentOTId===_otEditId)renderOTV();
 }
