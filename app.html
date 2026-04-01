@@ -476,23 +476,14 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #hdr::after{content:'';display:block;width:100%;height:6px;order:99;}
   #logo-name{display:none;}
 
-  /* Body: hide timer panel by default, show as bottom sheet */
-  #tpanel{
-    position:fixed;bottom:0;left:0;right:0;
-    width:100%!important;max-height:70vh;height:auto;
-    z-index:88;border-right:none;
-    border-top:1px solid var(--border2);
-    border-radius:18px 18px 0 0;
-    transform:translateY(100%);
-    transition:transform .28s cubic-bezier(.2,.9,.3,1);
-    box-shadow:0 -8px 40px rgba(0,0,0,.5);
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-  #tpanel::before{content:'';display:block;width:36px;height:4px;background:rgba(255,255,255,.18);border-radius:99px;margin:10px auto 0;flex-shrink:0;}
-  #tpanel.mob-open{transform:translateY(0);}
-  #mob-sheet-ov.open{display:block;}
-  #mob-timer-fab{display:flex;}
-  #spanel{width:100%;}
+  /* Body: vertical stack on mobile */
+  #body{flex-direction:column;}
+  #tpanel{width:100%!important;border-right:none;border-bottom:1px solid var(--border);overflow:visible;}
+  #tpanel::before{display:none;}
+  #tinner{flex:none;}
+  #mob-timer-fab{display:none!important;}
+  #mob-sheet-ov{display:none!important;}
+  #spanel{width:100%;flex:1;}
 
   /* Drawer full-width */
   #drawer{width:100%;border-radius:0;}
@@ -537,8 +528,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   /* Stage/Day modals */
   #stage-modal-ov > div, #day-modal-ov > div{width:92vw;padding:18px;}
 
-  /* Bottom padding for FAB */
-  #slist{padding-bottom:80px;}
+  #slist{padding-bottom:20px;}
 }
 
 @media(max-width:400px){
