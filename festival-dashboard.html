@@ -202,9 +202,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .foh-booth-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.04em;flex-shrink:0;}
 /* FOH notes */
 .foh-notes{margin-top:7px;display:flex;flex-direction:column;gap:4px;}
-.foh-note-item{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:rgba(255,255,255,.04);border-radius:6px;border-left:2px solid rgba(255,230,0,.3);}
-.foh-note-time{font-family:var(--ffm);font-size:10px;font-weight:600;color:rgba(255,230,0,.6);flex-shrink:0;padding-top:1px;}
-.foh-note-txt{flex:1;font-size:12px;color:rgba(255,255,255,.6);line-height:1.4;}
+.foh-note-item{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:rgba(255,255,255,.06);border-radius:6px;border-left:3px solid rgba(255,230,0,.7);}
+.foh-note-time{font-family:var(--ffm);font-size:10px;font-weight:600;color:rgba(255,230,0,.9);flex-shrink:0;padding-top:1px;}
+.foh-note-txt{flex:1;font-size:12px;color:rgba(255,255,255,.92);line-height:1.4;font-weight:500;}
+.fohn-colors{display:flex;gap:6px;flex-wrap:wrap;}
+.fohn-color-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s;}
+.fohn-color-swatch.active{border-color:#fff;transform:scale(1.2);}
 .foh-note-del{width:18px;height:18px;border-radius:4px;border:none;background:transparent;color:rgba(255,255,255,.2);font-size:12px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .foh-note-del:hover{background:rgba(239,68,68,.15);color:#ef4444;}
 .foh-add-note{display:flex;align-items:center;gap:5px;margin-top:6px;padding:4px 8px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.25);font-family:var(--ff);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;width:auto;}
@@ -306,8 +309,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .proj-card-co{font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;background:rgba(99,102,241,.12);color:#a5b4fc;margin-bottom:10px;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(99,102,241,.18);}
 .proj-card-stats{display:flex;gap:8px;margin-top:2px;}
 .proj-card-stat{font-size:11px;font-weight:600;color:var(--sub);background:var(--s2);padding:3px 9px;border-radius:6px;border:1px solid var(--border);}
-.proj-card-actions{position:absolute;top:12px;right:12px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
-.proj-card:hover .proj-card-actions{opacity:1;}
+.proj-card-actions{position:absolute;top:12px;right:12px;display:flex;gap:4px;opacity:0;pointer-events:none;transition:opacity .15s;}
+.proj-card:hover .proj-card-actions{opacity:1;pointer-events:auto;}
 .proj-card-btn{height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:3px;font-weight:600;transition:all .12s;}
 .proj-card-btn:hover{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
 .proj-card-btn.del:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#ef4444;}
@@ -540,6 +543,13 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .daybtn{padding:3px 7px;font-size:10px;}
 }
 </style>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+window.OneSignalDeferred=window.OneSignalDeferred||[];
+OneSignalDeferred.push(async function(OneSignal){
+  await OneSignal.init({appId:'5778eb83-1c2c-4ffd-b085-4236b5bd0188',serviceWorkerPath:'/OneSignalSDKWorker.js'});
+});
+</script>
 </head>
 <body>
 <script>
@@ -638,6 +648,7 @@ function loadG(){
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.timerMode)G.timerMode='live';
   if(!G.fohNotes)G.fohNotes={};
+  if(!G.memberIds)G.memberIds=[];
 }
 
 // Debounced syncs
@@ -835,6 +846,10 @@ function renderTbar(){
     <button class="hbtn" onclick="openStageModal()" title="Stages beheren" style="padding:5px 8px;" id="hdr-stages-btn">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 21 12"/></svg>
       <span class="hbtn-lbl">Stages</span>
+    </button>
+    <button class="hbtn" onclick="openCrewModal()" title="Crew beheren" id="hdr-crew-btn">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="hbtn-lbl">Crew</span>
     </button>
     <button class="hbtn" onclick="openJSONModal()" title="Lineup importeren via JSON" id="hdr-import-btn">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1137,6 +1152,18 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- CREW MODAL -->
+<div id="crew-modal-ov" onclick="if(event.target===this)closeCrewModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:380px;display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:14px;font-weight:800;">Crew — pushmeldingen</div>
+      <button onclick="closeCrewModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--sub);">Selecteer wie pushmeldingen ontvangt (10 min voor einde show). Gebruikers moeten de app eenmalig in de browser geopend hebben.</div>
+    <div id="crew-list" style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <!-- DAY MODAL -->
 <div id="day-modal-ov" onclick="if(event.target===this)closeDayModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
   <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:360px;display:flex;flex-direction:column;gap:12px;">
@@ -1160,6 +1187,7 @@ function renderTbar(){
     <div id="fohn-modal-sub"></div>
     <input class="fi" id="fohn-text" type="text" placeholder="Notitie…" onkeydown="if(event.key==='Enter')saveFohnNote()">
     <input class="fi" id="fohn-time" type="time" step="1" placeholder="Tijd (optioneel)">
+    <div class="fohn-colors" id="fohn-colors"></div>
     <div class="fohn-actions">
       <button class="btn-g" onclick="closeFohnModal()" style="flex:1;">Annuleer</button>
       <button class="btn-p" onclick="saveFohnNote()" style="flex:1;">Opslaan</button>
@@ -1330,8 +1358,8 @@ function renderSched(){
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     // FOH notes
     const notes=G.fohNotes[s.id]||[];
-    const notesHTML=notes.map(nt=>`<div class="foh-note-item">
-      ${nt.time?`<span class="foh-note-time">${nt.time}</span>`:''}
+    const notesHTML=notes.map(nt=>`<div class="foh-note-item" style="border-left-color:${nt.color||'#ffe600'}">
+      ${nt.time?`<span class="foh-note-time" style="color:${nt.color||'#ffe600'}">${nt.time}</span>`:''}
       <span class="foh-note-txt">${escH(nt.text)}</span>
       <button class="foh-note-del" onclick="delFohnNote('${s.id}','${nt.id}');event.stopPropagation()">×</button>
     </div>`).join('');
@@ -1470,8 +1498,8 @@ function fohBoothBadge(booth){
 function fohNotesHTML(showId){
   const notes=(G.fohNotes[showId]||[]);
   if(!notes.length)return'';
-  return`<div class="foh-notes">${notes.map(n=>`<div class="foh-note-item">
-    ${n.time?`<span class="foh-note-time">${n.time}</span>`:''}
+  return`<div class="foh-notes">${notes.map(n=>`<div class="foh-note-item" style="border-left-color:${n.color||'#ffe600'}">
+    ${n.time?`<span class="foh-note-time" style="color:${n.color||'#ffe600'}">${n.time}</span>`:''}
     <span class="foh-note-txt">${escH(n.text)}</span>
     <button class="foh-note-del" onclick="delFohnNote('${showId}','${n.id}');event.stopPropagation()">×</button>
   </div>`).join('')}</div>`;
@@ -1538,21 +1566,28 @@ function renderFOH(){
 }
 
 // ══ FOH NOTES
-let _fohnTarget=null;
+const FOHN_COLORS=['#ffe600','#ff4d4d','#4dff91','#4db8ff','#ff944d','#c44dff','#ffffff'];
+let _fohnTarget=null,_fohnColor=FOHN_COLORS[0];
 function openFohnModal(showId,name){
-  _fohnTarget=showId;
+  _fohnTarget=showId;_fohnColor=FOHN_COLORS[0];
   document.getElementById('fohn-modal-sub').textContent=name;
   document.getElementById('fohn-text').value='';
   document.getElementById('fohn-time').value='';
+  document.getElementById('fohn-colors').innerHTML=FOHN_COLORS.map(c=>`<div class="fohn-color-swatch${c===_fohnColor?' active':''}" style="background:${c};" onclick="pickFohnColor('${c}',this)"></div>`).join('');
   document.getElementById('fohn-ov').classList.add('open');
   setTimeout(()=>document.getElementById('fohn-text').focus(),120);
+}
+function pickFohnColor(c,el){
+  _fohnColor=c;
+  document.querySelectorAll('.fohn-color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
 }
 function closeFohnModal(){document.getElementById('fohn-ov').classList.remove('open');_fohnTarget=null;}
 function saveFohnNote(){
   const text=document.getElementById('fohn-text').value.trim();if(!text)return;
   const time=document.getElementById('fohn-time').value||'';
   if(!G.fohNotes[_fohnTarget])G.fohNotes[_fohnTarget]=[];
-  G.fohNotes[_fohnTarget].push({id:uid(),text,time});
+  G.fohNotes[_fohnTarget].push({id:uid(),text,time,color:_fohnColor});
   save();closeFohnModal();renderFOH();renderSched();
 }
 function delFohnNote(showId,noteId){
@@ -2003,10 +2038,15 @@ function openDayModal(){
 function closeDayModal(){document.getElementById('day-modal-ov').style.display='none';}
 function renderDayList(){
   document.getElementById('day-list').innerHTML=(G.days||[]).map((d,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s3);border-radius:8px;">
-      <span style="font-size:12px;font-weight:700;flex:1;">${escH(d.name)}</span>
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--s3);border-radius:8px;">
+      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay('${d.id}',this.value)" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
       ${(G.days.length>1)?`<button onclick="delDay('${d.id}')" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Verwijderen">×</button>`:''}
     </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">Nog geen dagen aangemaakt.</div>`;
+}
+function renameDay(id,name){
+  name=name.trim();if(!name)return;
+  const d=G.days.find(x=>x.id===id);if(!d||d.name===name)return;
+  d.name=name;save();renderAll();
 }
 function addDay(){
   const name=document.getElementById('dm-name').value.trim();if(!name)return;
@@ -2096,6 +2136,7 @@ function openProject(id){
   loadG();hideDash();refreshLogo();
   renderAll();updateClock();
   if(!(G.stages&&G.stages.length))setTimeout(openStageModal,150);
+  setTimeout(scheduleProjectPushes,500);
   // update header project name
   document.getElementById('logo-name').textContent=APP.projects.find(p=>p.id===id)?.name||'Stage Timer';
 }
@@ -2468,6 +2509,79 @@ function updateRoleUI(){
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display=isAdmin()?'':'none');
 }
 
+// ══ CREW MODAL
+function openCrewModal(){
+  document.getElementById('crew-modal-ov').style.display='flex';
+  renderCrewList();
+}
+function closeCrewModal(){document.getElementById('crew-modal-ov').style.display='none';}
+function renderCrewList(){
+  if(!APP||!APP.users||!CURRENT_USER)return;
+  const list=document.getElementById('crew-list');
+  const memberIds=G.memberIds||[];
+  const users=APP.users.filter(u=>u.companyId===CURRENT_USER.companyId);
+  if(!users.length){list.innerHTML='<div style="color:var(--sub);font-size:13px;padding:8px;">Geen gebruikers gevonden in jouw bedrijf.</div>';return;}
+  list.innerHTML=users.map(u=>{
+    const checked=memberIds.includes(u.id);
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:${checked?'var(--s3)':'transparent'};">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleCrewMember('${u.id}',this.checked)" style="cursor:pointer;width:16px;height:16px;">
+      <span style="font-size:13px;">${u.name||u.email}</span>
+    </label>`;
+  }).join('');
+}
+function toggleCrewMember(userId,add){
+  if(!G.memberIds)G.memberIds=[];
+  if(add){if(!G.memberIds.includes(userId))G.memberIds.push(userId);}
+  else{G.memberIds=G.memberIds.filter(id=>id!==userId);}
+  saveProj();renderCrewList();
+}
+
+// ══ ONESIGNAL
+const OS_APP_ID='5778eb83-1c2c-4ffd-b085-4236b5bd0188';
+const OS_REST_KEY='os_v2_app_k54oxay4frh73mefii3llpibrbfc3y7kg4uuhff6anaeirn24ba23shg725lertwkymwyyiy7vsazqadx4ylnc73mvufwl4a2oofrji';
+
+async function initOneSignalUser(userId){
+  if(!userId)return;
+  try{
+    // Wait for OneSignal SDK to be ready
+    await new Promise(resolve=>{
+      if(window.OneSignal&&window.OneSignal.login){resolve();return;}
+      const t=setInterval(()=>{if(window.OneSignal&&window.OneSignal.login){clearInterval(t);resolve();}},300);
+      setTimeout(()=>{clearInterval(t);resolve();},8000);
+    });
+    if(window.OneSignal?.login)await window.OneSignal.login(userId);
+  }catch(e){console.warn('OneSignal login:',e);}
+}
+
+async function scheduleProjectPushes(){
+  if(!G||!APP||!CURRENT_USER)return;
+  const memberIds=G.memberIds||[];
+  if(!memberIds.length)return;
+  const today=G.activeDay;
+  const shows=(G.shows||[]).filter(s=>s.day===today&&s.endTime);
+  const nowMs=Date.now();
+  const midnight=new Date();midnight.setHours(0,0,0,0);
+  for(const show of shows){
+    const endSec=t2s(show.endTime);
+    const notifMs=midnight.getTime()+(endSec-600)*1000;
+    if(notifMs<=nowMs)continue;
+    const stageName=(G.stages||[]).find(st=>st.id===show.stageId)?.name||'Stage';
+    const payload={
+      app_id:OS_APP_ID,
+      include_external_user_ids:memberIds,
+      channel_for_external_user_ids:'push',
+      headings:{en:`${show.artist||'Show'} bijna klaar`,nl:`${show.artist||'Show'} bijna klaar`},
+      contents:{en:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} — nog ~10 min.`,nl:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} — nog ~10 min.`},
+      send_after:new Date(notifMs).toISOString()
+    };
+    fetch('https://onesignal.com/api/v1/notifications',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Basic '+OS_REST_KEY},
+      body:JSON.stringify(payload)
+    }).catch(e=>console.warn('scheduleNotif:',e));
+  }
+}
+
 // ══ SHARE LINKS
 const _shareBase=()=>location.origin+location.pathname;
 function openShareModal(projId){
@@ -2700,7 +2814,6 @@ function saveOTTimer(){
   if(_currentOTId===_otEditId)renderOTV();
 }
 function delOT(id){
-  if(!confirm('Timer verwijderen?'))return;
   OT=OT.filter(t=>t.id!==id);saveOTData();renderOTSection();
   if(_currentOTId===id)closeOTV();
 }
@@ -2783,6 +2896,7 @@ async function doLogin(){
 }
 async function doLogout(){
   saveAuthSession(null);
+  try{if(window.OneSignal?.logout)await window.OneSignal.logout();}catch(e){}
   await supa.auth.signOut();
   localStorage.removeItem('st_active_proj');
   location.reload();
@@ -2846,6 +2960,7 @@ async function _startApp(session){
   try{
     await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
     _initUI();updateRoleUI();refreshLogo();setupRealtime();
+    initOneSignalUser(CURRENT_USER?.id);
   }catch(e){console.error('startApp:',e);}
 }
 (async()=>{
