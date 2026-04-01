@@ -624,6 +624,8 @@ function loadAPPCache(){
   if(!APP.companies)APP.companies=[];
   if(!APP.users)APP.users=[];
   if(!APP.timers)APP.timers=[];
+  // Restore current user from cache so renderDash filters correctly on first render
+  try{const cu=localStorage.getItem('st_current_user');if(cu)CURRENT_USER=JSON.parse(cu);}catch(e){}
 }
 
 // Load from Supabase (async, merges into APP)
@@ -2126,7 +2128,7 @@ function renderDash(){
           <span class="proj-card-stat">${showCount} show${showCount!==1?'s':''}</span>
           <span class="proj-card-stat">${stageCount} stage${stageCount!==1?'s':''}</span>
         </div>
-        <a class="btn-p open-proj-btn" data-pid="${p.id}" href="javascript:void(0)" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;text-decoration:none;">Open project</a>
+        <button class="btn-p open-proj-btn" data-pid="${p.id}" ontouchstart="event.preventDefault();openProject(this.dataset.pid);" onclick="openProject(this.dataset.pid)" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">Open project</button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);" onclick="event.stopPropagation()">
           ${logo
             ?`<img src="${logo}" style="height:24px;max-width:80px;object-fit:contain;border-radius:3px;cursor:pointer;" title="Logo wijzigen" onclick="triggerLogoUpload('${p.id}')">
@@ -2522,6 +2524,8 @@ async function loadCurrentUser(session){
       APP.users.push(CURRENT_USER);
     }
   }
+  // Cache current user so it's available immediately on next page load
+  if(CURRENT_USER)localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
   updateRoleUI();
 }
 
@@ -2942,6 +2946,7 @@ async function doLogin(){
 function doLogout(){
   saveAuthSession(null);
   localStorage.removeItem('st_active_proj');
+  localStorage.removeItem('st_current_user');
   // Wipe Supabase session keys from localStorage directly so reload sees no session
   Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k);});
   try{if(window._OS?.logout)window._OS.logout();}catch(e){}
