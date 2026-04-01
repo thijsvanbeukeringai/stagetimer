@@ -119,6 +119,53 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 /* Foot reflection */
 .mb-base::after{content:'';position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);}
 
+/* ── IMAC MOCKUP ── */
+.imac{display:inline-flex;flex-direction:column;align-items:center;}
+.imac-body{
+  background:linear-gradient(180deg,#e8e8ea 0%,#d4d4d6 100%);
+  border-radius:18px;
+  padding:10px 10px 28px;
+  position:relative;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.15),
+    0 40px 80px rgba(0,0,0,.25),
+    0 16px 32px rgba(0,0,0,.12);
+}
+/* Camera dot */
+.imac-body::before{
+  content:'';position:absolute;top:6px;left:50%;transform:translateX(-50%);
+  width:5px;height:5px;border-radius:50%;background:rgba(0,0,0,.3);
+}
+.imac-display{
+  border-radius:8px;overflow:hidden;background:#000;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6);
+  width:520px;
+}
+.imac-display img{display:block;width:100%;height:auto;}
+/* Chin label area */
+.imac-chin{
+  position:absolute;bottom:0;left:0;right:0;height:28px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:0 0 18px 18px;
+}
+.imac-chin::after{
+  content:'';width:60px;height:3px;border-radius:2px;
+  background:rgba(0,0,0,.12);
+}
+/* Stand neck */
+.imac-neck{
+  width:8px;height:60px;
+  background:linear-gradient(180deg,#c8c8ca,#b8b8ba);
+  box-shadow:inset -1px 0 0 rgba(0,0,0,.1);
+}
+/* Stand foot */
+.imac-foot{
+  width:180px;height:16px;
+  background:linear-gradient(180deg,#c8c8ca,#b4b4b6);
+  border-radius:0 0 10px 10px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+
 /* ── PILLARS ── */
 .pillars-section{padding:100px 40px;background:var(--bg);position:relative;overflow:hidden;}
 .pillars-section::before{content:'';position:absolute;top:-120px;right:-80px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.06),transparent 70%);pointer-events:none;}
@@ -591,15 +638,15 @@ footer{padding:36px 48px;background:var(--bg);}
       </div>
 
       <div class="price-mb">
-        <div class="mb-device">
-          <div class="mb-lid">
-            <div class="mb-screen-inner">
-              <img class="ss-img" src="foh-view.jpg" alt="Stagetimer app">
+        <div class="imac">
+          <div class="imac-body">
+            <div class="imac-display">
+              <img src="foh-view.jpg" alt="Stagetimer app">
             </div>
+            <div class="imac-chin"></div>
           </div>
-          <div class="mb-base">
-            <div class="mb-foot"></div>
-          </div>
+          <div class="imac-neck"></div>
+          <div class="imac-foot"></div>
         </div>
       </div>
 
