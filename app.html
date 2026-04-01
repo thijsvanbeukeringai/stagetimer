@@ -530,8 +530,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #stage-modal-ov > div, #day-modal-ov > div{width:92vw;padding:18px;}
 
   #slist{padding-bottom:70px;}
-  /* spanel must scroll on mobile */
-  #spanel{overflow:visible;flex:1;}
+  /* spanel scrolls via slist on mobile */
+  #spanel{overflow:hidden;flex:1;}
   #slist{overflow-y:auto;-webkit-overflow-scrolling:touch;}
 }
 
@@ -2400,31 +2400,39 @@ function renderTL(){
 
   // Mobile: vertical list per stage
   if(window.innerWidth<=700){
-    const activeStages=stages.filter(st=>shows.some(s=>s.stage===st.id));
-    if(!activeStages.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">Geen shows voor deze dag.</div>';return;}
+    if(!shows.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">Geen shows voor deze dag.</div>';return;}
     const nm=nowMin();
-    content.innerHTML=activeStages.map(stage=>{
+    const stageIds=new Set(stages.map(st=>st.id));
+    const activeStages=stages.filter(st=>shows.some(s=>s.stage===st.id));
+    const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>t2s(a.start)-t2s(b.start));
+    const makeRow=s=>{
+      const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
+      const isNow=nm>=sm&&nm<em,isPast=nm>=em;
+      const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
+      return`<div onclick="openDrawer('${s.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);opacity:${isPast?.35:1};cursor:pointer;background:${isNow?'rgba(99,102,241,.06)':'transparent'};">
+        <div style="width:3px;align-self:stretch;border-radius:99px;background:${isNow?bCol:'rgba(255,255,255,.1)'};flex-shrink:0;"></div>
+        <div style="font-family:var(--ffm);font-size:11px;color:${isNow?bCol:'rgba(255,255,255,.35)'};flex-shrink:0;width:90px;">${s.start.slice(0,5)} – ${s.end.slice(0,5)}</div>
+        <div style="font-size:13px;font-weight:700;color:${isNow?'#fff':'rgba(255,255,255,.7)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(s.artist)}</div>
+        ${isNow?`<div style="font-size:9px;font-weight:700;color:${bCol};background:rgba(99,102,241,.15);padding:2px 7px;border-radius:99px;flex-shrink:0;">NU</div>`:''}
+      </div>`;
+    };
+    const stageBlocks=activeStages.map(stage=>{
       const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>t2s(a.start)-t2s(b.start));
-      const rows=stShows.map(s=>{
-        const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
-        const isNow=nm>=sm&&nm<em,isPast=nm>=em;
-        const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
-        const bBg=s.booth==='A'?'rgba(99,102,241,.15)':s.booth==='B'?'rgba(34,197,94,.12)':'rgba(255,255,255,.04)';
-        return`<div onclick="openDrawer('${s.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);opacity:${isPast?.35:1};cursor:pointer;background:${isNow?'rgba(99,102,241,.06)':'transparent'};">
-          <div style="width:3px;align-self:stretch;border-radius:99px;background:${isNow?bCol:'rgba(255,255,255,.1)'};flex-shrink:0;"></div>
-          <div style="font-family:var(--ffm);font-size:11px;color:${isNow?bCol:'rgba(255,255,255,.35)'};flex-shrink:0;width:90px;">${s.start.slice(0,5)} – ${s.end.slice(0,5)}</div>
-          <div style="font-size:13px;font-weight:700;color:${isNow?'#fff':'rgba(255,255,255,.7)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(s.artist)}</div>
-          ${isNow?`<div style="font-size:9px;font-weight:700;color:${bCol};background:rgba(99,102,241,.15);padding:2px 7px;border-radius:99px;flex-shrink:0;">NU</div>`:''}
-        </div>`;
-      }).join('');
       return`<div style="margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
           <span style="font-size:16px;">${escH(stage.emoji||'🎵')}</span>
           <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;">${escH(stage.name)}</span>
         </div>
-        ${rows}
+        ${stShows.map(makeRow).join('')}
       </div>`;
     }).join('');
+    const orphanBlock=orphans.length?`<div style="margin-bottom:8px;">
+        <div style="padding:10px 14px 8px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
+          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;">Overig</span>
+        </div>
+        ${orphans.map(makeRow).join('')}
+      </div>`:'';
+    content.innerHTML=stageBlocks+orphanBlock;
     return;
   }
 
@@ -2455,9 +2463,13 @@ function renderTL(){
   const nm=nowMin();
 
   // Stage rows — only show stages that have at least one show on the active day
+  const stageIds=new Set(stages.map(st=>st.id));
   const activeStages=stages.filter(stage=>shows.some(s=>s.stage===stage.id));
-  const rows=activeStages.map(stage=>{
-    const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>t2s(a.start)-t2s(b.start));
+  const orphanShows=shows.filter(s=>!stageIds.has(s.stage));
+  const allStageRows=[...activeStages];
+  if(orphanShows.length)allStageRows.push({id:'__orphan__',name:'Overig',emoji:'📋'});
+  const rows=allStageRows.map(stage=>{
+    const stShows=(stage.id==='__orphan__'?orphanShows:shows.filter(s=>s.stage===stage.id)).sort((a,b)=>t2s(a.start)-t2s(b.start));
     const blocks=stShows.map(s=>{
       const ss=t2s(s.start),es=t2s(s.end)+(t2s(s.end)<=t2s(s.start)?86400:0);
       const x=(ss-minSec)/3600*TL_PX;
