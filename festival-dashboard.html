@@ -3092,6 +3092,7 @@ async function _startApp(session){
 updateClock();
 setInterval(tick,250);
 setInterval(()=>{
+  if(!G)return;
   if(G.timerMode==='live')renderSched();
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
   if(document.getElementById('bs').classList.contains('open'))renderBS();
