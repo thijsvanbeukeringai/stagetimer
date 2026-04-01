@@ -2072,19 +2072,18 @@ function delDay(id){
 }
 
 // ══ DASHBOARD
-// Touch delegation for proj-grid: fires openProject on tap (not scroll) — fixes iOS Chrome
+// Debounced openProject: touchend + onclick can both fire, only first wins within 400ms
+let _lastProjOpen=0;
+function openProjectOnce(id){const now=Date.now();if(now-_lastProjOpen<400)return;_lastProjOpen=now;openProject(id);}
 (function(){
   let _tMoved=false;
-  document.addEventListener('touchstart',function(e){_tMoved=false;},{passive:true});
+  document.addEventListener('touchstart',function(){_tMoved=false;},{passive:true});
   document.addEventListener('touchmove',function(){_tMoved=true;},{passive:true});
   document.addEventListener('touchend',function(e){
     if(_tMoved)return;
     const card=e.target.closest('[data-proj-id]');
-    if(card&&card.classList.contains('proj-card')){
-      e.preventDefault();
-      openProject(card.dataset.projId);
-    }
-  },{passive:false});
+    if(card&&card.classList.contains('proj-card'))openProjectOnce(card.dataset.projId);
+  },{passive:true});
 })();
 
 function showDash(){
@@ -2105,7 +2104,7 @@ function renderDash(){
     const showCount=(p.data?.shows||[]).length;
     const stageCount=(p.data?.stages||[]).length;
     const logo=p.data?.logo;
-    return`<div class="proj-card" data-proj-id="${p.id}" onclick="openProject('${p.id}')">
+    return`<div class="proj-card" data-proj-id="${p.id}" onclick="openProjectOnce('${p.id}')">
       <div class="proj-card-accent"></div>
       <div class="proj-card-body">
         <div class="proj-card-actions">
