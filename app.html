@@ -2281,8 +2281,11 @@ function renderAdmin(){
 
 function addCompany(){
   const name=document.getElementById('adm-co-name').value.trim();if(!name)return;
-  APP.companies.push({id:uid(),name});
-  saveAPP();document.getElementById('adm-co-name').value='';renderAdmin();
+  const id=uid();
+  APP.companies.push({id,name});
+  saveAPP();
+  supa.from('companies').insert([{id,name}]);
+  document.getElementById('adm-co-name').value='';renderAdmin();
 }
 function delCompany(id){
   APP.companies=APP.companies.filter(c=>c.id!==id);
@@ -2298,8 +2301,10 @@ async function addUser(){
   const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
   if(addBtn){addBtn.textContent='Bezig…';addBtn.disabled=true;}
 
-  APP.users.push({id:uid(),name,email,companyId,role});
+  const newId=uid();
+  APP.users.push({id:newId,name,email,companyId,role});
   saveAPP();
+  supa.from('app_users').insert([{id:newId,name,email,role,company_id:companyId||''}]);
 
   // Use Edge Function to create auth user — avoids touching the admin session
   try{
