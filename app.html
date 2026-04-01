@@ -302,9 +302,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .dash-section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
 .dash-section-title{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--sub);}
 .proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
-.proj-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:0;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;position:relative;overflow:hidden;}
+.proj-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:0;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;position:relative;}
 .proj-card:hover{border-color:rgba(99,102,241,.35);transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.3);}
-.proj-card-accent{height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);width:100%;}
+.proj-card-accent{height:3px;background:linear-gradient(90deg,#6366f1,#8b5cf6);width:100%;border-radius:14px 14px 0 0;}
 .proj-card-body{padding:18px 20px 16px;}
 .proj-card-name{font-size:16px;font-weight:800;letter-spacing:-.4px;margin-bottom:5px;color:var(--text);}
 .proj-card-co{font-size:10px;font-weight:700;padding:2px 9px;border-radius:99px;background:rgba(99,102,241,.12);color:#a5b4fc;margin-bottom:10px;display:inline-flex;align-items:center;gap:4px;border:1px solid rgba(99,102,241,.18);}
@@ -2129,7 +2129,7 @@ function renderDash(){
           <span class="proj-card-stat">${showCount} show${showCount!==1?'s':''}</span>
           <span class="proj-card-stat">${stageCount} stage${stageCount!==1?'s':''}</span>
         </div>
-        <div class="btn-p" onclick="openProject('${p.id}')" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;cursor:pointer;box-sizing:border-box;">Open project</div>
+        <a class="btn-p" href="javascript:void(0)" onclick="openProject('${p.id}')" style="width:100%;margin-top:10px;justify-content:center;padding:10px 12px;font-size:13px;text-decoration:none;box-sizing:border-box;">Open project</a>
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);" onclick="event.stopPropagation()">
           ${logo
             ?`<img src="${logo}" style="height:24px;max-width:80px;object-fit:contain;border-radius:3px;cursor:pointer;" title="Logo wijzigen" onclick="triggerLogoUpload('${p.id}')">
