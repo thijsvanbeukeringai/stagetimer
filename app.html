@@ -433,11 +433,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #stov-body{flex:1;overflow-y:auto;padding:20px;}
 #stov-body::-webkit-scrollbar{width:3px;}
 #stov-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
-#stov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
-.stov-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:22px 24px;position:relative;overflow:hidden;transition:border-color .4s,background .4s;}
+#stov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;}
+.stov-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:28px 30px;position:relative;overflow:hidden;transition:border-color .4s,background .4s;}
 .stov-card.stov-live{background:rgba(255,255,255,.04);}
 .stov-card.stov-past{opacity:.25;}
-.stov-stage-name{font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.stov-stage-name{font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:16px;display:flex;align-items:center;gap:8px;transition:color .4s;}
 .stov-stage-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .stov-status{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;}
 .stov-artist{font-size:clamp(16px,1.6vw,22px);font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:14px;line-height:1.2;}
@@ -1985,8 +1985,8 @@ function renderOV(){
   if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen shows gepland voor deze dag.</div>';return;}
   grid.innerHTML=stages.map(st=>`
     <div class="stov-card" id="stovc-${st.id}">
-      <div class="stov-stage-name">
-        <span class="stov-stage-dot" id="stovdot-${st.id}" style="background:rgba(255,255,255,.2);"></span>
+      <div class="stov-stage-name" id="stovname-${st.id}" style="color:#ef4444;">
+        <span class="stov-stage-dot" id="stovdot-${st.id}" style="background:#ef4444;"></span>
         ${escH(st.emoji||'🎵')} ${escH(st.name)}
       </div>
       <div class="stov-status" id="stovst-${st.id}" style="color:rgba(255,255,255,.28);">—</div>
@@ -2015,6 +2015,7 @@ function tickOV(){
     const barEl=document.getElementById('stovbar-'+st.id);
     const nxEl=document.getElementById('stovnx-'+st.id);
     if(!card||!cdEl)return;
+    const nameEl=document.getElementById('stovname-'+st.id);
     // Overnight-aware cur/nxt detection
     let cur=null,nxtObj=null;
     for(const s of shows){
@@ -2030,7 +2031,7 @@ function tickOV(){
       const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       card.className='stov-card stov-live';card.style.borderColor=col+'44';
-      dotEl.style.background=col;
+      dotEl.style.background='#22c55e';if(nameEl)nameEl.style.color='#22c55e';
       stEl.textContent=rem<0?'OVERTIME':'Running';stEl.style.color=col;
       artEl.textContent=cur.s.artist;
       cdEl.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));cdEl.style.color=col;cdEl.className='stov-cd'+(shouldBlink(rem)?' ot':'');
@@ -2041,7 +2042,7 @@ function tickOV(){
     }else if(nxtObj){
       const upCol=nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
       card.className='stov-card';card.style.borderColor=upCol+'33';
-      dotEl.style.background=upCol;
+      dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
       stEl.textContent='Up next · '+s2cdH(Math.ceil(nxtObj.startsIn));stEl.style.color=upCol;
       artEl.textContent=nxtObj.s.artist;
       cdEl.textContent=nxtObj.s.start.slice(0,5);cdEl.style.color='rgba(255,255,255,.5)';cdEl.className='stov-cd';
@@ -2052,14 +2053,14 @@ function tickOV(){
       nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
     }else if(shows.length){
       card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';
-      dotEl.style.background='rgba(255,255,255,.2)';
+      dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
       stEl.textContent='Afgelopen';stEl.style.color='rgba(255,255,255,.28)';
       artEl.textContent=shows[shows.length-1].artist;
       cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
       clEl.textContent='resterend';barEl.style.width='100%';barEl.style.background='rgba(255,255,255,.12)';nxEl.innerHTML='';
     }else{
       card.className='stov-card';card.style.borderColor='rgba(255,255,255,.07)';
-      dotEl.style.background='rgba(255,255,255,.2)';
+      dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
       stEl.textContent='Geen shows';stEl.style.color='rgba(255,255,255,.28)';
       artEl.textContent='—';cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
       clEl.textContent='';barEl.style.width='0%';nxEl.innerHTML='';
