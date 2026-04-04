@@ -1731,9 +1731,10 @@ function renderBS(){
 
   if(!shows.length){body.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:16px;text-align:center;margin-top:40px;">Geen shows gepland voor deze dag.</div>`;return;}
 
+  const dayIsToday=isActiveDayToday();
   body.innerHTML=shows.map((s,i)=>{
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=nm>=sm&&nm<em,isPast=nm>=em;
+    const isNow=dayIsToday&&nm>=sm&&nm<em,isPast=dayIsToday&&nm>=em;
     const boothCol=s.booth==='A'?'#6366f1':s.booth==='B'?'#22c55e':'#888';
     const boothBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'rgba(255,255,255,.08)';
 
@@ -1798,10 +1799,11 @@ function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   const shows=getShows(G.activeStage,G.activeDay);
   const n=nowSec(),nm=nowMinAdj();
+  const dayIsToday=isActiveDayToday();
   shows.forEach((s,i)=>{
     const sm=adjM(t2m(s.start));
     let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=nm>=sm&&nm<em,isPast=nm>=em;
+    const isNow=dayIsToday&&nm>=sm&&nm<em,isPast=dayIsToday&&nm>=em;
     const cdEl=document.getElementById('bs-cd-'+i);
     const barEl=document.getElementById('bs-bar-'+i);
     if(!cdEl||!barEl)return;
@@ -2023,9 +2025,11 @@ function tickOV(){
     const nxEl=document.getElementById('stovnx-'+st.id);
     if(!card||!cdEl)return;
     const nameEl=document.getElementById('stovname-'+st.id);
+    // Only show live/countdown when active day is today
+    const dayIsToday=isActiveDayToday();
     // Overnight-aware cur/nxt detection
     let cur=null,nxtObj=null;
-    for(const s of shows){
+    if(dayIsToday)for(const s of shows){
       const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
       if(nm>=sm&&nm<em){
         const startSec=t2s(s.start);
@@ -2033,7 +2037,7 @@ function tickOV(){
         cur={s,startSec,endSec};break;
       }
     }
-    if(!cur){for(const s of shows){const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
+    if(!cur&&dayIsToday){for(const s of shows){const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
     if(cur){
       const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
