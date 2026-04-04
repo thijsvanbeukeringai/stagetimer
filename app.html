@@ -2963,6 +2963,11 @@ async function loadPublicView(){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('stov').querySelector('button');
     if(closeBtn)closeBtn.style.display='none';
+    // Auto-select today's day, hide day switcher
+    const todayDay=(G.days||[]).find(d=>d.date===todayStr());
+    if(todayDay)G.activeDay=todayDay.id;
+    const dtabs=document.getElementById('stov-dtabs');
+    if(dtabs)dtabs.style.display='none';
     openOV();
     setInterval(()=>renderOV(),8000);
     setupRealtime();
