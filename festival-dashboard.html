@@ -420,6 +420,34 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .otv-act{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.28);padding:4px 11px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.06em;transition:all .2s;}
 .otv-act:hover{background:rgba(255,255,255,.14);color:#fff;}
 
+/* ── STAGE OVERVIEW ── */
+#stov{position:fixed;inset:0;z-index:96;background:#08080e;display:none;flex-direction:column;}
+#stov.open{display:flex;}
+#stov-hdr{flex-shrink:0;height:50px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;}
+#stov-hdr::-webkit-scrollbar{display:none;}
+#stov-title{font-size:14px;font-weight:800;color:#fff;white-space:nowrap;}
+#stov-clock{font-family:var(--ffm);font-size:13px;color:rgba(255,255,255,.3);margin-left:auto;flex-shrink:0;}
+.stovhbtn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);transition:all .15s;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;}
+.stovhbtn:hover{background:rgba(255,255,255,.12);color:#fff;}
+.stovhbtn.on{background:rgba(255,230,0,.15);border-color:rgba(255,230,0,.35);color:#FFE600;}
+#stov-body{flex:1;overflow-y:auto;padding:20px;}
+#stov-body::-webkit-scrollbar{width:3px;}
+#stov-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
+#stov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+.stov-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color .4s,background .4s;}
+.stov-card.stov-live{background:rgba(255,255,255,.04);}
+.stov-card.stov-past{opacity:.25;}
+.stov-stage-name{font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+.stov-stage-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.stov-status{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;}
+.stov-artist{font-size:clamp(14px,1.4vw,18px);font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px;line-height:1.2;}
+.stov-cd{font-family:var(--ffm);font-size:clamp(28px,3.5vw,42px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;transition:color .4s;margin-bottom:4px;}
+.stov-cd-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:10px;}
+.stov-bw{width:100%;height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-bottom:10px;}
+.stov-bar{height:100%;border-radius:99px;transition:width .3s linear,background .4s;}
+.stov-next{font-size:10px;color:rgba(255,255,255,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stov-next strong{color:rgba(255,255,255,.5);font-weight:600;}
+
 /* ── ANIMATIONS ── */
 @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.6)}}
 .lp{animation:lp 1.2s ease-in-out infinite;}
@@ -452,7 +480,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #hdr-daywrap::-webkit-scrollbar{display:none;}
   /* Hide everything else from header on mobile */
   #mob-hdr-cd,#hdr-stages-btn,#hdr-crew-btn,#hdr-import-btn,
-  #hdr-spacer2,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
+  #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
   #user-info,#logout-btn,.vsep{display:none!important;}
   #logo-name{display:none;}
   #hdr-proj-btn{display:none!important;}
@@ -860,6 +888,7 @@ function renderTbar(){
       <span class="hbtn-lbl">Import</span>
     </button>
     <div style="flex:1;" id="hdr-spacer2"></div>
+    <button class="hbtn" onclick="openOV()" id="hdr-ov-btn">⊞ <span class="hbtn-lbl">Overzicht</span></button>
     <button class="hbtn gr" onclick="openBS()" id="hdr-bs-btn">🎭 <span class="hbtn-lbl">Backstage</span></button>
     <button class="hbtn ac" onclick="openFOH()" id="hdr-foh-btn">📺 <span class="hbtn-lbl">FOH</span></button>
     <button class="hbtn" onclick="openSV()" id="hdr-sv-btn">⛶ <span class="hbtn-lbl">Stage View</span></button>
@@ -1215,6 +1244,20 @@ function renderTbar(){
       <button class="btn-g" onclick="closeFohnModal()" style="flex:1;">Annuleer</button>
       <button class="btn-p" onclick="saveFohnNote()" style="flex:1;">Opslaan</button>
     </div>
+  </div>
+</div>
+
+<!-- STAGE OVERVIEW -->
+<div id="stov">
+  <div id="stov-hdr">
+    <img class="co-logo" id="co-logo-stov" alt="logo">
+    <div id="stov-title">⊞ Stage Overzicht</div>
+    <div style="display:flex;gap:4px;" id="stov-dtabs"></div>
+    <div id="stov-clock" style="margin-left:auto;"></div>
+    <button class="stovhbtn" onclick="closeOV()">✕ Sluiten</button>
+  </div>
+  <div id="stov-body">
+    <div id="stov-grid"></div>
   </div>
 </div>
 
@@ -1868,6 +1911,122 @@ function tickFOH(){
 // ══ RENDER ALL
 function renderAll(){renderHeader();renderTP();renderSched();}
 
+// ══ STAGE OVERVIEW
+function openOV(){
+  const el=document.getElementById('stov');
+  el.classList.add('open');
+  renderOV();
+}
+function closeOV(){document.getElementById('stov').classList.remove('open');}
+
+function renderOV(){
+  // Day tabs
+  const dtabs=document.getElementById('stov-dtabs');
+  if(dtabs){
+    dtabs.innerHTML=(G.days||[]).map(d=>`<button class="stovhbtn${d.id===G.activeDay?' on':''}" onclick="G.activeDay='${d.id}';renderOV()">${escH(d.name)}</button>`).join('');
+  }
+  // Company logo
+  const logo=document.getElementById('co-logo-stov');
+  if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
+  // Grid
+  const stages=G.stages||[];
+  const grid=document.getElementById('stov-grid');
+  if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen stages aangemaakt.</div>';return;}
+  grid.innerHTML=stages.map((st,si)=>`
+    <div class="stov-card" id="stovc-${si}">
+      <div class="stov-stage-name">
+        <span class="stov-stage-dot" id="stovdot-${si}" style="background:rgba(255,255,255,.2);"></span>
+        ${escH(st.emoji||'🎵')} ${escH(st.name)}
+      </div>
+      <div class="stov-status" id="stovst-${si}" style="color:rgba(255,255,255,.28);">—</div>
+      <div class="stov-artist" id="stovart-${si}">—</div>
+      <div class="stov-cd" id="stovcd-${si}" style="color:rgba(255,255,255,.2);">--:--</div>
+      <div class="stov-cd-lbl" id="stovcl-${si}">resterend</div>
+      <div class="stov-bw"><div class="stov-bar" id="stovbar-${si}" style="width:0%;"></div></div>
+      <div class="stov-next" id="stovnx-${si}"></div>
+    </div>`).join('');
+  tickOV();
+}
+
+function tickOV(){
+  if(!document.getElementById('stov').classList.contains('open'))return;
+  // Update clock
+  const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
+  const stages=G.stages||[];
+  const n=nowSec(),nm=nowMin();
+  stages.forEach((st,si)=>{
+    const shows=getShows(st.id,G.activeDay);
+    const card=document.getElementById('stovc-'+si);
+    const dotEl=document.getElementById('stovdot-'+si);
+    const stEl=document.getElementById('stovst-'+si);
+    const artEl=document.getElementById('stovart-'+si);
+    const cdEl=document.getElementById('stovcd-'+si);
+    const clEl=document.getElementById('stovcl-'+si);
+    const barEl=document.getElementById('stovbar-'+si);
+    const nxEl=document.getElementById('stovnx-'+si);
+    if(!card||!cdEl)return;
+    // Find current/next show
+    let cur=null,nxt=null;
+    for(const s of shows){
+      const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
+      if(nm>=sm&&nm<em){cur={s,startSec:sm*60,endSec:em*60};break;}
+    }
+    if(!cur){for(const s of shows){if(t2m(s.start)>nm){nxt={s,startsIn:(t2m(s.start)-nm)*60};break;}}}
+    if(cur){
+      const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+      const col=tColor(rem);
+      card.className='stov-card stov-live';
+      card.style.borderColor=col+'44';
+      dotEl.style.background=col;
+      stEl.textContent=rem<0?'OVERTIME':'Running';stEl.style.color=col;
+      artEl.textContent=cur.s.artist;
+      cdEl.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
+      cdEl.style.color=col;
+      cdEl.className='stov-cd'+(shouldBlink(rem)?' ot':'');
+      clEl.textContent=rem<0?'OVERTIME':'resterend';
+      barEl.style.width=pct.toFixed(1)+'%';barEl.style.background=col;
+      // Next
+      const nxtIdx=shows.indexOf(cur.s)+1;
+      const nx=shows[nxtIdx];
+      nxEl.innerHTML=nx?`↑ volgende: <strong>${escH(nx.artist)}</strong> ${nx.start.slice(0,5)}`:'';
+    }else if(nxt){
+      const timeUntil=nxt.startsIn;
+      const upCol=timeUntil<600?'#22c55e':timeUntil<1800?'#f97316':'#6366f1';
+      card.className='stov-card';
+      card.style.borderColor='rgba(255,255,255,.07)';
+      dotEl.style.background='rgba(255,255,255,.2)';
+      stEl.textContent='Up next';stEl.style.color=upCol;
+      artEl.textContent=nxt.s.artist;
+      cdEl.textContent=nxt.s.start.slice(0,5);
+      cdEl.style.color='rgba(255,255,255,.4)';
+      cdEl.className='stov-cd';
+      clEl.textContent='starttijd';
+      barEl.style.width='0%';
+      nxEl.innerHTML='';
+    }else if(shows.length){
+      // All past
+      card.className='stov-card stov-past';
+      card.style.borderColor='rgba(255,255,255,.07)';
+      dotEl.style.background='rgba(255,255,255,.2)';
+      stEl.textContent='Afgelopen';stEl.style.color='rgba(255,255,255,.28)';
+      const last=shows[shows.length-1];
+      artEl.textContent=last.artist;
+      cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
+      clEl.textContent='resterend';
+      barEl.style.width='100%';barEl.style.background='rgba(255,255,255,.12)';
+      nxEl.innerHTML='';
+    }else{
+      card.className='stov-card';
+      card.style.borderColor='rgba(255,255,255,.07)';
+      dotEl.style.background='rgba(255,255,255,.2)';
+      stEl.textContent='Geen shows';stEl.style.color='rgba(255,255,255,.28)';
+      artEl.textContent='—';
+      cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
+      clEl.textContent='';barEl.style.width='0%';nxEl.innerHTML='';
+    }
+  });
+}
+
 // ══ TICK (every 250ms)
 function tick(){
   if(!G)return; // app not initialized yet
@@ -1879,6 +2038,7 @@ function tick(){
   tickTL();
   tickSched();
   tickOTV();
+  tickOV();
 }
 
 // ══ STAGE MANAGEMENT
