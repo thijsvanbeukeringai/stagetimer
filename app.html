@@ -747,12 +747,46 @@ function setupRealtime(){
     .subscribe();
 }
 
-const getShows=(stage,day)=>(G.shows||[]).filter(s=>s.stage===stage&&s.day===day).sort((a,b)=>t2s(a.start)-t2s(b.start));
+// ── Overnight day boundary: 07:00. Shows before this time are treated as "same night" as the previous day.
+const NIGHT_END_MIN = 7 * 60; // 07:00 in minutes
+const adjM = m => m < NIGHT_END_MIN ? m + 1440 : m; // times before 07:00 → push to after midnight
+const nowMinAdj = () => { const n=nowMin(); return n<NIGHT_END_MIN?n+1440:n; };
+
+// getShows: returns shows for a stage+day, INCLUDING next-day shows starting before 07:00
+const getShows=(stage,day)=>{
+  const base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day);
+  const dayIdx=(G.days||[]).findIndex(d=>d.id===day);
+  const nextDay=(G.days||[])[dayIdx+1];
+  if(nextDay){
+    const overnight=(G.shows||[]).filter(s=>s.stage===stage&&s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN);
+    base.push(...overnight);
+  }
+  return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
+};
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
 // Returns true only if the active day has no date set (no restriction) OR its date matches today
 const isActiveDayToday=()=>{const day=(G.days||[]).find(d=>d.id===G.activeDay);if(!day||!day.date)return true;return day.date===todayStr();};
-function curShow(shows){if(!isActiveDayToday())return null;const n=nowMin();for(const s of shows){const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);if(n>=sm&&n<em)return{s,startSec:sm*60,endSec:em*60};}return null;}
-function nxtShow(shows){if(!isActiveDayToday())return null;const n=nowMin();for(const s of shows){if(t2m(s.start)>n)return{s,startsIn:(t2m(s.start)-n)*60};}return null;}
+// curShow/nxtShow with overnight-aware time comparison
+function curShow(shows){
+  if(!isActiveDayToday())return null;
+  const n=nowMinAdj();
+  for(const s of shows){
+    const sm=adjM(t2m(s.start));
+    let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
+    if(n>=sm&&n<em){
+      const startSec=t2s(s.start);
+      const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
+      return{s,startSec,endSec};
+    }
+  }
+  return null;
+}
+function nxtShow(shows){
+  if(!isActiveDayToday())return null;
+  const n=nowMinAdj();
+  for(const s of shows){const sm=adjM(t2m(s.start));if(sm>n)return{s,startsIn:(sm-n)*60};}
+  return null;
+}
 function getDays(){return G.days||[];}
 function fmtDayShort(id){const d=(G.days||[]).find(x=>x.id===id);return d?d.name:id;}
 
@@ -1396,10 +1430,10 @@ function setNxt(nxt){
 // ══ RENDER SCHEDULE (FOH-style cards)
 function renderSched(){
   const allShows=getShows(G.activeStage,G.activeDay);
-  const n=nowMin();
+  const n=nowMinAdj();
   const isMob=window.innerWidth<=700;
   const shows=isMob&&G.timerMode==='live'
-    ?allShows.filter(s=>{const em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);return n<em;})
+    ?allShows.filter(s=>{const em=adjM(t2m(s.end));return n<em;})
     :allShows;
   document.getElementById('show-cnt').textContent=allShows.length===1?'1 show':allShows.length+' shows';
   const nsBtn=document.getElementById('new-show-btn');
@@ -1412,7 +1446,7 @@ function renderSched(){
   }
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
-    const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
+    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     if(G.timerMode==='manual'){
       isNow=i===M.idx&&M.state==='running';isPast=i<M.idx;
       pct=isNow?Math.max(0,Math.min(100,(1-mRem()/M.durMs)*100)):0;
@@ -1465,14 +1499,15 @@ function selMCue(i){M.idx=i;mReset();renderTP();renderTbar();renderSched();}
 function tickSched(){
   if(G.timerMode!=='live')return;
   const shows=getShows(G.activeStage,G.activeDay);
-  const nm=nowMin();
+  const nm=nowMinAdj();
   const ns=nowSec();
   shows.forEach(s=>{
     const cd=document.getElementById('scd-'+s.id);if(!cd)return;
-    const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
+    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     const isNow=nm>=sm&&nm<em;
     if(isNow){
-      const remSec=Math.max(0,Math.ceil(em*60-ns));
+      const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
+      const remSec=Math.max(0,Math.ceil(endSec-ns));
       cd.textContent=s2cdH(remSec);
       cd.style.color=remSec<300?'#ef4444':remSec<900?'#f97316':'#22c55e';
     } else {
@@ -1742,15 +1777,18 @@ function renderBS(){
 function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   const shows=getShows(G.activeStage,G.activeDay);
-  const n=nowSec(),nm=nowMin();
+  const n=nowSec(),nm=nowMinAdj();
   shows.forEach((s,i)=>{
-    const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
+    const sm=adjM(t2m(s.start));
+    let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     const isNow=nm>=sm&&nm<em,isPast=nm>=em;
     const cdEl=document.getElementById('bs-cd-'+i);
     const barEl=document.getElementById('bs-bar-'+i);
     if(!cdEl||!barEl)return;
     if(isNow){
-      const rem=em*60-n,dur=(em-sm)*60,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+      const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
+      const startSec=t2s(s.start);
+      const rem=endSec-n,dur=endSec-startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       cdEl.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
       cdEl.style.color=col;
@@ -1761,9 +1799,11 @@ function tickBS(){
       if(row){row.style.borderColor=col+'33';row.style.background=tBg(col,pct/100*0.22);}
     }else if(!isPast){
       const prevShow=shows[i-1];
-      const actualPrevEnd=prevShow?(t2m(prevShow.end)+(t2m(prevShow.end)<=t2m(prevShow.start)?1440:0))*60:Math.max(0,sm*60-3600);
-      const gapSec=Math.max(1,sm*60-actualPrevEnd);
-      const timeUntilStart=Math.max(0,sm*60-n);
+      const prevEndM=prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60);
+      const prevEndSec=prevEndM*60;
+      const startSec=sm*60;
+      const gapSec=Math.max(1,startSec-prevEndSec);
+      const timeUntilStart=Math.max(0,startSec-nm*60);
       const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
       const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
       cdEl.textContent=s2cdH(Math.ceil(timeUntilStart));
@@ -1900,9 +1940,10 @@ function tickFOH(){
     if(bar){bar.style.width=pct.toFixed(1)+'%';bar.style.background=tc;}
   }
   // Per-row countdowns
+  const nma=nowMinAdj();
   shows.forEach(s=>{
     const cd=document.getElementById('foh-sr-cd-'+s.id);if(!cd)return;
-    const secUntil=Math.max(0,(t2m(s.start)-nm)*60);
+    const secUntil=Math.max(0,(adjM(t2m(s.start))-nma)*60);
     cd.textContent=s2cdH(Math.ceil(secUntil));
     cd.style.color=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
   });
@@ -1949,7 +1990,7 @@ function tickOV(){
   if(!document.getElementById('stov').classList.contains('open'))return;
   const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
   const stages=G.stages||[];
-  const n=nowSec(),nm=nowMin();
+  const n=nowSec(),nm=nowMinAdj();
   stages.forEach((st,si)=>{
     const shows=getShows(st.id,G.activeDay);
     const card=document.getElementById('stovc-'+si);
@@ -1961,12 +2002,17 @@ function tickOV(){
     const barEl=document.getElementById('stovbar-'+si);
     const nxEl=document.getElementById('stovnx-'+si);
     if(!card||!cdEl)return;
-    let cur=null,nxt=null;
+    // Overnight-aware cur/nxt detection
+    let cur=null,nxtObj=null;
     for(const s of shows){
-      const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
-      if(nm>=sm&&nm<em){cur={s,startSec:sm*60,endSec:em*60};break;}
+      const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
+      if(nm>=sm&&nm<em){
+        const startSec=t2s(s.start);
+        const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
+        cur={s,startSec,endSec};break;
+      }
     }
-    if(!cur){for(const s of shows){if(t2m(s.start)>nm){nxt={s,startsIn:(t2m(s.start)-nm)*60};break;}}}
+    if(!cur){for(const s of shows){const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
     if(cur){
       const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
@@ -1978,15 +2024,19 @@ function tickOV(){
       clEl.textContent=rem<0?'OVERTIME':'resterend';
       barEl.style.width=pct.toFixed(1)+'%';barEl.style.background=col;
       const nx=shows[shows.indexOf(cur.s)+1];
-      nxEl.innerHTML=nx?`↑ volgende: <strong>${escH(nx.artist)}</strong> ${nx.start.slice(0,5)}`:'';
-    }else if(nxt){
-      const upCol=nxt.startsIn<600?'#22c55e':nxt.startsIn<1800?'#f97316':'#6366f1';
-      card.className='stov-card';card.style.borderColor='rgba(255,255,255,.07)';
-      dotEl.style.background='rgba(255,255,255,.2)';
-      stEl.textContent='Up next';stEl.style.color=upCol;
-      artEl.textContent=nxt.s.artist;
-      cdEl.textContent=nxt.s.start.slice(0,5);cdEl.style.color='rgba(255,255,255,.4)';cdEl.className='stov-cd';
-      clEl.textContent='starttijd';barEl.style.width='0%';nxEl.innerHTML='';
+      nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
+    }else if(nxtObj){
+      const upCol=nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
+      card.className='stov-card';card.style.borderColor=upCol+'33';
+      dotEl.style.background=upCol;
+      stEl.textContent='Up next · '+s2cdH(Math.ceil(nxtObj.startsIn));stEl.style.color=upCol;
+      artEl.textContent=nxtObj.s.artist;
+      cdEl.textContent=nxtObj.s.start.slice(0,5);cdEl.style.color='rgba(255,255,255,.5)';cdEl.className='stov-cd';
+      clEl.textContent='starttijd';barEl.style.width='0%';
+      // Show the one after "up next"
+      const nxIdx=shows.indexOf(nxtObj.s)+1;
+      const nx=shows[nxIdx];
+      nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
     }else if(shows.length){
       card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';
       dotEl.style.background='rgba(255,255,255,.2)';
