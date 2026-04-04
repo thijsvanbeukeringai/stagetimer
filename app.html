@@ -3281,6 +3281,7 @@ async function _startApp(session){
   _hideLoader();
   try{
     await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
+    loadG(); // refresh G from freshly fetched Supabase data
     updateRoleUI();refreshLogo();setupRealtime();
     // Always re-render dash with fresh data — only open it if user hasn't navigated to a project yet
     if(!APP.activeProjectId||document.getElementById('dash').classList.contains('open')){
