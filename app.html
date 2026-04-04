@@ -1950,7 +1950,7 @@ function tickFOH(){
 }
 
 // ══ RENDER ALL
-function renderAll(){renderHeader();renderTP();renderSched();}
+function renderAll(){renderHeader();renderTP();renderSched();if(document.getElementById('stov').classList.contains('open'))renderOV();}
 
 // ══ STAGE OVERVIEW
 function openOV(){
@@ -1970,18 +1970,18 @@ function renderOV(){
   const stages=(G.stages||[]).filter(st=>getShows(st.id,G.activeDay).length>0);
   const grid=document.getElementById('stov-grid');
   if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen shows gepland voor deze dag.</div>';return;}
-  grid.innerHTML=stages.map((st,si)=>`
-    <div class="stov-card" id="stovc-${si}">
+  grid.innerHTML=stages.map(st=>`
+    <div class="stov-card" id="stovc-${st.id}">
       <div class="stov-stage-name">
-        <span class="stov-stage-dot" id="stovdot-${si}" style="background:rgba(255,255,255,.2);"></span>
+        <span class="stov-stage-dot" id="stovdot-${st.id}" style="background:rgba(255,255,255,.2);"></span>
         ${escH(st.emoji||'🎵')} ${escH(st.name)}
       </div>
-      <div class="stov-status" id="stovst-${si}" style="color:rgba(255,255,255,.28);">—</div>
-      <div class="stov-artist" id="stovart-${si}">—</div>
-      <div class="stov-cd" id="stovcd-${si}" style="color:rgba(255,255,255,.2);">--:--</div>
-      <div class="stov-cd-lbl" id="stovcl-${si}">resterend</div>
-      <div class="stov-bw"><div class="stov-bar" id="stovbar-${si}" style="width:0%;"></div></div>
-      <div class="stov-next" id="stovnx-${si}"></div>
+      <div class="stov-status" id="stovst-${st.id}" style="color:rgba(255,255,255,.28);">—</div>
+      <div class="stov-artist" id="stovart-${st.id}">—</div>
+      <div class="stov-cd" id="stovcd-${st.id}" style="color:rgba(255,255,255,.2);">--:--</div>
+      <div class="stov-cd-lbl" id="stovcl-${st.id}">resterend</div>
+      <div class="stov-bw"><div class="stov-bar" id="stovbar-${st.id}" style="width:0%;"></div></div>
+      <div class="stov-next" id="stovnx-${st.id}"></div>
     </div>`).join('');
   tickOV();
 }
@@ -1991,16 +1991,16 @@ function tickOV(){
   const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
   const stages=G.stages||[];
   const n=nowSec(),nm=nowMinAdj();
-  stages.forEach((st,si)=>{
+  stages.forEach(st=>{
     const shows=getShows(st.id,G.activeDay);
-    const card=document.getElementById('stovc-'+si);
-    const dotEl=document.getElementById('stovdot-'+si);
-    const stEl=document.getElementById('stovst-'+si);
-    const artEl=document.getElementById('stovart-'+si);
-    const cdEl=document.getElementById('stovcd-'+si);
-    const clEl=document.getElementById('stovcl-'+si);
-    const barEl=document.getElementById('stovbar-'+si);
-    const nxEl=document.getElementById('stovnx-'+si);
+    const card=document.getElementById('stovc-'+st.id);
+    const dotEl=document.getElementById('stovdot-'+st.id);
+    const stEl=document.getElementById('stovst-'+st.id);
+    const artEl=document.getElementById('stovart-'+st.id);
+    const cdEl=document.getElementById('stovcd-'+st.id);
+    const clEl=document.getElementById('stovcl-'+st.id);
+    const barEl=document.getElementById('stovbar-'+st.id);
+    const nxEl=document.getElementById('stovnx-'+st.id);
     if(!card||!cdEl)return;
     // Overnight-aware cur/nxt detection
     let cur=null,nxtObj=null;
