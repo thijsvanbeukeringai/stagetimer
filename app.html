@@ -2968,6 +2968,9 @@ async function loadPublicView(){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('tl-close-btn');
     if(closeBtn)closeBtn.style.display='none';
+    // Auto-select today's day
+    const todayDay=(G.days||[]).find(d=>d.date===todayStr());
+    if(todayDay)G.activeDay=todayDay.id;
     openTL();
     setInterval(()=>renderTL(),8000);
     setupRealtime();
