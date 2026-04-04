@@ -1967,9 +1967,9 @@ function renderOV(){
   }
   const logo=document.getElementById('co-logo-stov');
   if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
-  const stages=G.stages||[];
+  const stages=(G.stages||[]).filter(st=>getShows(st.id,G.activeDay).length>0);
   const grid=document.getElementById('stov-grid');
-  if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen stages aangemaakt.</div>';return;}
+  if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen shows gepland voor deze dag.</div>';return;}
   grid.innerHTML=stages.map((st,si)=>`
     <div class="stov-card" id="stovc-${si}">
       <div class="stov-stage-name">
