@@ -1921,7 +1921,7 @@ function openBS(){_closeAllScreens();document.getElementById('bs').classList.add
 function closeBS(){document.getElementById('bs').classList.remove('open');}
 function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();}
 function closeSV(){document.getElementById('sv').classList.remove('open');}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -2892,12 +2892,18 @@ function openShareModal(projId){
   document.getElementById('share-modal-title').textContent='🔗 Links — '+escH(proj.name);
   // Timeline link (whole project, no stage)
   const tlUrl=`${base}?mode=timeline&pid=${projId}`;
+  const ovUrl=`${base}?mode=overview&pid=${projId}`;
   const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
-    <div class="share-stage-name">▦ Tijdlijn</div>
+    <div class="share-stage-name">▦ Tijdlijn &amp; Overzicht</div>
     <div class="share-link-row">
       <span class="share-link-label">Tijdlijn</span>
       <span class="share-link-url" title="${tlUrl}">${tlUrl}</span>
       <button class="share-copy-btn" onclick="copyLink(this,'${tlUrl}')">Kopieer</button>
+    </div>
+    <div class="share-link-row">
+      <span class="share-link-label">Overzicht</span>
+      <span class="share-link-url" title="${ovUrl}">${ovUrl}</span>
+      <button class="share-copy-btn" onclick="copyLink(this,'${ovUrl}')">Kopieer</button>
     </div>
   </div>`;
   // Per-stage links
@@ -2952,6 +2958,13 @@ async function loadPublicView(){
     if(closeBtn)closeBtn.style.display='none';
     openTL();
     setInterval(()=>renderTL(),8000);
+    setupRealtime();
+  } else if(PUBLIC_MODE==='overview'){
+    document.getElementById('app').style.display='none';
+    const closeBtn=document.getElementById('stov').querySelector('button');
+    if(closeBtn)closeBtn.style.display='none';
+    openOV();
+    setInterval(()=>renderOV(),8000);
     setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
     // Standalone backstage: hide main app, hide close button
