@@ -2977,18 +2977,18 @@ async function loadPublicView(){
     setInterval(()=>renderOV(),8000);
     setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
-    // Standalone backstage: hide main app, hide close button
+    // Standalone backstage: hide main app, hide controls
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('bs-close-btn');
     if(closeBtn)closeBtn.style.display='none';
-    // Populate stage selector (normally done by renderAll)
+    // Hide day tabs and stage selector — read-only view
     const bsSel=document.getElementById('bs-ssel');
-    bsSel.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
-    bsSel.value=G.activeStage;
-    bsSel.onchange=()=>{G.activeStage=bsSel.value;renderBS();};
-    // Populate day tabs
-    document.getElementById('bs-dtabs').innerHTML=getDays().map(d=>`
-      <button class="bshbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderBS();">${escH(d.name)}</button>`).join('');
+    if(bsSel)bsSel.style.display='none';
+    const bsDtabs=document.getElementById('bs-dtabs');
+    if(bsDtabs)bsDtabs.style.display='none';
+    // Auto-select today
+    const todayDay=(G.days||[]).find(d=>d.date===todayStr());
+    if(todayDay)G.activeDay=todayDay.id;
     openBS();
     // Realtime updates
     setInterval(()=>renderBS(),8000);
