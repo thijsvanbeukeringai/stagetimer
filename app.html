@@ -2689,6 +2689,7 @@ function renderTL(){
 
   const nm=nowMinAdj();
   const nowSecA=nowSec()<NIGHT_S?nowSec()+86400:nowSec();
+  const tlDayIsToday=isActiveDayToday();
 
   // Stage rows — only show stages that have at least one show on the active day
   const stageIds=new Set(stages.map(st=>st.id));
@@ -2703,7 +2704,7 @@ function renderTL(){
       const x=(ss-minSec)/3600*TL_PX;
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
       const sm=ss/60,em=es/60;
-      const isNow=nm>=sm&&nm<em,isPast=nm>=em;
+      const isNow=tlDayIsToday&&nm>=sm&&nm<em,isPast=tlDayIsToday&&nm>=em;
       const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
       const bBg=s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
       const border=isNow?bCol:'rgba(255,255,255,.1)';
@@ -2730,14 +2731,14 @@ function renderTL(){
     </div>`;
   }).join('');
 
-  // Now line (overnight-aware)
+  // Now line — only on today
   const nowX=TL_LW+(nowSecA-minSec)/3600*TL_PX;
   const d=new Date();
   const nowLbl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  const nowLine=`<div id="tl-now-line" style="position:absolute;top:${TL_RH}px;bottom:0;left:${nowX}px;width:2px;background:rgba(239,68,68,.75);pointer-events:none;z-index:8;transform:translateX(-50%);">
+  const nowLine=tlDayIsToday?`<div id="tl-now-line" style="position:absolute;top:${TL_RH}px;bottom:0;left:${nowX}px;width:2px;background:rgba(239,68,68,.75);pointer-events:none;z-index:8;transform:translateX(-50%);">
     <div style="position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.6);"></div>
     <div id="tl-now-lbl" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-family:var(--ffm);font-size:9px;font-weight:700;color:#ef4444;white-space:nowrap;background:#08080e;padding:1px 5px;border-radius:3px;">${nowLbl}</div>
-  </div>`;
+  </div>`:'';
 
   // Ruler (sticky top)
   const ruler=`<div style="position:sticky;top:0;z-index:10;height:${TL_RH}px;background:#08080e;border-bottom:1px solid rgba(255,255,255,.06);display:flex;">
