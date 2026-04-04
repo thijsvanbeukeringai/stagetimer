@@ -690,6 +690,7 @@ function loadG(){
 
 // Debounced syncs
 let _metaSync,_projSync={};
+const _pendingPush={}; // tracks projects with unsaved local changes
 
 function saveAPP(){
   localStorage.setItem(AKEY,JSON.stringify(APP));
@@ -709,6 +710,7 @@ function save(){
   if(proj)proj.data=G;
   localStorage.setItem(AKEY,JSON.stringify(APP));
   const id=APP.activeProjectId;
+  _pendingPush[id]=true;
   clearTimeout(_projSync[id]);
   _projSync[id]=setTimeout(()=>_pushProject(id),800);
 }
@@ -717,9 +719,18 @@ async function _pushProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   setSyncDot('ing');
   try{
-    await supa.from('projects').upsert([{id:proj.id,name:proj.name,company_id:proj.companyId||'',created_at:proj.createdAt||Date.now(),data:proj.data}]);
+    const{error}=await supa.from('projects').upsert([{id:proj.id,name:proj.name,company_id:proj.companyId||'',created_at:proj.createdAt||new Date().toISOString(),data:proj.data}]);
+    if(error)throw error;
+    _pendingPush[id]=false;
     setSyncDot('ok');
-  }catch(e){setSyncDot('err');console.warn('Project sync failed:',e);}
+  }catch(e){
+    _pendingPush[id]=false;
+    setSyncDot('err');
+    console.error('Project sync failed:',e);
+    // Show visible warning so data loss is never silent
+    const d=document.getElementById('sync-dot');
+    if(d){d.title='Opslaan mislukt: '+((e&&e.message)||JSON.stringify(e));}
+  }
 }
 
 // Realtime
@@ -729,6 +740,8 @@ function setupRealtime(){
       if(payload.eventType==='UPDATE'||payload.eventType==='INSERT'){
         const p=payload.new;
         const proj=APP.projects.find(x=>x.id===p.id);
+        // Skip overwrite if we have pending local changes for this project
+        if(_pendingPush[p.id]){console.log('Realtime skipped – local push pending for',p.id);return;}
         if(proj){proj.data=p.data;proj.name=p.name;}
         else{APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}});}
         localStorage.setItem(AKEY,JSON.stringify(APP));
@@ -1614,7 +1627,7 @@ function renderFOH(){
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   const shows=getShows(G.activeStage,G.activeDay);
   const cur=curShow(shows),nxt=nxtShow(shows);
-  const n=nowSec(),nm=nowMin();
+  const n=nowSec(),nm=nowMinAdj();
   let liveHTML='';
   if(cur){
     const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
@@ -1636,9 +1649,9 @@ function renderFOH(){
   }else{
     liveHTML=`<div class="foh-empty">${nxt?'Wachten op eerste artiest…':'Geen shows gepland'}</div>`;
   }
-  const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;const em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);return nm<em;});
+  const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;const sm2=adjM(t2m(s.start));let em2=adjM(t2m(s.end));if(em2<=sm2)em2+=1440;return nm<em2;});
   const rows=upcoming.map(s=>{
-    const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0),isNow=nm>=sm&&nm<em;
+    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=nm>=sm&&nm<em;
     const secUntil=Math.max(0,(sm-nm)*60);
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
     return`<div class="foh-srow${isNow?' live':''}">
@@ -1706,20 +1719,20 @@ function renderBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   const shows=getShows(G.activeStage,G.activeDay);
-  const n=nowSec(),nm=nowMin();
+  const n=nowSec(),nm=nowMinAdj();
   const body=document.getElementById('bs-body');
 
   if(!shows.length){body.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:16px;text-align:center;margin-top:40px;">Geen shows gepland voor deze dag.</div>`;return;}
 
   body.innerHTML=shows.map((s,i)=>{
-    const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
+    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     const isNow=nm>=sm&&nm<em,isPast=nm>=em;
     const boothCol=s.booth==='A'?'#6366f1':s.booth==='B'?'#22c55e':'#888';
     const boothBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'rgba(255,255,255,.08)';
 
     if(isNow){
       // LIVE: bar = set progress, countdown = remaining
-      const startSec=sm*60,endSec=em*60;
+      const startSec=t2s(s.start),endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
       const rem=endSec-n,dur=endSec-startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       return`<div class="bs-row bs-live" id="bsr-${i}" style="border-color:${col}33;background:${tBg(col,pct/100*0.22)};">
@@ -1743,13 +1756,13 @@ function renderBS(){
     } else {
       // UPCOMING: bar fills up as show approaches (0% = far, 100% = starting now)
       const prevShow=shows[i-1];
-      const actualPrevEnd=prevShow?(t2m(prevShow.end)+(t2m(prevShow.end)<=t2m(prevShow.start)?1440:0))*60:Math.max(0,sm*60-3600);
-      const gapSec=Math.max(1,sm*60-actualPrevEnd);
-      const timeUntilStart=Math.max(0,sm*60-n);
+      const prevEndM=prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60);
+      const gapSec=Math.max(1,(sm-prevEndM)*60);
+      const timeUntilStart=Math.max(0,(sm-nm)*60);
       const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
       // Color: close = green (about to go on), far = muted blue
       const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
-      const rank=i-(shows.findIndex(x=>{const em2=t2m(x.end)+(t2m(x.end)<=t2m(x.start)?1440:0);return nm<em2;}));
+      const rank=i-(shows.findIndex(x=>{const em2=adjM(t2m(x.end));return nm<em2;}));
 
       return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.06);">
         <div class="bs-row-top">
@@ -2575,7 +2588,8 @@ function openTL(){
   requestAnimationFrame(()=>{
     const c=document.getElementById('tl-content');
     const minSec=Number(c.dataset.minSec||0);
-    const nowX=TL_LW+(nowSec()-minSec)/3600*TL_PX;
+    const ns=nowSec();const nsAdj=ns<NIGHT_END_MIN*60?ns+86400:ns;
+    const nowX=TL_LW+(nsAdj-minSec)/3600*TL_PX;
     const sc=document.getElementById('tl-scroll');
     sc.scrollLeft=Math.max(0,nowX-sc.clientWidth/2);
   });
@@ -2585,7 +2599,16 @@ function closeTL(){document.getElementById('tl').classList.remove('open');}
 function renderTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
   const stages=G.stages||[];
-  const shows=(G.shows||[]).filter(s=>s.day===G.activeDay);
+  // Include overnight shows: next-day shows with start before 07:00 count as same festival day
+  const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay);
+  const dayIdx=(G.days||[]).findIndex(d=>d.id===G.activeDay);
+  const nextDay=(G.days||[])[dayIdx+1];
+  const overnightShows=nextDay?(G.shows||[]).filter(s=>s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN):[];
+  const shows=[...dayShows,...overnightShows];
+  // Adjusted seconds for a show: overnight shows (start before 07:00) get +86400
+  const NIGHT_S=NIGHT_END_MIN*60;
+  const adjSS=s=>{const sec=t2s(s.start);return sec<NIGHT_S?sec+86400:sec;};
+  const adjES=s=>{const ss=adjSS(s);const sec=t2s(s.end);const ae=sec<NIGHT_S?sec+86400:sec;return ae<=ss?ae+86400:ae;};
   const content=document.getElementById('tl-content');
 
   if(!stages.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">Geen stages aangemaakt.</div>';return;}
@@ -2593,13 +2616,13 @@ function renderTL(){
   // Mobile: vertical list per stage
   if(window.innerWidth<=700){
     if(!shows.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">Geen shows voor deze dag.</div>';return;}
-    const nm=nowMin();
+    const nm=nowMinAdj();
     const stageIds=new Set(stages.map(st=>st.id));
     const activeStages=stages.filter(st=>shows.some(s=>s.stage===st.id));
-    const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>t2s(a.start)-t2s(b.start));
+    const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
     const makeRow=s=>{
-      const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);
-      const isNow=nm>=sm&&nm<em,isPast=nm>=em;
+      const sm=adjM(t2m(s.start)),em=adjM(t2m(s.end));const emF=em<=sm?em+1440:em;
+      const isNow=nm>=sm&&nm<emF,isPast=nm>=emF;
       const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
       return`<div onclick="openDrawer('${s.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);opacity:${isPast?.35:1};cursor:pointer;background:${isNow?'rgba(99,102,241,.06)':'transparent'};">
         <div style="width:3px;align-self:stretch;border-radius:99px;background:${isNow?bCol:'rgba(255,255,255,.1)'};flex-shrink:0;"></div>
@@ -2609,7 +2632,7 @@ function renderTL(){
       </div>`;
     };
     const stageBlocks=activeStages.map(stage=>{
-      const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>t2s(a.start)-t2s(b.start));
+      const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
       return`<div style="margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
           <span style="font-size:16px;">${escH(stage.emoji||'🎵')}</span>
@@ -2628,10 +2651,10 @@ function renderTL(){
     return;
   }
 
-  // Time range
+  // Time range (overnight-aware)
   let minSec=99999,maxSec=0;
   shows.forEach(s=>{
-    const ss=t2s(s.start),es=t2s(s.end)+(t2s(s.end)<=t2s(s.start)?86400:0);
+    const ss=adjSS(s),es=adjES(s);
     if(ss<minSec)minSec=ss;if(es>maxSec)maxSec=es;
   });
   if(minSec===99999){minSec=43200;maxSec=86400;}
@@ -2652,7 +2675,8 @@ function renderTL(){
     gridLines+=`<div style="position:absolute;left:${TL_LW+xh}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.02);pointer-events:none;"></div>`;
   }
 
-  const nm=nowMin();
+  const nm=nowMinAdj();
+  const nowSecA=nowSec()<NIGHT_S?nowSec()+86400:nowSec();
 
   // Stage rows — only show stages that have at least one show on the active day
   const stageIds=new Set(stages.map(st=>st.id));
@@ -2661,9 +2685,9 @@ function renderTL(){
   const allStageRows=[...activeStages];
   if(orphanShows.length)allStageRows.push({id:'__orphan__',name:'Overig',emoji:'📋'});
   const rows=allStageRows.map(stage=>{
-    const stShows=(stage.id==='__orphan__'?orphanShows:shows.filter(s=>s.stage===stage.id)).sort((a,b)=>t2s(a.start)-t2s(b.start));
+    const stShows=(stage.id==='__orphan__'?orphanShows:shows.filter(s=>s.stage===stage.id)).sort((a,b)=>adjSS(a)-adjSS(b));
     const blocks=stShows.map(s=>{
-      const ss=t2s(s.start),es=t2s(s.end)+(t2s(s.end)<=t2s(s.start)?86400:0);
+      const ss=adjSS(s),es=adjES(s);
       const x=(ss-minSec)/3600*TL_PX;
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
       const sm=ss/60,em=es/60;
@@ -2694,8 +2718,8 @@ function renderTL(){
     </div>`;
   }).join('');
 
-  // Now line
-  const nowX=TL_LW+(nowSec()-minSec)/3600*TL_PX;
+  // Now line (overnight-aware)
+  const nowX=TL_LW+(nowSecA-minSec)/3600*TL_PX;
   const d=new Date();
   const nowLbl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   const nowLine=`<div id="tl-now-line" style="position:absolute;top:${TL_RH}px;bottom:0;left:${nowX}px;width:2px;background:rgba(239,68,68,.75);pointer-events:none;z-index:8;transform:translateX(-50%);">
@@ -2717,7 +2741,8 @@ function tickTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
   const line=document.getElementById('tl-now-line');if(!line)return;
   const minSec=Number(document.getElementById('tl-content').dataset.minSec||0);
-  const nowX=TL_LW+(nowSec()-minSec)/3600*TL_PX;
+  const ns=nowSec();const nsAdj=ns<NIGHT_END_MIN*60?ns+86400:ns;
+  const nowX=TL_LW+(nsAdj-minSec)/3600*TL_PX;
   line.style.left=nowX+'px';
   const lbl=document.getElementById('tl-now-lbl');
   if(lbl){const d=new Date();lbl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
