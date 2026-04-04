@@ -2043,10 +2043,10 @@ function tickOV(){
       const upCol=nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
       card.className='stov-card';card.style.borderColor=upCol+'33';
       dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
-      stEl.textContent='Up next · '+s2cdH(Math.ceil(nxtObj.startsIn));stEl.style.color=upCol;
+      stEl.textContent='Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
       artEl.textContent=nxtObj.s.artist;
-      cdEl.textContent=nxtObj.s.start.slice(0,5);cdEl.style.color='rgba(255,255,255,.5)';cdEl.className='stov-cd';
-      clEl.textContent='starttijd';barEl.style.width='0%';
+      cdEl.textContent=s2cdH(Math.ceil(nxtObj.startsIn));cdEl.style.color=upCol;cdEl.className='stov-cd';
+      clEl.textContent='tot start';barEl.style.width='0%';
       // Show the one after "up next"
       const nxIdx=shows.indexOf(nxtObj.s)+1;
       const nx=shows[nxIdx];
