@@ -448,8 +448,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .stov-next{font-size:11px;color:rgba(255,255,255,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .stov-next strong{color:rgba(255,255,255,.5);font-weight:600;}
 .stov-next.priority-next strong{color:#fbbf24;font-weight:800;}
-@keyframes priority-glow{0%,100%{box-shadow:0 0 0 0 rgba(234,179,8,0),0 0 0 1px rgba(234,179,8,.2);}50%{box-shadow:0 0 24px 6px rgba(234,179,8,.25),0 0 0 1px rgba(234,179,8,.5);}}
-.stov-card.priority-next{animation:priority-glow 1.8s ease-in-out infinite;border-color:rgba(234,179,8,.4)!important;}
+@keyframes priority-glow{
+  0%,100%{border-color:rgba(234,179,8,.25);background:rgba(234,179,8,.03);box-shadow:inset 0 0 0 0 rgba(234,179,8,0);}
+  50%{border-color:rgba(234,179,8,.9);background:rgba(234,179,8,.1);box-shadow:inset 0 0 30px 0 rgba(234,179,8,.15);}
+}
+.stov-card.priority-next{animation:priority-glow 1.6s ease-in-out infinite;}
 .dr-flag-row{display:flex;gap:8px;margin-top:4px;}
 .dr-flag-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .dr-flag-btn:hover{background:var(--s4);}
