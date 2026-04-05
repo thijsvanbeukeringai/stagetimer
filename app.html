@@ -447,6 +447,14 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .stov-bar{height:100%;border-radius:99px;transition:width .3s linear,background .4s;}
 .stov-next{font-size:11px;color:rgba(255,255,255,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .stov-next strong{color:rgba(255,255,255,.5);font-weight:600;}
+.stov-next.priority-next strong{color:#fbbf24;font-weight:800;}
+@keyframes priority-glow{0%,100%{box-shadow:0 0 0 0 rgba(234,179,8,0),0 0 0 1px rgba(234,179,8,.2);}50%{box-shadow:0 0 24px 6px rgba(234,179,8,.25),0 0 0 1px rgba(234,179,8,.5);}}
+.stov-card.priority-next{animation:priority-glow 1.8s ease-in-out infinite;border-color:rgba(234,179,8,.4)!important;}
+.dr-flag-row{display:flex;gap:8px;margin-top:4px;}
+.dr-flag-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.dr-flag-btn:hover{background:var(--s4);}
+.dr-flag-btn.active-cancel{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5;}
+.dr-flag-btn.active-priority{background:rgba(234,179,8,.15);border-color:rgba(234,179,8,.4);color:#fbbf24;}
 
 /* ── ANIMATIONS ── */
 @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.6)}}
@@ -606,6 +614,8 @@ const s2cdH=s=>{const neg=s<0,a=Math.abs(s)|0,h=Math.floor(a/3600),m=Math.floor(
 const durSec=(s,e)=>{let sm=t2s(s),em=t2s(e);if(em<=sm)em+=86400;return em-sm;};
 const fmtDur=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;if(h>0)return sc>0?`${h}u ${m}m ${sc}s`:`${h}u ${m>0?m+'m':''}`;return sc>0?`${m}m ${sc}s`:`${m}m`;};
 const todayStr=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+// Festival day runs 07:00–07:00: before 07:00 we're still in the previous calendar day
+const festivalDayStr=()=>{const d=new Date();if(d.getHours()<7)d.setDate(d.getDate()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function fmtDateLabel(d){try{const dt=new Date(d+'T12:00:00');return['zo','ma','di','wo','do','vr','za'][dt.getDay()]+' '+dt.getDate()+'/'+String(dt.getMonth()+1);}catch{return d;}}
 
@@ -785,7 +795,7 @@ const getShows=(stage,day)=>{
 };
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
 // Returns true only if the active day has no date set (no restriction) OR its date matches today
-const isActiveDayToday=()=>{const day=(G.days||[]).find(d=>d.id===G.activeDay);if(!day||!day.date)return true;return day.date===todayStr();};
+const isActiveDayToday=()=>{const day=(G.days||[]).find(d=>d.id===G.activeDay);if(!day||!day.date)return true;return day.date===festivalDayStr();};
 // curShow/nxtShow with overnight-aware time comparison
 function curShow(shows){
   if(!isActiveDayToday())return null;
@@ -1059,7 +1069,16 @@ function renderTbar(){
       <div class="crew-row"><span class="crew-lbl">Laser</span><input class="fi" id="cr-laser" type="text" placeholder="Naam laser operator" style="margin:0;"></div>
     </div></div>
   </div>
-  <div id="drfooter"><button class="btn-p" id="dr-save" onclick="saveShow()" style="flex:1;">Opslaan</button><button class="btn-g" onclick="closeDrawer()">Annuleer</button></div>
+  <div id="drfooter">
+    <div class="dr-flag-row">
+      <button class="dr-flag-btn" id="dr-cancel-btn" onclick="toggleDrFlag('cancelled')">⊘ Geannuleerd</button>
+      <button class="dr-flag-btn" id="dr-priority-btn" onclick="toggleDrFlag('priority')">⭐ Prioriteit</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn-p" id="dr-save" onclick="saveShow()" style="flex:1;">Opslaan</button>
+      <button class="btn-g" onclick="closeDrawer()">Annuleer</button>
+    </div>
+  </div>
 </div>
 
 <!-- FOH -->
@@ -1876,13 +1895,25 @@ function renderSV(){
 }
 
 // ══ DRAWER
-let editId=null,prefillBooth='A';
+let editId=null,prefillBooth='A',_drFlags={cancelled:false,priority:false};
+function toggleDrFlag(flag){
+  _drFlags[flag]=!_drFlags[flag];
+  _updateDrFlagBtns();
+}
+function _updateDrFlagBtns(){
+  const cb=document.getElementById('dr-cancel-btn');
+  const pb=document.getElementById('dr-priority-btn');
+  if(cb)cb.className='dr-flag-btn'+(_drFlags.cancelled?' active-cancel':'');
+  if(pb)pb.className='dr-flag-btn'+(_drFlags.priority?' active-priority':'');
+}
 function openDrawer(id,booth=null){
   editId=id;prefillBooth=booth;
+  _drFlags={cancelled:false,priority:false};
   document.getElementById('drtitle').textContent=id?'Show bewerken':'Nieuwe show';
   document.getElementById('dr-save').textContent=id?'Opslaan':'Aanmaken';
-  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value=(s.crew&&s.crew[r])?s.crew[r].name||'':'');_photoB64=s.photo||'';if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
+  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value=(s.crew&&s.crew[r])?s.crew[r].name||'':'');_photoB64=s.photo||'';_drFlags.cancelled=!!s.cancelled;_drFlags.priority=!!s.priority;if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
   else{document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value='');clearPhoto();selBooth(booth||'A');const shows=getShows(G.activeStage,G.activeDay);if(shows.length){const last=shows[shows.length-1];document.getElementById('f-s').value=last.end;const es=t2s(last.end)+5400;document.getElementById('f-e').value=`${String(Math.floor(es/3600)%24).padStart(2,'0')}:${String(Math.floor(es%3600/60)).padStart(2,'0')}:${String(es%60).padStart(2,'0')}`;}else{const d=new Date();document.getElementById('f-s').value=`${String(d.getHours()).padStart(2,'0')}:00:00`;document.getElementById('f-e').value=`${String((d.getHours()+1)%24).padStart(2,'0')}:30:00`;}}
+  _updateDrFlagBtns();
   updDur();
   document.getElementById('dov').classList.add('open');
   document.getElementById('drawer').classList.add('open');
@@ -1913,7 +1944,7 @@ function saveShow(){
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew={};['vj','light','sound','sfx','laser'].forEach(r=>{crew[r]={name:document.getElementById('cr-'+r).value.trim(),status:existing?.crew?.[r]?.status||''};});
   const photo=_photoB64||(existing?.photo||'');
-  const obj={artist,start:document.getElementById('f-s').value||'00:00:00',end:document.getElementById('f-e').value||'00:00:00',genre:document.getElementById('f-g').value.trim(),booth:curBooth,note:document.getElementById('f-n').value.trim(),crew,photo};
+  const obj={artist,start:document.getElementById('f-s').value||'00:00:00',end:document.getElementById('f-e').value||'00:00:00',genre:document.getElementById('f-g').value.trim(),booth:curBooth,note:document.getElementById('f-n').value.trim(),crew,photo,cancelled:_drFlags.cancelled||false,priority:_drFlags.priority||false};
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
   save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
 }
@@ -2049,18 +2080,21 @@ function tickOV(){
       clEl.textContent=rem<0?'OVERTIME':'resterend';
       barEl.style.width=pct.toFixed(1)+'%';barEl.style.background=col;
       const nx=shows[shows.indexOf(cur.s)+1];
-      nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
+      const nxPrio=nx&&!!nx.priority;
+      nxEl.className='stov-next'+(nxPrio?' priority-next':'');
+      nxEl.innerHTML=nx?`↑ <strong>${nxPrio?'⭐ ':''}${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
     }else if(nxtObj){
-      const upCol=nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
-      card.className='stov-card';card.style.borderColor=upCol+'33';
-      dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
-      stEl.textContent='Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
-      artEl.textContent=nxtObj.s.artist;
+      const isPrio=!!nxtObj.s.priority;
+      const upCol=isPrio?'#fbbf24':nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
+      card.className='stov-card'+(isPrio?' priority-next':'');card.style.borderColor=isPrio?'rgba(234,179,8,.4)':upCol+'33';
+      dotEl.style.background=isPrio?'#fbbf24':'#ef4444';if(nameEl)nameEl.style.color=isPrio?'#fbbf24':'#ef4444';
+      stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
+      artEl.textContent=nxtObj.s.artist;artEl.style.color=isPrio?'#fbbf24':'#fff';
       cdEl.textContent=s2cdH(Math.ceil(nxtObj.startsIn));cdEl.style.color=upCol;cdEl.className='stov-cd';
       clEl.textContent='tot start';barEl.style.width='0%';
-      // Show the one after "up next"
       const nxIdx=shows.indexOf(nxtObj.s)+1;
       const nx=shows[nxIdx];
+      nxEl.className='stov-next';
       nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
     }else if(shows.length){
       card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';
@@ -2705,19 +2739,23 @@ function renderTL(){
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
       const sm=ss/60,em=es/60;
       const isNow=tlDayIsToday&&nm>=sm&&nm<em,isPast=tlDayIsToday&&nm>=em;
-      const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
-      const bBg=s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
-      const border=isNow?bCol:'rgba(255,255,255,.1)';
+      const isCancelled=!!s.cancelled,isPriority=!!s.priority;
+      const bCol=isCancelled?'rgba(239,68,68,.5)':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
+      const bBg=isCancelled?'rgba(239,68,68,.08)':s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
+      const border=isCancelled?'rgba(239,68,68,.35)':isNow?bCol:'rgba(255,255,255,.1)';
       const pct=isNow?Math.min(100,(nm-sm)/(em-sm)*100):0;
-      return`<div onclick="openDrawer('${s.id}')" title="${escH(s.artist)} · ${s.start.slice(0,5)}–${s.end.slice(0,5)}"
+      const priorityDot=isPriority?`<span style="font-size:9px;line-height:1;flex-shrink:0;">⭐</span>`:'';
+      const cancelLine=isCancelled?'text-decoration:line-through;opacity:.5;':'';
+      return`<div onclick="openDrawer('${s.id}')" title="${escH(s.artist)} · ${s.start.slice(0,5)}–${s.end.slice(0,5)}${isCancelled?' [GEANNULEERD]':''}${isPriority?' [PRIORITEIT]':''}"
         style="position:absolute;left:${x}px;width:${w}px;top:8px;bottom:8px;
           background:${bBg};border:1px solid ${border};border-radius:7px;
-          cursor:pointer;overflow:hidden;opacity:${isPast?.28:1};
-          ${isNow?`box-shadow:0 0 0 2px ${bCol}33;`:''}
+          cursor:pointer;overflow:hidden;opacity:${isCancelled?.4:isPast?.28:1};
+          ${isNow&&!isCancelled?`box-shadow:0 0 0 2px ${bCol}33;`:''}
+          ${isPriority&&!isCancelled?'box-shadow:0 0 0 1px rgba(234,179,8,.5);outline:1px solid rgba(234,179,8,.3);':''}
           transition:opacity .4s;">
-        ${isNow?`<div style="position:absolute;top:0;left:0;width:${pct.toFixed(1)}%;height:2px;background:${bCol};border-radius:2px 0 0 0;"></div>`:''}
+        ${isNow&&!isCancelled?`<div style="position:absolute;top:0;left:0;width:${pct.toFixed(1)}%;height:2px;background:${bCol};border-radius:2px 0 0 0;"></div>`:''}
         <div style="padding:5px 7px;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;">
-          <div style="font-size:${w>100?'11':'10'}px;font-weight:700;color:${isNow?bCol:'rgba(255,255,255,.7)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;">${escH(s.artist)}</div>
+          <div style="font-size:${w>100?'11':'10'}px;font-weight:700;color:${isCancelled?'rgba(239,68,68,.7)':isNow?bCol:'rgba(255,255,255,.7)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;display:flex;align-items:center;gap:3px;">${priorityDot}<span style="${cancelLine}">${escH(s.artist)}</span></div>
           ${w>70?`<div style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--ffm);margin-top:2px;white-space:nowrap;">${s.start.slice(0,5)}–${s.end.slice(0,5)}</div>`:''}
         </div>
       </div>`;
@@ -2969,7 +3007,7 @@ async function loadPublicView(){
     const closeBtn=document.getElementById('tl-close-btn');
     if(closeBtn)closeBtn.style.display='none';
     // Auto-select today's day
-    const todayDay=(G.days||[]).find(d=>d.date===todayStr());
+    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
     if(todayDay)G.activeDay=todayDay.id;
     openTL();
     setInterval(()=>renderTL(),8000);
@@ -2979,7 +3017,7 @@ async function loadPublicView(){
     const closeBtn=document.getElementById('stov').querySelector('button');
     if(closeBtn)closeBtn.style.display='none';
     // Auto-select today's day, hide day switcher
-    const todayDay=(G.days||[]).find(d=>d.date===todayStr());
+    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
     if(todayDay)G.activeDay=todayDay.id;
     const dtabs=document.getElementById('stov-dtabs');
     if(dtabs)dtabs.style.display='none';
@@ -2997,7 +3035,7 @@ async function loadPublicView(){
     const bsDtabs=document.getElementById('bs-dtabs');
     if(bsDtabs)bsDtabs.style.display='none';
     // Auto-select today
-    const todayDay=(G.days||[]).find(d=>d.date===todayStr());
+    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
     if(todayDay)G.activeDay=todayDay.id;
     openBS();
     // Realtime updates
