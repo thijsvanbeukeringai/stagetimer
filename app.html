@@ -3018,7 +3018,10 @@ async function loadPublicView(){
     const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
     if(todayDay)G.activeDay=todayDay.id;
     openTL();
-    setInterval(()=>renderTL(),8000);
+    setInterval(async()=>{
+      const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderTL();}
+    },5000);
     setupRealtime();
   } else if(PUBLIC_MODE==='overview'){
     document.getElementById('app').style.display='none';
@@ -3030,7 +3033,10 @@ async function loadPublicView(){
     const dtabs=document.getElementById('stov-dtabs');
     if(dtabs)dtabs.style.display='none';
     openOV();
-    setInterval(()=>renderOV(),8000);
+    setInterval(async()=>{
+      const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderOV();}
+    },5000);
     setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
     // Standalone backstage: hide main app, hide controls
@@ -3047,7 +3053,10 @@ async function loadPublicView(){
     if(todayDay)G.activeDay=todayDay.id;
     openBS();
     // Realtime updates
-    setInterval(()=>renderBS(),8000);
+    setInterval(async()=>{
+      const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderBS();}
+    },5000);
     setupRealtime();
   }
   setInterval(tick,250);
