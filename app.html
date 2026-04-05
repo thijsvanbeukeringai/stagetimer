@@ -2042,7 +2042,7 @@ function renderOV(){
     if(!isActiveDayToday())return true; // non-today: show all
     const last=shows[shows.length-1];
     return adjM(t2m(last.end))>nm; // hide if last show already ended
-  });
+  }).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
   const grid=document.getElementById('stov-grid');
   if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen shows gepland voor deze dag.</div>';return;}
   grid.innerHTML=stages.map(st=>`
