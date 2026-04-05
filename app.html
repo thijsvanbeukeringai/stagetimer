@@ -441,7 +441,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .stov-stage-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 .stov-status{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;}
 .stov-artist{font-size:clamp(16px,1.6vw,22px);font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:14px;line-height:1.2;}
-.stov-cd{font-family:var(--ffm);font-size:clamp(36px,4.5vw,56px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;transition:color .4s;margin-bottom:6px;}
+.stov-cd{font-family:var(--ffm);font-size:clamp(28px,3.2vw,42px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;transition:color .4s;margin-bottom:6px;}
 .stov-cd-lbl{font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:14px;}
 .stov-bw{width:100%;height:4px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-bottom:14px;}
 .stov-bar{height:100%;border-radius:99px;transition:width .3s linear,background .4s;}
@@ -2098,7 +2098,8 @@ function tickOV(){
       dotEl.style.background=isPrio?'#fbbf24':'#ef4444';if(nameEl)nameEl.style.color=isPrio?'#fbbf24':'#ef4444';
       stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
       artEl.textContent=nxtObj.s.artist;artEl.style.color=isPrio?'#fbbf24':'#fff';
-      cdEl.textContent=s2cdH(Math.ceil(nxtObj.startsIn));cdEl.style.color=upCol;cdEl.className='stov-cd';
+      const siCeil=Math.ceil(nxtObj.startsIn);
+      cdEl.textContent=siCeil>300?Math.ceil(nxtObj.startsIn/60)+' min':s2cdH(siCeil);cdEl.style.color=upCol;cdEl.className='stov-cd';
       clEl.textContent='tot start';barEl.style.width='0%';
       const nxIdx=shows.indexOf(nxtObj.s)+1;
       const nx=shows[nxIdx];
