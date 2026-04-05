@@ -2072,7 +2072,7 @@ function tickOV(){
     if(cur){
       const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
-      card.className='stov-card stov-live';card.style.borderColor=col+'44';
+      if(card.className!=='stov-card stov-live')card.className='stov-card stov-live';card.style.borderColor=col+'44';
       dotEl.style.background='#22c55e';if(nameEl)nameEl.style.color='#22c55e';
       stEl.textContent=rem<0?'OVERTIME':'Running';stEl.style.color=col;
       artEl.textContent=cur.s.artist;
@@ -2086,7 +2086,9 @@ function tickOV(){
     }else if(nxtObj){
       const isPrio=!!nxtObj.s.priority;
       const upCol=isPrio?'#fbbf24':nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
-      card.className='stov-card'+(isPrio?' priority-next':'');card.style.borderColor=isPrio?'rgba(234,179,8,.4)':upCol+'33';
+      const wantClass='stov-card'+(isPrio?' priority-next':'');
+      if(card.className!==wantClass)card.className=wantClass;
+      card.style.borderColor=isPrio?'':''+upCol+'33';
       dotEl.style.background=isPrio?'#fbbf24':'#ef4444';if(nameEl)nameEl.style.color=isPrio?'#fbbf24':'#ef4444';
       stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
       artEl.textContent=nxtObj.s.artist;artEl.style.color=isPrio?'#fbbf24':'#fff';
