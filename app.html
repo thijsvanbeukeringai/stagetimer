@@ -2084,7 +2084,9 @@ function tickOV(){
       dotEl.style.background='#22c55e';if(nameEl)nameEl.style.color='#22c55e';
       stEl.textContent=rem<0?'OVERTIME':'Running';stEl.style.color=col;
       artEl.textContent=cur.s.artist;
-      cdEl.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));cdEl.style.color=col;cdEl.className='stov-cd'+(shouldBlink(rem)?' ot':'');
+      const remA=Math.ceil(Math.abs(rem)),remSgn=rem<0?-1:1;
+      const remTxt=rem>=0&&rem>900?Math.ceil(rem/60)+' min':s2cdH(remA*remSgn);
+      cdEl.textContent=remTxt;cdEl.style.color=col;cdEl.className='stov-cd'+(shouldBlink(rem)?' ot':'');
       clEl.textContent=rem<0?'OVERTIME':'resterend';
       barEl.style.width=pct.toFixed(1)+'%';barEl.style.background=col;
       nxEl.className='stov-next'+(nxPrio?' priority-next':'');
@@ -2099,7 +2101,7 @@ function tickOV(){
       stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
       artEl.textContent=nxtObj.s.artist;artEl.style.color=isPrio?'#fbbf24':'#fff';
       const siCeil=Math.ceil(nxtObj.startsIn);
-      const cdTxt=siCeil>3600?Math.ceil(siCeil/3600)+' u':siCeil>300?Math.ceil(siCeil/60)+' min':s2cdH(siCeil);
+      const cdTxt=siCeil>3600?Math.ceil(siCeil/3600)+' u':siCeil>900?Math.ceil(siCeil/60)+' min':s2cdH(siCeil);
       cdEl.textContent=cdTxt;cdEl.style.color=upCol;cdEl.className='stov-cd';
       card.style.opacity=isPrio?'1':siCeil>1800?'0.6':'1';
       clEl.textContent='tot start';barEl.style.width='0%';
