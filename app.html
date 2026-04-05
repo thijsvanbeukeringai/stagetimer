@@ -725,14 +725,15 @@ async function _pushMeta(){
   setSyncDot('ok');
 }
 
-function save(){
+function save(immediate=false){
   const proj=APP.projects.find(p=>p.id===APP.activeProjectId);
   if(proj)proj.data=G;
   localStorage.setItem(AKEY,JSON.stringify(APP));
   const id=APP.activeProjectId;
   _pendingPush[id]=true;
   clearTimeout(_projSync[id]);
-  _projSync[id]=setTimeout(()=>_pushProject(id),800);
+  if(immediate){_pushProject(id);}
+  else{_projSync[id]=setTimeout(()=>_pushProject(id),800);}
 }
 
 async function _pushProject(id){
@@ -1949,9 +1950,9 @@ function saveShow(){
   const photo=_photoB64||(existing?.photo||'');
   const obj={artist,start:document.getElementById('f-s').value||'00:00:00',end:document.getElementById('f-e').value||'00:00:00',genre:document.getElementById('f-g').value.trim(),booth:curBooth,note:document.getElementById('f-n').value.trim(),crew,photo,cancelled:_drFlags.cancelled||false,priority:_drFlags.priority||false};
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
-  save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
+  save(true);renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
 }
-function delShow(id,e){e.stopPropagation();if(!confirm('Show verwijderen?'))return;G.shows=G.shows.filter(s=>s.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
+function delShow(id,e){e.stopPropagation();if(!confirm('Show verwijderen?'))return;G.shows=G.shows.filter(s=>s.id!==id);save(true);renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
 
 // ══ MODE
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();save();renderAll();}
