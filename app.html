@@ -766,8 +766,14 @@ function setupRealtime(){
         if(proj){proj.data=p.data;proj.name=p.name;}
         else{APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}});}
         localStorage.setItem(AKEY,JSON.stringify(APP));
-        if(p.id===APP.activeProjectId){loadG();renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
-        if(document.getElementById('dash').classList.contains('open'))renderDash();
+        if(p.id===APP.activeProjectId){
+          loadG();
+          if(PUBLIC_MODE==='overview'){renderOV();}
+          else if(PUBLIC_MODE==='timeline'){renderTL();}
+          else if(PUBLIC_MODE==='backstage'){renderBS();}
+          else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
+        }
+        if(!PUBLIC_MODE&&document.getElementById('dash').classList.contains('open'))renderDash();
       } else if(payload.eventType==='DELETE'){
         const deletedId=payload.old?.id;
         if(deletedId){
@@ -3033,7 +3039,7 @@ async function loadPublicView(){
     setInterval(async()=>{
       const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderTL();}
-    },5000);
+    },2000);
     setupRealtime();
   } else if(PUBLIC_MODE==='overview'){
     document.getElementById('app').style.display='none';
@@ -3048,7 +3054,7 @@ async function loadPublicView(){
     setInterval(async()=>{
       const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderOV();}
-    },5000);
+    },2000);
     setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
     // Standalone backstage: hide main app, hide controls
@@ -3068,7 +3074,7 @@ async function loadPublicView(){
     setInterval(async()=>{
       const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderBS();}
-    },5000);
+    },2000);
     setupRealtime();
   }
   setInterval(tick,250);
