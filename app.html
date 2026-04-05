@@ -2080,7 +2080,7 @@ function tickOV(){
       const nxPrio=nx&&!!nx.priority;
       const wantLiveClass='stov-card stov-live'+(nxPrio?' priority-next':'');
       if(card.className!==wantLiveClass)card.className=wantLiveClass;
-      card.style.borderColor=nxPrio?'':col+'44';
+      card.style.borderColor=nxPrio?'':col+'44';card.style.opacity='1';
       dotEl.style.background='#22c55e';if(nameEl)nameEl.style.color='#22c55e';
       stEl.textContent=rem<0?'OVERTIME':'Running';stEl.style.color=col;
       artEl.textContent=cur.s.artist;
@@ -2099,21 +2099,23 @@ function tickOV(){
       stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
       artEl.textContent=nxtObj.s.artist;artEl.style.color=isPrio?'#fbbf24':'#fff';
       const siCeil=Math.ceil(nxtObj.startsIn);
-      cdEl.textContent=siCeil>300?Math.ceil(nxtObj.startsIn/60)+' min':s2cdH(siCeil);cdEl.style.color=upCol;cdEl.className='stov-cd';
+      const cdTxt=siCeil>3600?Math.ceil(siCeil/3600)+' u':siCeil>300?Math.ceil(siCeil/60)+' min':s2cdH(siCeil);
+      cdEl.textContent=cdTxt;cdEl.style.color=upCol;cdEl.className='stov-cd';
+      card.style.opacity=isPrio?'1':siCeil>1800?'0.6':'1';
       clEl.textContent='tot start';barEl.style.width='0%';
       const nxIdx=shows.indexOf(nxtObj.s)+1;
       const nx=shows[nxIdx];
       nxEl.className='stov-next';
       nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
     }else if(shows.length){
-      card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';
+      card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
       dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
       stEl.textContent='Afgelopen';stEl.style.color='rgba(255,255,255,.28)';
       artEl.textContent=shows[shows.length-1].artist;
       cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
       clEl.textContent='resterend';barEl.style.width='100%';barEl.style.background='rgba(255,255,255,.12)';nxEl.innerHTML='';
     }else{
-      card.className='stov-card';card.style.borderColor='rgba(255,255,255,.07)';
+      card.className='stov-card';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
       dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
       stEl.textContent='Geen shows';stEl.style.color='rgba(255,255,255,.28)';
       artEl.textContent='—';cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
