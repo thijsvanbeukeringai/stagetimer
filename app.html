@@ -2037,7 +2037,7 @@ function renderOV(){
   if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
   const nm=nowMinAdj();
   const stages=(G.stages||[]).filter(st=>{
-    const shows=getShows(st.id,G.activeDay);
+    const shows=getShows(st.id,G.activeDay).filter(s=>!s.cancelled);
     if(!shows.length)return false;
     if(!isActiveDayToday())return true; // non-today: show all
     const last=shows[shows.length-1];
@@ -2069,7 +2069,7 @@ function tickOV(){
   const stages=G.stages||[];
   const n=nowSec(),nm=nowMinAdj();
   stages.forEach(st=>{
-    const shows=getShows(st.id,G.activeDay);
+    const shows=getShows(st.id,G.activeDay).filter(s=>!s.cancelled);
     const card=document.getElementById('stovc-'+st.id);
     const dotEl=document.getElementById('stovdot-'+st.id);
     const stEl=document.getElementById('stovst-'+st.id);
