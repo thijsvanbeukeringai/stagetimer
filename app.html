@@ -809,14 +809,18 @@ const NIGHT_END_MIN = 7 * 60; // 07:00 in minutes
 const adjM = m => m < NIGHT_END_MIN ? m + 1440 : m; // times before 07:00 → push to after midnight
 const nowMinAdj = () => { const n=nowMin(); return n<NIGHT_END_MIN?n+1440:n; };
 
-// getShows: returns shows for a stage+day, INCLUDING next-day shows starting before 07:00
-const getShows=(stage,day)=>{
+// getShows: returns shows for a stage+day. When strict=false (default), also includes
+// next-day shows starting before 07:00 (overnight festival expansion). When strict=true,
+// returns ONLY shows belonging to that exact day — used by overview when not viewing today.
+const getShows=(stage,day,strict=false)=>{
   const base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day);
-  const dayIdx=(G.days||[]).findIndex(d=>d.id===day);
-  const nextDay=(G.days||[])[dayIdx+1];
-  if(nextDay){
-    const overnight=(G.shows||[]).filter(s=>s.stage===stage&&s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN);
-    base.push(...overnight);
+  if(!strict){
+    const dayIdx=(G.days||[]).findIndex(d=>d.id===day);
+    const nextDay=(G.days||[])[dayIdx+1];
+    if(nextDay){
+      const overnight=(G.shows||[]).filter(s=>s.stage===stage&&s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN);
+      base.push(...overnight);
+    }
   }
   return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
 };
@@ -1771,7 +1775,7 @@ function delFohnNote(showId,noteId){
 function renderBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   document.getElementById('bs-sname').textContent=activeStageObj().name;
-  const shows=getShows(G.activeStage,G.activeDay);
+  const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
   const n=nowSec(),nm=nowMinAdj();
   const body=document.getElementById('bs-body');
 
@@ -1843,9 +1847,9 @@ function renderBS(){
 // Fast tick for backstage (update just countdowns & bars without full re-render)
 function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
-  const shows=getShows(G.activeStage,G.activeDay);
-  const n=nowSec(),nm=nowMinAdj();
   const dayIsToday=isActiveDayToday();
+  const shows=getShows(G.activeStage,G.activeDay,!dayIsToday);
+  const n=nowSec(),nm=nowMinAdj();
   shows.forEach((s,i)=>{
     const sm=adjM(t2m(s.start));
     let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
@@ -2048,8 +2052,9 @@ function renderOV(){
   const logo=document.getElementById('co-logo-stov');
   if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
   const nm=nowMinAdj();
+  const dayToday=isActiveDayToday();
   const stages=(G.stages||[]).filter(st=>{
-    const shows=getShows(st.id,G.activeDay).filter(s=>!s.cancelled);
+    const shows=getShows(st.id,G.activeDay,!dayToday).filter(s=>!s.cancelled);
     if(!shows.length)return false;
     if(!isActiveDayToday())return true; // non-today: show all
     const last=shows[shows.length-1];
@@ -2079,8 +2084,9 @@ function tickOV(){
   const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
   const stages=G.stages||[];
   const n=nowSec(),nm=nowMinAdj();
+  const dayToday=isActiveDayToday();
   stages.forEach(st=>{
-    const shows=getShows(st.id,G.activeDay).filter(s=>!s.cancelled);
+    const shows=getShows(st.id,G.activeDay,!dayToday).filter(s=>!s.cancelled);
     const card=document.getElementById('stovc-'+st.id);
     const dotEl=document.getElementById('stovdot-'+st.id);
     const stEl=document.getElementById('stovst-'+st.id);
@@ -2091,7 +2097,7 @@ function tickOV(){
     if(!card||!cdEl)return;
     const nameEl=document.getElementById('stovname-'+st.id);
     // Only show live/countdown when active day is today
-    const dayIsToday=isActiveDayToday();
+    const dayIsToday=dayToday;
     // Overnight-aware cur/nxt detection
     let cur=null,nxtObj=null;
     if(dayIsToday)for(const s of shows){
@@ -2687,11 +2693,15 @@ function closeTL(){document.getElementById('tl').classList.remove('open');}
 function renderTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
   const stages=G.stages||[];
-  // Include overnight shows: next-day shows with start before 07:00 count as same festival day
+  // Include overnight shows ONLY when viewing today's festival day; otherwise stay strict
   const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay);
-  const dayIdx=(G.days||[]).findIndex(d=>d.id===G.activeDay);
-  const nextDay=(G.days||[])[dayIdx+1];
-  const overnightShows=nextDay?(G.shows||[]).filter(s=>s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN):[];
+  const tlDayToday=isActiveDayToday();
+  let overnightShows=[];
+  if(tlDayToday){
+    const dayIdx=(G.days||[]).findIndex(d=>d.id===G.activeDay);
+    const nextDay=(G.days||[])[dayIdx+1];
+    overnightShows=nextDay?(G.shows||[]).filter(s=>s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN):[];
+  }
   const shows=[...dayShows,...overnightShows];
   // Adjusted seconds for a show: overnight shows (start before 07:00) get +86400
   const NIGHT_S=NIGHT_END_MIN*60;
