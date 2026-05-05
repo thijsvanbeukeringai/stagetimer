@@ -825,8 +825,19 @@ const getShows=(stage,day,strict=false)=>{
   return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
 };
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
-// Returns true only if the active day has no date set (no restriction) OR its date matches today
-const isActiveDayToday=()=>{const day=(G.days||[]).find(d=>d.id===G.activeDay);if(!day||!day.date)return true;return day.date===festivalDayStr();};
+// Returns true only if the active day's date matches today (festival-day adjusted).
+// A day without a date cannot be confirmed as "today" — return false so overnight
+// expansion stays off and shows from other days don't bleed in. Exception: if no day
+// has any dates configured (single-event setups), treat the active day as today.
+const isActiveDayToday=()=>{
+  const day=(G.days||[]).find(d=>d.id===G.activeDay);
+  if(!day)return false;
+  if(!day.date){
+    const anyDated=(G.days||[]).some(d=>d.date);
+    return !anyDated; // only true when no day has a date (legacy single-event mode)
+  }
+  return day.date===festivalDayStr();
+};
 // curShow/nxtShow with overnight-aware time comparison
 function curShow(shows){
   if(!isActiveDayToday())return null;
