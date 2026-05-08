@@ -3393,10 +3393,12 @@ let _appStarted=false;
 async function _tryStartFromSession(sess){
   if(!sess||_appStarted)return;
   _appStarted=true;
+  saveAuthSession(sess);
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='flex';
   _showLogoutBtn(true);
-  await _startApp(sess);
+  try{await _startApp(sess);}
+  catch(e){console.error('_startApp failed:',e);_hideLoader();}
 }
 
 async function doLogin(){
@@ -3522,7 +3524,7 @@ async function _startApp(session){
   try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
   // Hard fallback: never let the loader hang forever
-  setTimeout(()=>{if(!_appStarted)_showLogin();},6000);
+  setTimeout(()=>{if(!_appStarted)_showLogin();},5000);
   // Public share link — skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
@@ -3531,52 +3533,37 @@ async function _startApp(session){
     return;
   }
 
-  // Quick pre-check — if no auth tokens are present anywhere, skip the network roundtrip
-  const hasOwnBackup=!!localStorage.getItem(ST_AUTH);
-  const hasSupaToken=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.includes('auth-token'));
-  if(!hasOwnBackup&&!hasSupaToken){_showLogin();return;}
-
-  // Layer 1: onAuthStateChange — catches INITIAL_SESSION (stored session on page load)
-  // and SIGNED_IN (after manual login or token refresh)
+  // Single source of truth: onAuthStateChange. Supabase fires INITIAL_SESSION on init —
+  // with the restored session if persistSession found one, or null if not.
   supa.auth.onAuthStateChange(async(event,sess)=>{
-    // Persist session backup on every event that delivers a session
     if(sess)saveAuthSession(sess);
     if(event==='TOKEN_REFRESHED')return;
     if(event==='PASSWORD_RECOVERY'){
+      _hideLoader();
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
       return;
     }
     if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited){
+      _hideLoader();
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
       return;
     }
-    if(sess){await _tryStartFromSession(sess);return;}
-    if(event==='INITIAL_SESSION'&&!_appStarted){_showLogin();}
-    if(event==='SIGNED_OUT'&&!_appStarted){_showLogin();}
+    if(sess&&!_appStarted){await _tryStartFromSession(sess);return;}
+    // No session delivered — show login (only on initial / signed-out events, not refreshes)
+    if((event==='INITIAL_SESSION'||event==='SIGNED_OUT')&&!sess&&!_appStarted){
+      // Last-chance backup restore in case Supabase's own storage was cleared but ours wasn't
+      const backup=localStorage.getItem(ST_AUTH);
+      if(backup){
+        try{
+          const restored=await restoreAuthSession();
+          if(restored){await _tryStartFromSession(restored);return;}
+        }catch(e){console.warn('backup restore failed:',e);}
+      }
+      _showLogin();
+    }
   });
-
-  // Race auth restoration against a 3s timeout so a hung network call doesn't block the UI
-  const withTimeout=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
-
-  // Layer 2: restore from our own session backup
-  if(!_appStarted){
-    const sess=await withTimeout(restoreAuthSession(),3000);
-    if(sess)await _tryStartFromSession(sess);
-  }
-
-  // Layer 3: fallback to Supabase getSession
-  if(!_appStarted){
-    try{
-      const result=await withTimeout(supa.auth.getSession(),3000);
-      const session=result?.data?.session;
-      if(session)await _tryStartFromSession(session);
-    }catch(e){}
-  }
-
-  // Layer 4: nothing worked — show login screen
-  if(!_appStarted)_showLogin();
 })();
 updateClock();
 setInterval(tick,250);
