@@ -687,16 +687,18 @@ function saveAuthSession(sess){
 async function restoreAuthSession(){
   try{
     const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
-    if(!stored||!stored.refresh_token)return null;
+    if(!stored||!stored.refresh_token){console.log('[auth] restoreAuthSession: no stored backup');return null;}
     const{data:{session},error}=await supa.auth.setSession({access_token:stored.access_token,refresh_token:stored.refresh_token});
-    if(session){saveAuthSession(session);return session;}
+    if(session){console.log('[auth] restoreAuthSession: setSession succeeded');saveAuthSession(session);return session;}
+    console.warn('[auth] restoreAuthSession: setSession failed:',error?.message);
     // Only wipe the backup if the refresh_token itself is invalid/expired
     const msg=(error?.message||'').toLowerCase();
     if(msg.includes('refresh')&&(msg.includes('invalid')||msg.includes('expired')||msg.includes('not found'))){
+      console.warn('[auth] wiping st_auth_v1 because refresh token is invalid');
       localStorage.removeItem(ST_AUTH);
     }
     return null;
-  }catch(e){console.warn('restoreAuthSession failed:',e);return null;}
+  }catch(e){console.warn('[auth] restoreAuthSession threw:',e);return null;}
 }
 
 function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.className=s;}
@@ -3405,7 +3407,7 @@ async function _tryStartFromSession(sess){
   document.getElementById('loader').style.display='flex';
   _showLogoutBtn(true);
   try{await _startApp(sess);}
-  catch(e){console.error('_startApp failed:',e);_hideLoader();}
+  catch(e){console.error('[auth] _startApp failed, falling back to login:',e);_appStarted=false;_showLogin();}
 }
 
 async function doLogin(){
@@ -3495,7 +3497,11 @@ async function setNewPassword(){
   }
   document.getElementById('set-pw').classList.remove('open');
   document.getElementById('loader').style.display='flex';
+  // Force a token refresh so the cached JWT picks up invited:false; otherwise the
+  // next page reload re-triggers the set-password modal (cached JWT still says invited:true)
+  try{await supa.auth.refreshSession();}catch(e){console.warn('refreshSession after updateUser:',e);}
   const{data:{session}}=await supa.auth.getSession();
+  if(session)saveAuthSession(session);
   _showLogoutBtn(true);
   await _startApp(session);
 }
@@ -3540,10 +3546,15 @@ async function _startApp(session){
     return;
   }
 
+  // Track whether INITIAL_SESSION has fired — used to distinguish a fresh sign-in
+  // from a session restore (some SDK builds emit SIGNED_IN instead of INITIAL_SESSION).
+  let _initialSessionSeen=false;
   // Single source of truth: onAuthStateChange. Supabase fires INITIAL_SESSION on init —
   // with the restored session if persistSession found one, or null if not.
   supa.auth.onAuthStateChange(async(event,sess)=>{
+    console.log('[auth] event:',event,'hasSession:',!!sess,'invited:',sess?.user?.user_metadata?.invited);
     if(sess)saveAuthSession(sess);
+    if(event==='INITIAL_SESSION')_initialSessionSeen=true;
     if(event==='TOKEN_REFRESHED')return;
     if(event==='PASSWORD_RECOVERY'){
       _hideLoader();
@@ -3551,7 +3562,10 @@ async function _startApp(session){
       document.getElementById('set-pw').classList.add('open');
       return;
     }
-    if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited){
+    // Only show set-password modal for a TRULY fresh sign-in: app must already be running
+    // (so this isn't the initial restore) AND user metadata says invited. Otherwise the
+    // cached JWT keeps user_metadata.invited=true forever and trips this on every refresh.
+    if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited&&_initialSessionSeen&&_appStarted){
       _hideLoader();
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
@@ -3563,10 +3577,14 @@ async function _startApp(session){
       // Last-chance backup restore in case Supabase's own storage was cleared but ours wasn't
       const backup=localStorage.getItem(ST_AUTH);
       if(backup){
+        console.log('[auth] no session from Supabase, trying st_auth_v1 backup');
         try{
           const restored=await restoreAuthSession();
-          if(restored){await _tryStartFromSession(restored);return;}
-        }catch(e){console.warn('backup restore failed:',e);}
+          if(restored){console.log('[auth] backup restore succeeded');await _tryStartFromSession(restored);return;}
+          console.log('[auth] backup restore returned null');
+        }catch(e){console.warn('[auth] backup restore threw:',e);}
+      }else{
+        console.log('[auth] no st_auth_v1 backup present');
       }
       _showLogin();
     }
