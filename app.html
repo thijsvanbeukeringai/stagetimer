@@ -3521,7 +3521,8 @@ async function _startApp(session){
 (async()=>{
   try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
-  setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none'&&!_appStarted)_showLogin();},12000);
+  // Hard fallback: never let the loader hang forever
+  setTimeout(()=>{if(!_appStarted)_showLogin();},6000);
   // Public share link — skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
@@ -3529,6 +3530,11 @@ async function _startApp(session){
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
+
+  // Quick pre-check — if no auth tokens are present anywhere, skip the network roundtrip
+  const hasOwnBackup=!!localStorage.getItem(ST_AUTH);
+  const hasSupaToken=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.includes('auth-token'));
+  if(!hasOwnBackup&&!hasSupaToken){_showLogin();return;}
 
   // Layer 1: onAuthStateChange — catches INITIAL_SESSION (stored session on page load)
   // and SIGNED_IN (after manual login or token refresh)
@@ -3551,16 +3557,20 @@ async function _startApp(session){
     if(event==='SIGNED_OUT'&&!_appStarted){_showLogin();}
   });
 
-  // Layer 2: restore from our own session backup (most reliable)
+  // Race auth restoration against a 3s timeout so a hung network call doesn't block the UI
+  const withTimeout=(p,ms)=>Promise.race([p,new Promise(r=>setTimeout(()=>r(null),ms))]);
+
+  // Layer 2: restore from our own session backup
   if(!_appStarted){
-    const sess=await restoreAuthSession();
+    const sess=await withTimeout(restoreAuthSession(),3000);
     if(sess)await _tryStartFromSession(sess);
   }
 
   // Layer 3: fallback to Supabase getSession
   if(!_appStarted){
     try{
-      const{data:{session}}=await supa.auth.getSession();
+      const result=await withTimeout(supa.auth.getSession(),3000);
+      const session=result?.data?.session;
       if(session)await _tryStartFromSession(session);
     }catch(e){}
   }
