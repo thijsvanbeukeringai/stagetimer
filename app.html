@@ -51,6 +51,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 #sync-dot.ok{background:#22c55e;}
 #sync-dot.err{background:#ef4444;}
 #sync-dot.ing{background:#f97316;}
+/* Dropdown menus */
+.dd{position:relative;flex-shrink:0;}
+.dd-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:200px;display:none;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.45);}
+.dd.open .dd-menu{display:block;}
+.dd-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:6px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;background:transparent;border:none;width:100%;text-align:left;font-family:var(--ff);}
+.dd-item:hover{background:var(--s3);}
+.dd-item.on{background:#FFE600;color:#000;}
+.dd-item.on:hover{background:#FFE600;}
+.dd-item.danger{color:#ef4444;}
+.dd-item.danger:hover{background:rgba(239,68,68,.1);}
+.dd-sep{height:1px;background:var(--border);margin:4px 2px;}
+.dd-info{padding:8px 11px;border-radius:6px;}
+.dd-info-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.dd-info-sub{font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:1px;}
+.dd-caret{margin-left:2px;opacity:.6;}
+.user-avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;}
 
 /* ── BODY ── */
 #body{flex:1;display:flex;overflow:hidden;}
@@ -507,11 +523,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #hdr-daywrap{order:8;overflow-x:auto;flex-shrink:0;}
   #hdr-daywrap::-webkit-scrollbar{display:none;}
   /* Hide everything else from header on mobile */
-  #mob-hdr-cd,#hdr-stages-btn,#hdr-crew-btn,#hdr-import-btn,
+  #mob-hdr-cd,#admin-dd,#user-dd,
   #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
-  #user-info,#logout-btn,.vsep{display:none!important;}
+  .vsep{display:none!important;}
   #logo-name{display:none;}
-  #hdr-proj-btn{display:none!important;}
   #clock-hdr{display:none!important;}
   #hdr-add-show-btn{display:flex!important;order:5;}
   #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
@@ -970,9 +985,16 @@ function renderTbar(){
     <div id="logo" style="cursor:pointer;" onclick="goToDash()" title="Terug naar dashboard"><img id="logo-icon" src="stagetimer-logo.png" alt="Stagetimer"></div>
     <div id="sync-dot" title="Sync status"></div>
     <div class="vsep" id="hdr-vsep1"></div>
-    <div id="hdr-daywrap" style="display:flex;align-items:center;gap:4px;">
-      <div id="day-tabs" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
-      <button class="daybtn" onclick="openDayModal()" title="Dagen beheren" style="padding:4px 8px;font-size:13px;line-height:1;">+</button>
+    <div id="hdr-daywrap" style="display:flex;align-items:center;">
+      <div class="dd" id="day-dd">
+        <button class="hbtn" onclick="toggleDD('day-dd')" title="Dag kiezen">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="day-dd-label" class="hbtn-lbl">—</span>
+          <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <div class="dd-menu" id="day-dd-menu" style="left:0;right:auto;min-width:240px;"></div>
+      </div>
+      <div id="day-tabs" style="display:none;"></div>
     </div>
     <div style="flex:1;" id="hdr-spacer1"></div>
     <div id="clock-hdr"></div>
@@ -981,18 +1003,6 @@ function renderTbar(){
     <!-- Row 2 (mobile): stage selector, countdown, action buttons -->
     <select id="stage-sel" class="hsel"></select>
     <div id="mob-hdr-cd"></div>
-    <button class="hbtn" onclick="openStageModal()" title="Stages beheren" style="padding:5px 8px;" id="hdr-stages-btn">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 21 12"/></svg>
-      <span class="hbtn-lbl">Stages</span>
-    </button>
-    <button class="hbtn" onclick="openCrewModal()" title="Crew beheren" id="hdr-crew-btn">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span class="hbtn-lbl">Crew</span>
-    </button>
-    <button class="hbtn" onclick="openJSONModal()" title="Lineup importeren via JSON" id="hdr-import-btn">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span class="hbtn-lbl">Import</span>
-    </button>
     <div style="flex:1;" id="hdr-spacer2"></div>
     <button class="hbtn gr" onclick="openBS()" id="hdr-bs-btn">🎭 <span class="hbtn-lbl">Backstage</span></button>
     <button class="hbtn ac" onclick="openFOH()" id="hdr-foh-btn">📺 <span class="hbtn-lbl">FOH</span></button>
@@ -1000,22 +1010,62 @@ function renderTbar(){
     <button class="hbtn" onclick="openTL()" id="hdr-tl-btn">▦ <span class="hbtn-lbl">Tijdlijn</span></button>
     <button class="hbtn" onclick="openOV()" id="hdr-ov-btn">⊞ <span class="hbtn-lbl">Overzicht</span></button>
     <div class="vsep"></div>
-    <button class="hbtn" id="hdr-proj-btn" onclick="goToDash()" title="Terug naar projecten">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span class="hbtn-lbl">Projecten</span>
-    </button>
+    <!-- Beheer dropdown -->
+    <div class="dd" id="admin-dd">
+      <button class="hbtn" onclick="toggleDD('admin-dd')" title="Beheer">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="hbtn-lbl">Beheer</span>
+        <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div class="dd-menu">
+        <button class="dd-item" onclick="closeAllDD();openStageModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 21 12"/></svg>
+          Stages beheren
+        </button>
+        <button class="dd-item" onclick="closeAllDD();openCrewModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Crew beheren
+        </button>
+        <button class="dd-item" onclick="closeAllDD();openJSONModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Lineup importeren
+        </button>
+        <button class="dd-item" onclick="closeAllDD();openDayModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Dagen beheren
+        </button>
+      </div>
+    </div>
     <button class="hbtn" id="hdr-add-show-btn" onclick="openDrawer(null)" style="display:none;">
       <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       Show toevoegen
     </button>
-    <div id="user-info" style="display:none;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.2;padding:0 4px;">
-      <span id="user-info-name" style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;"></span>
-      <span id="user-info-co" style="font-size:10px;color:var(--sub);white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;"></span>
+    <!-- User dropdown -->
+    <div class="dd" id="user-dd" style="display:none;">
+      <button class="hbtn" onclick="toggleDD('user-dd')" title="Account" style="padding:4px 9px;">
+        <span class="user-avatar" id="user-dd-avatar">?</span>
+        <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <div class="dd-menu">
+        <div class="dd-info">
+          <div class="dd-info-name" id="user-dd-name">—</div>
+          <div class="dd-info-sub" id="user-dd-email">—</div>
+        </div>
+        <div class="dd-sep"></div>
+        <button class="dd-item" onclick="closeAllDD();goToDash()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Projecten
+        </button>
+        <div class="dd-sep"></div>
+        <button class="dd-item danger" onclick="closeAllDD();doLogout()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Uitloggen
+        </button>
+      </div>
     </div>
-    <button class="hbtn" id="logout-btn" onclick="doLogout()" style="display:none;" title="Uitloggen">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      <span class="hbtn-lbl">Uitloggen</span>
-    </button>
+    <!-- Hidden legacy nodes for backwards compatibility (still referenced in code) -->
+    <div id="user-info" style="display:none;"><span id="user-info-name"></span><span id="user-info-co"></span></div>
+    <button id="logout-btn" onclick="doLogout()" style="display:none;"></button>
   </div>
 
   <!-- Mobile bottom navigation (hidden on desktop) -->
@@ -1622,13 +1672,38 @@ function tickSched(){
 }
 
 // ══ HEADER
+// ── Dropdown helpers
+function toggleDD(id){
+  const el=document.getElementById(id);if(!el)return;
+  const wasOpen=el.classList.contains('open');
+  closeAllDD();
+  if(!wasOpen)el.classList.add('open');
+}
+function closeAllDD(){document.querySelectorAll('.dd.open').forEach(d=>d.classList.remove('open'));}
+document.addEventListener('click',e=>{if(!e.target.closest('.dd'))closeAllDD();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllDD();});
+
 function renderHeader(){
   const sel=document.getElementById('stage-sel');
   sel.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
   sel.value=G.activeStage;sel.onchange=()=>{G.activeStage=sel.value;M.idx=0;mReset();save();renderAll();};
 
-  document.getElementById('day-tabs').innerHTML=getDays().map(d=>`
-    <button class="daybtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}')">${escH(d.name)}</button>`).join('');
+  // Day dropdown
+  const activeDay=getDays().find(d=>d.id===G.activeDay)||getDays()[0];
+  const dayLbl=document.getElementById('day-dd-label');
+  if(dayLbl)dayLbl.textContent=activeDay?activeDay.name:'Dag';
+  const dayMenu=document.getElementById('day-dd-menu');
+  if(dayMenu){
+    dayMenu.innerHTML=getDays().map(d=>`
+      <button class="dd-item ${d.id===G.activeDay?'on':''}" onclick="closeAllDD();setDay('${d.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        ${escH(d.name)}
+      </button>`).join('')+`<div class="dd-sep"></div>
+      <button class="dd-item" onclick="closeAllDD();openDayModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Dagen beheren
+      </button>`;
+  }
 
   // FOH selects
   const fs=document.getElementById('foh-ssel');
@@ -3349,21 +3424,22 @@ function doLogout(){
   location.href='/';
 }
 function _showLogoutBtn(session){
-  const btn=document.getElementById('logout-btn');
-  if(btn)btn.style.display=session?'flex':'none';
   const mobBtn=document.getElementById('mob-logout-btn');
   if(mobBtn)mobBtn.style.display=session?'flex':'none';
-  const info=document.getElementById('user-info');
-  if(info)info.style.display=session?'flex':'none';
+  const userDD=document.getElementById('user-dd');
+  if(userDD)userDD.style.display=session?'block':'none';
   if(session&&CURRENT_USER){
     const co=APP?.companies?.find(c=>c.id===CURRENT_USER.companyId);
     const name=CURRENT_USER.name||CURRENT_USER.email||'';
     const coName=co?.name||CURRENT_USER.email||'';
-    // App header (desktop)
-    const nameEl=document.getElementById('user-info-name');
-    const coEl=document.getElementById('user-info-co');
-    if(nameEl)nameEl.textContent=name;
-    if(coEl)coEl.textContent=coName;
+    const initial=(name||'?').trim().charAt(0).toUpperCase()||'?';
+    // App header user dropdown
+    const ddName=document.getElementById('user-dd-name');
+    const ddEmail=document.getElementById('user-dd-email');
+    const ddAvatar=document.getElementById('user-dd-avatar');
+    if(ddName)ddName.textContent=name;
+    if(ddEmail)ddEmail.textContent=CURRENT_USER.email||coName;
+    if(ddAvatar)ddAvatar.textContent=initial;
     // Dashboard header (mobile + desktop)
     const dName=document.getElementById('dash-user-name');
     const dCo=document.getElementById('dash-user-co');
