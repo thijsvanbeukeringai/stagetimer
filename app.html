@@ -628,11 +628,18 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
 window._OS=null;
-OneSignalDeferred.push(async function(OneSignal){
-  await OneSignal.init({appId:'5778eb83-1c2c-4ffd-b085-4236b5bd0188',serviceWorkerPath:'/OneSignalSDKWorker.js'});
-  window._OS=OneSignal;
-  console.log('OneSignal ready, permission:',OneSignal.Notifications.permission);
-});
+// OneSignal is only configured for the production domain. Skip init on
+// preview/localhost so it doesn't throw "Can only be used on: …" errors.
+window._OS_ENABLED=(location.hostname==='stagetimer.nl'||location.hostname==='www.stagetimer.nl');
+if(window._OS_ENABLED){
+  OneSignalDeferred.push(async function(OneSignal){
+    try{
+      await OneSignal.init({appId:'5778eb83-1c2c-4ffd-b085-4236b5bd0188',serviceWorkerPath:'/OneSignalSDKWorker.js'});
+      window._OS=OneSignal;
+      console.log('OneSignal ready, permission:',OneSignal.Notifications.permission);
+    }catch(e){console.warn('OneSignal init failed:',e);}
+  });
+}
 </script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" async></script>
 </head>

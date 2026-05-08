@@ -3,5 +3,13 @@
   "buildCommand": null,
   "rewrites": [
     { "source": "/app", "destination": "/app.html" }
+  ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.stagetimer.nl" }],
+      "destination": "https://stagetimer.nl/$1",
+      "permanent": true
+    }
   ]
 }
