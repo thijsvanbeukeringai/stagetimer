@@ -680,12 +680,16 @@ function saveAuthSession(sess){
 async function restoreAuthSession(){
   try{
     const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
-    if(!stored)return null;
+    if(!stored||!stored.refresh_token)return null;
     const{data:{session},error}=await supa.auth.setSession({access_token:stored.access_token,refresh_token:stored.refresh_token});
-    if(error||!session){localStorage.removeItem(ST_AUTH);return null;}
-    saveAuthSession(session);
-    return session;
-  }catch(e){return null;}
+    if(session){saveAuthSession(session);return session;}
+    // Only wipe the backup if the refresh_token itself is invalid/expired
+    const msg=(error?.message||'').toLowerCase();
+    if(msg.includes('refresh')&&(msg.includes('invalid')||msg.includes('expired')||msg.includes('not found'))){
+      localStorage.removeItem(ST_AUTH);
+    }
+    return null;
+  }catch(e){console.warn('restoreAuthSession failed:',e);return null;}
 }
 
 function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.className=s;}
@@ -923,7 +927,7 @@ function renderTbar(){
 </div>
 
 <!-- LOGIN -->
-<div id="login" class="open">
+<div id="login">
   <div id="login-box">
     <div id="login-logo">
       <img id="login-logo-icon" src="stagetimer-logo.png" alt="Stagetimer">
@@ -972,7 +976,7 @@ function renderTbar(){
 <button id="mob-timer-fab" onclick="toggleMobTimer()" title="Timer">⏱</button>
 
 <!-- LOADER -->
-<div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
+<div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
   <div style="font-size:32px;">⏱</div>
   <div style="font-size:13px;color:var(--sub);font-family:var(--ff);">Laden…</div>
 </div>
@@ -3496,6 +3500,7 @@ function _initUI(){
   renderAll();updateClock();
 }
 function _hideLoader(){document.getElementById('loader').style.display='none';}
+function _showLogin(){_hideLoader();document.getElementById('login').classList.add('open');}
 async function _startApp(session){
   try{loadAPPCache();_initUI();}catch(e){console.error('init:',e);}
   _hideLoader();
@@ -3516,7 +3521,7 @@ async function _startApp(session){
 (async()=>{
   try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
-  setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none')_hideLoader();},12000);
+  setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none'&&!_appStarted)_showLogin();},12000);
   // Public share link — skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
@@ -3528,7 +3533,9 @@ async function _startApp(session){
   // Layer 1: onAuthStateChange — catches INITIAL_SESSION (stored session on page load)
   // and SIGNED_IN (after manual login or token refresh)
   supa.auth.onAuthStateChange(async(event,sess)=>{
-    if(event==='TOKEN_REFRESHED'&&sess){saveAuthSession(sess);return;}
+    // Persist session backup on every event that delivers a session
+    if(sess)saveAuthSession(sess);
+    if(event==='TOKEN_REFRESHED')return;
     if(event==='PASSWORD_RECOVERY'){
       document.getElementById('login').classList.remove('open');
       document.getElementById('set-pw').classList.add('open');
@@ -3540,7 +3547,8 @@ async function _startApp(session){
       return;
     }
     if(sess){await _tryStartFromSession(sess);return;}
-    if(event==='INITIAL_SESSION'&&!_appStarted){_hideLoader();}
+    if(event==='INITIAL_SESSION'&&!_appStarted){_showLogin();}
+    if(event==='SIGNED_OUT'&&!_appStarted){_showLogin();}
   });
 
   // Layer 2: restore from our own session backup (most reliable)
@@ -3558,7 +3566,7 @@ async function _startApp(session){
   }
 
   // Layer 4: nothing worked — show login screen
-  if(!_appStarted)_hideLoader();
+  if(!_appStarted)_showLogin();
 })();
 updateClock();
 setInterval(tick,250);
