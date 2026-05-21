@@ -2257,6 +2257,25 @@ function openOV(){
 }
 function closeOV(){document.getElementById('stov').classList.remove('open');}
 
+// Pick the day_id of the earliest still-upcoming (or currently-running) show for a stage.
+// Looks across ALL days and returns null when no future show exists.
+function pickStageBestDay(stageId){
+  const today=festivalDayStr();
+  const candidates=(G.shows||[])
+    .filter(s=>s.stage===stageId&&!s.cancelled)
+    .map(s=>({s,date:showDate(s)||today}))
+    .filter(o=>{
+      // Include if show is on a future date, or today and end-time still ahead
+      if(o.date>today)return true;
+      if(o.date<today)return false;
+      const em=adjM(t2m(o.s.end));
+      return em>nowMinAdj();
+    })
+    .sort((a,b)=>a.date!==b.date?(a.date<b.date?-1:1):t2m(a.s.start)-t2m(b.s.start));
+  return candidates[0]?.s.day||null;
+}
+// Public overview uses per-stage best day instead of single G.activeDay
+const _OV_PER_STAGE_DAY=()=>PUBLIC_MODE==='overview';
 function renderOV(){
   const dtabs=document.getElementById('stov-dtabs');
   if(dtabs){
@@ -2266,13 +2285,22 @@ function renderOV(){
   if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
   const nm=nowMinAdj();
   const dayToday=isActiveDayToday();
+  const perStage=_OV_PER_STAGE_DAY();
+  // Build per-stage effective day map (only used in public overview mode)
+  const stageDay={};
+  if(perStage){(G.stages||[]).forEach(st=>{stageDay[st.id]=pickStageBestDay(st.id)||G.activeDay;});}
   const stages=(G.stages||[]).filter(st=>{
-    const shows=getShows(st.id,G.activeDay,!dayToday).filter(s=>!s.cancelled);
+    const dayId=perStage?stageDay[st.id]:G.activeDay;
+    const dayObj=(G.days||[]).find(d=>d.id===dayId);
+    const dIsToday=dayObj?.date?dayObj.date===festivalDayStr():dayToday;
+    const shows=getShows(st.id,dayId,!dIsToday).filter(s=>!s.cancelled);
     if(!shows.length)return false;
-    if(!isActiveDayToday())return true; // non-today: show all
+    if(!dIsToday)return true; // non-today: show all
     const last=shows[shows.length-1];
     return adjM(t2m(last.end))>nm; // hide if last show already ended
   }).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  // Stash for tickOV
+  window._stovStageDay=perStage?stageDay:null;
   const grid=document.getElementById('stov-grid');
   if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">Geen shows gepland voor deze dag.</div>';return;}
   grid.innerHTML=stages.map(st=>`
@@ -2298,8 +2326,12 @@ function tickOV(){
   const stages=G.stages||[];
   const n=nowSec(),nm=nowMinAdj();
   const dayToday=isActiveDayToday();
+  const perStageDay=window._stovStageDay||null;
   stages.forEach(st=>{
-    const shows=getShows(st.id,G.activeDay,!dayToday).filter(s=>!s.cancelled);
+    const stageDayId=perStageDay?perStageDay[st.id]:G.activeDay;
+    const stageDayObj=(G.days||[]).find(d=>d.id===stageDayId);
+    const dayIsToday=stageDayObj?.date?stageDayObj.date===festivalDayStr():dayToday;
+    const shows=getShows(st.id,stageDayId,!dayIsToday).filter(s=>!s.cancelled);
     const card=document.getElementById('stovc-'+st.id);
     const dotEl=document.getElementById('stovdot-'+st.id);
     const stEl=document.getElementById('stovst-'+st.id);
@@ -2309,8 +2341,6 @@ function tickOV(){
     const nxEl=document.getElementById('stovnx-'+st.id);
     if(!card||!cdEl)return;
     const nameEl=document.getElementById('stovname-'+st.id);
-    // Per-show "today" check — picks up show.date overrides on a date-less day
-    const dayIsToday=dayToday;
     // Overnight-aware cur/nxt detection
     let cur=null,nxtObj=null;
     for(const s of shows){
