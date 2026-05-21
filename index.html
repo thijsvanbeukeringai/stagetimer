@@ -780,16 +780,16 @@ html,body{overflow-x:hidden;}
     <p class="s-sub">Onbeperkt projecten, stages en shows. Realtime sync over al je views. Maandelijks opzegbaar of jaarlijks met 2 maanden cadeau.</p>
 
     <div class="bill-toggle">
-      <button class="bill-btn bill-active" id="bill-mo" onclick="setBilling('month')">Maandelijks</button>
-      <button class="bill-btn" id="bill-yr" onclick="setBilling('year')">Jaarlijks <span class="bill-save">2 mnd gratis</span></button>
+      <button class="bill-btn" id="bill-mo" onclick="setBilling('month')">Maandelijks</button>
+      <button class="bill-btn bill-active" id="bill-yr" onclick="setBilling('year')">Jaarlijks <span class="bill-save">2 mnd gratis</span></button>
     </div>
 
     <div class="pricing-single">
       <div class="price-card featured">
         <div class="price-name">Stagetimer</div>
-        <div class="price-amount"><sup>€</sup><span class="price-int" data-mo="12" data-yr="129">12</span><span class="price-dec" data-mo=",95" data-yr=",50">,95</span></div>
-        <div class="price-per"><span class="bill-per" data-mo="per maand" data-yr="per jaar">per maand</span> &nbsp;·&nbsp; excl. btw</div>
-        <div class="price-saving bill-show-yr" style="display:none;">Bespaar €25,90 per jaar</div>
+        <div class="price-amount"><sup>€</sup><span class="price-int" data-mo="12" data-yr="129">129</span><span class="price-dec" data-mo=",95" data-yr=",50">,50</span></div>
+        <div class="price-per"><span class="bill-per" data-mo="per maand" data-yr="per jaar">per jaar</span> &nbsp;·&nbsp; excl. btw</div>
+        <div class="price-saving bill-show-yr">Bespaar €25,90 per jaar</div>
         <ul class="price-list">
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>Onbeperkt projecten</strong></li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
@@ -950,7 +950,7 @@ html,body{overflow-x:hidden;}
   });
 
   // ── BILLING TOGGLE ──
-  let SU_BILLING='month';   // 'month' | 'year'
+  let SU_BILLING='year';   // 'month' | 'year' — default to yearly (2 months free)
   let SU_TIER='pro';        // 'pro' | 'business'
   function setBilling(cycle){
     SU_BILLING=cycle;
