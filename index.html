@@ -828,11 +828,10 @@ html,body{overflow-x:hidden;}
       <input class="su-fi" id="su-co" type="text" placeholder="Bedrijfsnaam" required>
       <input class="su-fi" id="su-name" type="text" placeholder="Jouw volledige naam" required>
       <input class="su-fi" id="su-email" type="email" placeholder="E-mailadres" required>
-      <input class="su-fi" id="su-pw" type="password" placeholder="Wachtwoord (min. 8 tekens)" minlength="8" required>
       <div id="su-err" style="display:none;color:#dc2626;font-size:12px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);padding:8px 12px;border-radius:8px;"></div>
-      <button type="submit" class="btn-price" id="su-submit" style="margin-top:8px;">Doorgaan naar Stripe</button>
+      <button type="submit" class="btn-price" id="su-submit" style="margin-top:8px;">Doorgaan naar betaling</button>
     </form>
-    <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:14px;">Door verder te gaan accepteer je onze voorwaarden. Veilig betalen via Stripe. Eerste maand direct geïnd. Maandelijks opzegbaar.</p>
+    <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:14px;">Veilig betalen via Stripe. Direct na de betaling stel je je wachtwoord in en kun je aan de slag.</p>
   </div>
 </div>
 
@@ -982,12 +981,11 @@ html,body{overflow-x:hidden;}
     const company=document.getElementById('su-co').value.trim();
     const name=document.getElementById('su-name').value.trim();
     const email=document.getElementById('su-email').value.trim();
-    const pw=document.getElementById('su-pw').value;
     const err=document.getElementById('su-err');
     err.style.display='none';
     const btn=document.getElementById('su-submit');
-    if(!company||!name||!email||!pw){err.textContent='Vul alle velden in.';err.style.display='block';return;}
-    if(pw.length<8){err.textContent='Wachtwoord moet minimaal 8 tekens zijn.';err.style.display='block';return;}
+    if(!company||!name||!email){err.textContent='Vul bedrijfsnaam, naam en e-mailadres in.';err.style.display='block';return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent='Geen geldig e-mailadres.';err.style.display='block';return;}
     btn.disabled=true;btn.textContent='Bezig…';
     try{
       const SUPA_URL='https://bamjpsquhdzxvsymldpq.supabase.co';
@@ -995,15 +993,19 @@ html,body{overflow-x:hidden;}
       const res=await fetch(SUPA_URL+'/functions/v1/signup-checkout',{
         method:'POST',
         headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
-        body:JSON.stringify({company,name,email,password:pw,tier:SU_TIER,cycle:SU_BILLING,origin:location.origin})
+        body:JSON.stringify({company,name,email,cycle:SU_BILLING,origin:location.origin})
       });
-      if(!res.ok){const t=await res.text();throw new Error(t||'HTTP '+res.status);}
+      if(!res.ok){
+        let msg='HTTP '+res.status;
+        try{const j=await res.json();msg=j.error||msg;}catch{}
+        throw new Error(msg);
+      }
       const data=await res.json();
       if(data.url){location.href=data.url;return;}
       throw new Error('Geen checkout URL teruggekregen.');
     }catch(e){
-      err.textContent='Aanmaken mislukt: '+(e.message||e);err.style.display='block';
-      btn.disabled=false;btn.textContent='Doorgaan naar Stripe';
+      err.textContent=(e.message||String(e));err.style.display='block';
+      btn.disabled=false;btn.textContent='Doorgaan naar betaling';
     }
   }
   window.submitSignup=submitSignup;
