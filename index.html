@@ -274,10 +274,8 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .bill-btn.bill-active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08);}
 .bill-save{font-size:10px;font-weight:800;color:#16a34a;background:rgba(22,163,74,.1);padding:2px 7px;border-radius:99px;letter-spacing:.04em;}
 .pricing-inner{text-align:center;}
-.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:840px;margin:36px auto 0;text-align:left;}
-@media(max-width:760px){
-  .pricing-grid{grid-template-columns:1fr;gap:20px;}
-}
+.pricing-single{display:flex;justify-content:center;margin:36px auto 0;text-align:left;}
+.pricing-single .price-card{max-width:440px;width:100%;}
 /* ── SIGN-UP MODAL ── */
 .su-fi{width:100%;padding:11px 14px;border:1px solid var(--border2);border-radius:9px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;outline:none;transition:border-color .2s;}
 .su-fi:focus{border-color:var(--accent);}
@@ -677,34 +675,12 @@ html,body{overflow-x:hidden;}
       <button class="bill-btn" id="bill-yr" onclick="setBilling('year')">Jaarlijks <span class="bill-save">2 mnd gratis</span></button>
     </div>
 
-    <div class="pricing-grid">
-
-      <!-- PRO -->
-      <div class="price-card" id="card-pro">
-        <div class="price-name">Stagetimer Pro</div>
+    <div class="pricing-single">
+      <div class="price-card featured">
+        <div class="price-name">Stagetimer</div>
         <div class="price-amount"><sup>€</sup><span class="price-int" data-mo="12" data-yr="129">12</span><span class="price-dec" data-mo=",95" data-yr=",50">,95</span></div>
         <div class="price-per"><span class="bill-per" data-mo="per maand" data-yr="per jaar">per maand</span> &nbsp;·&nbsp; excl. btw</div>
         <div class="price-saving bill-show-yr" style="display:none;">Bespaar €25,90 per jaar</div>
-        <ul class="price-list">
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>4 actieve projecten</strong></li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere dagen per project</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare crew-links</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>One-off Timers</li>
-        </ul>
-        <button type="button" class="btn-price-ghost" onclick="openSignup('pro')">Start Pro</button>
-        <p class="price-note">Vooraf maandelijks via Stripe &nbsp;·&nbsp; opzegbaar</p>
-      </div>
-
-      <!-- BUSINESS -->
-      <div class="price-card featured" id="card-business">
-        <div class="price-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Populairst</div>
-        <div class="price-name">Stagetimer Business</div>
-        <div class="price-amount"><sup>€</sup><span class="price-int" data-mo="29" data-yr="299">29</span><span class="price-dec" data-mo=",95" data-yr=",50">,95</span></div>
-        <div class="price-per"><span class="bill-per" data-mo="per maand" data-yr="per jaar">per maand</span> &nbsp;·&nbsp; excl. btw</div>
-        <div class="price-saving bill-show-yr" style="display:none;">Bespaar €59,90 per jaar</div>
         <ul class="price-list">
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>Onbeperkt projecten</strong></li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
@@ -715,10 +691,9 @@ html,body{overflow-x:hidden;}
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>One-off Timers</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Pushmeldingen voor crew</li>
         </ul>
-        <button type="button" class="btn-price" onclick="openSignup('business')">Start Business</button>
-        <p class="price-note">Vooraf maandelijks via Stripe &nbsp;·&nbsp; opzegbaar</p>
+        <button type="button" class="btn-price" onclick="openSignup('pro')">Start je abonnement</button>
+        <p class="price-note">Vooraf maandelijks via Stripe &nbsp;·&nbsp; maandelijks opzegbaar</p>
       </div>
-
     </div>
   </div>
 </section>
