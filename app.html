@@ -933,6 +933,25 @@ function nxtShow(shows){
   for(const s of shows){if(!isShowToday(s))continue;const sm=adjM(t2m(s.start));if(sm>n)return{s,startsIn:(sm-n)*60};}
   return null;
 }
+// Earliest upcoming non-cancelled show for a stage across ALL days. Returns {s,secUntil,sameToday,date} or null.
+function nextUpcomingAnyDay(stageId){
+  const today=festivalDayStr();
+  const now=new Date();
+  const list=(G.shows||[])
+    .filter(s=>s.stage===stageId&&!s.cancelled)
+    .map(s=>{
+      const d=showDate(s)||today;
+      const startDT=new Date(d+'T'+s.start);
+      let endDT=new Date(d+'T'+s.end);
+      if(t2s(s.end)<=t2s(s.start))endDT=new Date(endDT.getTime()+86400000);
+      return{s,date:d,startDT,endDT};
+    })
+    .filter(o=>o.startDT>now)
+    .sort((a,b)=>a.startDT-b.startDT);
+  if(!list.length)return null;
+  const f=list[0];
+  return{s:f.s,secUntil:Math.max(0,Math.floor((f.startDT-now)/1000)),sameToday:f.date===today,date:f.date};
+}
 function getDays(){return G.days||[];}
 function fmtDayShort(id){const d=(G.days||[]).find(x=>x.id===id);return d?d.name:id;}
 
@@ -2091,6 +2110,30 @@ function renderSV(){
     document.getElementById('sv-bar').style.width='0%';
     document.getElementById('sv').style.background='#000';
   }else{
+    // No live show + no next show on the current day — look across ALL days for this stage
+    const fut=nextUpcomingAnyDay(G.activeStage);
+    if(fut){
+      const cd=document.getElementById('sv-cd');
+      document.getElementById('sv-artist').textContent=fut.s.artist;
+      document.getElementById('sv-genre').textContent=fut.s.genre||'';
+      const dateLbl=(fut.date||'').split('-').reverse().slice(0,2).join('/');
+      // < 24h en zelfde festivaldag: live aftellen. Anders: datum + starttijd.
+      if(fut.sameToday&&fut.secUntil<86400){
+        const s=fut.secUntil;
+        cd.textContent=s>3600?Math.floor(s/3600)+'u '+String(Math.floor((s%3600)/60)).padStart(2,'0')+'m':s2cdH(s);
+      }else{
+        cd.textContent=dateLbl+' · '+fut.s.start.slice(0,5);
+      }
+      cd.style.color='rgba(255,255,255,.5)';
+      cd.style.display='block';
+      cd.className='';
+      document.getElementById('sv-idle').style.display='none';
+      document.getElementById('sv-bar').style.width='0%';
+      document.getElementById('sv').style.background='#000';
+      document.getElementById('sv-next-name').textContent=fut.s.artist;
+      document.getElementById('sv-next').style.opacity='1';
+      return;
+    }
     document.getElementById('sv-artist').textContent='';document.getElementById('sv-genre').textContent='';
     document.getElementById('sv-cd').style.display='none';
     document.getElementById('sv-idle').style.display='block';document.getElementById('sv-idle').textContent='Geen actieve show';
