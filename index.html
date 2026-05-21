@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stagetimer · Realtime productietiming voor elk event</title>
-<meta name="description" content="Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema. €15 per maand.">
+<meta name="description" content="Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema. Vanaf €12,95 per maand.">
 <meta name="theme-color" content="#ffffff">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -268,6 +268,20 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .btn-price-ghost{display:block;width:100%;background:transparent;border:1.5px solid var(--border2);color:var(--text);padding:15px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;text-align:center;transition:all .2s;}
 .btn-price-ghost:hover{border-color:rgba(99,102,241,.3);background:var(--bg2);}
 .price-note{font-size:12px;color:var(--sub2);text-align:center;margin-top:12px;}
+/* ── BILLING TOGGLE + GRID ── */
+.bill-toggle{display:inline-flex;background:var(--bg2);border:1px solid var(--border);border-radius:99px;padding:4px;margin:36px auto 0;gap:0;}
+.bill-btn{background:transparent;border:none;color:var(--sub);font-size:13px;font-weight:700;padding:9px 18px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:inherit;transition:all .2s;}
+.bill-btn.bill-active{background:#fff;color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.bill-save{font-size:10px;font-weight:800;color:#16a34a;background:rgba(22,163,74,.1);padding:2px 7px;border-radius:99px;letter-spacing:.04em;}
+.pricing-inner{text-align:center;}
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:840px;margin:36px auto 0;text-align:left;}
+@media(max-width:760px){
+  .pricing-grid{grid-template-columns:1fr;gap:20px;}
+}
+/* ── SIGN-UP MODAL ── */
+.su-fi{width:100%;padding:11px 14px;border:1px solid var(--border2);border-radius:9px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;outline:none;transition:border-color .2s;}
+.su-fi:focus{border-color:var(--accent);}
+.su-fi::placeholder{color:#cbd5e1;}
 
 /* ── MOBILE SECTION ── */
 .mobile-section{padding:0 40px 120px;background:var(--bg2);position:relative;overflow:hidden;}
@@ -421,6 +435,7 @@ html,body{overflow-x:hidden;}
   </div>
   <div class="nav-right">
     <a class="btn-ghost-nav" href="/app">Inloggen</a>
+    <a class="btn-cta-nav" href="#pricing">Aanmelden</a>
   </div>
 </nav>
 
@@ -434,15 +449,15 @@ html,body{overflow-x:hidden;}
       <h1>Jouw event.<br><span class="line2">Strak geregeld.</span></h1>
       <p class="hero-sub">Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema, live op de dag zelf.</p>
       <div class="hero-cta">
-        <a class="btn-hero" href="/app">Start jouw project</a>
+        <a class="btn-hero" href="#pricing">Start je abonnement</a>
         <a class="btn-outline" href="#features">Bekijk hoe het werkt</a>
       </div>
       <div class="hero-proof">
-        <span class="hero-proof-item">€15 per maand</span>
+        <span class="hero-proof-item">Vanaf €12,95 / maand</span>
         <span class="hero-proof-dot"></span>
         <span class="hero-proof-item">Maandelijks opzegbaar</span>
         <span class="hero-proof-dot"></span>
-        <span class="hero-proof-item">Unlimited stages &amp; shows</span>
+        <span class="hero-proof-item">2 maanden gratis bij jaarbetaling</span>
       </div>
     </div>
     <div class="hero-right">
@@ -654,45 +669,91 @@ html,body{overflow-x:hidden;}
 <section class="pricing-section" id="pricing">
   <div class="pricing-inner">
     <div class="s-label">Tarieven</div>
-    <h2 class="s-title">Één prijs. Alles inbegrepen.</h2>
-    <p class="s-sub">Geen verborgen kosten, geen tiers. Gewoon Stagetimer, compleet.</p>
-    <div class="price-wrap">
+    <h2 class="s-title">Kies je abonnement.</h2>
+    <p class="s-sub">Direct online, maandelijks opzegbaar. Twee maanden gratis bij jaarbetaling.</p>
 
-      <div class="price-card featured">
-        <div class="price-name">Stagetimer</div>
-        <div class="price-amount"><sup>€</sup>15</div>
-        <div class="price-per">per maand &nbsp;·&nbsp; excl. btw</div>
+    <div class="bill-toggle">
+      <button class="bill-btn bill-active" id="bill-mo" onclick="setBilling('month')">Maandelijks</button>
+      <button class="bill-btn" id="bill-yr" onclick="setBilling('year')">Jaarlijks <span class="bill-save">2 mnd gratis</span></button>
+    </div>
+
+    <div class="pricing-grid">
+
+      <!-- PRO -->
+      <div class="price-card" id="card-pro">
+        <div class="price-name">Stagetimer Pro</div>
+        <div class="price-amount"><sup>€</sup><span class="price-int" data-mo="12" data-yr="129">12</span><span class="price-dec" data-mo=",95" data-yr=",50">,95</span></div>
+        <div class="price-per"><span class="bill-per" data-mo="per maand" data-yr="per jaar">per maand</span> &nbsp;·&nbsp; excl. btw</div>
+        <div class="price-saving bill-show-yr" style="display:none;">Bespaar €25,90 per jaar</div>
         <ul class="price-list">
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Onbeperkt projecten</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>4 actieve projecten</strong></li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere dagen</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere dagen per project</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Live én handmatige show start</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync voor je team</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare crew-links</li>
           <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>One-off Timers</li>
-          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Pushmeldingen voor je crew</li>
         </ul>
-        <a class="btn-price" href="/app">Aan de slag</a>
-        <p class="price-note">Maandelijks opzegbaar &nbsp;·&nbsp; excl. btw</p>
+        <button type="button" class="btn-price-ghost" onclick="openSignup('pro')">Start Pro</button>
+        <p class="price-note">Vooraf maandelijks via Stripe &nbsp;·&nbsp; opzegbaar</p>
       </div>
 
-      <div class="price-mb">
-        <div class="imac">
-          <div class="imac-body">
-            <div class="imac-display">
-              <img src="foh-view.jpg" alt="Stagetimer app">
-            </div>
-            <div class="imac-chin"></div>
-          </div>
-          <div class="imac-neck"></div>
-          <div class="imac-foot"></div>
-        </div>
+      <!-- BUSINESS -->
+      <div class="price-card featured" id="card-business">
+        <div class="price-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Populairst</div>
+        <div class="price-name">Stagetimer Business</div>
+        <div class="price-amount"><sup>€</sup><span class="price-int" data-mo="29" data-yr="299">29</span><span class="price-dec" data-mo=",95" data-yr=",50">,95</span></div>
+        <div class="price-per"><span class="bill-per" data-mo="per maand" data-yr="per jaar">per maand</span> &nbsp;·&nbsp; excl. btw</div>
+        <div class="price-saving bill-show-yr" style="display:none;">Bespaar €59,90 per jaar</div>
+        <ul class="price-list">
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><strong>Onbeperkt projecten</strong></li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Unlimited stages &amp; shows</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Meerdere dagen per project</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>FOH, backstage &amp; stage views</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Realtime sync</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Deelbare crew-links</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>One-off Timers</li>
+          <li><div class="pcheck"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>Pushmeldingen voor crew</li>
+        </ul>
+        <button type="button" class="btn-price" onclick="openSignup('business')">Start Business</button>
+        <p class="price-note">Vooraf maandelijks via Stripe &nbsp;·&nbsp; opzegbaar</p>
       </div>
 
     </div>
   </div>
 </section>
+
+<!-- SIGN-UP MODAL -->
+<div id="signup-modal" onclick="if(event.target===this)closeSignup()" style="position:fixed;inset:0;z-index:300;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;">
+  <div onclick="event.stopPropagation()" style="background:#fff;border-radius:18px;padding:36px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h3 style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin:0;">Maak je account aan</h3>
+      <button onclick="closeSignup()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;padding:0;width:30px;height:30px;">×</button>
+    </div>
+    <p style="font-size:13px;color:#64748b;margin-bottom:22px;">Direct na de eerste betaling kun je aan de slag.</p>
+
+    <div id="su-summary" style="background:#f1f5f9;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:12px;color:#64748b;font-weight:600;letter-spacing:.04em;text-transform:uppercase;" id="su-tier-label">Stagetimer Pro</div>
+        <div style="font-size:13px;color:#0f172a;font-weight:600;" id="su-tier-feature">4 projecten</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:18px;font-weight:800;color:#0f172a;" id="su-tier-price">€12,95</div>
+        <div style="font-size:11px;color:#64748b;" id="su-tier-cycle">per maand</div>
+      </div>
+    </div>
+
+    <form id="signup-form" onsubmit="event.preventDefault();submitSignup();" style="display:flex;flex-direction:column;gap:12px;">
+      <input class="su-fi" id="su-co" type="text" placeholder="Bedrijfsnaam" required>
+      <input class="su-fi" id="su-name" type="text" placeholder="Jouw volledige naam" required>
+      <input class="su-fi" id="su-email" type="email" placeholder="E-mailadres" required>
+      <input class="su-fi" id="su-pw" type="password" placeholder="Wachtwoord (min. 8 tekens)" minlength="8" required>
+      <div id="su-err" style="display:none;color:#dc2626;font-size:12px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);padding:8px 12px;border-radius:8px;"></div>
+      <button type="submit" class="btn-price" id="su-submit" style="margin-top:8px;">Doorgaan naar Stripe</button>
+    </form>
+    <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:14px;">Door verder te gaan accepteer je onze voorwaarden. Veilig betalen via Stripe. Eerste maand direct geïnd. Maandelijks opzegbaar.</p>
+  </div>
+</div>
 
 <!-- MOBILE SECTION -->
 <section class="mobile-section">
@@ -777,7 +838,70 @@ html,body{overflow-x:hidden;}
   function closeLB(){lb.classList.remove('open');document.body.style.overflow='';}
   window.closeLB=closeLB;
   lb.addEventListener('click',e=>{if(e.target===lb)closeLB();});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLB();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLB();document.getElementById('signup-modal').style.display='none';});
+
+  // ── BILLING TOGGLE ──
+  let SU_BILLING='month';   // 'month' | 'year'
+  let SU_TIER='pro';        // 'pro' | 'business'
+  function setBilling(cycle){
+    SU_BILLING=cycle;
+    document.getElementById('bill-mo').classList.toggle('bill-active',cycle==='month');
+    document.getElementById('bill-yr').classList.toggle('bill-active',cycle==='year');
+    document.querySelectorAll('.price-int').forEach(el=>{el.textContent=el.dataset[cycle==='month'?'mo':'yr'];});
+    document.querySelectorAll('.price-dec').forEach(el=>{el.textContent=el.dataset[cycle==='month'?'mo':'yr'];});
+    document.querySelectorAll('.bill-per').forEach(el=>{el.textContent=el.dataset[cycle==='month'?'mo':'yr'];});
+    document.querySelectorAll('.bill-show-yr').forEach(el=>{el.style.display=cycle==='year'?'inline-block':'none';});
+  }
+  window.setBilling=setBilling;
+
+  // ── SIGN-UP MODAL ──
+  const TIERS={
+    pro:{name:'Stagetimer Pro',feature:'Tot 4 actieve projecten',mo:'12,95',yr:'129,50',moNote:'per maand',yrNote:'per jaar · 2 mnd gratis'},
+    business:{name:'Stagetimer Business',feature:'Onbeperkt projecten',mo:'29,95',yr:'299,50',moNote:'per maand',yrNote:'per jaar · 2 mnd gratis'}
+  };
+  function openSignup(tier){
+    SU_TIER=tier;
+    const t=TIERS[tier];
+    document.getElementById('su-tier-label').textContent=t.name;
+    document.getElementById('su-tier-feature').textContent=t.feature;
+    document.getElementById('su-tier-price').textContent='€'+t[SU_BILLING==='month'?'mo':'yr'];
+    document.getElementById('su-tier-cycle').textContent=SU_BILLING==='month'?t.moNote:t.yrNote;
+    document.getElementById('su-err').style.display='none';
+    document.getElementById('signup-modal').style.display='flex';
+    setTimeout(()=>document.getElementById('su-co').focus(),120);
+  }
+  function closeSignup(){document.getElementById('signup-modal').style.display='none';}
+  window.openSignup=openSignup;window.closeSignup=closeSignup;
+
+  async function submitSignup(){
+    const company=document.getElementById('su-co').value.trim();
+    const name=document.getElementById('su-name').value.trim();
+    const email=document.getElementById('su-email').value.trim();
+    const pw=document.getElementById('su-pw').value;
+    const err=document.getElementById('su-err');
+    err.style.display='none';
+    const btn=document.getElementById('su-submit');
+    if(!company||!name||!email||!pw){err.textContent='Vul alle velden in.';err.style.display='block';return;}
+    if(pw.length<8){err.textContent='Wachtwoord moet minimaal 8 tekens zijn.';err.style.display='block';return;}
+    btn.disabled=true;btn.textContent='Bezig…';
+    try{
+      const SUPA_URL='https://bamjpsquhdzxvsymldpq.supabase.co';
+      const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbWpwc3F1aGR6eHZzeW1sZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTQ2ODUsImV4cCI6MjA5MDUzMDY4NX0.657ty4HprURSCfdwfORQejBjXCcj6nK81rN9WoOOwiQ';
+      const res=await fetch(SUPA_URL+'/functions/v1/signup-checkout',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY},
+        body:JSON.stringify({company,name,email,password:pw,tier:SU_TIER,cycle:SU_BILLING,origin:location.origin})
+      });
+      if(!res.ok){const t=await res.text();throw new Error(t||'HTTP '+res.status);}
+      const data=await res.json();
+      if(data.url){location.href=data.url;return;}
+      throw new Error('Geen checkout URL teruggekregen.');
+    }catch(e){
+      err.textContent='Aanmaken mislukt: '+(e.message||e);err.style.display='block';
+      btn.disabled=false;btn.textContent='Doorgaan naar Stripe';
+    }
+  }
+  window.submitSignup=submitSignup;
 </script>
 </body>
 </html>
