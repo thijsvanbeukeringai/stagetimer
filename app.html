@@ -763,7 +763,16 @@ async function loadAPPRemote(){
       console.warn('[load] projects fetch failed, keeping cache:',projsRes.error);
       setSyncDot('err');return;
     }
-    if(cosRes.data)APP.companies=cosRes.data;
+    if(cosRes.data)APP.companies=cosRes.data.map(c=>({
+      id:c.id,name:c.name,
+      stripeCustomerId:c.stripe_customer_id,
+      stripeSubscriptionId:c.stripe_subscription_id,
+      subscriptionStatus:c.subscription_status||'inactive',
+      subscriptionTier:c.subscription_tier,
+      projectLimit:c.project_limit||0,
+      currentPeriodEnd:c.current_period_end,
+      trialEndsAt:c.trial_ends_at,
+    }));
     if(usrsRes.data)APP.users=usrsRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id}));
     APP.projects=(projsRes.data||[]).map(p=>({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}}));
     // Keep active project from cache
@@ -1289,6 +1298,7 @@ function renderTbar(){
     </button>
   </div>
   <div id="dash-body">
+    <div id="dash-sub-banner" style="display:none;margin:0 auto 20px;max-width:980px;border-radius:11px;padding:14px 18px;align-items:center;gap:14px;"></div>
     <div class="dash-section">
       <div class="dash-section-hdr">
         <span class="dash-section-title">Projecten</span>
@@ -1429,6 +1439,26 @@ function renderTbar(){
     <div style="display:flex;gap:7px;">
       <button class="btn-g" onclick="closeProjModal()" style="flex:1;">Annuleer</button>
       <button class="btn-p" onclick="createProject()" style="flex:1;">Aanmaken</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIMIT REACHED / UPGRADE MODAL -->
+<div id="limit-modal-ov" onclick="if(event.target===this)closeLimitModal()" style="position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div onclick="" style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:24px;width:380px;display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div style="width:36px;height:36px;border-radius:9px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:800;margin-bottom:4px;">Actie nodig</div>
+        <div id="limit-modal-msg" style="font-size:13px;line-height:1.5;color:var(--sub);">—</div>
+      </div>
+      <button onclick="closeLimitModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="display:flex;gap:7px;">
+      <button class="btn-g" onclick="closeLimitModal()" style="flex:1;">Sluiten</button>
+      <button class="btn-p" id="limit-modal-action" style="flex:1;display:none;">Actie</button>
     </div>
   </div>
 </div>
@@ -2759,6 +2789,8 @@ function hideDash(){document.getElementById('dash').classList.remove('open');}
 function renderDash(){
   const grid=document.getElementById('proj-grid');
   const myCoId=CURRENT_USER?.companyId||'';
+  // Subscription banner — show if user's company is in a state that limits usage
+  renderSubscriptionBanner();
   // Show all when user not yet loaded; otherwise filter by company
   let visibleProjects=(!CURRENT_USER||isAdmin())
     ?APP.projects
@@ -2855,9 +2887,73 @@ async function renameProject(id){
 }
 
 // ── Project modal
+function renderSubscriptionBanner(){
+  const el=document.getElementById('dash-sub-banner');if(!el)return;
+  // Platform admins don't see this banner
+  if(!CURRENT_USER||isAdmin()){el.style.display='none';return;}
+  const co=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
+  if(!co){el.style.display='none';return;}
+  const status=co.subscriptionStatus||'inactive';
+  let bg='',col='',msg='',btn='';
+  if(status==='past_due'){
+    bg='rgba(249,115,22,.08)';col='#f97316';
+    msg=`Betaling van "${co.name}" mislukt. Werk je betaalmethode bij om door te kunnen werken.`;
+    btn=`<button class="btn-p" onclick="manageSubscription('${co.id}')" style="padding:8px 14px;font-size:12px;">Open betaalmethode</button>`;
+  }else if(status==='canceled'||status==='inactive'||status==='incomplete'){
+    bg='rgba(99,102,241,.08)';col='#a5b4fc';
+    msg=`"${co.name}" heeft geen actief abonnement. Start een Stagetimer-abonnement om projecten aan te maken.`;
+    btn=`<a class="btn-p" href="/#pricing" style="padding:8px 14px;font-size:12px;text-decoration:none;">Start abonnement</a>`;
+  }else if(status==='active'){
+    // Quietly check if at-limit
+    const limit=co.projectLimit||0;
+    if(limit>0){
+      const cnt=APP.projects.filter(p=>p.companyId===co.id).length;
+      if(cnt>=limit){
+        bg='rgba(251,191,36,.08)';col='#fbbf24';
+        msg=`Projectlimiet bereikt (${cnt}/${limit}). Upgrade naar Business voor onbeperkt projecten.`;
+        btn=`<button class="btn-p" onclick="manageSubscription('${co.id}')" style="padding:8px 14px;font-size:12px;">Upgrade</button>`;
+      }
+    }
+  }
+  if(!msg){el.style.display='none';return;}
+  el.style.display='flex';
+  el.style.background=bg;
+  el.style.border='1px solid '+col+'33';
+  el.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <div style="flex:1;font-size:13px;color:#1e293b;">${escH(msg)}</div>${btn}`;
+}
+// Returns {ok, reason, action} where action is 'subscribe'|'upgrade'|null
+function canCreateProject(companyId){
+  // Platform admins bypass limits
+  if(CURRENT_USER?.role==='super_admin'||CURRENT_USER?.role==='admin')return{ok:true};
+  const co=APP.companies.find(c=>c.id===companyId);
+  if(!co)return{ok:false,reason:'Geen bedrijf gekoppeld aan deze account. Neem contact op.',action:null};
+  const status=co.subscriptionStatus||'inactive';
+  if(status==='inactive'||status==='canceled'||status==='incomplete'){
+    return{ok:false,reason:`Bedrijf "${co.name}" heeft geen actief abonnement.`,action:'subscribe',company:co};
+  }
+  if(status==='past_due'){
+    return{ok:false,reason:`Bedrijf "${co.name}" heeft een achterstallige betaling. Werk je betaalmethode bij in Stripe om door te kunnen.`,action:'portal',company:co};
+  }
+  const limit=co.projectLimit||0;
+  if(limit<0)return{ok:true}; // unlimited (business)
+  const current=APP.projects.filter(p=>p.companyId===companyId).length;
+  if(current>=limit){
+    return{ok:false,reason:`Bedrijf "${co.name}" heeft de projectlimiet bereikt (${current}/${limit}). Upgrade naar Stagetimer Business voor onbeperkt projecten.`,action:'upgrade',company:co};
+  }
+  return{ok:true};
+}
 function openProjModal(){
-  const sel=document.getElementById('pm-co');
   const coId=CURRENT_USER?.companyId||'';
+  // Run limit check for the user's primary company first
+  if(coId){
+    const chk=canCreateProject(coId);
+    if(!chk.ok){
+      showLimitModal(chk);
+      return;
+    }
+  }
+  const sel=document.getElementById('pm-co');
   const companies=CURRENT_USER?.role==='super_admin'?APP.companies:APP.companies.filter(c=>c.id===coId);
   sel.innerHTML=companies.map(c=>`<option value="${c.id}"${c.id===coId?' selected':''}>${escH(c.name)}</option>`).join('');
   sel.style.display=companies.length<=1?'none':'block';
@@ -2865,17 +2961,44 @@ function openProjModal(){
   document.getElementById('proj-modal-ov').classList.add('open');
   setTimeout(()=>document.getElementById('pm-name').focus(),120);
 }
+function showLimitModal(chk){
+  const ov=document.getElementById('limit-modal-ov');
+  if(!ov)return alert(chk.reason);
+  document.getElementById('limit-modal-msg').textContent=chk.reason;
+  const btn=document.getElementById('limit-modal-action');
+  if(chk.action==='subscribe'){
+    btn.textContent='Start abonnement';
+    btn.onclick=()=>{location.href='/#pricing';};
+    btn.style.display='block';
+  }else if(chk.action==='upgrade'){
+    btn.textContent='Upgrade naar Business';
+    btn.onclick=async()=>{closeLimitModal();await manageSubscription(chk.company.id);};
+    btn.style.display='block';
+  }else if(chk.action==='portal'){
+    btn.textContent='Open Stripe portal';
+    btn.onclick=async()=>{closeLimitModal();await manageSubscription(chk.company.id);};
+    btn.style.display='block';
+  }else{
+    btn.style.display='none';
+  }
+  ov.classList.add('open');
+}
+function closeLimitModal(){const ov=document.getElementById('limit-modal-ov');if(ov)ov.classList.remove('open');}
 function closeProjModal(){document.getElementById('proj-modal-ov').classList.remove('open');}
-function createProject(){
+async function createProject(){
   const name=document.getElementById('pm-name').value.trim();if(!name)return;
   const companyId=document.getElementById('pm-co').value;
+  // Re-check limit at submit (race: a parallel tab could have hit it first)
+  const chk=canCreateProject(companyId);
+  if(!chk.ok){closeProjModal();showLimitModal(chk);return;}
   const id=uid();
   const firstDayId=uid();
   const emptyData={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:firstDayId,days:[{id:firstDayId,name:'Dag 1'}],timerMode:'live'};
   const proj={id,name,companyId,createdAt:Date.now(),data:emptyData};
+  const{error}=await supa.from('projects').insert([{id,name,company_id:companyId||'',created_at:proj.createdAt,data:emptyData}]);
+  if(error){alert('Project aanmaken mislukt: '+error.message);return;}
   APP.projects.push(proj);
   saveAPP();
-  supa.from('projects').insert([{id,name,company_id:companyId||'',created_at:proj.createdAt,data:emptyData}]);
   closeProjModal();renderDash();
 }
 
