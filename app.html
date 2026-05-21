@@ -3833,8 +3833,29 @@ async function _startApp(session){
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
-  // Hard fallback: never let the loader hang forever (only for authenticated flow)
-  setTimeout(()=>{if(!_appStarted)_showLogin();},5000);
+  // Hard fallback: never let the loader hang forever (only for authenticated flow).
+  // CRITICAL: don't bounce a session-holding user to login just because the network is slow.
+  // If a Supabase session or our backup exists in localStorage, keep waiting for INITIAL_SESSION
+  // and only fall back to login after a longer timeout — and even then only if both keys are gone.
+  setTimeout(()=>{
+    if(_appStarted)return;
+    const hasBackup=!!localStorage.getItem(ST_AUTH);
+    const hasSbSession=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
+    if(hasBackup||hasSbSession){
+      console.log('[auth] 5s elapsed, session keys present — extending wait for INITIAL_SESSION');
+      // Second-stage fallback at 15s: if STILL nothing happened, try a manual restore one last time.
+      setTimeout(async()=>{
+        if(_appStarted)return;
+        try{
+          const restored=await restoreAuthSession();
+          if(restored){await _tryStartFromSession(restored);return;}
+        }catch(e){console.warn('[auth] late restore failed:',e);}
+        if(!_appStarted)_showLogin();
+      },10000);
+      return;
+    }
+    _showLogin();
+  },5000);
 
   // Track whether INITIAL_SESSION has fired — used to distinguish a fresh sign-in
   // from a session restore (some SDK builds emit SIGNED_IN instead of INITIAL_SESSION).
