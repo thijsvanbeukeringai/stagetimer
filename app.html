@@ -1780,7 +1780,7 @@ function renderHeader(){
   fs.value=G.activeStage;fs.onchange=()=>{G.activeStage=fs.value;save();renderFOH();renderAll();};
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   document.getElementById('foh-dtabs').innerHTML=getDays().map(d=>`
-    <button class="fhbtn ${d===G.activeDay?'on':''}" onclick="setDay('${d}');renderFOH();">${fmtDayShort(d)}</button>`).join('');
+    <button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderFOH();">${escH(d.name)}</button>`).join('');
 
   // Backstage selects
   const bs=document.getElementById('bs-ssel');
@@ -2359,12 +2359,28 @@ function tickOV(){
       nxEl.className='stov-next';
       nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
     }else if(shows.length){
-      card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
-      dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
-      stEl.textContent='Afgelopen';stEl.style.color='rgba(255,255,255,.28)';
-      artEl.textContent=shows[shows.length-1].artist;artEl.style.color='#fff';
-      cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
-      barEl.style.width='100%';barEl.style.background='rgba(255,255,255,.12)';nxEl.innerHTML='';
+      if(!dayIsToday){
+        // Active day is not today → don't mark as "Afgelopen"; show as Gepland with first artist.
+        const first=shows[0];
+        const sd=showDate(first);
+        const sdLbl=sd?sd.split('-').reverse().slice(0,2).join('/'):'';
+        card.className='stov-card';card.style.borderColor='rgba(99,102,241,.2)';card.style.opacity='1';
+        dotEl.style.background='#6366f1';if(nameEl)nameEl.style.color='#6366f1';
+        stEl.textContent='Gepland'+(sdLbl?' · '+sdLbl:'');stEl.style.color='#6366f1';
+        artEl.textContent=first.artist;artEl.style.color='#fff';
+        cdEl.textContent=first.start.slice(0,5);cdEl.style.color='#6366f1';cdEl.className='stov-cd';
+        barEl.style.width='0%';barEl.style.background='rgba(255,255,255,.12)';
+        const nx=shows[1];
+        nxEl.className='stov-next';
+        nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
+      }else{
+        card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
+        dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
+        stEl.textContent='Afgelopen';stEl.style.color='rgba(255,255,255,.28)';
+        artEl.textContent=shows[shows.length-1].artist;artEl.style.color='#fff';
+        cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
+        barEl.style.width='100%';barEl.style.background='rgba(255,255,255,.12)';nxEl.innerHTML='';
+      }
     }else{
       card.className='stov-card';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
       dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
@@ -2966,14 +2982,15 @@ function renderTL(){
     const activeStages=stages.filter(st=>shows.some(s=>s.stage===st.id));
     const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
     const makeRow=s=>{
+      const showIsToday=isShowToday(s);
       const sm=adjM(t2m(s.start)),em=adjM(t2m(s.end));const emF=em<=sm?em+1440:em;
-      const isNow=nm>=sm&&nm<emF,isPast=nm>=emF;
-      const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
-      return`<div onclick="openDrawer('${s.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);opacity:${isPast?.35:1};cursor:pointer;background:${isNow?'rgba(99,102,241,.06)':'transparent'};">
+      const isNow=showIsToday&&nm>=sm&&nm<emF,isPast=showIsToday&&nm>=emF;
+      const bCol=isNow?'#fbbf24':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
+      return`<div onclick="openDrawer('${s.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);opacity:${isPast?.35:1};cursor:pointer;background:${isNow?'rgba(251,191,36,.1)':'transparent'};">
         <div style="width:3px;align-self:stretch;border-radius:99px;background:${isNow?bCol:'rgba(255,255,255,.1)'};flex-shrink:0;"></div>
         <div style="font-family:var(--ffm);font-size:11px;color:${isNow?bCol:'rgba(255,255,255,.35)'};flex-shrink:0;width:90px;">${s.start.slice(0,5)} – ${s.end.slice(0,5)}</div>
-        <div style="font-size:13px;font-weight:700;color:${isNow?'#fff':'rgba(255,255,255,.7)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(s.artist)}</div>
-        ${isNow?`<div style="font-size:9px;font-weight:700;color:${bCol};background:rgba(99,102,241,.15);padding:2px 7px;border-radius:99px;flex-shrink:0;">NU</div>`:''}
+        <div style="font-size:13px;font-weight:700;color:${isNow?'#fbbf24':'rgba(255,255,255,.7)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(s.artist)}</div>
+        ${isNow?`<div style="font-size:9px;font-weight:700;color:#08080e;background:#fbbf24;padding:2px 7px;border-radius:99px;flex-shrink:0;">NU</div>`:''}
       </div>`;
     };
     const stageBlocks=activeStages.map(stage=>{
@@ -3040,9 +3057,10 @@ function renderTL(){
       const showIsToday=isShowToday(s);
       const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
       const isCancelled=!!s.cancelled,isPriority=!!s.priority;
-      const bCol=isCancelled?'rgba(239,68,68,.5)':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
-      const bBg=isCancelled?'rgba(239,68,68,.08)':s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
-      const border=isCancelled?'rgba(239,68,68,.35)':isNow?bCol:'rgba(255,255,255,.1)';
+      const bColBase=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
+      const bCol=isCancelled?'rgba(239,68,68,.5)':isNow?'#fbbf24':bColBase;
+      const bBg=isCancelled?'rgba(239,68,68,.08)':isNow?'rgba(251,191,36,.18)':s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
+      const border=isCancelled?'rgba(239,68,68,.35)':isNow?'#fbbf24':'rgba(255,255,255,.1)';
       const pct=isNow?Math.min(100,(nm-sm)/(em-sm)*100):0;
       const priorityDot=isPriority?`<span style="font-size:9px;line-height:1;flex-shrink:0;">⭐</span>`:'';
       const cancelLine=isCancelled?'text-decoration:line-through;opacity:.5;':'';
@@ -3314,13 +3332,26 @@ async function loadPublicView(){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('tl-close-btn');
     if(closeBtn)closeBtn.style.display='none';
-    // Auto-select today's day
+    // Auto-select today's day (fallback: first day)
     const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
     if(todayDay)G.activeDay=todayDay.id;
+    else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
+    // Render day-selector tabs (read-only, no save())
+    window._publicSetDay=function(id){G.activeDay=id;renderTLDtabsPublic();renderTL();};
+    window.renderTLDtabsPublic=function(){
+      const dt=document.getElementById('tl-dtabs');
+      if(!dt)return;
+      dt.innerHTML=(G.days||[]).map(d=>`<button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="_publicSetDay('${d.id}')">${escH(d.name)}</button>`).join('');
+    };
+    renderTLDtabsPublic();
     openTL();
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderTL();}}catch(e){}
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
+        const keepDay=G.activeDay;
+        loadG();
+        if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
+        renderTLDtabsPublic();renderTL();}}catch(e){}
     },2000);
     setupRealtime();
   } else if(PUBLIC_MODE==='overview'){
