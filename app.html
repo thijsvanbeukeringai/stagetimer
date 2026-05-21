@@ -3150,14 +3150,31 @@ async function delUser(id){
   APP.users=APP.users.filter(x=>x.id!==id);
   saveAPP();renderAdmin();
 }
-// Stub — wired up after Stripe edge functions are deployed
 async function manageSubscription(coId){
   const c=APP.companies.find(x=>x.id===coId);if(!c)return;
   const status=c.subscriptionStatus||'inactive';
-  if(status==='active'||status==='trialing'||status==='past_due'){
-    alert(`Abonnement van "${c.name}":\nStatus: ${status}\nTier: ${c.subscriptionTier||'-'}\nLimit: ${c.projectLimit||0} project(en)\n\nStripe Customer Portal komt zo beschikbaar (na deploy edge functions).`);
-  }else{
-    alert(`"${c.name}" heeft geen actief abonnement.\n\nStart-abonnement flow wordt nog toegevoegd (na Stripe product creation).`);
+  if(!c.stripeCustomerId){
+    alert(`"${c.name}" heeft nog geen Stripe-koppeling. Laat het bedrijf zich aanmelden via stagetimer.nl/#pricing om een abonnement te starten.`);
+    return;
+  }
+  if(status==='inactive'||status==='canceled'){
+    if(!confirm(`"${c.name}" heeft geen actief abonnement (status: ${status}).\n\nOpen Stripe Customer Portal om opnieuw te starten?`))return;
+  }
+  // Get user session to authenticate the portal-link edge function call
+  try{
+    const{data:{session}}=await supa.auth.getSession();
+    if(!session){alert('Niet ingelogd.');return;}
+    const res=await fetch(`${SUPA_URL}/functions/v1/portal-link`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
+      body:JSON.stringify({companyId:coId,returnUrl:location.origin+'/app'})
+    });
+    if(!res.ok){const t=await res.text();throw new Error(t||'HTTP '+res.status);}
+    const data=await res.json();
+    if(data.url){location.href=data.url;return;}
+    throw new Error('Geen portal URL teruggekregen.');
+  }catch(e){
+    alert('Stripe portal openen mislukt: '+(e.message||e));
   }
 }
 
