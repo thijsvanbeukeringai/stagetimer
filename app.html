@@ -786,13 +786,10 @@ async function loadAPPRemote(){
       supa.from('app_users').select('*'),
       supa.from('projects').select('*')
     ]);
-    // CRITICAL: never overwrite cached projects with an empty array on transient errors.
-    // iOS Safari hits this when the access_token expired mid-refresh (RLS returns []),
-    // and that wipes the user's projects from localStorage on every refresh.
-    if(projsRes.error){
-      console.warn('[load] projects fetch failed, keeping cache:',projsRes.error);
-      setSyncDot('err');return;
-    }
+    // Update companies + users whenever their fetch succeeds — even if projects
+    // fetch fails (iOS Safari token expiry, transient RLS, etc.). Otherwise a
+    // single bad projects response keeps stale subscription_status in cache
+    // forever and shows misleading banners to paying users.
     if(cosRes.data)APP.companies=cosRes.data.map(c=>({
       id:c.id,name:c.name,
       stripeCustomerId:c.stripe_customer_id,
@@ -808,11 +805,18 @@ async function loadAPPRemote(){
       setupToken:c.setup_token,
     }));
     if(usrsRes.data)APP.users=usrsRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id}));
-    APP.projects=(projsRes.data||[]).map(p=>({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}}));
+    // Projects: keep cache on error (never wipe the user's data on transient failure),
+    // but only overwrite when we got a clean successful response.
+    if(projsRes.error){
+      console.warn('[load] projects fetch failed, keeping cached projects:',projsRes.error);
+      setSyncDot('err');
+    }else{
+      APP.projects=(projsRes.data||[]).map(p=>({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}}));
+      setSyncDot('ok');
+    }
     // Keep active project from cache
     APP.activeProjectId=localStorage.getItem('st_active_proj')||APP.activeProjectId||null;
     localStorage.setItem(AKEY,JSON.stringify(APP));
-    setSyncDot('ok');
   }catch(e){setSyncDot('err');console.warn('Supabase load failed (keeping cache):',e);}
 }
 
