@@ -15,7 +15,7 @@
 <link rel="dns-prefetch" href="https://bamjpsquhdzxvsymldpq.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script>
-// EARLY PUBLIC FETCH — kick off the Supabase request immediately, in parallel with the
+// EARLY PUBLIC FETCH - kick off the Supabase request immediately, in parallel with the
 // supabase-js download and the rest of the page parsing. By the time loadPublicView()
 // runs, the response is often already in. Cuts public-view first-paint by ~1-3 sec on mobile.
 (function(){
@@ -262,11 +262,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #fohn-modal-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px;}
 #fohn-modal-sub{font-size:11px;color:var(--sub);}
 .fohn-actions{display:flex;gap:7px;margin-top:4px;}
-/* Crew — drawer */
+/* Crew - drawer */
 .crew-rows{display:flex;flex-direction:column;gap:6px;}
 .crew-row{display:flex;align-items:center;gap:8px;}
 .crew-lbl{font-size:11px;font-weight:700;color:var(--sub);width:52px;flex-shrink:0;}
-/* Crew — FOH */
+/* Crew - FOH */
 .foh-crew{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:3px;}
 .foh-crew-row{display:flex;align-items:center;gap:10px;padding:3px 0;}
 .foh-crew-role{font-size:10px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.28);width:46px;flex-shrink:0;}
@@ -650,7 +650,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
 window._OS=null;
-// Skip OneSignal entirely on public share views — they don't need push, and the SDK
+// Skip OneSignal entirely on public share views - they don't need push, and the SDK
 // is ~30KB of needless bandwidth + init time on every public-link visit.
 const _isPublic=!!(new URLSearchParams(location.search).get('mode'));
 // OneSignal is only configured for the production domain. Skip init on
@@ -697,7 +697,7 @@ const tColor=s=>{
 };
 // Should blink? (< 60s or overtime)
 const shouldBlink=s=>s<30;
-// tBg: translucent version of tColor — used for row background fill
+// tBg: translucent version of tColor - used for row background fill
 const _crgb={'#22c55e':'34,197,94','#f97316':'249,115,22','#ef4444':'239,68,68'};
 const tBg=(col,a)=>`rgba(${_crgb[col]||'255,255,255'},${Math.min(1,a).toFixed(3)})`;
 
@@ -812,7 +812,7 @@ function saveAPP(){
 }
 
 async function _pushMeta(){
-  // Companies and users are synced explicitly on add/delete — no bulk upsert here
+  // Companies and users are synced explicitly on add/delete - no bulk upsert here
   // to avoid re-inserting records deleted directly in Supabase.
   setSyncDot('ok');
 }
@@ -886,7 +886,7 @@ const nowMinAdj = () => { const n=nowMin(); return n<NIGHT_END_MIN?n+1440:n; };
 
 // getShows: returns shows for a stage+day. When strict=false (default), also includes
 // next-day shows starting before 07:00 (overnight festival expansion). When strict=true,
-// returns ONLY shows belonging to that exact day — used by overview when not viewing today.
+// returns ONLY shows belonging to that exact day - used by overview when not viewing today.
 const getShows=(stage,day,strict=false)=>{
   const base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day);
   if(!strict){
@@ -899,7 +899,7 @@ const getShows=(stage,day,strict=false)=>{
   }
   return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
 };
-const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
+const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'-',emoji:''};
 // Resolve the effective date of a show: explicit show.date wins, otherwise inherit from its day.
 const showDate=s=>s?.date||(G.days||[]).find(d=>d.id===s?.day)?.date||'';
 // Returns true if there's any reason to consider the active day "today" for live countdowns.
@@ -909,11 +909,11 @@ const isActiveDayToday=()=>{
   const day=(G.days||[]).find(d=>d.id===G.activeDay);
   if(!day)return false;
   if(day.date)return day.date===today;
-  // No day.date — fall back to show-level dates on this day
+  // No day.date - fall back to show-level dates on this day
   const showsOnDay=(G.shows||[]).filter(s=>s.day===G.activeDay);
   const datedShows=showsOnDay.filter(s=>s.date);
   if(datedShows.length){return datedShows.some(s=>s.date===today);}
-  // Nothing dated on this day — only treat as today if no dates exist anywhere (legacy mode)
+  // Nothing dated on this day - only treat as today if no dates exist anywhere (legacy mode)
   const anyDated=(G.days||[]).some(d=>d.date)||(G.shows||[]).some(s=>s.date);
   return !anyDated;
 };
@@ -980,9 +980,9 @@ function renderTbar(){
   const sh=getShows(G.activeStage,G.activeDay),s=sh[M.idx];
   const pb=document.getElementById('btn-pp');
   if(M.state==='running'){pb.textContent='⏸ Pauze';pb.className='tb pau';}else{pb.textContent='▶ Start';pb.className='tb go';}
-  document.getElementById('t-cs').textContent=s?s.start.slice(0,5):'—';
-  document.getElementById('t-ce').textContent=s?s.end.slice(0,5):'—';
-  document.getElementById('t-cn').textContent=sh.length?`${M.idx+1}/${sh.length}`:'—';
+  document.getElementById('t-cs').textContent=s?s.start.slice(0,5):'-';
+  document.getElementById('t-ce').textContent=s?s.end.slice(0,5):'-';
+  document.getElementById('t-cn').textContent=sh.length?`${M.idx+1}/${sh.length}`:'-';
 }
 </script>
 
@@ -1046,7 +1046,7 @@ function renderTbar(){
       <div style="font-size:14px;font-weight:800;">Lineup importeren via JSON</div>
       <button onclick="closeJSONModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
-    <div style="font-size:11px;color:var(--sub);line-height:1.6;">Verwacht formaat — elke dag als sleutel met <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> en <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
+    <div style="font-size:11px;color:var(--sub);line-height:1.6;">Verwacht formaat - elke dag als sleutel met <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> en <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
     <code style="font-size:10px;color:var(--sub);">{"vrijdag":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code></div>
     <textarea id="json-input-area" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"vrijdag":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artiest naam"}]}]}}'></textarea>
     <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
@@ -1079,7 +1079,7 @@ function renderTbar(){
       <div class="dd" id="day-dd">
         <button class="hbtn" onclick="toggleDD('day-dd')" title="Dag kiezen">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span id="day-dd-label" class="hbtn-lbl">—</span>
+          <span id="day-dd-label" class="hbtn-lbl">-</span>
           <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         </button>
         <div class="dd-menu" id="day-dd-menu" style="left:0;right:auto;min-width:240px;"></div>
@@ -1138,8 +1138,8 @@ function renderTbar(){
       </button>
       <div class="dd-menu">
         <div class="dd-info">
-          <div class="dd-info-name" id="user-dd-name">—</div>
-          <div class="dd-info-sub" id="user-dd-email">—</div>
+          <div class="dd-info-name" id="user-dd-name">-</div>
+          <div class="dd-info-sub" id="user-dd-email">-</div>
         </div>
         <div class="dd-sep"></div>
         <button class="dd-item" onclick="closeAllDD();goToDash()">
@@ -1177,17 +1177,17 @@ function renderTbar(){
       </div>
       <div id="tinner">
         <div id="tp-photo-wrap"><img id="tp-photo" src="" alt=""></div>
-        <div id="tp-stage">—</div>
-        <div id="tp-sr"><span id="tp-dot"></span><span id="tp-st">—</span></div>
-        <div id="tp-artist">—</div>
-        <div id="tp-genre">—</div>
+        <div id="tp-stage">-</div>
+        <div id="tp-sr"><span id="tp-dot"></span><span id="tp-st">-</span></div>
+        <div id="tp-artist">-</div>
+        <div id="tp-genre">-</div>
         <div id="tp-booth"></div>
         <div id="tp-cd" style="color:var(--dim);">--:--</div>
         <div id="tp-cdlbl">resterend</div>
         <div id="tp-bw"><div id="tp-bar"></div></div>
         <div id="tp-next">
           <div id="tp-nl">Up Next</div>
-          <div id="tp-na">—</div>
+          <div id="tp-na">-</div>
           <div id="tp-nt"></div>
         </div>
       </div>
@@ -1198,7 +1198,7 @@ function renderTbar(){
           <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
           <button class="tb" onclick="mNext()">⏭</button>
         </div>
-        <div id="t-inf"><span id="t-cs">—</span><span id="t-cn">—</span><span id="t-ce">—</span></div>
+        <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
       </div>
     </div>
 
@@ -1239,10 +1239,10 @@ function renderTbar(){
       <div class="fg"><label class="fl" for="f-s">Starttijd</label><input class="fi" id="f-s" type="time" step="1"></div>
       <div class="fg"><label class="fl" for="f-e">Eindtijd</label><input class="fi" id="f-e" type="time" step="1"></div>
     </div>
-    <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">—</span></div>
+    <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
     <div class="frow">
       <div class="fg"><label class="fl" for="f-g">Genre</label><input class="fi" id="f-g" type="text" placeholder="bijv. Techno"></div>
-      <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-A" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div><div class="booth-opt" id="bo-none" onclick="selBooth('')">—</div></div></div>
+      <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-A" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div><div class="booth-opt" id="bo-none" onclick="selBooth('')">-</div></div></div>
     </div>
     <div class="fg"><label class="fl" for="f-n">Notitie</label><textarea class="fi" id="f-n" placeholder="Interne notitie…"></textarea></div>
     <div class="fg"><label class="fl">Crew</label><div class="crew-rows">
@@ -1268,7 +1268,7 @@ function renderTbar(){
 <!-- FOH -->
 <div id="foh">
   <div id="foh-hdr">
-    <div id="foh-title">FOH — <span id="foh-sname">—</span></div>
+    <div id="foh-title">FOH - <span id="foh-sname">-</span></div>
     <div style="display:flex;gap:5px;" id="foh-dtabs"></div>
     <select id="foh-ssel" class="hsel"></select>
     <div id="foh-clock"></div>
@@ -1452,7 +1452,7 @@ function renderTbar(){
       </div>
       <div style="flex:1;">
         <div style="font-size:14px;font-weight:800;margin-bottom:4px;">Actie nodig</div>
-        <div id="limit-modal-msg" style="font-size:13px;line-height:1.5;color:var(--sub);">—</div>
+        <div id="limit-modal-msg" style="font-size:13px;line-height:1.5;color:var(--sub);">-</div>
       </div>
       <button onclick="closeLimitModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
@@ -1486,7 +1486,7 @@ function renderTbar(){
 <div id="crew-modal-ov" onclick="if(event.target===this)closeCrewModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
   <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:380px;display:flex;flex-direction:column;gap:12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:800;">Crew — pushmeldingen</div>
+      <div style="font-size:14px;font-weight:800;">Crew - pushmeldingen</div>
       <button onclick="closeCrewModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="font-size:12px;color:var(--sub);">Selecteer wie pushmeldingen ontvangt (10 min voor einde show).</div>
@@ -1506,7 +1506,7 @@ function renderTbar(){
     <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:7px;">
       <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);">Nieuwe dag</div>
       <input class="fi" id="dm-name" type="text" placeholder="Bijv. Vrijdag 20 juni…" onkeydown="if(event.key==='Enter')addDay()">
-      <input class="fi" id="dm-date" type="date" title="Kalenderdatum (optioneel — bepaalt of de countdowns op die dag lopen)" style="font-size:12px;">
+      <input class="fi" id="dm-date" type="date" title="Kalenderdatum (optioneel - bepaalt of de countdowns op die dag lopen)" style="font-size:12px;">
       <button class="btn-p" onclick="addDay()">+ Toevoegen</button>
       <div style="font-size:10px;color:var(--sub);line-height:1.4;">Zonder datum loopt deze dag elke dag opnieuw als 'vandaag'. Vul een datum in om aan een echte kalenderdag te koppelen.</div>
     </div>
@@ -1546,7 +1546,7 @@ function renderTbar(){
 <div id="bs">
   <div id="bs-hdr">
     <img class="co-logo" id="co-logo-bs" alt="logo">
-    <div id="bs-title">🎭 Backstage — <span id="bs-sname">—</span></div>
+    <div id="bs-title">🎭 Backstage - <span id="bs-sname">-</span></div>
     <div style="display:flex;gap:5px;" id="bs-dtabs"></div>
     <select id="bs-ssel" class="hsel" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
     <div id="bs-clock"></div>
@@ -1588,14 +1588,14 @@ function renderTbar(){
 
 <!-- STAGE VIEW -->
 <div id="sv">
-  <button id="sv-exit" onclick="closeSV()">ESC — Sluiten</button>
-  <div id="sv-top">—</div>
+  <button id="sv-exit" onclick="closeSV()">ESC - Sluiten</button>
+  <div id="sv-top">-</div>
   <div id="sv-artist"></div>
   <div id="sv-genre"></div>
   <div id="sv-cd">--:--</div>
   <div id="sv-idle"></div>
   <div id="sv-bw"><div id="sv-bar"></div></div>
-  <div id="sv-next"><span style="font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.25);">Up next</span><span id="sv-next-name">—</span></div>
+  <div id="sv-next"><span style="font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.25);">Up next</span><span id="sv-next-name">-</span></div>
   <div id="sv-clock"></div>
 </div>
 
@@ -1619,7 +1619,7 @@ function renderTPLive(){
     document.getElementById('tp-st').textContent=rem<0?'OVERTIME':'Running';
     document.getElementById('tp-st').style.color=col;
     document.getElementById('tp-artist').textContent=cur.s.artist;
-    document.getElementById('tp-genre').textContent=cur.s.genre||'—';
+    document.getElementById('tp-genre').textContent=cur.s.genre||'-';
     if(cur.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+cur.s.booth;bb.style.background=cur.s.booth==='A'?'rgba(99,102,241,.2)':'rgba(34,197,94,.15)';bb.style.color=cur.s.booth==='A'?'#a5b4fc':'#86efac';}
     setCD(rem,col,rem<0?'OVERTIME':'resterend');
     document.getElementById('tp-bar').style.width=pct+'%';document.getElementById('tp-bar').style.background=col;
@@ -1627,14 +1627,14 @@ function renderTPLive(){
   }else if(nxt){
     setDot('var(--dim)',false);
     document.getElementById('tp-st').textContent='Straks';document.getElementById('tp-st').style.color='var(--sub)';
-    document.getElementById('tp-artist').textContent=nxt.s.artist;document.getElementById('tp-genre').textContent=nxt.s.genre||'—';
+    document.getElementById('tp-artist').textContent=nxt.s.artist;document.getElementById('tp-genre').textContent=nxt.s.genre||'-';
     if(nxt.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+nxt.s.booth;bb.style.background=nxt.s.booth==='A'?'rgba(99,102,241,.15)':'rgba(34,197,94,.1)';bb.style.color=nxt.s.booth==='A'?'#a5b4fc':'#86efac';}
     const el=document.getElementById('tp-cd');el.textContent=nxt.s.start.slice(0,5);el.style.color='rgba(255,255,255,.4)';el.className='';
     document.getElementById('tp-cdlbl').textContent='starttijd';document.getElementById('tp-cdlbl').style.color='var(--sub)';
     document.getElementById('tp-bar').style.width='0%';setNxt(null);
   }else{
     setDot('var(--dim)',false);document.getElementById('tp-st').textContent='Geen show';document.getElementById('tp-st').style.color='var(--sub)';
-    document.getElementById('tp-artist').textContent='—';document.getElementById('tp-genre').textContent='—';
+    document.getElementById('tp-artist').textContent='-';document.getElementById('tp-genre').textContent='-';
     const el=document.getElementById('tp-cd');el.textContent='--:--';el.style.color='var(--dim)';el.className='';
     document.getElementById('tp-cdlbl').textContent='resterend';document.getElementById('tp-cdlbl').style.color='var(--sub)';
     document.getElementById('tp-bar').style.width='0%';setNxt(null);
@@ -1644,7 +1644,7 @@ function renderTPManual(){
   const shows=getShows(G.activeStage,G.activeDay);
   const stage=activeStageObj();
   document.getElementById('tp-stage').textContent=stage.emoji+' '+stage.name;
-  const s=shows[M.idx];if(!s){document.getElementById('tp-artist').textContent='—';setTPPhoto('');return;}
+  const s=shows[M.idx];if(!s){document.getElementById('tp-artist').textContent='-';setTPPhoto('');return;}
   setTPPhoto(s.photo||'');
   const remMs=mRem(),remSec=remMs/1000,pct=Math.max(0,Math.min(100,(1-remMs/M.durMs)*100));
   const col=tColor(remSec);
@@ -1653,11 +1653,11 @@ function renderTPManual(){
   setDot(M.state==='running'?col:'var(--dim)',M.state==='running');
   document.getElementById('tp-st').textContent=M.state==='running'?(remSec<0?'OVERTIME':'Running'):M.state==='paused'?'Paused':'Idle';
   document.getElementById('tp-st').style.color=M.state==='running'?col:'var(--sub)';
-  document.getElementById('tp-artist').textContent=s.artist;document.getElementById('tp-genre').textContent=s.genre||'—';
+  document.getElementById('tp-artist').textContent=s.artist;document.getElementById('tp-genre').textContent=s.genre||'-';
   setCD(remSec,M.state==='idle'?'rgba(255,255,255,.4)':col,M.state==='idle'?'duur':remSec<0?'OVERTIME':'resterend');
   document.getElementById('tp-bar').style.width=pct+'%';document.getElementById('tp-bar').style.background=col;
   const nx=shows[M.idx+1];
-  document.getElementById('tp-na').textContent=nx?nx.artist:'— geen —';
+  document.getElementById('tp-na').textContent=nx?nx.artist:'- geen -';
   document.getElementById('tp-nt').textContent=nx?nx.start.slice(0,5):'';
 }
 function setDot(col,pulse){const d=document.getElementById('tp-dot');d.style.background=col;d.className=pulse?'lp':'';}
@@ -1670,7 +1670,7 @@ function setCD(remSec,col,lbl){
   document.getElementById('tp-cdlbl').style.color=remSec<0?col:'var(--sub)';
 }
 function setNxt(nxt){
-  document.getElementById('tp-na').textContent=nxt?nxt.s.artist:'— geen —';
+  document.getElementById('tp-na').textContent=nxt?nxt.s.artist:'- geen -';
   document.getElementById('tp-nt').textContent=nxt?nxt.s.start.slice(0,5):'';
 }
 
@@ -1705,7 +1705,7 @@ function renderSched(){
     const isSel=G.timerMode==='manual'&&i===M.idx;
     const bBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'';
     const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'';
-    // Countdown to start — only meaningful when the show actually IS today
+    // Countdown to start - only meaningful when the show actually IS today
     const secUntil=(G.timerMode==='live'&&showIsToday)?Math.max(0,(t2m(s.start)-n)*60):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     // FOH notes
@@ -2161,7 +2161,7 @@ function renderSV(){
     document.getElementById('sv-bar').style.width='0%';
     document.getElementById('sv').style.background='#000';
   }else{
-    // No live show + no next show on the current day — look across ALL days for this stage
+    // No live show + no next show on the current day - look across ALL days for this stage
     const fut=nextUpcomingAnyDay(G.activeStage);
     if(fut){
       const cd=document.getElementById('sv-cd');
@@ -2190,7 +2190,7 @@ function renderSV(){
     document.getElementById('sv-idle').style.display='block';document.getElementById('sv-idle').textContent='Geen actieve show';
     document.getElementById('sv-bar').style.width='0%';document.getElementById('sv').style.background='#000';
   }
-  document.getElementById('sv-next-name').textContent=nxt?nxt.s.artist:'—';
+  document.getElementById('sv-next-name').textContent=nxt?nxt.s.artist:'-';
   document.getElementById('sv-next').style.opacity=nxt?'1':'0';
 }
 
@@ -2224,7 +2224,7 @@ let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
 document.getElementById('f-s').addEventListener('input',updDur);
 document.getElementById('f-e').addEventListener('input',updDur);
-function updDur(){const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;document.getElementById('dur-txt').textContent=s&&e?'Duur: '+fmtDur(durSec(s,e)):'—';}
+function updDur(){const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;document.getElementById('dur-txt').textContent=s&&e?'Duur: '+fmtDur(durSec(s,e)):'-';}
 // ── Photo
 let _photoB64='';
 // Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG.
@@ -2404,11 +2404,11 @@ function renderOV(){
         ${escH(st.emoji||'🎵')} ${escH(st.name)}
       </div>
       <div class="stov-next" id="stovnx-${st.id}"></div>
-      <div class="stov-artist" id="stovart-${st.id}">—</div>
+      <div class="stov-artist" id="stovart-${st.id}">-</div>
       <div class="stov-bw"><div class="stov-bar" id="stovbar-${st.id}" style="width:0%;"></div></div>
       <div class="stov-cd-wrap">
         <div class="stov-cd" id="stovcd-${st.id}" style="color:rgba(255,255,255,.2);">--:--</div>
-        <div class="stov-status" id="stovst-${st.id}" style="color:rgba(255,255,255,.28);">—</div>
+        <div class="stov-status" id="stovst-${st.id}" style="color:rgba(255,255,255,.28);">-</div>
       </div>
     </div>`).join('');
   tickOV();
@@ -2509,7 +2509,7 @@ function tickOV(){
       card.className='stov-card';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
       dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
       stEl.textContent='Geen shows';stEl.style.color='rgba(255,255,255,.28)';
-      artEl.textContent='—';artEl.style.color='#fff';cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
+      artEl.textContent='-';artEl.style.color='#fff';cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
       barEl.style.width='0%';nxEl.innerHTML='';
     }
   });
@@ -2683,7 +2683,7 @@ function importLineup(data){
     }
   }
 
-  // Dedup stages by name (case-insensitive) — merge duplicates created by repeated imports
+  // Dedup stages by name (case-insensitive) - merge duplicates created by repeated imports
   const _stageMap=new Map(),_stageRemap=new Map();
   for(const st of G.stages){
     const k=st.name.trim().toLowerCase();
@@ -2771,7 +2771,7 @@ function openProjectOnce(id){const now=Date.now();if(now-_lastProjOpen<250)retur
   document.addEventListener('touchmove',function(){_tMoved=true;},{passive:true});
   document.addEventListener('touchend',function(e){
     if(_tMoved)return;
-    // Skip any interactive element — let native click fire instead. This prevents the
+    // Skip any interactive element - let native click fire instead. This prevents the
     // global touchend from racing with the button's own onclick and getting eaten by
     // the openProjectOnce debounce.
     if(e.target.closest('.proj-card-btn,.proj-card-open,.proj-card-actions,.mob-nav-btn,button,a,input,select,textarea,label'))return;
@@ -2789,14 +2789,14 @@ function hideDash(){document.getElementById('dash').classList.remove('open');}
 function renderDash(){
   const grid=document.getElementById('proj-grid');
   const myCoId=CURRENT_USER?.companyId||'';
-  // Subscription banner — show if user's company is in a state that limits usage
+  // Subscription banner - show if user's company is in a state that limits usage
   renderSubscriptionBanner();
   // Show all when user not yet loaded; otherwise filter by company
   let visibleProjects=(!CURRENT_USER||isAdmin())
     ?APP.projects
     :APP.projects.filter(p=>!p.companyId||p.companyId===myCoId);
   // Safety net: if filtering hid everything but projects exist, show all anyway
-  // — better to over-share than to leave the user staring at an empty dashboard
+  // - better to over-share than to leave the user staring at an empty dashboard
   if(!visibleProjects.length&&APP.projects.length){
     console.warn('[dash] company filter hid all projects, showing all instead. user:',CURRENT_USER,'projects:',APP.projects.length);
     visibleProjects=APP.projects;
@@ -2924,7 +2924,7 @@ function canCreateProject(companyId){
   if(status==='past_due'){
     return{ok:false,reason:`Bedrijf "${co.name}" heeft een achterstallige betaling. Werk je betaalmethode bij in Stripe om door te kunnen.`,action:'portal',company:co};
   }
-  // No project limit — active subscription = unlimited projects
+  // No project limit - active subscription = unlimited projects
   return{ok:true};
 }
 function openProjModal(){
@@ -3065,11 +3065,11 @@ function renderAdmin(){
     return true;
   });
   if(usrCount)usrCount.textContent=visibleUsers.length;
-  // Companies dropdown — limited for company_admin
+  // Companies dropdown - limited for company_admin
   const sel=document.getElementById('adm-usr-co');
   const dropdownCos=isSuper||CURRENT_USER?.role==='admin'?APP.companies:APP.companies.filter(c=>c.id===CURRENT_USER?.companyId);
-  sel.innerHTML=`<option value="">— Geen bedrijf —</option>`+dropdownCos.map(c=>`<option value="${c.id}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
-  // Role dropdown — restrict for non-super_admin
+  sel.innerHTML=`<option value="">- Geen bedrijf -</option>`+dropdownCos.map(c=>`<option value="${c.id}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
+  // Role dropdown - restrict for non-super_admin
   const roleSel=document.getElementById('adm-usr-role');
   if(roleSel){
     const opts=isSuper?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin'],['super_admin','Super Admin']]:CURRENT_USER?.role==='admin'?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin']]:[['operator','Operator'],['company_admin','Co. Admin']];
@@ -3132,7 +3132,7 @@ async function addCompany(){
   saveAPP();inp.value='';renderAdmin();
 }
 async function editCompany(id){
-  if(CURRENT_USER?.role!=='super_admin'){return;}
+  if(!isAdmin()){return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
   const newName=prompt('Nieuwe bedrijfsnaam:',c.name);
   if(!newName||newName.trim()===c.name)return;
@@ -3141,7 +3141,7 @@ async function editCompany(id){
   c.name=newName.trim();saveAPP();renderAdmin();
 }
 async function delCompany(id){
-  if(CURRENT_USER?.role!=='super_admin'){alert('Alleen Super Admin mag bedrijven verwijderen.');return;}
+  if(!isAdmin()){alert('Alleen Admin of Super Admin mag bedrijven verwijderen.');return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
   const userCount=APP.users.filter(u=>u.companyId===id).length;
   const projCount=APP.projects.filter(p=>p.companyId===id).length;
@@ -3184,7 +3184,7 @@ async function addUser(){
   if(addBtn){addBtn.textContent='Bezig…';addBtn.disabled=true;}
 
   const newId=uid();
-  // Create auth user FIRST via edge function — only insert app_users row after auth user exists
+  // Create auth user FIRST via edge function - only insert app_users row after auth user exists
   let authOk=false,authErr=null;
   try{
     const{data:{session:adminSession}}=await supa.auth.getSession();
@@ -3236,7 +3236,7 @@ async function delUser(id){
   if(CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId){alert('Geen rechten.');return;}
   if(CURRENT_USER?.role==='admin'&&u.role==='super_admin'){alert('Alleen Super Admin mag een Super Admin verwijderen.');return;}
   if(!confirm(`${u.name||u.email} verwijderen?\n\nDit kan niet ongedaan gemaakt worden.`))return;
-  // Delete by id only (NEVER by email — there are no duplicates anymore but defensive)
+  // Delete by id only (NEVER by email - there are no duplicates anymore but defensive)
   const{error}=await supa.from('app_users').delete().eq('id',id);
   if(error){alert('Verwijderen mislukt: '+error.message);return;}
   // Delete auth user via edge function
@@ -3392,7 +3392,7 @@ function renderTL(){
   const nowSecA=nowSec()<NIGHT_S?nowSec()+86400:nowSec();
   const tlDayIsToday=isActiveDayToday();
 
-  // Stage rows — only show stages that have at least one show on the active day
+  // Stage rows - only show stages that have at least one show on the active day
   const stageIds=new Set(stages.map(st=>st.id));
   const activeStages=stages.filter(stage=>shows.some(s=>s.stage===stage.id));
   const orphanShows=shows.filter(s=>!stageIds.has(s.stage));
@@ -3442,7 +3442,7 @@ function renderTL(){
     </div>`;
   }).join('');
 
-  // Now line — only on today
+  // Now line - only on today
   const nowX=TL_LW+(nowSecA-minSec)/3600*TL_PX;
   const d=new Date();
   const nowLbl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
@@ -3570,7 +3570,7 @@ async function requestPushPermission(){
     return;
   }
   try{
-    // Must call requestPermission directly from click — no async wait before this
+    // Must call requestPermission directly from click - no async wait before this
     await window._OS.Notifications.requestPermission();
     if(CURRENT_USER?.id)await window._OS.login(CURRENT_USER.id);
     updateCrewPermBtn();
@@ -3595,7 +3595,7 @@ async function scheduleProjectPushes(){
       include_external_user_ids:memberIds,
       channel_for_external_user_ids:'push',
       headings:{en:`${show.artist||'Show'} bijna klaar`,nl:`${show.artist||'Show'} bijna klaar`},
-      contents:{en:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} — nog ~10 min.`,nl:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} — nog ~10 min.`},
+      contents:{en:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} - nog ~10 min.`,nl:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} - nog ~10 min.`},
       send_after:new Date(notifMs).toISOString()
     };
     fetch('https://onesignal.com/api/v1/notifications',{
@@ -3612,7 +3612,7 @@ function openShareModal(projId){
   const proj=APP.projects.find(p=>p.id===projId);if(!proj)return;
   const stages=proj.data?.stages||[];
   const base=_shareBase();
-  document.getElementById('share-modal-title').textContent='🔗 Links — '+escH(proj.name);
+  document.getElementById('share-modal-title').textContent='🔗 Links - '+escH(proj.name);
   // Timeline link (whole project, no stage)
   const tlUrl=`${base}?mode=timeline&pid=${projId}`;
   const ovUrl=`${base}?mode=overview&pid=${projId}`;
@@ -3665,7 +3665,7 @@ const PUBLIC_PID=_urlP.get('pid');
 const PUBLIC_SID=_urlP.get('sid');
 
 async function loadPublicView(){
-  // Use the early fetch started in <head> if available — saves ~1-3s on mobile
+  // Use the early fetch started in <head> if available - saves ~1-3s on mobile
   let proj=null;
   if(window._earlyPublicFetch){
     try{proj=await window._earlyPublicFetch;}catch(e){}
@@ -3729,7 +3729,7 @@ async function loadPublicView(){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('bs-close-btn');
     if(closeBtn)closeBtn.style.display='none';
-    // Hide day tabs and stage selector — read-only view
+    // Hide day tabs and stage selector - read-only view
     const bsSel=document.getElementById('bs-ssel');
     if(bsSel)bsSel.style.display='none';
     const bsDtabs=document.getElementById('bs-dtabs');
@@ -4066,7 +4066,7 @@ async function _startApp(session){
     await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
     loadG(); // refresh G from freshly fetched Supabase data
     updateRoleUI();refreshLogo();setupRealtime();
-    // Always re-render dash with fresh data — only open it if user hasn't navigated to a project yet
+    // Always re-render dash with fresh data - only open it if user hasn't navigated to a project yet
     if(!APP.activeProjectId||document.getElementById('dash').classList.contains('open')){
       document.getElementById('dash').classList.add('open');
       renderDash();
@@ -4079,7 +4079,7 @@ async function _startApp(session){
 (async()=>{
   try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
-  // Public share link — skip auth entirely (must happen BEFORE the auth-flow fallback timeout)
+  // Public share link - skip auth entirely (must happen BEFORE the auth-flow fallback timeout)
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
@@ -4089,13 +4089,13 @@ async function _startApp(session){
   // Hard fallback: never let the loader hang forever (only for authenticated flow).
   // CRITICAL: don't bounce a session-holding user to login just because the network is slow.
   // If a Supabase session or our backup exists in localStorage, keep waiting for INITIAL_SESSION
-  // and only fall back to login after a longer timeout — and even then only if both keys are gone.
+  // and only fall back to login after a longer timeout - and even then only if both keys are gone.
   setTimeout(()=>{
     if(_appStarted)return;
     const hasBackup=!!localStorage.getItem(ST_AUTH);
     const hasSbSession=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
     if(hasBackup||hasSbSession){
-      console.log('[auth] 5s elapsed, session keys present — extending wait for INITIAL_SESSION');
+      console.log('[auth] 5s elapsed, session keys present - extending wait for INITIAL_SESSION');
       // Second-stage fallback at 15s: if STILL nothing happened, try a manual restore one last time.
       setTimeout(async()=>{
         if(_appStarted)return;
@@ -4110,10 +4110,10 @@ async function _startApp(session){
     _showLogin();
   },5000);
 
-  // Track whether INITIAL_SESSION has fired — used to distinguish a fresh sign-in
+  // Track whether INITIAL_SESSION has fired - used to distinguish a fresh sign-in
   // from a session restore (some SDK builds emit SIGNED_IN instead of INITIAL_SESSION).
   let _initialSessionSeen=false;
-  // Single source of truth: onAuthStateChange. Supabase fires INITIAL_SESSION on init —
+  // Single source of truth: onAuthStateChange. Supabase fires INITIAL_SESSION on init -
   // with the restored session if persistSession found one, or null if not.
   supa.auth.onAuthStateChange(async(event,sess)=>{
     console.log('[auth] event:',event,'hasSession:',!!sess,'invited:',sess?.user?.user_metadata?.invited);
@@ -4136,7 +4136,7 @@ async function _startApp(session){
       return;
     }
     if(sess&&!_appStarted){await _tryStartFromSession(sess);return;}
-    // No session delivered — show login (only on initial / signed-out events, not refreshes)
+    // No session delivered - show login (only on initial / signed-out events, not refreshes)
     if((event==='INITIAL_SESSION'||event==='SIGNED_OUT')&&!sess&&!_appStarted){
       // Last-chance backup restore in case Supabase's own storage was cleared but ours wasn't
       const backup=localStorage.getItem(ST_AUTH);
