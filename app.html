@@ -808,13 +808,14 @@ async function _pushMeta(){
   setSyncDot('ok');
 }
 
-function save(){
+function save(opts){
   const proj=APP.projects.find(p=>p.id===APP.activeProjectId);
   if(proj)proj.data=G;
   localStorage.setItem(AKEY,JSON.stringify(APP));
   const id=APP.activeProjectId;
   _pendingPush[id]=true;
   clearTimeout(_projSync[id]);
+  if(opts&&opts.immediate){_pushProject(id);return;}
   _projSync[id]=setTimeout(()=>_pushProject(id),300);
 }
 
@@ -1940,12 +1941,12 @@ function saveFohnNote(){
   const time=document.getElementById('fohn-time').value||'';
   if(!G.fohNotes[_fohnTarget])G.fohNotes[_fohnTarget]=[];
   G.fohNotes[_fohnTarget].push({id:uid(),text,time,color:_fohnColor});
-  save();closeFohnModal();renderFOH();renderSched();
+  save({immediate:true});closeFohnModal();renderFOH();renderSched();if(document.getElementById('bs').classList.contains('open'))renderBS();
 }
 function delFohnNote(showId,noteId){
   if(!G.fohNotes[showId])return;
   G.fohNotes[showId]=G.fohNotes[showId].filter(n=>n.id!==noteId);
-  save();renderFOH();renderSched();
+  save({immediate:true});renderFOH();renderSched();if(document.getElementById('bs').classList.contains('open'))renderBS();
 }
 
 // ══ BACKSTAGE SCREEN
@@ -1958,6 +1959,21 @@ function renderBS(){
 
   if(!shows.length){body.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:16px;text-align:center;margin-top:40px;">Geen shows gepland voor deze dag.</div>`;return;}
 
+  const notesBlock=s=>{
+    const foh=(G.fohNotes&&G.fohNotes[s.id])||[];
+    const showNote=(s.note||'').trim();
+    if(!foh.length&&!showNote)return'';
+    const items=[];
+    if(showNote)items.push(`<div style="font-size:12px;color:rgba(255,255,255,.55);padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.18);line-height:1.4;margin-top:6px;">${escH(showNote)}</div>`);
+    foh.forEach(n=>{
+      const col=n.color||'#ffe600';
+      items.push(`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid ${col};line-height:1.4;margin-top:6px;">
+        ${n.time?`<span style="font-family:var(--ffm);font-size:11px;font-weight:700;color:${col};flex-shrink:0;">${escH(n.time)}</span>`:''}
+        <span style="font-size:12px;color:rgba(255,255,255,.78);">${escH(n.text)}</span>
+      </div>`);
+    });
+    return`<div class="bs-notes" style="margin-top:8px;">${items.join('')}</div>`;
+  };
   body.innerHTML=shows.map((s,i)=>{
     const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
@@ -1985,6 +2001,7 @@ function renderBS(){
           </div>
         </div>
         <div class="bs-bar-wrap"><div class="bs-bar" id="bs-bar-${i}" style="width:${pct.toFixed(1)}%;background:${col};"></div></div>
+        ${notesBlock(s)}
       </div>`;
     } else if(isPast){
       return'';
@@ -2006,6 +2023,7 @@ function renderBS(){
             <div class="bs-cd" style="color:rgba(255,255,255,.55);font-size:clamp(28px,7vw,40px);">${s.start.slice(0,5)}</div>
           </div>
         </div>
+        ${notesBlock(s)}
       </div>`;
     } else {
       // UPCOMING (today): bar fills up as show approaches (0% = far, 100% = starting now)
@@ -2035,6 +2053,7 @@ function renderBS(){
         <div class="bs-bar-wrap" style="background:rgba(255,255,255,.05);">
           <div class="bs-bar" id="bs-bar-${i}" style="width:${pct.toFixed(1)}%;background:${upCol};"></div>
         </div>
+        ${notesBlock(s)}
       </div>`;
     }
   }).join('');
