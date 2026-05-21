@@ -3572,15 +3572,15 @@ async function _startApp(session){
 (async()=>{
   try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
-  // Hard fallback: never let the loader hang forever
-  setTimeout(()=>{if(!_appStarted)_showLogin();},5000);
-  // Public share link — skip auth entirely
+  // Public share link — skip auth entirely (must happen BEFORE the auth-flow fallback timeout)
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
+  // Hard fallback: never let the loader hang forever (only for authenticated flow)
+  setTimeout(()=>{if(!_appStarted)_showLogin();},5000);
 
   // Track whether INITIAL_SESSION has fired — used to distinguish a fresh sign-in
   // from a session restore (some SDK builds emit SIGNED_IN instead of INITIAL_SESSION).
