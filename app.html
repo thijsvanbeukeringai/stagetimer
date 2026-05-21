@@ -1406,7 +1406,9 @@ function renderTbar(){
     <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:7px;">
       <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);">Nieuwe dag</div>
       <input class="fi" id="dm-name" type="text" placeholder="Bijv. Vrijdag 20 juni…" onkeydown="if(event.key==='Enter')addDay()">
+      <input class="fi" id="dm-date" type="date" title="Kalenderdatum (optioneel — bepaalt of de countdowns op die dag lopen)" style="font-size:12px;">
       <button class="btn-p" onclick="addDay()">+ Toevoegen</button>
+      <div style="font-size:10px;color:var(--sub);line-height:1.4;">Zonder datum loopt deze dag elke dag opnieuw als 'vandaag'. Vul een datum in om aan een echte kalenderdag te koppelen.</div>
     </div>
   </div>
 </div>
@@ -2495,8 +2497,9 @@ function openDayModal(){
 function closeDayModal(){document.getElementById('day-modal-ov').style.display='none';}
 function renderDayList(){
   document.getElementById('day-list').innerHTML=(G.days||[]).map((d,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--s3);border-radius:8px;">
-      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay('${d.id}',this.value)" style="flex:1;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--s3);border-radius:8px;">
+      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay('${d.id}',this.value)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
+      <input class="fi" type="date" value="${d.date||''}" onchange="setDayDate('${d.id}',this.value)" title="Kalenderdatum van deze dag" style="width:130px;font-size:11px;padding:4px 6px;">
       ${(G.days.length>1)?`<button onclick="delDay('${d.id}')" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Verwijderen">×</button>`:''}
     </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">Nog geen dagen aangemaakt.</div>`;
 }
@@ -2505,14 +2508,32 @@ function renameDay(id,name){
   const d=G.days.find(x=>x.id===id);if(!d||d.name===name)return;
   d.name=name;save();renderAll();
 }
+function setDayDate(id,date){
+  const d=G.days.find(x=>x.id===id);if(!d)return;
+  d.date=date||null;
+  save();renderAll();
+}
+// Try to parse a date out of a Dutch day name like "Vrijdag 3 april 2026" → "2026-04-03"
+function _parseDateFromName(name){
+  if(!name)return null;
+  const months={januari:'01',februari:'02',maart:'03',april:'04',mei:'05',juni:'06',juli:'07',augustus:'08',september:'09',oktober:'10',november:'11',december:'12'};
+  const m=name.toLowerCase().match(/\b(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?\b/);
+  if(!m)return null;
+  const mm=months[m[2]];if(!mm)return null;
+  const yyyy=m[3]||String(new Date().getFullYear());
+  return `${yyyy}-${mm}-${String(m[1]).padStart(2,'0')}`;
+}
 function addDay(){
   const name=document.getElementById('dm-name').value.trim();if(!name)return;
   if(!G.days)G.days=[];
   const id=uid();
-  G.days.push({id,name});
+  const dateInput=document.getElementById('dm-date');
+  const date=(dateInput&&dateInput.value)||_parseDateFromName(name)||null;
+  G.days.push({id,name,...(date?{date}:{})});
   if(!G.activeDay)G.activeDay=id;
   save();renderAll();renderDayList();
   document.getElementById('dm-name').value='';
+  if(dateInput)dateInput.value='';
   document.getElementById('dm-name').focus();
 }
 function delDay(id){
