@@ -139,8 +139,9 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .imac-display{
   border-radius:8px;overflow:hidden;background:#000;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.6);
-  width:520px;
+  width:100%;max-width:620px;
 }
+.imac{width:100%;max-width:620px;}
 .imac-display img{display:block;width:100%;height:auto;}
 /* Chin label area */
 .imac-chin{
@@ -307,10 +308,25 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .mobile-sub-item{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--sub);}
 .mobile-sub-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0;}
 
+/* ── TRUST STRIP ── */
+.trust-strip{background:#0d0d1a;padding:48px 40px;position:relative;overflow:hidden;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);}
+.trust-strip::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:700px;height:200px;background:radial-gradient(ellipse,rgba(99,102,241,.12),transparent 70%);pointer-events:none;}
+.trust-inner{max-width:1100px;margin:0 auto;text-align:center;position:relative;}
+.trust-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:28px;}
+.trust-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;}
+.trust-stat{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.trust-stat-num{font-size:clamp(16px,2vw,22px);font-weight:800;letter-spacing:-.5px;color:#fff;line-height:1.2;}
+.trust-stat-lbl{font-size:11px;font-weight:500;color:rgba(255,255,255,.45);letter-spacing:.3px;}
+@media(max-width:760px){
+  .trust-strip{padding:36px 24px;}
+  .trust-stats{grid-template-columns:repeat(2,1fr);gap:24px;}
+  .trust-stat-num{font-size:15px;}
+}
+
 /* ── CTA STRIP ── */
-.cta-strip{margin:0 40px 100px;border-radius:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:72px 60px;text-align:center;position:relative;overflow:hidden;box-shadow:0 16px 64px rgba(99,102,241,.35);}
-.cta-strip::before{content:'';position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:500px;height:250px;border-radius:50%;background:rgba(255,255,255,.08);pointer-events:none;}
-.cta-strip::after{content:'';position:absolute;bottom:-60px;right:-40px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none;}
+.cta-strip{margin:0;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:96px 48px;text-align:center;position:relative;overflow:hidden;border-top:1px solid rgba(255,255,255,.06);}
+.cta-strip::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,.18),transparent 70%);pointer-events:none;}
+.cta-strip::after{content:'';position:absolute;bottom:-100px;right:10%;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.12),transparent 70%);pointer-events:none;}
 .cta-strip-eyebrow{font-size:11px;font-weight:700;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:16px;position:relative;}
 .cta-strip-title{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:-2px;line-height:1.05;margin-bottom:18px;color:#fff;position:relative;}
 .cta-strip-sub{font-size:16px;color:rgba(255,255,255,.65);margin-bottom:36px;position:relative;}
@@ -320,16 +336,42 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 .btn-strip-ghost{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;padding:17px 36px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;}
 .btn-strip-ghost:hover{background:rgba(255,255,255,.2);}
 
+/* ── FAQ ── */
+.faq-section{padding:90px 40px;background:var(--bg2);}
+.faq-inner{max-width:780px;margin:0 auto;}
+.faq-inner .s-label,.faq-inner .s-title,.faq-inner .s-sub{text-align:center;}
+.faq-inner .s-sub{max-width:520px;margin:0 auto;}
+.faq-list{margin-top:48px;display:flex;flex-direction:column;gap:10px;}
+.faq-item{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:0;transition:border-color .2s;overflow:hidden;}
+.faq-item:hover{border-color:rgba(99,102,241,.25);}
+.faq-item summary{padding:20px 24px;font-size:15px;font-weight:700;color:var(--text);cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.faq-item summary::-webkit-details-marker{display:none;}
+.faq-item summary::after{content:'+';font-size:22px;font-weight:300;color:var(--sub);transition:transform .2s;flex-shrink:0;line-height:1;}
+.faq-item[open] summary::after{transform:rotate(45deg);}
+.faq-item[open]{border-color:rgba(99,102,241,.3);}
+.faq-body{padding:0 24px 22px;font-size:14px;color:var(--sub);line-height:1.65;}
+
 /* ── DIVIDER ── */
 .div{height:1px;background:var(--border);}
 
 /* ── FOOTER ── */
-footer{padding:36px 48px;background:var(--bg);}
-.footer-inner{max-width:1060px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+footer{padding:64px 48px 36px;background:#0d0d1a;color:rgba(255,255,255,.55);border-top:1px solid rgba(255,255,255,.06);}
+.footer-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:48px;}
+.footer-col{display:flex;flex-direction:column;gap:14px;}
+.footer-col-title{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:4px;}
 .footer-logo{display:flex;align-items:center;gap:9px;text-decoration:none;}
-.footer-logo-icon{height:32px;width:auto;display:block;object-fit:contain;}
-.footer-logo-name{font-size:14px;font-weight:700;color:var(--sub);}
-.footer-copy{font-size:12px;color:var(--sub2);}
+.footer-logo-icon{height:30px;width:auto;display:block;object-fit:contain;filter:brightness(0) invert(1);opacity:.9;}
+.footer-tagline{font-size:13px;color:rgba(255,255,255,.55);max-width:280px;line-height:1.6;}
+.footer-legal{font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;line-height:1.6;}
+.footer-link{font-size:13px;color:rgba(255,255,255,.65);text-decoration:none;transition:color .15s;}
+.footer-link:hover{color:#fff;}
+.footer-bottom{max-width:1100px;margin:48px auto 0;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:11px;color:rgba(255,255,255,.35);}
+.footer-bottom a{color:rgba(255,255,255,.45);text-decoration:none;}
+.footer-bottom a:hover{color:rgba(255,255,255,.7);}
+@media(max-width:760px){
+  .footer-inner{grid-template-columns:1fr;gap:36px;}
+  footer{padding:48px 28px 28px;}
+}
 
 /* ── RESPONSIVE ── */
 html,body{overflow-x:hidden;}
@@ -446,17 +488,21 @@ html,body{overflow-x:hidden;}
     <div class="hero-left">
       <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>Voor productieteams</div>
       <h1>Jouw event.<br><span class="line2">Strak geregeld.</span></h1>
-      <p class="hero-sub">Realtime productieplanning voor festivals, conferenties en kerkdiensten. Van backstage tot FOH, iedereen op hetzelfde schema, live op de dag zelf.</p>
+      <p class="hero-sub">Van backstage tot FOH, iedereen op hetzelfde schema. Live op de dag zelf.</p>
       <div class="hero-cta">
         <a class="btn-hero" href="#pricing">Start je abonnement</a>
         <a class="btn-outline" href="#features">Bekijk hoe het werkt</a>
       </div>
       <div class="hero-proof">
+        <span class="hero-proof-item">Ingezet bij Extrema Outdoor</span>
+        <span class="hero-proof-dot"></span>
         <span class="hero-proof-item">Vanaf €12,95 / maand</span>
+        <span class="hero-proof-dot"></span>
+        <span class="hero-proof-item">Geen installatie</span>
         <span class="hero-proof-dot"></span>
         <span class="hero-proof-item">Maandelijks opzegbaar</span>
         <span class="hero-proof-dot"></span>
-        <span class="hero-proof-item">2 maanden gratis bij jaarbetaling</span>
+        <span class="hero-proof-item">2 mnd gratis bij jaar</span>
       </div>
     </div>
     <div class="hero-right">
@@ -472,6 +518,31 @@ html,body{overflow-x:hidden;}
           <div class="imac-foot"></div>
         </div>
       </a>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<section class="trust-strip">
+  <div class="trust-inner">
+    <div class="trust-eyebrow">Vertrouwd door productieteams</div>
+    <div class="trust-stats">
+      <div class="trust-stat">
+        <div class="trust-stat-num">Extrema Outdoor</div>
+        <div class="trust-stat-lbl">festival · meerdere edities</div>
+      </div>
+      <div class="trust-stat">
+        <div class="trust-stat-num">10+ stages</div>
+        <div class="trust-stat-lbl">tegelijk in sync</div>
+      </div>
+      <div class="trust-stat">
+        <div class="trust-stat-num">150+ acts</div>
+        <div class="trust-stat-lbl">per editie geprogrammeerd</div>
+      </div>
+      <div class="trust-stat">
+        <div class="trust-stat-num">3 dagen</div>
+        <div class="trust-stat-lbl">op één gedeeld schema</div>
+      </div>
     </div>
   </div>
 </section>
@@ -664,6 +735,43 @@ html,body{overflow-x:hidden;}
 
 <div class="div"></div>
 
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+  <div class="faq-inner">
+    <div class="s-label">Veelgestelde vragen</div>
+    <h2 class="s-title">Goed om te weten.</h2>
+    <p class="s-sub">De vragen die we het vaakst krijgen — en de antwoorden.</p>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Heeft mijn crew een eigen account nodig?</summary>
+        <div class="faq-body">Nee. Jij maakt projecten en deelt per stage of view een eigen read-only link. Iedereen die de link heeft, ziet realtime wat er gebeurt — zonder login, zonder app-store, zonder gedoe.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Is er een gratis proefperiode?</summary>
+        <div class="faq-body">Geen aparte trial — je betaalt vanaf de eerste maand €12,95. Daarvoor krijg je direct toegang tot alles: onbeperkt projecten, alle views, deelbare crewlinks. Niet tevreden? Eén klik in Stripe en je hebt opgezegd, geen verdere kosten.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Werkt het ook op een crew-iPad backstage?</summary>
+        <div class="faq-body">Ja. Stagetimer draait in elke moderne browser — iOS Safari, Android Chrome, desktop, alles. De backstage-view en stage-view zijn specifiek ontworpen voor permanent op een tablet of monitor backstage te staan.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Kan ik meerdere festivals tegelijk beheren?</summary>
+        <div class="faq-body">Ja. Onbeperkt aantal projecten per abonnement. Een project kan meerdere stages en meerdere dagen bevatten, dus van een eendaagse conferentie tot een driedaags festival met 10+ stages werkt in hetzelfde abonnement.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Wat gebeurt er met mijn data als ik stop?</summary>
+        <div class="faq-body">Je houdt tot het einde van je laatste betaalde periode toegang. Daarna zetten we het account read-only voor 30 dagen zodat je gegevens kunt exporteren. Daarna verwijderen we de projectdata uit onze database.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Werkt het zonder internet?</summary>
+        <div class="faq-body">Stagetimer is realtime en sync'd via internet. Voor een korte hapering blijft de laatste staat in de browser staan, maar voor live-werk raden we een stabiele verbinding (4G of WiFi) aan op alle apparaten.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
 <!-- PRICING -->
 <section class="pricing-section" id="pricing">
   <div class="pricing-inner">
@@ -787,10 +895,30 @@ html,body{overflow-x:hidden;}
 <!-- FOOTER -->
 <footer>
   <div class="footer-inner">
-    <a class="footer-logo" href="/">
-      <img class="footer-logo-icon" src="stagetimer-logo.png" alt="Stagetimer">
-    </a>
-    <span class="footer-copy">© 2026 Stagetimer &nbsp;·&nbsp; Gebouwd voor productieteams</span>
+    <div class="footer-col">
+      <a class="footer-logo" href="/">
+        <img class="footer-logo-icon" src="stagetimer-logo.png" alt="Stagetimer">
+      </a>
+      <p class="footer-tagline">Realtime productieplanning voor festivals, conferenties en kerkdiensten. Gebouwd voor productieteams op de vloer.</p>
+      <div class="footer-legal">TEAM FIFTEEN B.V.</div>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Product</div>
+      <a class="footer-link" href="#features">Functies</a>
+      <a class="footer-link" href="#hoe-het-werkt">Werkwijze</a>
+      <a class="footer-link" href="#pricing">Tarieven</a>
+      <a class="footer-link" href="#faq">Veelgestelde vragen</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Account</div>
+      <a class="footer-link" href="/app">Inloggen</a>
+      <a class="footer-link" href="#pricing">Aanmelden</a>
+      <a class="footer-link" href="mailto:info@stagetimer.nl">Contact</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 TEAM FIFTEEN B.V. · Stagetimer</span>
+    <span>Gebouwd voor productieteams</span>
   </div>
 </footer>
 
