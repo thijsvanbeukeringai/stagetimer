@@ -332,6 +332,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .proj-card-btn{height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);font-size:11px;cursor:pointer;display:flex;align-items:center;gap:3px;font-weight:600;transition:all .12s;}
 .proj-card-btn:hover{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
 .proj-card-btn.del:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#ef4444;}
+.proj-card-open{width:100%;margin-top:12px;padding:9px 14px;border-radius:8px;border:1px solid rgba(99,102,241,.4);background:rgba(99,102,241,.18);color:#a5b4fc;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;}
+.proj-card-open:hover{background:rgba(99,102,241,.3);border-color:rgba(99,102,241,.6);color:#fff;}
 .new-proj-card{background:transparent;border:1px dashed rgba(99,102,241,.25);border-radius:14px;padding:28px 20px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--sub);min-height:120px;}
 .new-proj-card:hover{border-color:rgba(99,102,241,.5);color:#a5b4fc;background:rgba(99,102,241,.04);}
 .new-proj-card-icon{width:36px;height:36px;border-radius:10px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:18px;transition:background .15s;}
@@ -2632,6 +2634,10 @@ function renderDash(){
           <span class="proj-card-stat">${showCount} show${showCount!==1?'s':''}</span>
           <span class="proj-card-stat">${stageCount} stage${stageCount!==1?'s':''}</span>
         </div>
+        <button class="proj-card-open" onclick="event.stopPropagation();openProjectOnce('${p.id}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          Open project
+        </button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border);" onclick="event.stopPropagation()">
           ${logo
             ?`<img src="${logo}" style="height:24px;max-width:80px;object-fit:contain;border-radius:3px;cursor:pointer;" title="Logo wijzigen" onclick="event.stopPropagation();triggerLogoUpload('${p.id}')">
