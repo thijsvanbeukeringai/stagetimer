@@ -2880,53 +2880,117 @@ function createProject(){
 }
 
 // ── Admin
-function openAdmin(){
-  renderAdmin();
+async function openAdmin(){
+  if(!isAdmin()){alert('Geen rechten.');return;}
   document.getElementById('admin').classList.add('open');
+  renderAdmin();
+  // Re-fetch fresh data so we never show stale state
+  try{
+    const[uRes,cRes]=await Promise.all([
+      supa.from('app_users').select('*'),
+      supa.from('companies').select('*'),
+    ]);
+    if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||'',disabled:u.disabled||false}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at}));
+    saveAPP();
+    renderAdmin();
+  }catch(e){console.warn('[admin] refresh failed:',e);}
 }
 function closeAdmin(){document.getElementById('admin').classList.remove('open');}
+// Search filter state
+let _admFilter={co:'',usr:''};
+function _admSetCoFilter(v){_admFilter.co=v.toLowerCase();renderAdmin();}
+function _admSetUsrFilter(v){_admFilter.usr=v.toLowerCase();renderAdmin();}
 
+function _initials(name){const w=(name||'?').split(' ').filter(Boolean);return((w[0]||'?')[0]+(w[1]?w[1][0]:'')).toUpperCase();}
+function _subBadge(c){
+  const s=c.subscriptionStatus||'inactive';
+  const map={active:['#22c55e','Actief','rgba(34,197,94,.12)'],trialing:['#a5b4fc','Trial','rgba(99,102,241,.12)'],past_due:['#f97316','Achterstallig','rgba(249,115,22,.12)'],canceled:['#ef4444','Opgezegd','rgba(239,68,68,.12)'],inactive:['rgba(255,255,255,.4)','Geen abonnement','rgba(255,255,255,.05)']};
+  const[col,lbl,bg]=map[s]||map.inactive;
+  return`<span style="font-size:9px;font-weight:800;letter-spacing:.04em;color:${col};background:${bg};padding:2px 7px;border-radius:99px;text-transform:uppercase;">${lbl}</span>`;
+}
+function _projectsFor(coId){return APP.projects.filter(p=>p.companyId===coId);}
 function renderAdmin(){
+  // Header context
+  const hdrName=document.querySelector('#admin-hdr span[style*="font-weight:800"]');
+  if(hdrName){
+    hdrName.textContent=CURRENT_USER?.role==='super_admin'?'Beheer · Alle bedrijven':CURRENT_USER?.role==='admin'?'Beheer':'Beheer · '+(APP.companies.find(c=>c.id===CURRENT_USER?.companyId)?.name||'eigen bedrijf');
+  }
   const coList=document.getElementById('admin-co-list');
   const coCount=document.getElementById('admin-co-count');
-  if(coCount)coCount.textContent=APP.companies.length;
-  coList.innerHTML=APP.companies.map(c=>{
-    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  // For company_admin, only show their own company; super_admin/admin see all
+  const isSuper=CURRENT_USER?.role==='super_admin';
+  const visibleCos=APP.companies.filter(c=>{
+    if(!isAdmin()&&CURRENT_USER?.role==='company_admin')return c.id===CURRENT_USER?.companyId;
+    if(_admFilter.co&&!c.name.toLowerCase().includes(_admFilter.co))return false;
+    return true;
+  });
+  if(coCount)coCount.textContent=visibleCos.length;
+  coList.innerHTML=visibleCos.map(c=>{
+    const userCount=APP.users.filter(u=>u.companyId===c.id).length;
+    const projCount=_projectsFor(c.id).length;
+    const limit=c.projectLimit||0;
+    const overLimit=limit>0&&projCount>limit;
     return`<div class="admin-item">
-      <div class="admin-avatar admin-avatar-co">${initials}</div>
+      <div class="admin-avatar admin-avatar-co">${_initials(c.name)}</div>
       <div class="admin-item-info">
-        <div class="admin-item-name">${escH(c.name)}</div>
-        <div class="admin-item-sub">${(APP.users.filter(u=>u.companyId===c.id)).length} gebruiker(s)</div>
+        <div class="admin-item-name" style="display:flex;align-items:center;gap:8px;">
+          <span>${escH(c.name)}</span>
+          ${_subBadge(c)}
+          ${overLimit?`<span style="font-size:9px;color:#fbbf24;background:rgba(251,191,36,.12);padding:2px 6px;border-radius:99px;font-weight:700;">${projCount}/${limit} projecten</span>`:''}
+        </div>
+        <div class="admin-item-sub">${userCount} gebruiker(s) · ${projCount}${limit?'/'+limit:''} project(en)${c.subscriptionTier?' · '+escH(c.subscriptionTier):''}</div>
       </div>
-      <button class="admin-item-del" onclick="delCompany('${c.id}')" title="Verwijderen">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+      ${isSuper?`<button class="admin-item-del" onclick="editCompany('${c.id}')" title="Naam bewerken" style="margin-right:2px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>`:''}
+      <button class="admin-item-del" onclick="manageSubscription('${c.id}')" title="Abonnement beheren" style="margin-right:2px;color:#a5b4fc;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       </button>
+      ${isSuper?`<button class="admin-item-del" onclick="delCompany('${c.id}')" title="Verwijderen">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
+      </button>`:''}
     </div>`;
-  }).join('')||`<div style="padding:14px 12px;font-size:12px;color:var(--sub);text-align:center;">Nog geen bedrijven aangemaakt.</div>`;
+  }).join('')||`<div style="padding:14px 12px;font-size:12px;color:var(--sub);text-align:center;">Nog geen bedrijven.</div>`;
 
   const usrList=document.getElementById('admin-usr-list');
   const usrCount=document.getElementById('admin-usr-count');
-  if(usrCount)usrCount.textContent=APP.users.length;
-  // Companies dropdown
+  const visibleUsers=APP.users.filter(u=>{
+    if(!isSuper&&CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId)return false;
+    if(_admFilter.usr){const q=_admFilter.usr;return(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q);}
+    return true;
+  });
+  if(usrCount)usrCount.textContent=visibleUsers.length;
+  // Companies dropdown — limited for company_admin
   const sel=document.getElementById('adm-usr-co');
-  sel.innerHTML=`<option value="">— Geen bedrijf —</option>`+APP.companies.map(c=>`<option value="${c.id}">${escH(c.name)}</option>`).join('');
-  usrList.innerHTML=APP.users.map(u=>{
+  const dropdownCos=isSuper||CURRENT_USER?.role==='admin'?APP.companies:APP.companies.filter(c=>c.id===CURRENT_USER?.companyId);
+  sel.innerHTML=`<option value="">— Geen bedrijf —</option>`+dropdownCos.map(c=>`<option value="${c.id}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
+  // Role dropdown — restrict for non-super_admin
+  const roleSel=document.getElementById('adm-usr-role');
+  if(roleSel){
+    const opts=isSuper?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin'],['super_admin','Super Admin']]:CURRENT_USER?.role==='admin'?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin']]:[['operator','Operator'],['company_admin','Co. Admin']];
+    roleSel.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+  }
+  usrList.innerHTML=visibleUsers.map(u=>{
     const co=APP.companies.find(c=>c.id===u.companyId);
-    const initials=(u.name||u.email||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const roleLabel=u.role==='admin'?'Admin':u.role==='company_admin'?'Co. Admin':'Operator';
-    const roleClass=u.role==='admin'?'role-admin':u.role==='company_admin'?'role-co-admin':'role-op';
+    const isSelf=u.id===CURRENT_USER?.id;
+    const roleLabel={super_admin:'Super',admin:'Admin',company_admin:'Co. Admin',operator:'Operator'}[u.role]||u.role;
+    const roleClass=u.role==='super_admin'?'role-admin':u.role==='admin'?'role-admin':u.role==='company_admin'?'role-co-admin':'role-op';
+    const canEditRole=isSuper||(CURRENT_USER?.role==='admin'&&u.role!=='super_admin');
     return`<div class="admin-item">
-      <div class="admin-avatar admin-avatar-usr">${initials}</div>
+      <div class="admin-avatar admin-avatar-usr">${_initials(u.name||u.email)}</div>
       <div class="admin-item-info">
-        <div class="admin-item-name">${escH(u.name||u.email)}</div>
+        <div class="admin-item-name">${escH(u.name||u.email)}${isSelf?'<span style="font-size:9px;color:rgba(255,255,255,.4);margin-left:6px;">(jij)</span>':''}</div>
         <div class="admin-item-sub">${u.email?escH(u.email):''}${co?' · '+escH(co.name):''}</div>
       </div>
-      <span class="role-badge ${roleClass}">${roleLabel}</span>
-      <button class="admin-item-del" onclick="delUser('${u.id}')" title="Verwijderen">
+      ${canEditRole?`<select class="role-badge ${roleClass}" onchange="changeUserRole('${u.id}',this.value)" style="cursor:pointer;border:none;font-family:inherit;font-weight:700;font-size:9px;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;">
+        ${(isSuper?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin'],['super_admin','Super Admin']]:[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin']]).map(([v,l])=>`<option value="${v}"${v===u.role?' selected':''}>${l}</option>`).join('')}
+      </select>`:`<span class="role-badge ${roleClass}">${roleLabel}</span>`}
+      ${isSelf?'':`<button class="admin-item-del" onclick="delUser('${u.id}')" title="Verwijderen">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
-      </button>
+      </button>`}
     </div>`;
-  }).join('')||`<div style="padding:14px 12px;font-size:12px;color:var(--sub);text-align:center;">Nog geen gebruikers aangemaakt.</div>`;
+  }).join('')||`<div style="padding:14px 12px;font-size:12px;color:var(--sub);text-align:center;">Nog geen gebruikers.</div>`;
 
   // All projects list (admin only)
   const projList=document.getElementById('admin-proj-list');
@@ -2953,80 +3017,148 @@ function renderAdmin(){
   }
 }
 
-function addCompany(){
-  const name=document.getElementById('adm-co-name').value.trim();if(!name)return;
+async function addCompany(){
+  if(CURRENT_USER?.role!=='super_admin'){alert('Alleen Super Admin mag bedrijven aanmaken.');return;}
+  const inp=document.getElementById('adm-co-name');
+  const name=inp.value.trim();if(!name){inp.focus();return;}
   const id=uid();
-  APP.companies.push({id,name});
-  saveAPP();
-  supa.from('companies').insert([{id,name}]);
-  document.getElementById('adm-co-name').value='';renderAdmin();
+  const{error}=await supa.from('companies').insert([{id,name,subscription_status:'inactive',project_limit:0}]);
+  if(error){alert('Bedrijf aanmaken mislukt: '+error.message);return;}
+  APP.companies.push({id,name,subscriptionStatus:'inactive',projectLimit:0});
+  saveAPP();inp.value='';renderAdmin();
 }
-function delCompany(id){
+async function editCompany(id){
+  if(CURRENT_USER?.role!=='super_admin'){return;}
+  const c=APP.companies.find(x=>x.id===id);if(!c)return;
+  const newName=prompt('Nieuwe bedrijfsnaam:',c.name);
+  if(!newName||newName.trim()===c.name)return;
+  const{error}=await supa.from('companies').update({name:newName.trim()}).eq('id',id);
+  if(error){alert('Wijzigen mislukt: '+error.message);return;}
+  c.name=newName.trim();saveAPP();renderAdmin();
+}
+async function delCompany(id){
+  if(CURRENT_USER?.role!=='super_admin'){alert('Alleen Super Admin mag bedrijven verwijderen.');return;}
+  const c=APP.companies.find(x=>x.id===id);if(!c)return;
+  const userCount=APP.users.filter(u=>u.companyId===id).length;
+  const projCount=APP.projects.filter(p=>p.companyId===id).length;
+  if(c.subscriptionStatus==='active'){
+    if(!confirm(`⚠️ "${c.name}" heeft een ACTIEF abonnement. Je moet eerst opzeggen in Stripe. Toch verwijderen?`))return;
+  }
+  let msg=`"${c.name}" verwijderen?`;
+  if(userCount||projCount){msg+=`\n\n${userCount} gebruiker(s) en ${projCount} project(en) worden ook losgekoppeld.`;}
+  if(!confirm(msg))return;
+  // Cascade: detach users and projects (set company_id = '')
+  await Promise.all([
+    supa.from('app_users').update({company_id:''}).eq('company_id',id),
+    supa.from('projects').update({company_id:''}).eq('company_id',id),
+  ]);
+  const{error}=await supa.from('companies').delete().eq('id',id);
+  if(error){alert('Verwijderen mislukt: '+error.message);return;}
+  APP.users.forEach(u=>{if(u.companyId===id)u.companyId='';});
+  APP.projects.forEach(p=>{if(p.companyId===id)p.companyId='';});
   APP.companies=APP.companies.filter(c=>c.id!==id);
-  saveAPP();supa.from('companies').delete().eq('id',id);renderAdmin();
+  saveAPP();renderAdmin();
 }
 async function addUser(){
-  const name=document.getElementById('adm-usr-name').value.trim();if(!name)return;
-  const email=document.getElementById('adm-usr-email').value.trim();if(!email)return;
+  if(!isAdmin()&&CURRENT_USER?.role!=='company_admin'){alert('Geen rechten.');return;}
+  const name=document.getElementById('adm-usr-name').value.trim();if(!name){document.getElementById('adm-usr-name').focus();return;}
+  const email=document.getElementById('adm-usr-email').value.trim();if(!email){document.getElementById('adm-usr-email').focus();return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){document.getElementById('adm-usr-email').focus();alert('Geen geldig e-mailadres.');return;}
   const pw=document.getElementById('adm-usr-pw').value;
-  if(!pw||pw.length<6){document.getElementById('adm-usr-pw').focus();document.getElementById('adm-usr-pw').style.borderColor='rgba(239,68,68,.5)';setTimeout(()=>document.getElementById('adm-usr-pw').style.borderColor='',2000);return;}
-  const companyId=document.getElementById('adm-usr-co').value;
-  const role=document.getElementById('adm-usr-role').value;
+  if(!pw||pw.length<6){document.getElementById('adm-usr-pw').focus();document.getElementById('adm-usr-pw').style.borderColor='rgba(239,68,68,.5)';setTimeout(()=>document.getElementById('adm-usr-pw').style.borderColor='',2000);alert('Wachtwoord min. 6 tekens.');return;}
+  let companyId=document.getElementById('adm-usr-co').value;
+  let role=document.getElementById('adm-usr-role').value;
+  // RBAC: company_admin can only create operator/company_admin within own company
+  if(CURRENT_USER?.role==='company_admin'){
+    if(['admin','super_admin'].includes(role)){alert('Geen rechten om die rol toe te kennen.');return;}
+    companyId=CURRENT_USER.companyId;
+  }
+  if(CURRENT_USER?.role==='admin'&&role==='super_admin'){alert('Alleen Super Admin mag Super Admin aanmaken.');return;}
+  // Duplicate email check (DB has unique index too, but pre-check gives a nicer error)
+  if(APP.users.some(u=>u.email.toLowerCase()===email.toLowerCase())){alert('Er bestaat al een gebruiker met dit e-mailadres.');return;}
   const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
   if(addBtn){addBtn.textContent='Bezig…';addBtn.disabled=true;}
 
   const newId=uid();
-  APP.users.push({id:newId,name,email,companyId,role});
-  saveAPP();
-  supa.from('app_users').insert([{id:newId,name,email,role,company_id:companyId||''}]);
-
-  // Use Edge Function to create auth user — avoids touching the admin session
+  // Create auth user FIRST via edge function — only insert app_users row after auth user exists
+  let authOk=false,authErr=null;
   try{
     const{data:{session:adminSession}}=await supa.auth.getSession();
-    await fetch(`${SUPA_URL}/functions/v1/create-auth-user`,{
+    const res=await fetch(`${SUPA_URL}/functions/v1/create-auth-user`,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${adminSession.access_token}`,'apikey':SUPA_KEY},
       body:JSON.stringify({email,password:pw,display_name:name})
     });
-  }catch(e){
-    // Fallback: signUp (will briefly replace session, then restore)
-    const{data:{session:adminSession}}=await supa.auth.getSession();
-    await supa.auth.signUp({email,password:pw,options:{data:{display_name:name}}});
-    if(adminSession){
-      await supa.auth.setSession({access_token:adminSession.access_token,refresh_token:adminSession.refresh_token});
-      await supa.auth.refreshSession();
-    }
+    if(res.ok){authOk=true;}
+    else{const txt=await res.text();authErr=`HTTP ${res.status}: ${txt}`;}
+  }catch(e){authErr=e.message||String(e);}
+  if(!authOk){
+    if(addBtn){addBtn.textContent='+ Toevoegen';addBtn.disabled=false;}
+    alert('Auth-gebruiker aanmaken mislukt: '+authErr);
+    return;
   }
-
+  // Now insert app_users row
+  const{error:insErr}=await supa.from('app_users').insert([{id:newId,name,email,role,company_id:companyId||''}]);
+  if(insErr){
+    if(addBtn){addBtn.textContent='+ Toevoegen';addBtn.disabled=false;}
+    alert('Gebruiker opslaan mislukt: '+insErr.message+'\n\nLet op: de auth-account bestaat nu wel, ruim die handmatig op in Supabase.');
+    return;
+  }
+  APP.users.push({id:newId,name,email,companyId,role});
+  saveAPP();
   document.getElementById('adm-usr-name').value='';
   document.getElementById('adm-usr-email').value='';
   document.getElementById('adm-usr-pw').value='';
   if(addBtn){addBtn.textContent='+ Toevoegen';addBtn.disabled=false;}
   renderAdmin();
 }
+async function changeUserRole(id,newRole){
+  const u=APP.users.find(x=>x.id===id);if(!u)return;
+  // RBAC guards
+  if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){alert('Alleen Super Admin mag Super Admin toekennen.');renderAdmin();return;}
+  if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){alert('Geen rechten.');renderAdmin();return;}
+  if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!confirm('Je rol verlagen kan ervoor zorgen dat je niet meer bij Beheer kunt. Doorgaan?')){renderAdmin();return;}}
+  const{error}=await supa.from('app_users').update({role:newRole}).eq('id',id);
+  if(error){alert('Rol wijzigen mislukt: '+error.message);renderAdmin();return;}
+  u.role=newRole;
+  saveAPP();
+  if(u.id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
+  renderAdmin();
+}
 async function delUser(id){
-  const u=APP.users.find(x=>x.id===id);
-  if(!u)return;
-  if(!confirm(`${u.name} verwijderen?`))return;
-  APP.users=APP.users.filter(x=>x.id!==id);
-  localStorage.setItem(AKEY,JSON.stringify(APP));
-  // Delete from app_users table
-  await Promise.all([
-    supa.from('app_users').delete().eq('id',id),
-    supa.from('app_users').delete().eq('email',u.email)
-  ]);
-  // Delete from Supabase Auth via Edge Function
+  const u=APP.users.find(x=>x.id===id);if(!u)return;
+  if(u.id===CURRENT_USER?.id){alert('Je kunt jezelf niet verwijderen.');return;}
+  // RBAC
+  if(CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId){alert('Geen rechten.');return;}
+  if(CURRENT_USER?.role==='admin'&&u.role==='super_admin'){alert('Alleen Super Admin mag een Super Admin verwijderen.');return;}
+  if(!confirm(`${u.name||u.email} verwijderen?\n\nDit kan niet ongedaan gemaakt worden.`))return;
+  // Delete by id only (NEVER by email — there are no duplicates anymore but defensive)
+  const{error}=await supa.from('app_users').delete().eq('id',id);
+  if(error){alert('Verwijderen mislukt: '+error.message);return;}
+  // Delete auth user via edge function
   try{
     const{data:{session}}=await supa.auth.getSession();
     if(session&&u.email){
-      await fetch(`${SUPA_URL}/functions/v1/delete-auth-user`,{
+      const res=await fetch(`${SUPA_URL}/functions/v1/delete-auth-user`,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
         body:JSON.stringify({email:u.email})
       });
+      if(!res.ok)console.warn('[admin] auth delete returned',res.status);
     }
   }catch(e){console.warn('auth delete failed:',e);}
-  renderAdmin();
+  APP.users=APP.users.filter(x=>x.id!==id);
+  saveAPP();renderAdmin();
+}
+// Stub — wired up after Stripe edge functions are deployed
+async function manageSubscription(coId){
+  const c=APP.companies.find(x=>x.id===coId);if(!c)return;
+  const status=c.subscriptionStatus||'inactive';
+  if(status==='active'||status==='trialing'||status==='past_due'){
+    alert(`Abonnement van "${c.name}":\nStatus: ${status}\nTier: ${c.subscriptionTier||'-'}\nLimit: ${c.projectLimit||0} project(en)\n\nStripe Customer Portal komt zo beschikbaar (na deploy edge functions).`);
+  }else{
+    alert(`"${c.name}" heeft geen actief abonnement.\n\nStart-abonnement flow wordt nog toegevoegd (na Stripe product creation).`);
+  }
 }
 
 // ══ TIMELINE VIEW
