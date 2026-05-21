@@ -522,8 +522,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #mob-hdr-break{display:block;width:100%;height:0;order:6;}
   /* Row 2: stage select + day tabs */
   #stage-sel{order:7;flex:1;min-width:0;font-size:12px;}
-  #hdr-daywrap{order:8;overflow-x:auto;flex-shrink:0;}
-  #hdr-daywrap::-webkit-scrollbar{display:none;}
+  #hdr-daywrap{order:8;overflow:visible;flex-shrink:0;}
+  /* Day dropdown menu needs to open downward, not be clipped by header bounds.
+     On mobile we anchor it relative to viewport so the right edge stays on-screen. */
+  #day-dd .dd-menu{left:auto;right:0;}
   /* Hide everything else from header on mobile */
   #mob-hdr-cd,#admin-dd,#user-dd,
   #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
