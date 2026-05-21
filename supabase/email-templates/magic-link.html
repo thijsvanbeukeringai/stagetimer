@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Je magic link voor Stagetimer</title>
+</head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#0f172a;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(15,23,42,.06);">
+    <tr>
+      <td style="padding:32px 36px 12px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:20px;font-weight:800;letter-spacing:-.4px;">Stagetimer</span>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px 36px 8px;">
+        <h1 style="font-size:22px;font-weight:800;letter-spacing:-.4px;margin:0 0 14px;">Hi {{ .Email }},</h1>
+        <p style="font-size:15px;line-height:1.65;margin:0 0 14px;color:#334155;">Klik op de knop hieronder om direct in te loggen bij Stagetimer. Geen wachtwoord nodig.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 36px 8px;">
+        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;box-shadow:0 4px 20px rgba(99,102,241,.3);">Inloggen</a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:18px 36px 8px;">
+        <p style="font-size:13px;line-height:1.6;color:#64748b;margin:0;">Deze link verloopt over 1 uur en kan maar één keer gebruikt worden.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px 36px 32px;border-top:1px solid #e2e8f0;">
+        <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:24px 0 0;">Heb je dit niet aangevraagd? Dan kun je deze mail negeren.</p>
+        <p style="font-size:11px;color:#cbd5e1;margin:18px 0 0;">© Stagetimer · TEAM FIFTEEN B.V.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
