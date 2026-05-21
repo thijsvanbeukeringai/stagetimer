@@ -1925,8 +1925,27 @@ function renderBS(){
       </div>`;
     } else if(isPast){
       return'';
+    } else if(!showIsToday){
+      // SCHEDULED (not today): static start time + date, no live countdown
+      const sd=showDate(s);
+      const dateLbl=sd?new Date(sd+'T00:00:00').toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'short'}):'';
+      return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.05);opacity:.7;">
+        <div class="bs-row-top">
+          <div class="bs-row-left">
+            <div class="bs-badge" style="color:rgba(255,255,255,.3);">
+              GEPLAND
+              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${s.booth}</span>`:''}
+            </div>
+            <div class="bs-artist" style="color:rgba(255,255,255,.7);">${escH(s.artist)}</div>
+          </div>
+          <div class="bs-row-right">
+            <div class="bs-cd-lbl">${dateLbl||'Datum onbekend'}</div>
+            <div class="bs-cd" style="color:rgba(255,255,255,.55);font-size:clamp(28px,7vw,40px);">${s.start.slice(0,5)}</div>
+          </div>
+        </div>
+      </div>`;
     } else {
-      // UPCOMING: bar fills up as show approaches (0% = far, 100% = starting now)
+      // UPCOMING (today): bar fills up as show approaches (0% = far, 100% = starting now)
       const prevShow=shows[i-1];
       const prevEndM=prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60);
       const gapSec=Math.max(1,(sm-prevEndM)*60);
