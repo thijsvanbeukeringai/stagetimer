@@ -853,24 +853,36 @@ const getShows=(stage,day,strict=false)=>{
   return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
 };
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
-// Returns true only if the active day's date matches today (festival-day adjusted).
-// A day without a date cannot be confirmed as "today" — return false so overnight
-// expansion stays off and shows from other days don't bleed in. Exception: if no day
-// has any dates configured (single-event setups), treat the active day as today.
+// Resolve the effective date of a show: explicit show.date wins, otherwise inherit from its day.
+const showDate=s=>s?.date||(G.days||[]).find(d=>d.id===s?.day)?.date||'';
+// Returns true if there's any reason to consider the active day "today" for live countdowns.
+// Priority: explicit day.date → any show on this day with date matching today → legacy mode.
 const isActiveDayToday=()=>{
+  const today=festivalDayStr();
   const day=(G.days||[]).find(d=>d.id===G.activeDay);
   if(!day)return false;
-  if(!day.date){
-    const anyDated=(G.days||[]).some(d=>d.date);
-    return !anyDated; // only true when no day has a date (legacy single-event mode)
-  }
-  return day.date===festivalDayStr();
+  if(day.date)return day.date===today;
+  // No day.date — fall back to show-level dates on this day
+  const showsOnDay=(G.shows||[]).filter(s=>s.day===G.activeDay);
+  const datedShows=showsOnDay.filter(s=>s.date);
+  if(datedShows.length){return datedShows.some(s=>s.date===today);}
+  // Nothing dated on this day — only treat as today if no dates exist anywhere (legacy mode)
+  const anyDated=(G.days||[]).some(d=>d.date)||(G.shows||[]).some(s=>s.date);
+  return !anyDated;
+};
+// Is this specific show on today's festival day? Uses show.date if present, else day.date.
+// Falls back to legacy mode (treat as today) only if no date info exists anywhere.
+const isShowToday=s=>{
+  const d=showDate(s);
+  if(d)return d===festivalDayStr();
+  const anyDated=(G.days||[]).some(x=>x.date)||(G.shows||[]).some(x=>x.date);
+  return !anyDated;
 };
 // curShow/nxtShow with overnight-aware time comparison
 function curShow(shows){
-  if(!isActiveDayToday())return null;
   const n=nowMinAdj();
   for(const s of shows){
+    if(!isShowToday(s))continue;
     const sm=adjM(t2m(s.start));
     let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     if(n>=sm&&n<em){
@@ -882,9 +894,8 @@ function curShow(shows){
   return null;
 }
 function nxtShow(shows){
-  if(!isActiveDayToday())return null;
   const n=nowMinAdj();
-  for(const s of shows){const sm=adjM(t2m(s.start));if(sm>n)return{s,startsIn:(sm-n)*60};}
+  for(const s of shows){if(!isShowToday(s))continue;const sm=adjM(t2m(s.start));if(sm>n)return{s,startsIn:(sm-n)*60};}
   return null;
 }
 function getDays(){return G.days||[];}
@@ -1157,6 +1168,7 @@ function renderTbar(){
         <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
       </div>
     </div>
+    <div class="fg"><label class="fl" for="f-date">Datum <span style="color:var(--sub);font-weight:500;">(bepaalt wanneer de countdown loopt)</span></label><input class="fi" id="f-date" type="date"></div>
     <div class="frow">
       <div class="fg"><label class="fl" for="f-s">Starttijd</label><input class="fi" id="f-s" type="time" step="1"></div>
       <div class="fg"><label class="fl" for="f-e">Eindtijd</label><input class="fi" id="f-e" type="time" step="1"></div>
@@ -1883,10 +1895,10 @@ function renderBS(){
 
   if(!shows.length){body.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:16px;text-align:center;margin-top:40px;">Geen shows gepland voor deze dag.</div>`;return;}
 
-  const dayIsToday=isActiveDayToday();
   body.innerHTML=shows.map((s,i)=>{
+    const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=dayIsToday&&nm>=sm&&nm<em,isPast=dayIsToday&&nm>=em;
+    const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
     const boothCol=s.booth==='A'?'#6366f1':s.booth==='B'?'#22c55e':'#888';
     const boothBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'rgba(255,255,255,.08)';
 
@@ -1949,13 +1961,13 @@ function renderBS(){
 // Fast tick for backstage (update just countdowns & bars without full re-render)
 function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
-  const dayIsToday=isActiveDayToday();
-  const shows=getShows(G.activeStage,G.activeDay,!dayIsToday);
+  const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
   const n=nowSec(),nm=nowMinAdj();
   shows.forEach((s,i)=>{
+    const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));
     let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=dayIsToday&&nm>=sm&&nm<em,isPast=dayIsToday&&nm>=em;
+    const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
     const cdEl=document.getElementById('bs-cd-'+i);
     const barEl=document.getElementById('bs-bar-'+i);
     if(!cdEl||!barEl)return;
@@ -2044,8 +2056,8 @@ function openDrawer(id,booth=null){
   _drFlags={cancelled:false,priority:false};
   document.getElementById('drtitle').textContent=id?'Show bewerken':'Nieuwe show';
   document.getElementById('dr-save').textContent=id?'Opslaan':'Aanmaken';
-  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value=(s.crew&&s.crew[r])?s.crew[r].name||'':'');_photoB64=s.photo||'';_drFlags.cancelled=!!s.cancelled;_drFlags.priority=!!s.priority;if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
-  else{document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value='');clearPhoto();selBooth(booth||'A');const shows=getShows(G.activeStage,G.activeDay);if(shows.length){const last=shows[shows.length-1];document.getElementById('f-s').value=last.end;const es=t2s(last.end)+5400;document.getElementById('f-e').value=`${String(Math.floor(es/3600)%24).padStart(2,'0')}:${String(Math.floor(es%3600/60)).padStart(2,'0')}:${String(es%60).padStart(2,'0')}`;}else{const d=new Date();document.getElementById('f-s').value=`${String(d.getHours()).padStart(2,'0')}:00:00`;document.getElementById('f-e').value=`${String((d.getHours()+1)%24).padStart(2,'0')}:30:00`;}}
+  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-date').value=s.date||(G.days||[]).find(d=>d.id===s.day)?.date||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value=(s.crew&&s.crew[r])?s.crew[r].name||'':'');_photoB64=s.photo||'';_drFlags.cancelled=!!s.cancelled;_drFlags.priority=!!s.priority;if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
+  else{document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-date').value=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value='');clearPhoto();selBooth(booth||'A');const shows=getShows(G.activeStage,G.activeDay);if(shows.length){const last=shows[shows.length-1];document.getElementById('f-s').value=last.end;const es=t2s(last.end)+5400;document.getElementById('f-e').value=`${String(Math.floor(es/3600)%24).padStart(2,'0')}:${String(Math.floor(es%3600/60)).padStart(2,'0')}:${String(es%60).padStart(2,'0')}`;}else{const d=new Date();document.getElementById('f-s').value=`${String(d.getHours()).padStart(2,'0')}:00:00`;document.getElementById('f-e').value=`${String((d.getHours()+1)%24).padStart(2,'0')}:30:00`;}}
   _updateDrFlagBtns();
   updDur();
   document.getElementById('dov').classList.add('open');
@@ -2112,7 +2124,7 @@ function saveShow(){
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew={};['vj','light','sound','sfx','laser'].forEach(r=>{crew[r]={name:document.getElementById('cr-'+r).value.trim(),status:existing?.crew?.[r]?.status||''};});
   const photo=_photoB64||(existing?.photo||'');
-  const obj={artist,start:document.getElementById('f-s').value||'00:00:00',end:document.getElementById('f-e').value||'00:00:00',genre:document.getElementById('f-g').value.trim(),booth:curBooth,note:document.getElementById('f-n').value.trim(),crew,photo,cancelled:_drFlags.cancelled||false,priority:_drFlags.priority||false};
+  const obj={artist,date:document.getElementById('f-date').value||'',start:document.getElementById('f-s').value||'00:00:00',end:document.getElementById('f-e').value||'00:00:00',genre:document.getElementById('f-g').value.trim(),booth:curBooth,note:document.getElementById('f-n').value.trim(),crew,photo,cancelled:_drFlags.cancelled||false,priority:_drFlags.priority||false};
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
   save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
 }
@@ -2233,11 +2245,12 @@ function tickOV(){
     const nxEl=document.getElementById('stovnx-'+st.id);
     if(!card||!cdEl)return;
     const nameEl=document.getElementById('stovname-'+st.id);
-    // Only show live/countdown when active day is today
+    // Per-show "today" check — picks up show.date overrides on a date-less day
     const dayIsToday=dayToday;
     // Overnight-aware cur/nxt detection
     let cur=null,nxtObj=null;
-    if(dayIsToday)for(const s of shows){
+    for(const s of shows){
+      if(!isShowToday(s))continue;
       const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
       if(nm>=sm&&nm<em){
         const startSec=t2s(s.start);
@@ -2245,7 +2258,7 @@ function tickOV(){
         cur={s,startSec,endSec};break;
       }
     }
-    if(!cur&&dayIsToday){for(const s of shows){const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
+    if(!cur){for(const s of shows){if(!isShowToday(s))continue;const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
     if(cur){
       const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
@@ -2946,7 +2959,8 @@ function renderTL(){
       const x=(ss-minSec)/3600*TL_PX;
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
       const sm=ss/60,em=es/60;
-      const isNow=tlDayIsToday&&nm>=sm&&nm<em,isPast=tlDayIsToday&&nm>=em;
+      const showIsToday=isShowToday(s);
+      const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
       const isCancelled=!!s.cancelled,isPriority=!!s.priority;
       const bCol=isCancelled?'rgba(239,68,68,.5)':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
       const bBg=isCancelled?'rgba(239,68,68,.08)':s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
