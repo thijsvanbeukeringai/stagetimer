@@ -1357,9 +1357,10 @@ function renderTbar(){
       <div class="fg" style="flex:1;margin-bottom:0;"><label class="fl">Eind</label><input class="fi" id="otm-end" type="time" onkeydown="if(event.key==='Enter')saveOTTimer()"></div>
     </div>
     <div class="fg"><label class="fl">Notitie (optioneel)</label><input class="fi" id="otm-note" type="text" placeholder="Interne notitie…" onkeydown="if(event.key==='Enter')saveOTTimer()"></div>
+    <div id="otm-err" style="display:none;color:#fca5a5;font-size:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);padding:7px 10px;border-radius:6px;"></div>
     <div style="display:flex;gap:7px;">
-      <div class="btn-g" onclick="closeOTModal()" style="flex:1;cursor:pointer;">Annuleer</div>
-      <div class="btn-p" onclick="saveOTTimer()" style="flex:1;cursor:pointer;">Opslaan</div>
+      <button type="button" class="btn-g" onclick="closeOTModal()" style="flex:1;cursor:pointer;border:none;font-family:var(--ff);">Annuleer</button>
+      <button type="button" class="btn-p" onclick="saveOTTimer()" style="flex:1;cursor:pointer;border:none;font-family:var(--ff);">Opslaan</button>
     </div>
   </div>
 </div>
@@ -2605,9 +2606,16 @@ function renderDash(){
   const grid=document.getElementById('proj-grid');
   const myCoId=CURRENT_USER?.companyId||'';
   // Show all when user not yet loaded; otherwise filter by company
-  const visibleProjects=(!CURRENT_USER||isAdmin())
+  let visibleProjects=(!CURRENT_USER||isAdmin())
     ?APP.projects
     :APP.projects.filter(p=>!p.companyId||p.companyId===myCoId);
+  // Safety net: if filtering hid everything but projects exist, show all anyway
+  // — better to over-share than to leave the user staring at an empty dashboard
+  if(!visibleProjects.length&&APP.projects.length){
+    console.warn('[dash] company filter hid all projects, showing all instead. user:',CURRENT_USER,'projects:',APP.projects.length);
+    visibleProjects=APP.projects;
+  }
+  console.log('[dash] rendering',visibleProjects.length,'of',APP.projects.length,'projects');
   grid.innerHTML=visibleProjects.map(p=>{
     const co=APP.companies.find(c=>c.id===p.companyId);
     const showCount=(p.data?.shows||[]).length;
