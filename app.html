@@ -782,6 +782,8 @@ function loadG(){
     const existingDates=[...new Set((G.shows||[]).map(s=>s.day).filter(Boolean))].sort();
     G.days=existingDates.length?existingDates.map(d=>({id:d,name:fmtDateLabel(d)})):[{id:uid(),name:'Dag 1'}];
   }
+  // Sort days chronologically by date (dateless days fall to the end)
+  G.days.sort((a,b)=>{const ad=a.date||'￿',bd=b.date||'￿';return ad<bd?-1:ad>bd?1:0;});
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.timerMode)G.timerMode='live';
   if(!G.fohNotes)G.fohNotes={};
