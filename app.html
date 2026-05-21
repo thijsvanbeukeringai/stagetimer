@@ -1152,8 +1152,9 @@ function renderTbar(){
         <img id="photo-preview" src="" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;">
       </div>
       <div style="display:flex;gap:6px;">
-        <label class="btn-g" style="flex:1;text-align:center;cursor:pointer;margin:0;">📷 Foto kiezen<input id="f-photo" type="file" accept="image/*" style="display:none;" onchange="previewPhoto(this)"></label>
-        <button class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
+        <button type="button" class="btn-g" style="flex:1;text-align:center;cursor:pointer;margin:0;" onclick="document.getElementById('f-photo').click()">📷 Foto kiezen</button>
+        <input id="f-photo" type="file" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" onchange="previewPhoto(this)">
+        <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
       </div>
     </div>
     <div class="frow">
@@ -2057,11 +2058,46 @@ document.getElementById('f-e').addEventListener('input',updDur);
 function updDur(){const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;document.getElementById('dur-txt').textContent=s&&e?'Duur: '+fmtDur(durSec(s,e)):'—';}
 // ── Photo
 let _photoB64='';
-function previewPhoto(inp){
-  const f=inp.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=e=>{_photoB64=e.target.result;document.getElementById('photo-preview').src=_photoB64;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';};
-  r.readAsDataURL(f);
+// Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG.
+// Keeps photos small enough to fit alongside other show data in Supabase's JSON column.
+function _compressImage(dataUrl,maxDim=900,quality=.82){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      let {width:w,height:h}=img;
+      if(w>maxDim||h>maxDim){
+        if(w>=h){h=Math.round(h*maxDim/w);w=maxDim;}
+        else{w=Math.round(w*maxDim/h);h=maxDim;}
+      }
+      const c=document.createElement('canvas');c.width=w;c.height=h;
+      const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
+      try{resolve(c.toDataURL('image/jpeg',quality));}catch(e){reject(e);}
+    };
+    img.onerror=()=>reject(new Error('image load failed'));
+    img.src=dataUrl;
+  });
+}
+async function previewPhoto(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  if(!f.type.startsWith('image/')){alert('Dit bestand is geen afbeelding.');inp.value='';return;}
+  if(f.size>25*1024*1024){alert('Afbeelding is te groot (>25MB). Kies een kleiner bestand.');inp.value='';return;}
+  const wrap=document.getElementById('photo-preview-wrap');
+  const preview=document.getElementById('photo-preview');
+  const clearBtn=document.getElementById('f-photo-clear');
+  // Show placeholder + spinner while we read & compress
+  wrap.style.display='block';preview.src='';preview.style.opacity='.4';
+  try{
+    const raw=await new Promise((resolve,reject)=>{
+      const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>reject(new Error('read failed'));r.readAsDataURL(f);
+    });
+    _photoB64=await _compressImage(raw);
+    preview.src=_photoB64;preview.style.opacity='1';
+    clearBtn.style.display='';
+  }catch(e){
+    console.error('photo upload failed:',e);
+    alert('Foto kon niet verwerkt worden: '+(e.message||e));
+    _photoB64='';wrap.style.display='none';preview.style.opacity='1';inp.value='';
+  }
 }
 function clearPhoto(){_photoB64='';document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
 function setTPPhoto(src){
