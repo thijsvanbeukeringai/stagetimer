@@ -819,7 +819,7 @@ html,body{overflow-x:hidden;}
     <div id="su-summary" style="background:#f1f5f9;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">
       <div>
         <div style="font-size:12px;color:#64748b;font-weight:600;letter-spacing:.04em;text-transform:uppercase;" id="su-tier-label">Stagetimer Pro</div>
-        <div style="font-size:13px;color:#0f172a;font-weight:600;" id="su-tier-feature">4 projecten</div>
+        <div style="font-size:13px;color:#0f172a;font-weight:600;" id="su-tier-feature">Onbeperkt projecten</div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:18px;font-weight:800;color:#0f172a;" id="su-tier-price">€12,95</div>
@@ -942,7 +942,12 @@ html,body{overflow-x:hidden;}
   function closeLB(){lb.classList.remove('open');document.body.style.overflow='';}
   window.closeLB=closeLB;
   lb.addEventListener('click',e=>{if(e.target===lb)closeLB();});
-  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLB();document.getElementById('signup-modal').style.display='none';});
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      closeLB();
+      const m=document.getElementById('signup-modal');if(m)m.style.display='none';
+    }
+  });
 
   // ── BILLING TOGGLE ──
   let SU_BILLING='month';   // 'month' | 'year'
@@ -960,8 +965,7 @@ html,body{overflow-x:hidden;}
 
   // ── SIGN-UP MODAL ──
   const TIERS={
-    pro:{name:'Stagetimer Pro',feature:'Tot 4 actieve projecten',mo:'12,95',yr:'129,50',moNote:'per maand',yrNote:'per jaar · 2 mnd gratis'},
-    business:{name:'Stagetimer Business',feature:'Onbeperkt projecten',mo:'29,95',yr:'299,50',moNote:'per maand',yrNote:'per jaar · 2 mnd gratis'}
+    pro:{name:'Stagetimer',feature:'Onbeperkt projecten',mo:'12,95',yr:'129,50',moNote:'per maand',yrNote:'per jaar · 2 mnd gratis'}
   };
   function openSignup(tier){
     SU_TIER=tier;
