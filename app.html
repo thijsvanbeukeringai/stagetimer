@@ -183,7 +183,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #dur-prev{padding:8px 11px;background:var(--s3);border-radius:7px;border:1px solid var(--border);font-size:11px;color:var(--sub);display:flex;align-items:center;gap:5px;margin-bottom:15px;margin-top:-7px;}
 
 /* ── FOH SCREEN ── */
-#foh{position:fixed;inset:0;z-index:90;background:#08080e;display:none;flex-direction:column;}
+#foh{position:fixed;inset:0;z-index:200;background:#08080e;display:none;flex-direction:column;}
 #foh.open{display:flex;}
 #foh-hdr{flex-shrink:0;height:50px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;}
 #foh-hdr::-webkit-scrollbar{display:none;}
@@ -261,7 +261,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .csb.unknown{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.55);}
 
 /* ── BACKSTAGE SCREEN ── */
-#bs{position:fixed;inset:0;z-index:95;background:#050508;display:none;flex-direction:column;}
+#bs{position:fixed;inset:0;z-index:200;background:#050508;display:none;flex-direction:column;}
 #bs.open{display:flex;}
 #bs-hdr{flex-shrink:0;height:50px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.06);}
 #bs-title{font-size:13px;font-weight:800;color:#fff;white-space:nowrap;}
@@ -291,7 +291,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .bs-bar{height:100%;border-radius:99px;transition:width .5s linear,background .5s;}
 
 /* ── STAGE VIEW ── */
-#sv{position:fixed;inset:0;z-index:100;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:none;}
+#sv{position:fixed;inset:0;z-index:210;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:none;}
 #sv.open{display:flex;}
 #sv-top{font-size:10px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.2);margin-bottom:14px;}
 #sv-artist{font-size:clamp(26px,5.5vw,76px);font-weight:900;letter-spacing:-.04em;color:#fff;text-align:center;padding:0 48px;margin-bottom:5px;}
@@ -402,7 +402,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #proj-modal h3{font-size:15px;font-weight:800;letter-spacing:-.3px;}
 
 /* ── TIMELINE VIEW ── */
-#tl{position:fixed;inset:0;z-index:90;background:#08080e;display:none;flex-direction:column;}
+#tl{position:fixed;inset:0;z-index:200;background:#08080e;display:none;flex-direction:column;}
 #tl.open{display:flex;}
 #tl-hdr{flex-shrink:0;height:50px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;}
 #tl-hdr::-webkit-scrollbar{display:none;}
@@ -437,7 +437,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .otv-act:hover{background:rgba(255,255,255,.14);color:#fff;}
 
 /* ── STAGE OVERVIEW ── */
-#stov{position:fixed;inset:0;z-index:96;background:#08080e;display:none;flex-direction:column;}
+#stov{position:fixed;inset:0;z-index:200;background:#08080e;display:none;flex-direction:column;}
 #stov.open{display:flex;}
 #stov-hdr{flex-shrink:0;height:50px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;}
 #stov-hdr::-webkit-scrollbar{display:none;}
@@ -2153,7 +2153,7 @@ function delShow(id,e){e.stopPropagation();if(!confirm('Show verwijderen?'))retu
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();save();renderAll();}
 
 // ══ OPEN/CLOSE screens
-function _closeAllScreens(){['foh','bs','sv','tl'].forEach(id=>document.getElementById(id).classList.remove('open'));}
+function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));}
 function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();}
 function closeFOH(){document.getElementById('foh').classList.remove('open');}
 function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();}
@@ -2206,6 +2206,7 @@ function renderAll(){renderHeader();renderTP();renderSched();if(document.getElem
 
 // ══ STAGE OVERVIEW
 function openOV(){
+  _closeAllScreens();
   const el=document.getElementById('stov');
   el.classList.add('open');
   renderOV();
