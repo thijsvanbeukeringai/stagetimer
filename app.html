@@ -725,19 +725,26 @@ function loadAPPCache(){
 async function loadAPPRemote(){
   setSyncDot('ing');
   try{
-    const[{data:cos},{data:usrs},{data:projs}]=await Promise.all([
+    const[cosRes,usrsRes,projsRes]=await Promise.all([
       supa.from('companies').select('*'),
       supa.from('app_users').select('*'),
       supa.from('projects').select('*')
     ]);
-    APP.companies=cos||[];
-    APP.users=(usrs||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id}));
-    APP.projects=(projs||[]).map(p=>({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}}));
+    // CRITICAL: never overwrite cached projects with an empty array on transient errors.
+    // iOS Safari hits this when the access_token expired mid-refresh (RLS returns []),
+    // and that wipes the user's projects from localStorage on every refresh.
+    if(projsRes.error){
+      console.warn('[load] projects fetch failed, keeping cache:',projsRes.error);
+      setSyncDot('err');return;
+    }
+    if(cosRes.data)APP.companies=cosRes.data;
+    if(usrsRes.data)APP.users=usrsRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id}));
+    APP.projects=(projsRes.data||[]).map(p=>({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,data:p.data||{}}));
     // Keep active project from cache
     APP.activeProjectId=localStorage.getItem('st_active_proj')||APP.activeProjectId||null;
     localStorage.setItem(AKEY,JSON.stringify(APP));
     setSyncDot('ok');
-  }catch(e){setSyncDot('err');console.warn('Supabase load failed:',e);}
+  }catch(e){setSyncDot('err');console.warn('Supabase load failed (keeping cache):',e);}
 }
 
 function loadG(){
@@ -1608,19 +1615,20 @@ function renderSched(){
   }
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
+    const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     if(G.timerMode==='manual'){
       isNow=i===M.idx&&M.state==='running';isPast=i<M.idx;
       pct=isNow?Math.max(0,Math.min(100,(1-mRem()/M.durMs)*100)):0;
     }else{
-      isNow=n>=sm&&n<em;isPast=n>=em;
+      isNow=showIsToday&&n>=sm&&n<em;isPast=showIsToday&&n>=em;
       pct=isNow?Math.min(100,(n-sm)/(em-sm)*100):0;
     }
     const isSel=G.timerMode==='manual'&&i===M.idx;
     const bBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'';
     const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'';
-    // Countdown to start
-    const secUntil=G.timerMode==='live'?Math.max(0,(t2m(s.start)-n)*60):0;
+    // Countdown to start — only meaningful when the show actually IS today
+    const secUntil=(G.timerMode==='live'&&showIsToday)?Math.max(0,(t2m(s.start)-n)*60):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     // FOH notes
     const notes=G.fohNotes[s.id]||[];
@@ -1650,7 +1658,7 @@ function renderSched(){
       <div class="scard-ft">
         <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Notitie</button>
         ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,Math.ceil(em*60-nowSec())))}</span>`:''}
-        ${!isNow&&!isPast&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
+        ${showIsToday&&!isNow&&!isPast&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1665,6 +1673,10 @@ function tickSched(){
   const ns=nowSec();
   shows.forEach(s=>{
     const cd=document.getElementById('scd-'+s.id);if(!cd)return;
+    // If the show isn't on today's date, hide its countdown so we don't show
+    // misleading "starts in 24 min" for shows that aren't actually running today
+    if(!isShowToday(s)){cd.style.display='none';return;}
+    cd.style.display='';
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     const isNow=nm>=sm&&nm<em;
     if(isNow){
@@ -1825,8 +1837,9 @@ function renderFOH(){
   }
   const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;const sm2=adjM(t2m(s.start));let em2=adjM(t2m(s.end));if(em2<=sm2)em2+=1440;return nm<em2;});
   const rows=upcoming.map(s=>{
-    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=nm>=sm&&nm<em;
-    const secUntil=Math.max(0,(sm-nm)*60);
+    const showIsToday=isShowToday(s);
+    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=showIsToday&&nm>=sm&&nm<em;
+    const secUntil=showIsToday?Math.max(0,(sm-nm)*60):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
     return`<div class="foh-srow${isNow?' live':''}">
       <div class="foh-sr-t">${s.start.slice(0,5)}</div>
@@ -1844,7 +1857,7 @@ function renderFOH(){
           <button class="frb" onclick="openDrawer('${s.id}')" title="Bewerken">✏️</button>
           <button class="frb d" onclick="delShow('${s.id}',event)" title="Verwijderen">🗑</button>
         </div>
-        ${!isNow?`<div id="foh-sr-cd-${s.id}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
+        ${showIsToday&&!isNow?`<div id="foh-sr-cd-${s.id}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
         <div style="font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.06em;">tot start</div>`:''}
       </div>
     </div>`;
@@ -2198,6 +2211,8 @@ function tickFOH(){
   const nma=nowMinAdj();
   shows.forEach(s=>{
     const cd=document.getElementById('foh-sr-cd-'+s.id);if(!cd)return;
+    if(!isShowToday(s)){cd.style.display='none';return;}
+    cd.style.display='';
     const secUntil=Math.max(0,(adjM(t2m(s.start))-nma)*60);
     cd.textContent=s2cdH(Math.ceil(secUntil));
     cd.style.color=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
@@ -2583,14 +2598,17 @@ function delDay(id){
 // ══ DASHBOARD
 // Debounced openProject: touchend + onclick can both fire, only first wins within 400ms
 let _lastProjOpen=0;
-function openProjectOnce(id){const now=Date.now();if(now-_lastProjOpen<400)return;_lastProjOpen=now;openProject(id);}
+function openProjectOnce(id){const now=Date.now();if(now-_lastProjOpen<250)return;_lastProjOpen=now;openProject(id);}
 (function(){
   let _tMoved=false;
   document.addEventListener('touchstart',function(){_tMoved=false;},{passive:true});
   document.addEventListener('touchmove',function(){_tMoved=true;},{passive:true});
   document.addEventListener('touchend',function(e){
     if(_tMoved)return;
-    if(e.target.closest('.proj-card-btn,.mob-nav-btn,button'))return;
+    // Skip any interactive element — let native click fire instead. This prevents the
+    // global touchend from racing with the button's own onclick and getting eaten by
+    // the openProjectOnce debounce.
+    if(e.target.closest('.proj-card-btn,.proj-card-open,.proj-card-actions,.mob-nav-btn,button,a,input,select,textarea,label'))return;
     const card=e.target.closest('[data-proj-id]');
     if(card&&card.classList.contains('proj-card'))openProjectOnce(card.dataset.projId);
   },{passive:true});
