@@ -1565,6 +1565,9 @@ async function loadAPPRemote(){
     // Keep active project from cache
     APP.activeProjectId=localStorage.getItem('st_active_proj')||APP.activeProjectId||null;
     localStorage.setItem(AKEY,JSON.stringify(APP));
+    // Only when we've successfully fetched companies+users do we trust the data
+    // enough to render the subscription banner. Prevents stale-cache banners.
+    if(cosRes.data&&usrsRes.data)window._remoteLoaded=true;
   }catch(e){setSyncDot('err');console.warn('Supabase load failed (keeping cache):',e);}
 }
 
@@ -1662,6 +1665,37 @@ function setupRealtime(){
           if(document.getElementById('dash').classList.contains('open'))renderDash();
         }
       }
+    })
+    // Also listen for company updates — so when the Stripe webhook flips a
+    // workspace from 'incomplete' to 'active' on payment success, the user's
+    // subscription banner disappears immediately instead of after a refresh.
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'companies'},payload=>{
+      const c=payload.new;
+      if(!c)return;
+      const local=APP.companies.find(x=>x.id===c.id);
+      const mapped={
+        id:c.id,name:c.name,
+        stripeCustomerId:c.stripe_customer_id,
+        stripeSubscriptionId:c.stripe_subscription_id,
+        subscriptionStatus:c.subscription_status||'inactive',
+        subscriptionTier:c.subscription_tier,
+        projectLimit:c.project_limit||0,
+        currentPeriodEnd:c.current_period_end,
+        trialEndsAt:c.trial_ends_at,
+        lastPaidAt:c.last_paid_at,
+        pendingName:c.pending_name,
+        pendingEmail:c.pending_email,
+        setupToken:c.setup_token,
+        extraSeats:c.extra_seats||0,
+        seatSubscriptionItemId:c.seat_subscription_item_id,
+      };
+      if(local)Object.assign(local,mapped);
+      else APP.companies.push(mapped);
+      localStorage.setItem(AKEY,JSON.stringify(APP));
+      // Re-render whatever is on screen
+      const dashEl=document.getElementById('dash'),adminEl=document.getElementById('admin');
+      if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
+      if(!PUBLIC_MODE&&adminEl&&adminEl.classList.contains('open'))renderAdmin();
     })
     .subscribe();
 }
@@ -4191,6 +4225,11 @@ function renderSubscriptionBanner(){
   const el=document.getElementById('dash-sub-banner');if(!el)return;
   // Platform admins don't see this banner
   if(!CURRENT_USER||isAdmin()){el.style.display='none';return;}
+  // Don't show the banner based on stale cached data. We must have confirmed
+  // the current subscription state from Supabase first (otherwise paying
+  // customers like Silvan get a misleading "no subscription" banner that's
+  // simply old localStorage from their initial signup-as-incomplete moment).
+  if(!window._remoteLoaded){el.style.display='none';return;}
   const co=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
   if(!co){el.style.display='none';return;}
   const status=co.subscriptionStatus||'inactive';
