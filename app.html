@@ -1022,6 +1022,127 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.85);}}
 
 /* ═══════════════════════════════════════════════════════════════
+   ONE-OFF TIMER MODAL — self-contained styling, looks good
+   over both the light workspace and the dark project view
+   ═══════════════════════════════════════════════════════════════ */
+.ot-modal-overlay{
+  position:fixed;inset:0;z-index:230;
+  background:rgba(8,8,12,.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+  padding:24px;
+  animation:otFadeIn .15s ease-out;
+}
+@keyframes otFadeIn{from{opacity:0;}to{opacity:1;}}
+.ot-modal{
+  background:#FFFFFF;border:1px solid rgba(28,25,23,.1);
+  border-radius:14px;
+  width:100%;max-width:420px;
+  box-shadow:0 20px 50px rgba(8,8,12,.4),0 4px 12px rgba(8,8,12,.2);
+  display:flex;flex-direction:column;
+  font-family:'Geist','Inter',system-ui,sans-serif;
+  color:#0A0A0B;
+  max-height:calc(100dvh - 48px);
+  overflow:hidden;
+}
+.ot-modal-hdr{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px 22px 14px;
+  border-bottom:1px solid rgba(28,25,23,.07);
+}
+.ot-modal-title{
+  font-size:16px;font-weight:700;letter-spacing:-.3px;color:#0A0A0B;
+}
+.ot-modal-close{
+  width:30px;height:30px;border-radius:8px;
+  background:none;border:none;color:#78716C;
+  font-size:22px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .12s;flex-shrink:0;
+}
+.ot-modal-close:hover{background:#F5F5F4;color:#0A0A0B;}
+.ot-modal-body{
+  padding:18px 22px;
+  display:flex;flex-direction:column;gap:14px;
+  overflow-y:auto;
+}
+.ot-field{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1;}
+.ot-field-row{display:flex;gap:10px;}
+.ot-label{
+  font-size:11px;font-weight:600;letter-spacing:.04em;
+  color:#3F3F46;text-transform:uppercase;line-height:1.2;
+}
+.ot-label-hint{
+  text-transform:none;letter-spacing:0;
+  color:#A8A29E;font-weight:400;margin-left:2px;
+}
+.ot-input{
+  width:100%;
+  padding:10px 13px;
+  background:#FFFFFF;
+  border:1px solid rgba(28,25,23,.14);border-radius:8px;
+  color:#0A0A0B;
+  font:inherit;font-size:13.5px;line-height:1.4;
+  outline:none;
+  transition:border-color .12s,box-shadow .12s;
+  font-family:'Geist','Inter',system-ui,sans-serif;
+  box-sizing:border-box;
+  min-height:42px;
+}
+.ot-input::placeholder{color:#A8A29E;}
+.ot-input:focus{
+  border-color:#1E40AF;
+  box-shadow:0 0 0 3px rgba(30,64,175,.1);
+}
+.ot-input[type="date"],.ot-input[type="time"]{
+  font-variant-numeric:tabular-nums;
+  cursor:pointer;
+}
+.ot-error{
+  display:none;
+  padding:9px 12px;border-radius:8px;
+  background:#FEF2F2;border:1px solid rgba(185,28,28,.2);
+  color:#991B1B;font-size:12.5px;line-height:1.4;
+}
+.ot-error[data-show="true"]{display:block;}
+.ot-modal-actions{
+  display:flex;gap:8px;
+  padding:14px 22px 18px;
+  border-top:1px solid rgba(28,25,23,.07);
+  background:#FAFAF9;
+}
+.ot-btn-cancel,.ot-btn-primary{
+  flex:1;
+  padding:10px 16px;border-radius:8px;
+  font:inherit;font-size:13px;font-weight:600;letter-spacing:-.1px;
+  cursor:pointer;
+  transition:all .12s;
+  font-family:'Geist','Inter',system-ui,sans-serif;
+}
+.ot-btn-cancel{
+  background:#FFFFFF;color:#3F3F46;border:1px solid rgba(28,25,23,.14);
+}
+.ot-btn-cancel:hover{background:#F5F5F4;border-color:rgba(28,25,23,.22);}
+.ot-btn-primary{
+  background:#0C0A09;color:#FFFFFF;border:1px solid #0C0A09;
+}
+.ot-btn-primary:hover{background:#1E40AF;border-color:#1E40AF;}
+.ot-btn-primary:active{transform:translateY(1px);}
+
+@media(max-width:520px){
+  .ot-modal-overlay{padding:0;align-items:flex-end;}
+  .ot-modal{
+    max-width:100%;border-radius:18px 18px 0 0;
+    max-height:92dvh;
+    animation:otSlideUp .22s cubic-bezier(.2,.9,.3,1);
+  }
+  @keyframes otSlideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .ot-field-row{flex-direction:column;gap:14px;}
+  .ot-modal-actions{padding:14px 18px calc(18px + env(safe-area-inset-bottom));}
+  .ot-modal-body{padding:18px 18px;}
+  .ot-modal-hdr{padding:16px 18px 14px;}
+}
+
+/* ═══════════════════════════════════════════════════════════════
    WORKSPACE LAYOUT — sidebar + main content (Linear/Stripe style)
    ═══════════════════════════════════════════════════════════════ */
 #dash{display:none;flex-direction:row !important;padding:0;overflow:hidden !important;}
@@ -1225,14 +1346,51 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .ws-sb-footer{display:none;}
   #ws-main{padding:18px 14px 80px;}
   .ws-section-hdr h1{font-size:20px;}
+  /* Stack table rows as cards on mobile */
+  .ws-table-wrap{border-radius:10px;}
   .ws-table thead{display:none;}
-  .ws-table tbody td{display:block;padding:6px 16px;}
-  .ws-table tbody td.col-name{padding-top:14px;font-size:15px;}
-  .ws-table tbody td.col-actions{padding-bottom:14px;text-align:left;}
-  .ws-table tbody td:not(.col-name):not(.col-actions)::before{
-    content:attr(data-label);font-size:10px;font-weight:600;color:#78716C;
-    text-transform:uppercase;margin-right:6px;letter-spacing:.06em;
+  .ws-table,.ws-table tbody{display:block;}
+  .ws-table tbody tr{
+    display:flex;flex-direction:column;gap:6px;
+    padding:14px 16px;
+    border-bottom:1px solid rgba(28,25,23,.06);
+    cursor:pointer;
   }
+  .ws-table tbody tr:last-child{border-bottom:none;}
+  .ws-table tbody tr:hover{background:#FAFAF9;}
+  .ws-table tbody td{
+    display:block;padding:0;border:none;background:none;
+  }
+  .ws-table tbody td.col-name{
+    font-size:15px;font-weight:700;letter-spacing:-.25px;color:#0A0A0B;line-height:1.25;
+  }
+  /* Meta line: workspace · X shows · Y stages */
+  .ws-table tbody td[data-label="Workspace"],
+  .ws-table tbody td[data-label="Shows"],
+  .ws-table tbody td[data-label="Stages"]{
+    display:inline-flex;align-items:center;font-size:12px;color:#52525B;
+    text-align:left !important;
+  }
+  .ws-table tbody td[data-label="Workspace"]{margin-right:6px;}
+  .ws-table tbody td[data-label="Shows"]::before,
+  .ws-table tbody td[data-label="Stages"]::before{
+    content:"·";margin:0 7px 0 1px;color:#A8A29E;
+  }
+  .ws-table tbody td[data-label="Shows"],
+  .ws-table tbody td[data-label="Stages"]{font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;font-size:11.5px;}
+  /* Wrap the 3 meta cells onto one line — flex container faked via :before */
+  .ws-table tbody td[data-label="Workspace"]{margin-top:2px;}
+  /* Actions row: Open prominent + icons */
+  .ws-table tbody td.col-actions{
+    text-align:left !important;
+    display:flex;align-items:center;gap:6px;
+    margin-top:8px;flex-wrap:wrap;
+  }
+  .ws-table-open-btn{flex:1;justify-content:center;padding:10px 14px;font-size:13px;}
+  .ws-icon-btn{width:36px;height:36px;}
+  /* Empty-state row */
+  .ws-table tbody tr:has(.ws-empty){padding:0;flex-direction:row;}
+  .ws-empty{padding:40px 18px;}
 }
 
 /* === RESPONSIVE === */
@@ -2245,23 +2403,40 @@ function renderTbar(){
 </div>
 
 <!-- ONE-OFF TIMER MODAL -->
-<div id="ot-modal-ov" onclick="if(event.target===this)closeOTModal()" style="position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div onclick="" style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:24px;width:360px;display:flex;flex-direction:column;gap:12px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div id="ot-modal-title" style="font-size:15px;font-weight:800;">New One-off Timer</div>
-      <button onclick="closeOTModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+<div id="ot-modal-ov" onclick="if(event.target===this)closeOTModal()" class="ot-modal-overlay">
+  <div class="ot-modal" onclick="event.stopPropagation()">
+    <div class="ot-modal-hdr">
+      <div id="ot-modal-title" class="ot-modal-title">New one-off timer</div>
+      <button class="ot-modal-close" onclick="closeOTModal()" aria-label="Close">×</button>
     </div>
-    <div class="fg"><label class="fl">Artist / Name</label><input class="fi" id="otm-artist" type="text" placeholder="e.g. Martin Garrix" onkeydown="if(event.key==='Enter')document.getElementById('otm-start').focus()"></div>
-    <div class="fg"><label class="fl">Date</label><input class="fi" id="otm-date" type="date"></div>
-    <div style="display:flex;gap:9px;">
-      <div class="fg" style="flex:1;margin-bottom:0;"><label class="fl">Start</label><input class="fi" id="otm-start" type="time"></div>
-      <div class="fg" style="flex:1;margin-bottom:0;"><label class="fl">End</label><input class="fi" id="otm-end" type="time" onkeydown="if(event.key==='Enter')saveOTTimer()"></div>
+    <div class="ot-modal-body">
+      <div class="ot-field">
+        <label for="otm-artist" class="ot-label">Artist / Name</label>
+        <input class="ot-input" id="otm-artist" type="text" placeholder="e.g. Martin Garrix" onkeydown="if(event.key==='Enter')document.getElementById('otm-date').focus()">
+      </div>
+      <div class="ot-field">
+        <label for="otm-date" class="ot-label">Date</label>
+        <input class="ot-input" id="otm-date" type="date">
+      </div>
+      <div class="ot-field-row">
+        <div class="ot-field">
+          <label for="otm-start" class="ot-label">Start time</label>
+          <input class="ot-input" id="otm-start" type="time">
+        </div>
+        <div class="ot-field">
+          <label for="otm-end" class="ot-label">End time</label>
+          <input class="ot-input" id="otm-end" type="time" onkeydown="if(event.key==='Enter')saveOTTimer()">
+        </div>
+      </div>
+      <div class="ot-field">
+        <label for="otm-note" class="ot-label">Note <span class="ot-label-hint">(optional)</span></label>
+        <input class="ot-input" id="otm-note" type="text" placeholder="Internal note…" onkeydown="if(event.key==='Enter')saveOTTimer()">
+      </div>
+      <div id="otm-err" class="ot-error"></div>
     </div>
-    <div class="fg"><label class="fl">Note (optional)</label><input class="fi" id="otm-note" type="text" placeholder="Internal note…" onkeydown="if(event.key==='Enter')saveOTTimer()"></div>
-    <div id="otm-err" style="display:none;color:#fca5a5;font-size:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);padding:7px 10px;border-radius:6px;"></div>
-    <div style="display:flex;gap:7px;">
-      <button type="button" class="btn-g" onclick="closeOTModal()" style="flex:1;cursor:pointer;border:none;font-family:var(--ff);">Cancel</button>
-      <button type="button" class="btn-p" onclick="saveOTTimer()" style="flex:1;cursor:pointer;border:none;font-family:var(--ff);">Save</button>
+    <div class="ot-modal-actions">
+      <button type="button" class="ot-btn-cancel" onclick="closeOTModal()">Cancel</button>
+      <button type="button" class="ot-btn-primary" onclick="saveOTTimer()">Save timer</button>
     </div>
   </div>
 </div>
