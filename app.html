@@ -4745,7 +4745,10 @@ function renderAdmin(){
           <div class="admin-item-name">${escH(p.name)}${isActive?'<span class="admin-active-pill">active</span>':''}</div>
           <div class="admin-item-sub">${co?escH(co.name)+' · ':''}${showCount} shows · ${stageCount} stages${owner?' · owner: '+escH(owner.name||owner.email):''}</div>
         </div>
-        <button class="admin-item-del" onclick="deleteProject('${p.id}');event.stopPropagation()" title="Delete">
+        <button class="admin-item-del" onclick="event.stopPropagation();openShareModal('${p.id}')" title="View share links" style="color:#1E40AF;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        </button>
+        <button class="admin-item-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="Delete">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>`;
@@ -4965,7 +4968,9 @@ function renderTL(){
     if(!shows.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">No shows for this day.</div>';return;}
     const nm=nowMinAdj();
     const stageIds=new Set(stages.map(st=>st.id));
-    const activeStages=stages.filter(st=>shows.some(s=>s.stage===st.id));
+    // Show ALL stages from the project, not just ones with shows. Empty stages
+    // still render their header so the user knows the stage exists.
+    const activeStages=stages;
     const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
     const makeRow=s=>{
       const showIsToday=isShowToday(s);
@@ -5031,9 +5036,12 @@ function renderTL(){
   const nowSecA=nowSec()<NIGHT_S?nowSec()+86400:nowSec();
   const tlDayIsToday=isActiveDayToday();
 
-  // Stage rows - only show stages that have at least one show on the active day
+  // Show ALL stages from the project, even empty ones. The user wants every
+  // stage they created to remain visible regardless of whether shows have been
+  // added yet — otherwise stages "disappear" and their backstage/share links
+  // become unreachable from the UI.
   const stageIds=new Set(stages.map(st=>st.id));
-  const activeStages=stages.filter(stage=>shows.some(s=>s.stage===stage.id));
+  const activeStages=stages;
   const orphanShows=shows.filter(s=>!stageIds.has(s.stage));
   const allStageRows=[...activeStages];
   if(orphanShows.length)allStageRows.push({id:'__orphan__',name:'Other',emoji:'📋'});
