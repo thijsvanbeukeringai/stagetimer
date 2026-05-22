@@ -4963,13 +4963,12 @@ function renderTL(){
 
   if(!stages.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">No stages created.</div>';return;}
 
-  // Mobile: vertical list per stage
+  // Mobile: vertical list per stage. Always render stages even when there are
+  // no shows for the current day — otherwise a wrong activeDay or stale cache
+  // could hide a stage that DOES have artists planned (just on another day).
   if(window.innerWidth<=700){
-    if(!shows.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">No shows for this day.</div>';return;}
     const nm=nowMinAdj();
     const stageIds=new Set(stages.map(st=>st.id));
-    // Show ALL stages from the project, not just ones with shows. Empty stages
-    // still render their header so the user knows the stage exists.
     const activeStages=stages;
     const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
     const makeRow=s=>{
@@ -4990,12 +4989,19 @@ function renderTL(){
     };
     const stageBlocks=activeStages.map(stage=>{
       const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
+      // If this stage has shows on OTHER days, hint that to the user so they
+      // don't think the stage is broken/empty.
+      const otherDayCount=(G.shows||[]).filter(s=>s.stage===stage.id&&s.day!==G.activeDay).length;
+      const emptyHint=!stShows.length
+        ?`<div style="padding:14px;color:rgba(255,255,255,.35);font-size:12px;font-style:italic;">${otherDayCount>0?`${otherDayCount} show${otherDayCount===1?'':'s'} scheduled on other days — switch day above`:'No shows scheduled yet for this stage.'}</div>`
+        :'';
       return`<div style="margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
           <span style="font-size:16px;">${escH(stage.emoji||'🎵')}</span>
           <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;">${escH(stage.name)}</span>
         </div>
         ${stShows.map(makeRow).join('')}
+        ${emptyHint}
       </div>`;
     }).join('');
     const orphanBlock=orphans.length?`<div style="margin-bottom:8px;">
