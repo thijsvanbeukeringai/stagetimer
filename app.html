@@ -1134,6 +1134,15 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .ws-table .col-name{font-weight:600;letter-spacing:-.15px;}
 .ws-table .col-num{font-variant-numeric:tabular-nums;color:#52525B;font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;font-size:12px;}
 .ws-table .col-actions{text-align:right;white-space:nowrap;}
+.ws-table-open-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:7px;
+  background:#0C0A09;color:#FFFFFF;border:1px solid #0C0A09;
+  font:inherit;font-size:12px;font-weight:600;letter-spacing:-.05px;cursor:pointer;
+  transition:all .12s;
+}
+.ws-table-open-btn:hover{background:#1E40AF;border-color:#1E40AF;}
+.ws-table-open-btn svg{flex-shrink:0;}
 .ws-table .ws-row-badge{
   display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;
   font-size:10.5px;font-weight:600;
@@ -1970,7 +1979,7 @@ function renderTbar(){
               <th>Workspace</th>
               <th style="width:90px;text-align:right;">Shows</th>
               <th style="width:90px;text-align:right;">Stages</th>
-              <th style="width:110px;text-align:right;">Actions</th>
+              <th style="width:200px;text-align:right;">Actions</th>
             </tr>
           </thead>
           <tbody id="proj-grid"></tbody>
@@ -3653,7 +3662,11 @@ function renderDash(){
         <td class="col-num" style="text-align:right;" data-label="Shows">${showCount}</td>
         <td class="col-num" style="text-align:right;" data-label="Stages">${stageCount}</td>
         <td class="col-actions" data-label="Actions" onclick="event.stopPropagation()">
-          <button class="ws-icon-btn" onclick="event.stopPropagation();openShareModal('${p.id}')" title="Share links">
+          <button class="ws-table-open-btn" onclick="event.stopPropagation();openProjectOnce('${p.id}')" title="Open project">
+            Open
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          </button>
+          <button class="ws-icon-btn" onclick="event.stopPropagation();openShareModal('${p.id}')" title="Share links" style="margin-left:4px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
           <button class="ws-icon-btn" onclick="event.stopPropagation();renameProject('${p.id}')" title="Rename">
