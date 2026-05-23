@@ -1723,6 +1723,59 @@ const getShows=(stage,day,strict=false)=>{
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'-',emoji:''};
 // Resolve the effective date of a show: explicit show.date wins, otherwise inherit from its day.
 const showDate=s=>s?.date||(G.days||[]).find(d=>d.id===s?.day)?.date||'';
+// ── ISO timestamp model for shows ────────────────────────────────
+// New shows store explicit startsAt / endsAt as ISO datetime strings
+// (e.g. "2026-05-22T23:00:00") so overnight handling never depends on
+// heuristics. Legacy shows have only `start` / `end` (HH:MM:SS) plus
+// a `day` (and sometimes `date`). Helpers below provide a unified
+// view so renderers don't need to care which model is in use.
+function _showBaseDate(s){
+  if(!s)return null;
+  if(s.date)return s.date;
+  const d=(G.days||[]).find(x=>x.id===s.day);
+  return d?.date||null;
+}
+function _addDaysISO(iso,delta){
+  const[y,m,d]=iso.split('-').map(Number);
+  const dt=new Date(y,m-1,d+delta);
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function _showStartsAt(s){
+  if(!s)return null;
+  if(s.startsAt){const d=new Date(s.startsAt);if(!isNaN(d))return d;}
+  const base=_showBaseDate(s);
+  if(!base||!s.start)return null;
+  const d=new Date(`${base}T${s.start}`);
+  return isNaN(d)?null:d;
+}
+function _showEndsAt(s){
+  if(!s)return null;
+  if(s.endsAt){const d=new Date(s.endsAt);if(!isNaN(d))return d;}
+  const base=_showBaseDate(s);
+  if(!base||!s.end)return null;
+  // Detect overnight: end <= start → end is the next day
+  const overnight=s.endsNextDay===true||(s.endsNextDay===undefined&&t2s(s.end)<=t2s(s.start));
+  const endBase=overnight?_addDaysISO(base,1):base;
+  const d=new Date(`${endBase}T${s.end}`);
+  return isNaN(d)?null:d;
+}
+function _showDurationSec(s){
+  const sa=_showStartsAt(s),ea=_showEndsAt(s);
+  if(sa&&ea)return Math.max(0,Math.round((ea-sa)/1000));
+  return durSec(s.start,s.end); // legacy fallback when no base date
+}
+// Compute startsAt + endsAt for the form values + active day context.
+// Used when saving a show, so we persist canonical ISO timestamps.
+function _computeShowTimestamps(start,end,dayId,explicitDate){
+  if(!start||!end)return{startsAt:null,endsAt:null,endsNextDay:false};
+  const day=(G.days||[]).find(x=>x.id===dayId);
+  const base=explicitDate||day?.date||null;
+  if(!base)return{startsAt:null,endsAt:null,endsNextDay:false};
+  const endsNextDay=t2s(end)<=t2s(start);
+  const startISO=`${base}T${start}`;
+  const endISO=`${endsNextDay?_addDaysISO(base,1):base}T${end}`;
+  return{startsAt:startISO,endsAt:endISO,endsNextDay};
+}
 // Returns true if there's any reason to consider the active day "today" for live countdowns.
 // Priority: explicit day.date → any show on this day with date matching today → legacy mode.
 const isActiveDayToday=()=>{
@@ -1791,7 +1844,7 @@ function fmtDayShort(id){const d=(G.days||[]).find(x=>x.id===id);return d?d.name
 // ══ MANUAL TIMER
 let M={state:'idle',idx:0,remMs:0,durMs:0,startMs:0,nudge:0};
 const mRem=()=>M.state==='running'?M.remMs-(Date.now()-M.startMs)+M.nudge:M.remMs+M.nudge;
-function mReset(){const s=getShows(G.activeStage,G.activeDay)[M.idx];if(s){M.remMs=durSec(s.start,s.end)*1000;M.durMs=M.remMs;M.nudge=0;M.state='idle';}}
+function mReset(){const s=getShows(G.activeStage,G.activeDay)[M.idx];if(s){M.remMs=_showDurationSec(s)*1000;M.durMs=M.remMs;M.nudge=0;M.state='idle';}}
 function mPP(){if(M.state==='idle'){M.startMs=Date.now();M.state='running';}else if(M.state==='running'){M.remMs=mRem();M.state='paused';}else{M.startMs=Date.now();M.state='running';}renderTP();renderTbar();}
 function mStop(){M.nudge=0;mReset();renderTP();renderTbar();}
 function mPrev(){if(M.idx>0){M.idx--;mReset();renderAll();}}
@@ -3289,7 +3342,14 @@ let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
 document.getElementById('f-s').addEventListener('input',updDur);
 document.getElementById('f-e').addEventListener('input',updDur);
-function updDur(){const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;document.getElementById('dur-txt').textContent=s&&e?'Duration: '+fmtDur(durSec(s,e)):'-';}
+function updDur(){
+  const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;
+  const el=document.getElementById('dur-txt');
+  if(!s||!e){el.textContent='-';return;}
+  const dur=durSec(s,e);
+  const overnight=t2s(e)<=t2s(s);
+  el.textContent='Duration: '+fmtDur(dur)+(overnight?' · ends next day':'');
+}
 // ── Photo
 let _photoB64='';
 // Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG.
@@ -3344,7 +3404,26 @@ function saveShow(){
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew={};['vj','light','sound','sfx','laser'].forEach(r=>{crew[r]={name:document.getElementById('cr-'+r).value.trim(),status:existing?.crew?.[r]?.status||''};});
   const photo=_photoB64||(existing?.photo||'');
-  const obj={artist,date:document.getElementById('f-date').value||'',start:document.getElementById('f-s').value||'00:00:00',end:document.getElementById('f-e').value||'00:00:00',genre:document.getElementById('f-g').value.trim(),booth:curBooth,note:document.getElementById('f-n').value.trim(),crew,photo,cancelled:_drFlags.cancelled||false,priority:_drFlags.priority||false};
+  const start=document.getElementById('f-s').value||'00:00:00';
+  const end=document.getElementById('f-e').value||'00:00:00';
+  const explicitDate=document.getElementById('f-date').value||'';
+  const dayId=editId?(existing?.day||G.activeDay):G.activeDay;
+  // Compute canonical ISO timestamps so overnight handling never relies on heuristics.
+  const{startsAt,endsAt,endsNextDay}=_computeShowTimestamps(start,end,dayId,explicitDate);
+  const obj={
+    artist,
+    date:explicitDate,
+    start,end,
+    startsAt:startsAt||null,
+    endsAt:endsAt||null,
+    endsNextDay,
+    genre:document.getElementById('f-g').value.trim(),
+    booth:curBooth,
+    note:document.getElementById('f-n').value.trim(),
+    crew,photo,
+    cancelled:_drFlags.cancelled||false,
+    priority:_drFlags.priority||false,
+  };
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
   save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
 }
