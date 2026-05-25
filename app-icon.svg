@@ -1,58 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Stagetimer">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Stagetimer">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#16161f"/>
-      <stop offset="1" stop-color="#0a0a10"/>
+      <stop offset="0" stop-color="#2456D6"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
     </linearGradient>
-    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3B82F6"/>
-      <stop offset="0.55" stop-color="#1E40AF"/>
-      <stop offset="1" stop-color="#fbbf24"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="0.5" cy="0.15" r="0.7">
-      <stop offset="0" stop-color="#3B82F6" stop-opacity="0.32"/>
-      <stop offset="0.7" stop-color="#3B82F6" stop-opacity="0"/>
+    <radialGradient id="topglow" cx="0.5" cy="0.05" r="0.85">
+      <stop offset="0" stop-color="#60A5FA" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#60A5FA" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- Background tile -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <!-- Brand tile -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect width="1024" height="1024" rx="224" fill="url(#topglow)"/>
 
-  <!-- Subtle hour ticks at 12 / 3 / 6 / 9 -->
-  <g stroke="#ffffff" stroke-opacity="0.22" stroke-width="6" stroke-linecap="round">
-    <line x1="256" y1="92"  x2="256" y2="116"/>
-    <line x1="420" y1="276" x2="396" y2="276"/>
-    <line x1="256" y1="460" x2="256" y2="436"/>
-    <line x1="92"  y1="276" x2="116" y2="276"/>
-  </g>
-  <g stroke="#ffffff" stroke-opacity="0.10" stroke-width="4" stroke-linecap="round">
-    <line x1="338" y1="120" x2="328" y2="140"/>
-    <line x1="174" y1="120" x2="184" y2="140"/>
-    <line x1="392" y1="194" x2="372" y2="204"/>
-    <line x1="120" y1="194" x2="140" y2="204"/>
-    <line x1="392" y1="358" x2="372" y2="348"/>
-    <line x1="120" y1="358" x2="140" y2="348"/>
-    <line x1="338" y1="432" x2="328" y2="412"/>
-    <line x1="174" y1="432" x2="184" y2="412"/>
-  </g>
+  <!-- Inner timer ring (white, thick, bold silhouette at any size) -->
+  <circle cx="512" cy="512" r="324" fill="none"
+          stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
 
-  <!-- Stopwatch crown (top stem button) -->
-  <rect x="246" y="68" width="20" height="34" rx="6" fill="#fbbf24"/>
-  <rect x="232" y="84" width="48" height="14" rx="5" fill="#fbbf24"/>
+  <!-- Single live-dot at 12 o'clock (amber tip — the only accent) -->
+  <circle cx="512" cy="188" r="42" fill="#FBBF24"
+          stroke="#1E3A8A" stroke-width="14"/>
 
-  <!-- Outer ring base (subtle) -->
-  <circle cx="256" cy="276" r="160" fill="none" stroke="#ffffff" stroke-opacity="0.10" stroke-width="22"/>
-
-  <!-- Progress arc: ~75% sweep, starting at 12 o'clock -->
-  <circle cx="256" cy="276" r="160" fill="none"
-    stroke="url(#arc)" stroke-width="22" stroke-linecap="round"
-    stroke-dasharray="754 1005"
-    transform="rotate(-90 256 276)"/>
-
-  <!-- Live dot at the active arc tip -->
-  <circle cx="116" cy="276" r="11" fill="#fbbf24"/>
-
-  <!-- Center play / live triangle (white) -->
-  <path d="M 226 226 L 226 326 L 314 276 Z" fill="#ffffff"/>
+  <!-- Center play triangle — universal "live / running" mark -->
+  <path d="M 442 392 L 442 632 L 650 512 Z" fill="#FFFFFF"/>
 </svg>
