@@ -1924,12 +1924,13 @@ function _computeShowTimestamps(start,end,dayId,explicitDate){
   const endISO=`${endsNextDay?_addDaysISO(base,1):base}T${end}`;
   return{startsAt:startISO,endsAt:endISO,endsNextDay};
 }
-// Format a Date object as datetime-local string "YYYY-MM-DDTHH:MM" (local time, no Z).
+// Format a Date object as datetime-local string "YYYY-MM-DDTHH:MM:SS" (local
+// time, no Z). Seconds included so the input shows them with step="1".
 function _toLocalDatetime(d){
   if(!d||isNaN(d))return'';
   const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');
-  const h=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
-  return `${y}-${m}-${da}T${h}:${mi}`;
+  const h=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0'),se=String(d.getSeconds()).padStart(2,'0');
+  return `${y}-${m}-${da}T${h}:${mi}:${se}`;
 }
 // Derive datetime-local input values from a show, preferring canonical ISO
 // fields and falling back to legacy date/start/end when missing.
@@ -2302,8 +2303,8 @@ function renderTbar(){
         <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl" for="f-starts-at">Start <span style="color:var(--sub);font-weight:500;">(date + time)</span></label><input class="fi" id="f-starts-at" type="datetime-local"></div>
-    <div class="fg"><label class="fl" for="f-ends-at">End <span style="color:var(--sub);font-weight:500;">(date + time)</span></label><input class="fi" id="f-ends-at" type="datetime-local"></div>
+    <div class="fg"><label class="fl" for="f-starts-at">Start <span style="color:var(--sub);font-weight:500;">(date + time + seconds)</span></label><input class="fi" id="f-starts-at" type="datetime-local" step="1"></div>
+    <div class="fg"><label class="fl" for="f-ends-at">End <span style="color:var(--sub);font-weight:500;">(date + time + seconds)</span></label><input class="fi" id="f-ends-at" type="datetime-local" step="1"></div>
     <!-- Legacy hidden fields kept so the rest of the app code that reads them
          (renderSched, isShowToday, etc.) continues to work unchanged. Their
          values are derived from the datetime-local inputs on save. -->
