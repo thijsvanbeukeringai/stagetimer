@@ -1132,9 +1132,9 @@ html,body{overflow-x:hidden;}
       {artist:'Artbat',                        start:'02:45', end:'04:15', booth:'A', dur:90},
       {artist:'Âme b2b Jimi Jules',            start:'04:15', end:'05:30', booth:'B', dur:75},
     ];
-    const SPEED=22;            // compress 22 demo seconds into 1 real second
-    const OVERTIME_HOLD=12;    // demo seconds of overtime before transition
-    const START_OFFSET=180;    // start each show with 3 minutes already shown (visual feels mid-set)
+    // Each demo show counts down for VISIBLE_DUR real seconds, ticks 1s per second.
+    const VISIBLE_DUR=180;     // 3-minute visible countdown per show
+    const OVERTIME_HOLD=5;     // seconds of overtime before transitioning to next show
     const el={
       cd:document.getElementById('hero-demo-cd'),
       artist:document.getElementById('hero-demo-artist'),
@@ -1160,10 +1160,10 @@ html,body{overflow-x:hidden;}
       return (neg?'-':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
     }
     function tick(){
-      const elapsed=((Date.now()-phaseStart)/1000)*SPEED + START_OFFSET;
+      const elapsed=(Date.now()-phaseStart)/1000;
       const show=shows[idx];
-      const durSec=show.dur*60;
-      const remaining=durSec-elapsed;
+      const remaining=VISIBLE_DUR-elapsed;
+      const durSec=VISIBLE_DUR;
       const next=shows[(idx+1)%shows.length];
 
       el.artist.textContent=show.artist;
