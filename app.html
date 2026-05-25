@@ -3073,7 +3073,7 @@ function renderSched(){
     const bBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'';
     const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'';
     // Countdown to start - only meaningful when the show actually IS today
-    const secUntil=(G.timerMode==='live'&&showIsToday)?Math.max(0,(t2m(s.start)-n)*60):0;
+    const _sa=_showStartsAt(s);const secUntil=(G.timerMode==='live'&&_sa)?Math.max(0,Math.round((_sa.getTime()-Date.now())/1000)):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     // FOH notes
     const notes=G.fohNotes[s.id]||[];
@@ -3103,7 +3103,7 @@ function renderSched(){
       <div class="scard-ft">
         <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Note</button>
         ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,Math.ceil(em*60-nowSecAdj())))}</span>`:''}
-        ${showIsToday&&!isNow&&!isPast&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
+        ${_showIsFuture(s)&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -3283,8 +3283,8 @@ function renderFOH(){
   const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;const sm2=adjM(t2m(s.start));let em2=adjM(t2m(s.end));if(em2<=sm2)em2+=1440;return nm<em2;});
   const rows=upcoming.map(s=>{
     const showIsToday=isShowToday(s);
-    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=showIsToday&&nm>=sm&&nm<em;
-    const secUntil=showIsToday?Math.max(0,(sm-nm)*60):0;
+    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=_showIsLive(s);
+    const _sa=_showStartsAt(s);const secUntil=_sa?Math.max(0,Math.round((_sa.getTime()-Date.now())/1000)):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
     return`<div class="foh-srow${isNow?' live':''}">
       <div class="foh-sr-t">${s.start.slice(0,5)}</div>
@@ -3302,7 +3302,7 @@ function renderFOH(){
           <button class="frb" onclick="openDrawer('${s.id}')" title="Edit">✏️</button>
           <button class="frb d" onclick="delShow('${s.id}',event)" title="Delete">🗑</button>
         </div>
-        ${showIsToday&&!isNow?`<div id="foh-sr-cd-${s.id}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
+        ${_showIsFuture(s)?`<div id="foh-sr-cd-${s.id}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
         <div style="font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.06em;">until start</div>`:''}
       </div>
     </div>`;
@@ -3374,7 +3374,7 @@ function renderBS(){
   body.innerHTML=shows.map((s,i)=>{
     const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
+    const isNow=_showIsLive(s),isPast=_showIsPast(s);
     const boothCol=s.booth==='A'?'#6366f1':s.booth==='B'?'#22c55e':'#888';
     const boothBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'rgba(255,255,255,.08)';
 
@@ -3465,7 +3465,7 @@ function tickBS(){
     const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));
     let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
+    const isNow=_showIsLive(s),isPast=_showIsPast(s);
     const cdEl=document.getElementById('bs-cd-'+i);
     const barEl=document.getElementById('bs-bar-'+i);
     if(!cdEl||!barEl)return;
@@ -5424,7 +5424,7 @@ function renderTL(){
     const makeRow=s=>{
       const showIsToday=isShowToday(s);
       const sm=adjM(t2m(s.start)),em=adjM(t2m(s.end));const emF=em<=sm?em+1440:em;
-      const isNow=showIsToday&&nm>=sm&&nm<emF,isPast=showIsToday&&nm>=emF;
+      const isNow=_showIsLive(s),isPast=_showIsPast(s);
       const bCol=isNow?'#fbbf24':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
       const bbCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':null;
       const bbBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.16)':null;
@@ -5509,7 +5509,7 @@ function renderTL(){
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
       const sm=ss/60,em=es/60;
       const showIsToday=isShowToday(s);
-      const isNow=showIsToday&&nm>=sm&&nm<em,isPast=showIsToday&&nm>=em;
+      const isNow=_showIsLive(s),isPast=_showIsPast(s);
       const isCancelled=!!s.cancelled,isPriority=!!s.priority;
       const bColBase=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
       const bCol=isCancelled?'rgba(239,68,68,.5)':isNow?'#fbbf24':bColBase;
