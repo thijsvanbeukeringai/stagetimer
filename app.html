@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Stage Timer">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/stagetimer-logo.png">
+<link rel="icon" type="image/png" href="/stagetimer-logo.png">
 <title>Stage Timer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3442,10 +3445,37 @@ function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='
 function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));}
 function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();}
 function closeFOH(){document.getElementById('foh').classList.remove('open');}
-function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();}
-function closeBS(){document.getElementById('bs').classList.remove('open');}
-function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();}
-function closeSV(){document.getElementById('sv').classList.remove('open');}
+function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();}
+function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();}
+function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();}
+function closeSV(){document.getElementById('sv').classList.remove('open');_releaseWakeLockIfIdle();}
+
+// ── Wake Lock: prevent the screen from sleeping during live show views.
+// Backstage and Stage View are designed to stay on a dedicated monitor /
+// phone during a set — without this, the OS dims and locks the display
+// mid-countdown. Wake Lock is a best-effort (no support on old iOS Safari,
+// fails silently). The lock is released as soon as both views are closed.
+let _wakeLock=null;
+async function _acquireWakeLock(){
+  if(!('wakeLock' in navigator))return;
+  if(_wakeLock)return;
+  try{
+    _wakeLock=await navigator.wakeLock.request('screen');
+    _wakeLock.addEventListener('release',()=>{_wakeLock=null;});
+  }catch(e){console.warn('[wakeLock] acquire failed:',e?.message||e);}
+}
+function _releaseWakeLockIfIdle(){
+  // Keep it if any other live view is still open
+  const stillOpen=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  if(stillOpen)return;
+  if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}
+}
+// Reacquire on visibility-return (browsers drop wake lock when tab is hidden).
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  if(needLock&&!_wakeLock)_acquireWakeLock();
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
 
 // ══ CLOCK
@@ -5988,6 +6018,27 @@ async function _startApp(session){
 })();
 updateClock();
 setInterval(tick,250);
+
+// ── Register service worker for offline-resilient PWA install.
+// Deferred until after the initial paint so it never blocks active users.
+// Safe: network-first strategy means fresh app.html is always preferred;
+// the cache only kicks in when the network actually fails.
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+  window.addEventListener('load',()=>{
+    setTimeout(()=>{
+      navigator.serviceWorker.register('/sw.js').then(reg=>{
+        // When a new SW takes over, refresh the page on the next idle moment
+        // — but never mid-action: we wait until the current tab is hidden
+        // (user switched away) so a live show isn't interrupted.
+        let refreshing=false;
+        navigator.serviceWorker.addEventListener('controllerchange',()=>{
+          if(refreshing)return;
+          if(document.visibilityState==='hidden'){refreshing=true;location.reload();}
+        });
+      }).catch(e=>console.warn('[sw] register failed:',e?.message||e));
+    },2500);
+  });
+}
 setInterval(()=>{
   if(!G)return;
   if(G.timerMode==='live')renderSched();

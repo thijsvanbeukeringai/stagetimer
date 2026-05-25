@@ -1,0 +1,21 @@
+{
+  "name": "Stagetimer",
+  "short_name": "Stagetimer",
+  "description": "Live show timing for production teams. Backstage, FOH, and stage views — always in sync.",
+  "start_url": "/app",
+  "scope": "/app",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0b0e",
+  "theme_color": "#0b0b0e",
+  "categories": ["business", "productivity"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/stagetimer-logo.png",
+      "sizes": "512x118",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
