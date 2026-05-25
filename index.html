@@ -119,52 +119,137 @@ nav.scrolled .btn-ghost-nav:hover{background:var(--bg2);color:var(--text);}
 /* Foot reflection */
 .mb-base::after{content:'';position:absolute;top:0;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);}
 
-/* ── IMAC MOCKUP ── */
-.imac{display:inline-flex;flex-direction:column;align-items:center;}
-.imac-body{
-  background:linear-gradient(180deg,#e8e8ea 0%,#d4d4d6 100%);
-  border-radius:18px;
-  padding:10px 10px 28px;
-  position:relative;
+/* ── LIVE STAGETIMER HERO DEMO ── */
+.hero-demo{
+  width:100%;max-width:540px;
+  background:linear-gradient(180deg,#0c0c14 0%,#13131c 100%);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:20px;
   box-shadow:
-    0 0 0 1px rgba(0,0,0,.15),
-    0 40px 80px rgba(0,0,0,.25),
-    0 16px 32px rgba(0,0,0,.12);
+    0 40px 80px rgba(0,0,0,.5),
+    0 16px 32px rgba(0,0,0,.25),
+    inset 0 1px 0 rgba(255,255,255,.04);
+  overflow:hidden;
+  position:relative;
+  font-family:'Inter',system-ui,sans-serif;
 }
-/* Camera dot */
-.imac-body::before{
-  content:'';position:absolute;top:6px;left:50%;transform:translateX(-50%);
-  width:5px;height:5px;border-radius:50%;background:rgba(0,0,0,.3);
+.hero-demo::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:120px;
+  background:radial-gradient(ellipse at top,rgba(99,102,241,.18),transparent 70%);
+  pointer-events:none;
 }
-.imac-display{
-  border-radius:8px;overflow:hidden;background:#000;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6);
-  width:100%;max-width:620px;
+.hero-demo-hdr{
+  position:relative;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 22px;
+  border-bottom:1px solid rgba(255,255,255,.05);
 }
-.imac{width:100%;max-width:620px;}
-.imac-display img{display:block;width:100%;height:auto;}
-/* Chin label area */
-.imac-chin{
-  position:absolute;bottom:0;left:0;right:0;height:28px;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:0 0 18px 18px;
+.hero-demo-stage{
+  display:flex;align-items:center;gap:9px;
+  font-size:11px;font-weight:700;letter-spacing:.12em;
+  color:rgba(255,255,255,.72);text-transform:uppercase;
 }
-.imac-chin::after{
-  content:'';width:60px;height:3px;border-radius:2px;
-  background:rgba(0,0,0,.12);
+.hero-demo-stage-dot{
+  width:8px;height:8px;border-radius:50%;background:#22c55e;
+  animation:hdGreenPulse 2s ease-in-out infinite;
 }
-/* Stand neck */
-.imac-neck{
-  width:8px;height:60px;
-  background:linear-gradient(180deg,#c8c8ca,#b8b8ba);
-  box-shadow:inset -1px 0 0 rgba(0,0,0,.1);
+@keyframes hdGreenPulse{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5);}50%{box-shadow:0 0 0 8px rgba(34,197,94,0);}}
+.hero-demo-clock{
+  font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  font-size:12px;color:rgba(255,255,255,.42);
+  font-variant-numeric:tabular-nums;letter-spacing:.04em;
 }
-/* Stand foot */
-.imac-foot{
-  width:180px;height:16px;
-  background:linear-gradient(180deg,#c8c8ca,#b4b4b6);
-  border-radius:0 0 10px 10px;
-  box-shadow:0 4px 12px rgba(0,0,0,.15);
+.hero-demo-body{position:relative;padding:24px 26px 22px;}
+.hero-demo-row{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:18px;}
+.hero-demo-left{flex:1;min-width:0;}
+.hero-demo-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:3px 9px;border-radius:99px;
+  font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  color:#fbbf24;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.22);
+  margin-bottom:11px;
+  transition:color .3s,background .3s,border-color .3s;
+}
+.hero-demo-badge-dot{
+  width:6px;height:6px;border-radius:50%;background:currentColor;
+  animation:hdBadgePulse 1.5s ease-in-out infinite;
+}
+@keyframes hdBadgePulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.8);}}
+.hero-demo-artist{
+  font-size:26px;font-weight:800;letter-spacing:-.6px;color:#fff;line-height:1.12;
+  text-shadow:0 2px 14px rgba(0,0,0,.45);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.hero-demo-meta{
+  font-size:11.5px;color:rgba(255,255,255,.42);margin-top:7px;
+  font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;
+}
+.hero-demo-right{text-align:right;flex-shrink:0;}
+.hero-demo-cd-lbl{
+  font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.4);margin-bottom:4px;
+}
+.hero-demo-cd{
+  font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  font-size:54px;font-weight:700;letter-spacing:-1.8px;line-height:1;
+  font-variant-numeric:tabular-nums;
+  color:#fbbf24;
+  transition:color .25s;
+  text-shadow:0 0 24px rgba(251,191,36,.25);
+}
+.hero-demo-cd.urgent{color:#f97316;text-shadow:0 0 24px rgba(249,115,22,.3);}
+.hero-demo-cd.critical{color:#ef4444;text-shadow:0 0 28px rgba(239,68,68,.4);}
+.hero-demo-cd.overtime{color:#ef4444;animation:hdBlink 1s steps(2) infinite;}
+@keyframes hdBlink{50%{opacity:.35;}}
+.hero-demo-bar-wrap{
+  height:6px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;
+  position:relative;
+}
+.hero-demo-bar{
+  height:100%;width:30%;border-radius:99px;
+  background:linear-gradient(90deg,#fbbf24,#f97316);
+  transition:width .5s linear,background .3s;
+}
+.hero-demo-bar.urgent{background:linear-gradient(90deg,#f97316,#ef4444);}
+.hero-demo-bar.critical{background:#ef4444;}
+
+.hero-demo-next{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:13px 22px;border-top:1px solid rgba(255,255,255,.05);
+  background:rgba(255,255,255,.015);
+}
+.hero-demo-next-lbl{
+  font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.38);
+}
+.hero-demo-next-right{display:flex;align-items:baseline;gap:10px;min-width:0;}
+.hero-demo-next-time{
+  font-family:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+  font-size:11px;color:rgba(255,255,255,.48);font-variant-numeric:tabular-nums;
+}
+.hero-demo-next-artist{
+  font-size:13.5px;font-weight:600;color:rgba(255,255,255,.86);
+  letter-spacing:-.15px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;
+}
+
+/* Subtle bottom-right tag */
+.hero-demo-tag{
+  position:absolute;bottom:14px;right:20px;
+  font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.18);pointer-events:none;
+}
+
+@media(max-width:960px){
+  .hero-demo{max-width:100%;}
+  .hero-demo-artist{font-size:22px;}
+  .hero-demo-cd{font-size:46px;}
+}
+@media(max-width:520px){
+  .hero-demo-row{flex-direction:column;align-items:stretch;gap:14px;}
+  .hero-demo-right{text-align:left;}
+  .hero-demo-cd{font-size:44px;}
+  .hero-demo-artist{font-size:20px;white-space:normal;}
 }
 
 /* ── PILLARS ── */
@@ -504,18 +589,42 @@ html,body{overflow-x:hidden;}
       </div>
     </div>
     <div class="hero-right">
-      <a href="/app" style="text-decoration:none;">
-        <div class="imac">
-          <div class="imac-body">
-            <div class="imac-display">
-              <img src="foh-view.jpg" alt="Stagetimer app">
-            </div>
-            <div class="imac-chin"></div>
+      <div class="hero-demo" id="hero-demo" aria-label="Live Stagetimer countdown demo">
+        <div class="hero-demo-hdr">
+          <div class="hero-demo-stage">
+            <span class="hero-demo-stage-dot"></span>
+            <span>Backstage · Main stage</span>
           </div>
-          <div class="imac-neck"></div>
-          <div class="imac-foot"></div>
+          <div class="hero-demo-clock" id="hero-demo-clock">23:14:08</div>
         </div>
-      </a>
+        <div class="hero-demo-body">
+          <div class="hero-demo-row">
+            <div class="hero-demo-left">
+              <div class="hero-demo-badge" id="hero-demo-badge">
+                <span class="hero-demo-badge-dot"></span>
+                <span id="hero-demo-status">Live now</span>
+              </div>
+              <div class="hero-demo-artist" id="hero-demo-artist">Joris Voorn b2b Nic Fanciulli</div>
+              <div class="hero-demo-meta" id="hero-demo-meta">23:00 — 00:30 · Booth A</div>
+            </div>
+            <div class="hero-demo-right">
+              <div class="hero-demo-cd-lbl">Remaining</div>
+              <div class="hero-demo-cd" id="hero-demo-cd">03:42</div>
+            </div>
+          </div>
+          <div class="hero-demo-bar-wrap">
+            <div class="hero-demo-bar" id="hero-demo-bar"></div>
+          </div>
+        </div>
+        <div class="hero-demo-next">
+          <div class="hero-demo-next-lbl">Next up</div>
+          <div class="hero-demo-next-right">
+            <span class="hero-demo-next-time" id="hero-demo-next-time">00:30</span>
+            <span class="hero-demo-next-artist" id="hero-demo-next">Mahmut Orhan</span>
+          </div>
+        </div>
+        <div class="hero-demo-tag">stagetimer · live demo</div>
+      </div>
     </div>
   </div>
 </section>
@@ -1009,6 +1118,90 @@ html,body{overflow-x:hidden;}
     }
   }
   window.submitSignup=submitSignup;
+
+  // ── Live Stagetimer hero demo ──────────────────────────────────────
+  // Realistic festival schedule that loops endlessly. Each show counts down
+  // in compressed time (~10x) so visitors see the countdown go through
+  // normal → urgent → critical → overtime → transition within ~20 seconds.
+  (function heroDemo(){
+    const shows=[
+      {artist:'Joris Voorn b2b Nic Fanciulli', start:'23:00', end:'00:30', booth:'A', dur:90},
+      {artist:'Mahmut Orhan',                  start:'00:30', end:'01:30', booth:'B', dur:60},
+      {artist:'Charlotte de Witte',            start:'01:30', end:'02:45', booth:'A', dur:75},
+      {artist:'Artbat',                        start:'02:45', end:'04:15', booth:'A', dur:90},
+      {artist:'Âme b2b Jimi Jules',            start:'04:15', end:'05:30', booth:'B', dur:75},
+    ];
+    const SPEED=22;            // compress 22 demo seconds into 1 real second
+    const OVERTIME_HOLD=12;    // demo seconds of overtime before transition
+    const START_OFFSET=180;    // start each show with 3 minutes already shown (visual feels mid-set)
+    const el={
+      cd:document.getElementById('hero-demo-cd'),
+      artist:document.getElementById('hero-demo-artist'),
+      meta:document.getElementById('hero-demo-meta'),
+      bar:document.getElementById('hero-demo-bar'),
+      next:document.getElementById('hero-demo-next'),
+      nextTime:document.getElementById('hero-demo-next-time'),
+      status:document.getElementById('hero-demo-status'),
+      badge:document.getElementById('hero-demo-badge'),
+      clock:document.getElementById('hero-demo-clock'),
+    };
+    if(!el.cd)return;
+    let idx=0, phaseStart=Date.now();
+
+    function fmtClock(){
+      const d=new Date();
+      return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+    }
+    function fmtCd(sec){
+      const neg=sec<0;
+      const a=Math.abs(Math.ceil(sec));
+      const m=Math.floor(a/60),s=a%60;
+      return (neg?'-':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    }
+    function tick(){
+      const elapsed=((Date.now()-phaseStart)/1000)*SPEED + START_OFFSET;
+      const show=shows[idx];
+      const durSec=show.dur*60;
+      const remaining=durSec-elapsed;
+      const next=shows[(idx+1)%shows.length];
+
+      el.artist.textContent=show.artist;
+      el.meta.textContent=show.start+' — '+show.end+' · Booth '+show.booth;
+      el.next.textContent=next.artist;
+      el.nextTime.textContent=show.end;
+      el.clock.textContent=fmtClock();
+      el.cd.textContent=fmtCd(remaining);
+
+      el.cd.className='hero-demo-cd';
+      el.bar.className='hero-demo-bar';
+      const pct=Math.max(0,Math.min(100,(1-remaining/durSec)*100));
+      el.bar.style.width=pct.toFixed(1)+'%';
+
+      if(remaining<0){
+        el.cd.classList.add('overtime');
+        el.bar.classList.add('critical');
+        el.status.textContent='Overtime';
+      }else if(remaining<30){
+        el.cd.classList.add('critical');
+        el.bar.classList.add('critical');
+        el.status.textContent='Live now';
+      }else if(remaining<90){
+        el.cd.classList.add('urgent');
+        el.bar.classList.add('urgent');
+        el.status.textContent='Live now';
+      }else{
+        el.status.textContent='Live now';
+      }
+
+      // Transition to next show after overtime hold
+      if(remaining<-OVERTIME_HOLD){
+        idx=(idx+1)%shows.length;
+        phaseStart=Date.now();
+      }
+    }
+    setInterval(tick,250);
+    tick();
+  })();
 </script>
 </body>
 </html>
