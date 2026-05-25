@@ -227,6 +227,20 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .fhbtn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);transition:all .15s;display:flex;align-items:center;gap:5px;flex-shrink:0;white-space:nowrap;}
 .fhbtn:hover{background:rgba(255,255,255,.12);color:#fff;}
 .fhbtn.on{background:rgba(255,230,0,.15);border-color:rgba(255,230,0,.35);color:#FFE600;}
+/* Unified day picker — pill row on desktop, native dropdown on mobile */
+.day-picker{display:flex;align-items:center;gap:6px;min-width:0;}
+.day-picker .day-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0;}
+.day-picker .day-select{display:none;}
+@media(max-width:700px){
+  .day-picker{flex:1;min-width:0;}
+  .day-picker .day-pills{display:none;}
+  .day-picker .day-select{display:block;width:100%;min-height:48px;padding:12px 38px 12px 14px;font-size:16px;font-weight:700;
+    border-radius:10px;background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.14);
+    font-family:var(--ff);-webkit-appearance:none;appearance:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='rgba(255,255,255,0.6)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;background-size:12px 8px;
+  }
+}
 #foh-body{flex:1;display:flex;overflow:hidden;}
 /* single column */
 #foh-col{flex:1;display:flex;flex-direction:column;overflow:hidden;}
@@ -748,6 +762,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .fhbtn{min-height:44px;padding:10px 16px;font-size:14px;}
   /* Show-card edit/delete icon buttons — always visible on mobile + bigger */
   .scard-act{opacity:1 !important;gap:6px;}
+  .foh-sr-act{opacity:1 !important;gap:6px;}
+  .proj-card-actions{opacity:1 !important;pointer-events:auto !important;}
   .rb{width:40px;height:40px;font-size:15px;}
   .frb{width:40px;height:40px;font-size:15px;}
   /* FOH-style "+ Note" pill */
@@ -2380,17 +2396,19 @@ function renderTbar(){
       </div>
     </div>
     <div class="fg">
-      <label class="fl">Start <span style="color:var(--sub);font-weight:500;">(date + time, incl. seconds)</span></label>
+      <label class="fl">Start <span style="color:var(--sub);font-weight:500;">(date · time · seconds)</span></label>
       <div class="frow">
-        <input class="fi" id="f-start-date" type="date" style="flex:1;min-width:0;">
-        <input class="fi" id="f-start-time" type="time" step="1" style="flex:1;min-width:0;">
+        <input class="fi" id="f-start-date" type="date" style="flex:2;min-width:0;">
+        <input class="fi" id="f-start-time" type="time" style="flex:1.4;min-width:0;">
+        <input class="fi" id="f-start-sec" type="number" min="0" max="59" inputmode="numeric" placeholder="ss" aria-label="Start seconds" style="flex:0.7;min-width:0;text-align:center;">
       </div>
     </div>
     <div class="fg">
-      <label class="fl">End <span style="color:var(--sub);font-weight:500;">(date + time, incl. seconds)</span></label>
+      <label class="fl">End <span style="color:var(--sub);font-weight:500;">(date · time · seconds)</span></label>
       <div class="frow">
-        <input class="fi" id="f-end-date" type="date" style="flex:1;min-width:0;">
-        <input class="fi" id="f-end-time" type="time" step="1" style="flex:1;min-width:0;">
+        <input class="fi" id="f-end-date" type="date" style="flex:2;min-width:0;">
+        <input class="fi" id="f-end-time" type="time" style="flex:1.4;min-width:0;">
+        <input class="fi" id="f-end-sec" type="number" min="0" max="59" inputmode="numeric" placeholder="ss" aria-label="End seconds" style="flex:0.7;min-width:0;text-align:center;">
       </div>
     </div>
     <!-- Legacy hidden fields kept so any code that still reads them works. -->
@@ -3245,22 +3263,33 @@ function renderHeader(){
   fs.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
   fs.value=G.activeStage;fs.onchange=()=>{G.activeStage=fs.value;save();renderFOH();renderAll();};
   document.getElementById('foh-sname').textContent=activeStageObj().name;
-  document.getElementById('foh-dtabs').innerHTML=getDays().map(d=>`
-    <button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderFOH();">${escH(d.name)}</button>`).join('');
+  document.getElementById('foh-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayFOH');
 
   // Backstage selects
   const bs=document.getElementById('bs-ssel');
   bs.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.emoji} ${s.name}</option>`).join('');
   bs.value=G.activeStage;bs.onchange=()=>{G.activeStage=bs.value;save();renderBS();renderAll();};
   document.getElementById('bs-sname').textContent=activeStageObj().name;
-  document.getElementById('bs-dtabs').innerHTML=getDays().map(d=>`
-    <button class="bshbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderBS();">${escH(d.name)}</button>`).join('');
+  document.getElementById('bs-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayBS','bshbtn');
 
   // Timeline day tabs
-  document.getElementById('tl-dtabs').innerHTML=getDays().map(d=>`
-    <button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="setDay('${d.id}');renderTL();">${escH(d.name)}</button>`).join('');
+  document.getElementById('tl-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayTL');
 }
 function setDay(d){G.activeDay=d;M.idx=0;mReset();save();renderAll();if(document.getElementById('tl').classList.contains('open'))renderTL();}
+// Day-picker handlers — kept thin so they can be referenced from inline onclick/onchange.
+function _pickDayFOH(id){setDay(id);renderFOH();}
+function _pickDayBS(id){setDay(id);renderBS();}
+function _pickDayTL(id){setDay(id);renderTL();}
+function _pickDayOV(id){G.activeDay=id;save();renderOV();}
+// Render BOTH a button pill row (desktop) and a native <select> (mobile).
+// CSS toggles which one is visible per breakpoint, so users on a phone get
+// a real dropdown they can actually use one-handed.
+function _dayPickerHTML(activeId,handlerName,pillClass='fhbtn'){
+  const days=getDays();if(!days.length)return'';
+  const pills=days.map(d=>`<button class="${pillClass} ${d.id===activeId?'on':''}" onclick="${handlerName}('${d.id}')">${escH(d.name)}</button>`).join('');
+  const opts=days.map(d=>`<option value="${d.id}"${d.id===activeId?' selected':''}>${escH(d.name)}</option>`).join('');
+  return`<div class="day-picker"><div class="day-pills">${pills}</div><select class="day-select" aria-label="Select day" onchange="${handlerName}(this.value)">${opts}</select></div>`;
+}
 
 // ══ CREW
 const CREW_ROLES=[{id:'vj',label:'VJ'},{id:'light',label:'Light'},{id:'sound',label:'Sound'},{id:'sfx',label:'SFX'},{id:'laser',label:'Laser'}];
@@ -3345,7 +3374,7 @@ function renderFOH(){
         <button class="foh-add-note" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Note</button>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
-        <div style="display:flex;gap:3px;opacity:0;transition:opacity .15s;" class="foh-sr-act">
+        <div class="foh-sr-act">
           <button class="frb" onclick="openDrawer('${s.id}')" title="Edit">✏️</button>
           <button class="frb d" onclick="delShow('${s.id}',event)" title="Delete">🗑</button>
         </div>
@@ -3643,11 +3672,13 @@ function openDrawer(id,booth=null){
       const _d2=n=>String(n).padStart(2,'0');
       if(sa){
         document.getElementById('f-start-date').value=`${sa.getFullYear()}-${_d2(sa.getMonth()+1)}-${_d2(sa.getDate())}`;
-        document.getElementById('f-start-time').value=`${_d2(sa.getHours())}:${_d2(sa.getMinutes())}:${_d2(sa.getSeconds())}`;
+        document.getElementById('f-start-time').value=`${_d2(sa.getHours())}:${_d2(sa.getMinutes())}`;
+        document.getElementById('f-start-sec').value=_d2(sa.getSeconds());
       }
       if(ea){
         document.getElementById('f-end-date').value=`${ea.getFullYear()}-${_d2(ea.getMonth()+1)}-${_d2(ea.getDate())}`;
-        document.getElementById('f-end-time').value=`${_d2(ea.getHours())}:${_d2(ea.getMinutes())}:${_d2(ea.getSeconds())}`;
+        document.getElementById('f-end-time').value=`${_d2(ea.getHours())}:${_d2(ea.getMinutes())}`;
+        document.getElementById('f-end-sec').value=_d2(ea.getSeconds());
       }
       if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}
       else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}
@@ -3669,9 +3700,11 @@ function openDrawer(id,booth=null){
     const endDt=new Date(startDt.getTime()+90*60*1000);
     const _d2=n=>String(n).padStart(2,'0');
     document.getElementById('f-start-date').value=`${startDt.getFullYear()}-${_d2(startDt.getMonth()+1)}-${_d2(startDt.getDate())}`;
-    document.getElementById('f-start-time').value=`${_d2(startDt.getHours())}:${_d2(startDt.getMinutes())}:${_d2(startDt.getSeconds())}`;
+    document.getElementById('f-start-time').value=`${_d2(startDt.getHours())}:${_d2(startDt.getMinutes())}`;
+    document.getElementById('f-start-sec').value=_d2(startDt.getSeconds());
     document.getElementById('f-end-date').value=`${endDt.getFullYear()}-${_d2(endDt.getMonth()+1)}-${_d2(endDt.getDate())}`;
-    document.getElementById('f-end-time').value=`${_d2(endDt.getHours())}:${_d2(endDt.getMinutes())}:${_d2(endDt.getSeconds())}`;
+    document.getElementById('f-end-time').value=`${_d2(endDt.getHours())}:${_d2(endDt.getMinutes())}`;
+    document.getElementById('f-end-sec').value=_d2(endDt.getSeconds());
   }
   _updateDrFlagBtns();
   updDur();
@@ -3683,30 +3716,36 @@ function openDrawer(id,booth=null){
 function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
 let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
-// Combine the four split inputs (start date+time, end date+time) into Date objects.
+// Combine the six split inputs (start date+time+sec, end date+time+sec) into Date objects.
 function _readStartDate(){
   const d=document.getElementById('f-start-date').value;
   const t=document.getElementById('f-start-time').value;
+  const secRaw=(document.getElementById('f-start-sec').value||'0').trim();
   if(!d||!t)return null;
-  const time=t.length===5?t+':00':t; // pad seconds if input gave HH:MM
-  const dt=new Date(`${d}T${time}`);
+  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
+  // t is HH:MM (native time picker drops seconds on iOS); some browsers return HH:MM:SS — both fine
+  const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
+  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
   return isNaN(dt)?null:dt;
 }
 function _readEndDate(){
   const d=document.getElementById('f-end-date').value;
   const t=document.getElementById('f-end-time').value;
+  const secRaw=(document.getElementById('f-end-sec').value||'0').trim();
   if(!d||!t)return null;
-  const time=t.length===5?t+':00':t;
-  const dt=new Date(`${d}T${time}`);
+  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
+  const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
+  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
   return isNaN(dt)?null:dt;
 }
-['f-start-date','f-start-time','f-end-date','f-end-time'].forEach(id=>{
+['f-start-date','f-start-time','f-start-sec','f-end-date','f-end-time','f-end-sec'].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener('input',updDur);
 });
 // Auto-bump end to start+1h30m if user pushes start past end.
 document.getElementById('f-start-date').addEventListener('change',_maybeBumpEnd);
 document.getElementById('f-start-time').addEventListener('change',_maybeBumpEnd);
+document.getElementById('f-start-sec').addEventListener('change',_maybeBumpEnd);
 function _maybeBumpEnd(){
   const sd=_readStartDate(),ed=_readEndDate();
   if(!sd||!ed)return;
@@ -3714,7 +3753,8 @@ function _maybeBumpEnd(){
     const ne=new Date(sd.getTime()+90*60*1000);
     const _d2=n=>String(n).padStart(2,'0');
     document.getElementById('f-end-date').value=`${ne.getFullYear()}-${_d2(ne.getMonth()+1)}-${_d2(ne.getDate())}`;
-    document.getElementById('f-end-time').value=`${_d2(ne.getHours())}:${_d2(ne.getMinutes())}:${_d2(ne.getSeconds())}`;
+    document.getElementById('f-end-time').value=`${_d2(ne.getHours())}:${_d2(ne.getMinutes())}`;
+    document.getElementById('f-end-sec').value=_d2(ne.getSeconds());
     updDur();
   }
 }
@@ -3938,9 +3978,7 @@ function pickStageBestDay(stageId){
 const _OV_PER_STAGE_DAY=()=>PUBLIC_MODE==='overview';
 function renderOV(){
   const dtabs=document.getElementById('stov-dtabs');
-  if(dtabs){
-    dtabs.innerHTML=(G.days||[]).map(d=>`<button class="stovhbtn${d.id===G.activeDay?' on':''}" onclick="G.activeDay='${d.id}';renderOV()">${escH(d.name)}</button>`).join('');
-  }
+  if(dtabs){dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayOV','stovhbtn');}
   const logo=document.getElementById('co-logo-stov');
   if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
   const dayToday=isActiveDayToday();
@@ -5934,7 +5972,7 @@ async function loadPublicView(){
     window.renderTLDtabsPublic=function(){
       const dt=document.getElementById('tl-dtabs');
       if(!dt)return;
-      dt.innerHTML=(G.days||[]).map(d=>`<button class="fhbtn ${d.id===G.activeDay?'on':''}" onclick="_publicSetDay('${d.id}')">${escH(d.name)}</button>`).join('');
+      dt.innerHTML=_dayPickerHTML(G.activeDay,'_publicSetDay');
     };
     renderTLDtabsPublic();
     openTL();
