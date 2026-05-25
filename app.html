@@ -723,10 +723,29 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .daybtn{padding:3px 7px;font-size:10px;}
 }
 @media(max-width:768px){
-  .hbtn{min-height:36px;padding:6px 10px;}
-  .btn-p,.btn-g{min-height:40px;font-size:13px;padding:8px 14px;}
-  .daybtn{min-height:32px;padding:5px 10px;}
-  .proj-card-btn{min-height:32px;padding:0 10px;}
+  /* Touch targets follow Apple HIG: minimum 44x44px hit area. Production
+     teams often run this from a phone in a backstage area or on a tablet
+     with gloves on — fat-finger friendly. */
+  .hbtn{min-height:44px;padding:10px 14px;font-size:13px;}
+  .btn-p,.btn-g{min-height:48px;font-size:14px;padding:12px 18px;}
+  .daybtn{min-height:40px;padding:8px 14px;font-size:13px;}
+  .proj-card-btn{min-height:40px;padding:0 14px;font-size:12px;}
+  /* Dropdown items: bigger tap area + larger type */
+  .dd-item{min-height:44px;padding:11px 14px;font-size:14px;}
+  .dd-menu{min-width:200px;}
+  /* Form inputs: 46px gives the iOS native picker enough room and avoids
+     zoom-on-focus (font-size >= 16px prevents Safari zoom-in) */
+  .fi{min-height:46px;padding:11px 14px;font-size:16px;}
+  /* Select / dropdown style inputs need same min-height */
+  select.fi,select.admin-fi{min-height:46px;}
+  /* Booth pills */
+  .booth-opt{min-height:44px;font-size:15px;}
+  /* Action icon buttons in tables / cards */
+  .ws-icon-btn{width:44px !important;height:44px !important;}
+  /* Stage selector in header */
+  #stage-sel{min-height:40px;padding:8px 14px;font-size:13px;}
+  /* Day tabs scroll bar */
+  .fhbtn{min-height:40px;padding:8px 14px;font-size:13px;}
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3379,9 +3398,11 @@ function renderBS(){
     const boothBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'rgba(255,255,255,.08)';
 
     if(isNow){
-      // LIVE: bar = set progress, countdown = remaining
-      const startSec=t2s(s.start),endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
-      const rem=endSec-n,dur=endSec-startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+      // LIVE: bar = set progress, countdown = remaining — timestamp-based
+      const sa=_showStartsAt(s),ea=_showEndsAt(s);
+      const rem=Math.round((ea.getTime()-Date.now())/1000);
+      const dur=Math.round((ea.getTime()-sa.getTime())/1000);
+      const pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       return`<div class="bs-row bs-live" id="bsr-${i}" style="border-color:${col}33;background:${tBg(col,pct/100*0.22)};">
         <div class="bs-row-top">
