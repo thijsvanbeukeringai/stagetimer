@@ -3056,12 +3056,13 @@ function renderSched(){
   }
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
+    const showIsToday=isShowToday(s); // still used downstream for "starts in" labels
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     if(G.timerMode==='manual'){
       isNow=i===M.idx&&M.state==='running';isPast=i<M.idx;
       pct=isNow?Math.max(0,Math.min(100,(1-mRem()/M.durMs)*100)):0;
     }else{
-      // Timestamp-based — robust around the festival-day 07:00 boundary
+      // Timestamp-based isNow/isPast — robust around 07:00 festival-day boundary
       isNow=_showIsLive(s);isPast=_showIsPast(s);
       const dur=_showDurationSec(s);const elapsed=_showElapsedSec(s);
       pct=isNow&&dur>0?Math.min(100,Math.max(0,elapsed/dur*100)):0;
