@@ -633,8 +633,33 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   /* Drawer full-width + safe-area insets so iOS status bar doesn't
      overlap "New show" title and home indicator doesn't cover Save/Cancel */
   #drawer{width:100%;border-radius:0;}
-  #drhdr{padding-top:calc(env(safe-area-inset-top) + 18px);}
-  #drfooter{padding-bottom:calc(env(safe-area-inset-bottom) + 14px);}
+  #drhdr{padding:calc(env(safe-area-inset-top) + 16px) 18px 12px;}
+  #drbody{padding:16px 18px 24px;}
+  #drfooter{padding:12px 18px calc(env(safe-area-inset-bottom) + 12px);}
+  /* Cleaner field spacing on mobile */
+  #drbody .fg{margin-bottom:14px;}
+  #drbody .fi{font-size:15px;padding:11px 13px;min-height:46px;box-sizing:border-box;width:100%;}
+  #drbody .fl{font-size:11px;margin-bottom:6px;letter-spacing:.06em;}
+  /* datetime-local: prevent native iOS rendering from overflowing */
+  #drbody input[type="datetime-local"]{
+    -webkit-appearance:none;appearance:none;
+    font-family:inherit;
+    background:var(--s3);color:var(--text);
+    text-align:left;
+  }
+  /* Photo picker row: stack on narrow screens, no overflow */
+  #drbody .fg [style*="display:flex"][style*="gap:6px"]{flex-wrap:wrap;}
+  /* Booth selector: keep on one row but with breathing room */
+  #booth-sel{display:flex;gap:6px;}
+  #booth-sel .booth-opt{flex:1;min-width:0;}
+  .frow{gap:10px;}
+  .frow .fg{flex:1;min-width:0;}
+  /* Duration preview */
+  #dur-prev{margin:0 0 14px;}
+  /* Drawer flag buttons: equal width, taller touch targets */
+  #drfooter .dr-flag-row .dr-flag-btn{min-height:44px;font-size:13px;}
+  #drfooter .dr-actions .btn-p,
+  #drfooter .dr-actions .btn-g{min-height:46px;font-size:14px;}
   /* Mob-nav hidden when drawer is open (drawer is modal/edit context) */
   #drawer.open ~ #mob-nav,
   body.drawer-open #mob-nav{display:none !important;}
@@ -1899,6 +1924,32 @@ function _computeShowTimestamps(start,end,dayId,explicitDate){
   const endISO=`${endsNextDay?_addDaysISO(base,1):base}T${end}`;
   return{startsAt:startISO,endsAt:endISO,endsNextDay};
 }
+// Format a Date object as datetime-local string "YYYY-MM-DDTHH:MM" (local time, no Z).
+function _toLocalDatetime(d){
+  if(!d||isNaN(d))return'';
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');
+  const h=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');
+  return `${y}-${m}-${da}T${h}:${mi}`;
+}
+// Derive datetime-local input values from a show, preferring canonical ISO
+// fields and falling back to legacy date/start/end when missing.
+function _deriveShowDatetimes(s){
+  const sa=_showStartsAt(s),ea=_showEndsAt(s);
+  return{
+    startsAtLocal:sa?_toLocalDatetime(sa):'',
+    endsAtLocal:ea?_toLocalDatetime(ea):'',
+  };
+}
+// Parse a datetime-local string ("YYYY-MM-DDTHH:MM") into ISO + breakdown.
+function _parseLocalDatetime(v){
+  if(!v)return null;
+  // Accept both "YYYY-MM-DDTHH:MM" and "YYYY-MM-DDTHH:MM:SS"
+  const m=v.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if(!m)return null;
+  const date=m[1];
+  const hh=m[2],mm=m[3],ss=m[4]||'00';
+  return{date,time:`${hh}:${mm}:${ss}`,iso:`${date}T${hh}:${mm}:${ss}`};
+}
 // Returns true if there's any reason to consider the active day "today" for live countdowns.
 // Priority: explicit day.date → any show on this day with date matching today → legacy mode.
 const isActiveDayToday=()=>{
@@ -2251,11 +2302,14 @@ function renderTbar(){
         <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl" for="f-date">Date <span style="color:var(--sub);font-weight:500;">(determines when the countdown runs)</span></label><input class="fi" id="f-date" type="date"></div>
-    <div class="frow">
-      <div class="fg"><label class="fl" for="f-s">Start time</label><input class="fi" id="f-s" type="time" step="1"></div>
-      <div class="fg"><label class="fl" for="f-e">End time</label><input class="fi" id="f-e" type="time" step="1"></div>
-    </div>
+    <div class="fg"><label class="fl" for="f-starts-at">Start <span style="color:var(--sub);font-weight:500;">(date + time)</span></label><input class="fi" id="f-starts-at" type="datetime-local"></div>
+    <div class="fg"><label class="fl" for="f-ends-at">End <span style="color:var(--sub);font-weight:500;">(date + time)</span></label><input class="fi" id="f-ends-at" type="datetime-local"></div>
+    <!-- Legacy hidden fields kept so the rest of the app code that reads them
+         (renderSched, isShowToday, etc.) continues to work unchanged. Their
+         values are derived from the datetime-local inputs on save. -->
+    <input type="hidden" id="f-date">
+    <input type="hidden" id="f-s">
+    <input type="hidden" id="f-e">
     <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
     <div class="frow">
       <div class="fg"><label class="fl" for="f-g">Genre</label><input class="fi" id="f-g" type="text" placeholder="e.g. Techno"></div>
@@ -3479,8 +3533,49 @@ function openDrawer(id,booth=null){
   _drFlags={cancelled:false,priority:false};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
   document.getElementById('dr-save').textContent=id?'Save':'Create';
-  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-date').value=s.date||(G.days||[]).find(d=>d.id===s.day)?.date||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');_photoB64=s.photo||'';_drFlags.cancelled=!!s.cancelled;_drFlags.priority=!!s.priority;if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
-  else{document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-date').value=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();clearPhoto();selBooth(booth||'A');const shows=getShows(G.activeStage,G.activeDay);if(shows.length){const last=shows[shows.length-1];document.getElementById('f-s').value=last.end;const es=t2s(last.end)+5400;document.getElementById('f-e').value=`${String(Math.floor(es/3600)%24).padStart(2,'0')}:${String(Math.floor(es%3600/60)).padStart(2,'0')}:${String(es%60).padStart(2,'0')}`;}else{const d=new Date();document.getElementById('f-s').value=`${String(d.getHours()).padStart(2,'0')}:00:00`;document.getElementById('f-e').value=`${String((d.getHours()+1)%24).padStart(2,'0')}:30:00`;}}
+  if(id){
+    const s=G.shows.find(x=>x.id===id);
+    if(s){
+      document.getElementById('f-a').value=s.artist||'';
+      document.getElementById('f-g').value=s.genre||'';
+      document.getElementById('f-n').value=s.note||'';
+      selBooth(s.booth||'');
+      _photoB64=s.photo||'';
+      _drFlags.cancelled=!!s.cancelled;
+      _drFlags.priority=!!s.priority;
+      // Datetime fields: prefer canonical startsAt/endsAt, else derive from
+      // legacy fields. datetime-local wants "YYYY-MM-DDTHH:MM" (no seconds).
+      const dr=_deriveShowDatetimes(s);
+      document.getElementById('f-starts-at').value=dr.startsAtLocal;
+      document.getElementById('f-ends-at').value=dr.endsAtLocal;
+      if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}
+      else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}
+    }
+  }else{
+    document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';
+    clearPhoto();selBooth(booth||'A');
+    const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
+    const shows=getShows(G.activeStage,G.activeDay);
+    let startStr,endStr;
+    if(shows.length){
+      const last=shows[shows.length-1];
+      // Default new show starts where the previous one ended
+      const lastEnd=_showEndsAt(last);
+      if(lastEnd){
+        startStr=_toLocalDatetime(lastEnd);
+        endStr=_toLocalDatetime(new Date(lastEnd.getTime()+90*60*1000));
+      }else{
+        const d=new Date();startStr=`${baseDate}T${String(d.getHours()).padStart(2,'0')}:00`;
+        endStr=`${baseDate}T${String((d.getHours()+1)%24).padStart(2,'0')}:30`;
+      }
+    }else{
+      const d=new Date();
+      startStr=`${baseDate}T${String(d.getHours()).padStart(2,'0')}:00`;
+      endStr=`${baseDate}T${String((d.getHours()+1)%24).padStart(2,'0')}:30`;
+    }
+    document.getElementById('f-starts-at').value=startStr;
+    document.getElementById('f-ends-at').value=endStr;
+  }
   _updateDrFlagBtns();
   updDur();
   document.getElementById('dov').classList.add('open');
@@ -3491,15 +3586,34 @@ function openDrawer(id,booth=null){
 function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
 let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
-document.getElementById('f-s').addEventListener('input',updDur);
-document.getElementById('f-e').addEventListener('input',updDur);
+document.getElementById('f-starts-at').addEventListener('input',updDur);
+document.getElementById('f-ends-at').addEventListener('input',updDur);
+// Auto-bump end when start changes if end is now <= start (preserve duration if reasonable)
+document.getElementById('f-starts-at').addEventListener('change',()=>{
+  const sv=document.getElementById('f-starts-at').value,ev=document.getElementById('f-ends-at').value;
+  if(!sv||!ev)return;
+  const sd=new Date(sv),ed=new Date(ev);
+  if(isNaN(sd)||isNaN(ed))return;
+  if(ed<=sd){
+    // Default to start + 1h30m
+    const newEnd=new Date(sd.getTime()+90*60*1000);
+    document.getElementById('f-ends-at').value=_toLocalDatetime(newEnd);
+    updDur();
+  }
+});
 function updDur(){
-  const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;
+  const sv=document.getElementById('f-starts-at')?.value;
+  const ev=document.getElementById('f-ends-at')?.value;
   const el=document.getElementById('dur-txt');
-  if(!s||!e){el.textContent='-';return;}
-  const dur=durSec(s,e);
-  const overnight=t2s(e)<=t2s(s);
-  el.textContent='Duration: '+fmtDur(dur)+(overnight?' · ends next day':'');
+  if(!el)return;
+  if(!sv||!ev){el.textContent='-';return;}
+  const sd=new Date(sv),ed=new Date(ev);
+  if(isNaN(sd)||isNaN(ed)){el.textContent='-';return;}
+  const diff=Math.round((ed-sd)/1000);
+  if(diff<=0){el.textContent='⚠ End must be after start';el.style.color='#fca5a5';return;}
+  el.style.color='';
+  const sameDay=sv.slice(0,10)===ev.slice(0,10);
+  el.textContent='Duration: '+fmtDur(diff)+(sameDay?'':' · ends next day');
 }
 // ── Photo
 let _photoB64='';
@@ -3553,23 +3667,26 @@ function setTPPhoto(src){
 function saveShow(){
   const artist=document.getElementById('f-a').value.trim();if(!artist){document.getElementById('f-a').focus();return;}
   const existing=editId?G.shows.find(x=>x.id===editId):null;
-  // Preserve existing crew data on edits (legacy field, still in some shows);
-  // we just no longer expose it in the new-show form.
   const crew=existing?.crew||{};
   const photo=_photoB64||(existing?.photo||'');
-  const start=document.getElementById('f-s').value||'00:00:00';
-  const end=document.getElementById('f-e').value||'00:00:00';
-  const explicitDate=document.getElementById('f-date').value||'';
-  const dayId=editId?(existing?.day||G.activeDay):G.activeDay;
-  // Compute canonical ISO timestamps so overnight handling never relies on heuristics.
-  const{startsAt,endsAt,endsNextDay}=_computeShowTimestamps(start,end,dayId,explicitDate);
+  // Source of truth: two datetime-local inputs. Derive everything else.
+  const startParsed=_parseLocalDatetime(document.getElementById('f-starts-at').value);
+  const endParsed=_parseLocalDatetime(document.getElementById('f-ends-at').value);
+  if(!startParsed||!endParsed){document.getElementById('f-starts-at').focus();alert('Please set both start and end.');return;}
+  if(new Date(endParsed.iso)<=new Date(startParsed.iso)){
+    document.getElementById('f-ends-at').focus();
+    alert('End must be after start. To run past midnight, pick tomorrow\'s date in the End field.');
+    return;
+  }
+  const startsAt=startParsed.iso;
+  const endsAt=endParsed.iso;
+  const endsNextDay=startParsed.date!==endParsed.date;
   const obj={
     artist,
-    date:explicitDate,
-    start,end,
-    startsAt:startsAt||null,
-    endsAt:endsAt||null,
-    endsNextDay,
+    date:startParsed.date,      // legacy: start date (YYYY-MM-DD)
+    start:startParsed.time,     // legacy: start time (HH:MM:SS)
+    end:endParsed.time,         // legacy: end time (HH:MM:SS)
+    startsAt,endsAt,endsNextDay,
     genre:document.getElementById('f-g').value.trim(),
     booth:curBooth,
     note:document.getElementById('f-n').value.trim(),
