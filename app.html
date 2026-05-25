@@ -2262,13 +2262,6 @@ function renderTbar(){
       <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-A" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div><div class="booth-opt" id="bo-none" onclick="selBooth('')">-</div></div></div>
     </div>
     <div class="fg"><label class="fl" for="f-n">Note</label><textarea class="fi" id="f-n" placeholder="Internal note…"></textarea></div>
-    <div class="fg"><label class="fl">Crew</label><div class="crew-rows">
-      <div class="crew-row"><span class="crew-lbl">VJ</span><input class="fi" id="cr-vj" type="text" placeholder="VJ name" style="margin:0;"></div>
-      <div class="crew-row"><span class="crew-lbl">Light</span><input class="fi" id="cr-light" type="text" placeholder="Light operator name" style="margin:0;"></div>
-      <div class="crew-row"><span class="crew-lbl">Sound</span><input class="fi" id="cr-sound" type="text" placeholder="Sound operator name" style="margin:0;"></div>
-      <div class="crew-row"><span class="crew-lbl">SFX</span><input class="fi" id="cr-sfx" type="text" placeholder="SFX operator name" style="margin:0;"></div>
-      <div class="crew-row"><span class="crew-lbl">Laser</span><input class="fi" id="cr-laser" type="text" placeholder="Laser operator name" style="margin:0;"></div>
-    </div></div>
   </div>
   <div id="drfooter">
     <div class="dr-flag-row">
@@ -3486,8 +3479,8 @@ function openDrawer(id,booth=null){
   _drFlags={cancelled:false,priority:false};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
   document.getElementById('dr-save').textContent=id?'Save':'Create';
-  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-date').value=s.date||(G.days||[]).find(d=>d.id===s.day)?.date||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value=(s.crew&&s.crew[r])?s.crew[r].name||'':'');_photoB64=s.photo||'';_drFlags.cancelled=!!s.cancelled;_drFlags.priority=!!s.priority;if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
-  else{document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-date').value=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();['vj','light','sound','sfx','laser'].forEach(r=>document.getElementById('cr-'+r).value='');clearPhoto();selBooth(booth||'A');const shows=getShows(G.activeStage,G.activeDay);if(shows.length){const last=shows[shows.length-1];document.getElementById('f-s').value=last.end;const es=t2s(last.end)+5400;document.getElementById('f-e').value=`${String(Math.floor(es/3600)%24).padStart(2,'0')}:${String(Math.floor(es%3600/60)).padStart(2,'0')}:${String(es%60).padStart(2,'0')}`;}else{const d=new Date();document.getElementById('f-s').value=`${String(d.getHours()).padStart(2,'0')}:00:00`;document.getElementById('f-e').value=`${String((d.getHours()+1)%24).padStart(2,'0')}:30:00`;}}
+  if(id){const s=G.shows.find(x=>x.id===id);if(s){document.getElementById('f-a').value=s.artist||'';document.getElementById('f-s').value=s.start||'';document.getElementById('f-e').value=s.end||'';document.getElementById('f-date').value=s.date||(G.days||[]).find(d=>d.id===s.day)?.date||'';document.getElementById('f-g').value=s.genre||'';document.getElementById('f-n').value=s.note||'';selBooth(s.booth||'');_photoB64=s.photo||'';_drFlags.cancelled=!!s.cancelled;_drFlags.priority=!!s.priority;if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}}}
+  else{document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-date').value=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();clearPhoto();selBooth(booth||'A');const shows=getShows(G.activeStage,G.activeDay);if(shows.length){const last=shows[shows.length-1];document.getElementById('f-s').value=last.end;const es=t2s(last.end)+5400;document.getElementById('f-e').value=`${String(Math.floor(es/3600)%24).padStart(2,'0')}:${String(Math.floor(es%3600/60)).padStart(2,'0')}:${String(es%60).padStart(2,'0')}`;}else{const d=new Date();document.getElementById('f-s').value=`${String(d.getHours()).padStart(2,'0')}:00:00`;document.getElementById('f-e').value=`${String((d.getHours()+1)%24).padStart(2,'0')}:30:00`;}}
   _updateDrFlagBtns();
   updDur();
   document.getElementById('dov').classList.add('open');
@@ -3560,7 +3553,9 @@ function setTPPhoto(src){
 function saveShow(){
   const artist=document.getElementById('f-a').value.trim();if(!artist){document.getElementById('f-a').focus();return;}
   const existing=editId?G.shows.find(x=>x.id===editId):null;
-  const crew={};['vj','light','sound','sfx','laser'].forEach(r=>{crew[r]={name:document.getElementById('cr-'+r).value.trim(),status:existing?.crew?.[r]?.status||''};});
+  // Preserve existing crew data on edits (legacy field, still in some shows);
+  // we just no longer expose it in the new-show form.
+  const crew=existing?.crew||{};
   const photo=_photoB64||(existing?.photo||'');
   const start=document.getElementById('f-s').value||'00:00:00';
   const end=document.getElementById('f-e').value||'00:00:00';
