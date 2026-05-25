@@ -4226,6 +4226,19 @@ function renderProfilePage(){
       </div>
       <button class="ws-btn-primary" onclick="saveProfilePassword()">Update password</button>
     </div>
+    <div class="ws-card" style="margin-top:18px;">
+      <div class="ws-card-title">Session</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#0A0A0B;">Sign out of this device</div>
+          <div style="font-size:12px;color:#52525B;margin-top:3px;">You'll be returned to the login screen. Workspace data stays untouched.</div>
+        </div>
+        <button class="ws-btn-secondary ws-btn-danger" onclick="doLogout()" style="display:inline-flex;align-items:center;gap:7px;color:#B91C1C;border-color:rgba(185,28,28,.3);">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log out
+        </button>
+      </div>
+    </div>
   `;
 }
 
