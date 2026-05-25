@@ -2010,12 +2010,14 @@ function curShow(shows){
   const nowMs=Date.now();
   for(const s of shows){
     if(!_showIsLive(s,nowMs))continue;
-    // Map to seconds-of-day for backwards-compat math in renderers. We keep
-    // the existing convention: endSec is bumped by +86400 when the show
-    // crosses midnight (so endSec-nowSecAdj() yields correct remaining).
+    const sa=_showStartsAt(s),ea=_showEndsAt(s);
+    // Return both ms timestamps (preferred — used by renderers for remaining)
+    // and seconds-of-day for backwards-compat with code that still does the
+    // legacy adjM math. Renderers should compute rem = (endMs - Date.now())/1000
+    // so the festival-day +86400 bump never produces a negative "OVERTIME".
     const startSec=t2s(s.start);
     const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
-    return{s,startSec,endSec};
+    return{s,startSec,endSec,startMs:sa?.getTime()||0,endMs:ea?.getTime()||0};
   }
   return null;
 }
@@ -2974,7 +2976,7 @@ function renderTPLive(){
   setTPPhoto(cur?.s?.photo||'');
   const bb=document.getElementById('tp-booth');bb.style.display='none';
   if(cur){
-    const n=nowSecAdj(),rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
     setDot(col,true);
     document.getElementById('tp-st').textContent=rem<0?'OVERTIME':'Running';
@@ -3138,7 +3140,7 @@ function tickSched(){
   const cur=curShow(shows);
   if(mobCd){
     if(cur){
-      const remSec=cur.endSec-nowSecAdj();
+      const remSec=Math.round((cur.endMs-Date.now())/1000);
       mobCd.textContent=s2cd(remSec>0?remSec:0);
       mobCd.style.background='rgba(99,102,241,.15)';
       mobCd.style.borderColor='rgba(99,102,241,.3)';
@@ -3259,7 +3261,7 @@ function renderFOH(){
   const n=nowSecAdj(),nm=nowMinAdj();
   let liveHTML='';
   if(cur){
-    const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const tc=tColor(rem);
     liveHTML=`<div class="foh-now">
       <div class="foh-now-lbl" style="color:${tc};"><span class="foh-now-dot lp" style="background:${tc};"></span>Now Playing ${fohBoothBadge(cur.s.booth)}</div>
@@ -3504,7 +3506,7 @@ function renderSV(){
   const stage=activeStageObj();
   document.getElementById('sv-top').textContent=stage.emoji+' '+stage.name;
   if(cur){
-    const rem=cur.endSec-nowSecAdj(),dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
     document.getElementById('sv-artist').textContent=cur.s.artist;
     document.getElementById('sv-genre').textContent=cur.s.genre||'';
@@ -3803,8 +3805,8 @@ function tickFOH(){
   // Live card countdown
   const el=document.getElementById('foh-cd');
   if(el&&cur){
-    const rem=cur.endSec-nowSecAdj(),tc=tColor(rem);
-    const dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-Date.now())/1000),tc=tColor(rem);
+    const dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     el.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
     el.style.color=tc;
     el.className='foh-now-cd'+(shouldBlink(rem)?' ot':'');
@@ -3932,7 +3934,7 @@ function tickOV(){
     }
     if(!cur){for(const s of shows){if(!isShowToday(s))continue;const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
     if(cur){
-      const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+      const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       const nx=shows[shows.indexOf(cur.s)+1];
       const nxPrio=nx&&!!nx.priority;
