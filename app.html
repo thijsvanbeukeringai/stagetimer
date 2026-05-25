@@ -2362,14 +2362,26 @@ function renderTbar(){
         <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
       </div>
     </div>
-    <div class="fg"><label class="fl" for="f-starts-at">Start <span style="color:var(--sub);font-weight:500;">(date + time + seconds)</span></label><input class="fi" id="f-starts-at" type="datetime-local" step="1"></div>
-    <div class="fg"><label class="fl" for="f-ends-at">End <span style="color:var(--sub);font-weight:500;">(date + time + seconds)</span></label><input class="fi" id="f-ends-at" type="datetime-local" step="1"></div>
-    <!-- Legacy hidden fields kept so the rest of the app code that reads them
-         (renderSched, isShowToday, etc.) continues to work unchanged. Their
-         values are derived from the datetime-local inputs on save. -->
+    <div class="fg">
+      <label class="fl">Start <span style="color:var(--sub);font-weight:500;">(date + time, incl. seconds)</span></label>
+      <div class="frow">
+        <input class="fi" id="f-start-date" type="date" style="flex:1;min-width:0;">
+        <input class="fi" id="f-start-time" type="time" step="1" style="flex:1;min-width:0;">
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">End <span style="color:var(--sub);font-weight:500;">(date + time, incl. seconds)</span></label>
+      <div class="frow">
+        <input class="fi" id="f-end-date" type="date" style="flex:1;min-width:0;">
+        <input class="fi" id="f-end-time" type="time" step="1" style="flex:1;min-width:0;">
+      </div>
+    </div>
+    <!-- Legacy hidden fields kept so any code that still reads them works. -->
     <input type="hidden" id="f-date">
     <input type="hidden" id="f-s">
     <input type="hidden" id="f-e">
+    <input type="hidden" id="f-starts-at">
+    <input type="hidden" id="f-ends-at">
     <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
     <div class="frow">
       <div class="fg"><label class="fl" for="f-g">Genre</label><input class="fi" id="f-g" type="text" placeholder="e.g. Techno"></div>
@@ -3609,11 +3621,19 @@ function openDrawer(id,booth=null){
       _photoB64=s.photo||'';
       _drFlags.cancelled=!!s.cancelled;
       _drFlags.priority=!!s.priority;
-      // Datetime fields: prefer canonical startsAt/endsAt, else derive from
-      // legacy fields. datetime-local wants "YYYY-MM-DDTHH:MM" (no seconds).
-      const dr=_deriveShowDatetimes(s);
-      document.getElementById('f-starts-at').value=dr.startsAtLocal;
-      document.getElementById('f-ends-at').value=dr.endsAtLocal;
+      // Split date + time inputs (iOS Safari shows seconds on type="time"
+      // with step="1" but not on datetime-local). Source of truth still the
+      // canonical startsAt / endsAt.
+      const sa=_showStartsAt(s),ea=_showEndsAt(s);
+      const _d2=n=>String(n).padStart(2,'0');
+      if(sa){
+        document.getElementById('f-start-date').value=`${sa.getFullYear()}-${_d2(sa.getMonth()+1)}-${_d2(sa.getDate())}`;
+        document.getElementById('f-start-time').value=`${_d2(sa.getHours())}:${_d2(sa.getMinutes())}:${_d2(sa.getSeconds())}`;
+      }
+      if(ea){
+        document.getElementById('f-end-date').value=`${ea.getFullYear()}-${_d2(ea.getMonth()+1)}-${_d2(ea.getDate())}`;
+        document.getElementById('f-end-time').value=`${_d2(ea.getHours())}:${_d2(ea.getMinutes())}:${_d2(ea.getSeconds())}`;
+      }
       if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}
       else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}
     }
@@ -3622,25 +3642,21 @@ function openDrawer(id,booth=null){
     clearPhoto();selBooth(booth||'A');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
-    let startStr,endStr;
+    let startDt;
     if(shows.length){
       const last=shows[shows.length-1];
-      // Default new show starts where the previous one ended
       const lastEnd=_showEndsAt(last);
-      if(lastEnd){
-        startStr=_toLocalDatetime(lastEnd);
-        endStr=_toLocalDatetime(new Date(lastEnd.getTime()+90*60*1000));
-      }else{
-        const d=new Date();startStr=`${baseDate}T${String(d.getHours()).padStart(2,'0')}:00`;
-        endStr=`${baseDate}T${String((d.getHours()+1)%24).padStart(2,'0')}:30`;
-      }
+      startDt=lastEnd||new Date();
     }else{
-      const d=new Date();
-      startStr=`${baseDate}T${String(d.getHours()).padStart(2,'0')}:00`;
-      endStr=`${baseDate}T${String((d.getHours()+1)%24).padStart(2,'0')}:30`;
+      // Today at the next round hour
+      const d=new Date();d.setHours(d.getHours(),0,0,0);startDt=d;
     }
-    document.getElementById('f-starts-at').value=startStr;
-    document.getElementById('f-ends-at').value=endStr;
+    const endDt=new Date(startDt.getTime()+90*60*1000);
+    const _d2=n=>String(n).padStart(2,'0');
+    document.getElementById('f-start-date').value=`${startDt.getFullYear()}-${_d2(startDt.getMonth()+1)}-${_d2(startDt.getDate())}`;
+    document.getElementById('f-start-time').value=`${_d2(startDt.getHours())}:${_d2(startDt.getMinutes())}:${_d2(startDt.getSeconds())}`;
+    document.getElementById('f-end-date').value=`${endDt.getFullYear()}-${_d2(endDt.getMonth()+1)}-${_d2(endDt.getDate())}`;
+    document.getElementById('f-end-time').value=`${_d2(endDt.getHours())}:${_d2(endDt.getMinutes())}:${_d2(endDt.getSeconds())}`;
   }
   _updateDrFlagBtns();
   updDur();
@@ -3652,33 +3668,52 @@ function openDrawer(id,booth=null){
 function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
 let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
-document.getElementById('f-starts-at').addEventListener('input',updDur);
-document.getElementById('f-ends-at').addEventListener('input',updDur);
-// Auto-bump end when start changes if end is now <= start (preserve duration if reasonable)
-document.getElementById('f-starts-at').addEventListener('change',()=>{
-  const sv=document.getElementById('f-starts-at').value,ev=document.getElementById('f-ends-at').value;
-  if(!sv||!ev)return;
-  const sd=new Date(sv),ed=new Date(ev);
-  if(isNaN(sd)||isNaN(ed))return;
+// Combine the four split inputs (start date+time, end date+time) into Date objects.
+function _readStartDate(){
+  const d=document.getElementById('f-start-date').value;
+  const t=document.getElementById('f-start-time').value;
+  if(!d||!t)return null;
+  const time=t.length===5?t+':00':t; // pad seconds if input gave HH:MM
+  const dt=new Date(`${d}T${time}`);
+  return isNaN(dt)?null:dt;
+}
+function _readEndDate(){
+  const d=document.getElementById('f-end-date').value;
+  const t=document.getElementById('f-end-time').value;
+  if(!d||!t)return null;
+  const time=t.length===5?t+':00':t;
+  const dt=new Date(`${d}T${time}`);
+  return isNaN(dt)?null:dt;
+}
+['f-start-date','f-start-time','f-end-date','f-end-time'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('input',updDur);
+});
+// Auto-bump end to start+1h30m if user pushes start past end.
+document.getElementById('f-start-date').addEventListener('change',_maybeBumpEnd);
+document.getElementById('f-start-time').addEventListener('change',_maybeBumpEnd);
+function _maybeBumpEnd(){
+  const sd=_readStartDate(),ed=_readEndDate();
+  if(!sd||!ed)return;
   if(ed<=sd){
-    // Default to start + 1h30m
-    const newEnd=new Date(sd.getTime()+90*60*1000);
-    document.getElementById('f-ends-at').value=_toLocalDatetime(newEnd);
+    const ne=new Date(sd.getTime()+90*60*1000);
+    const _d2=n=>String(n).padStart(2,'0');
+    document.getElementById('f-end-date').value=`${ne.getFullYear()}-${_d2(ne.getMonth()+1)}-${_d2(ne.getDate())}`;
+    document.getElementById('f-end-time').value=`${_d2(ne.getHours())}:${_d2(ne.getMinutes())}:${_d2(ne.getSeconds())}`;
     updDur();
   }
-});
+}
 function updDur(){
-  const sv=document.getElementById('f-starts-at')?.value;
-  const ev=document.getElementById('f-ends-at')?.value;
   const el=document.getElementById('dur-txt');
   if(!el)return;
-  if(!sv||!ev){el.textContent='-';return;}
-  const sd=new Date(sv),ed=new Date(ev);
-  if(isNaN(sd)||isNaN(ed)){el.textContent='-';return;}
+  const sd=_readStartDate(),ed=_readEndDate();
+  if(!sd||!ed){el.textContent='-';el.style.color='';return;}
   const diff=Math.round((ed-sd)/1000);
   if(diff<=0){el.textContent='⚠ End must be after start';el.style.color='#fca5a5';return;}
   el.style.color='';
-  const sameDay=sv.slice(0,10)===ev.slice(0,10);
+  const sStr=document.getElementById('f-start-date').value;
+  const eStr=document.getElementById('f-end-date').value;
+  const sameDay=sStr===eStr;
   el.textContent='Duration: '+fmtDur(diff)+(sameDay?'':' · ends next day');
 }
 // ── Photo
@@ -3735,23 +3770,31 @@ function saveShow(){
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew=existing?.crew||{};
   const photo=_photoB64||(existing?.photo||'');
-  // Source of truth: two datetime-local inputs. Derive everything else.
-  const startParsed=_parseLocalDatetime(document.getElementById('f-starts-at').value);
-  const endParsed=_parseLocalDatetime(document.getElementById('f-ends-at').value);
-  if(!startParsed||!endParsed){document.getElementById('f-starts-at').focus();alert('Please set both start and end.');return;}
-  if(new Date(endParsed.iso)<=new Date(startParsed.iso)){
-    document.getElementById('f-ends-at').focus();
+  // Source of truth: split start (date+time) and end (date+time) inputs.
+  // Each time input has step=1 so seconds are captured.
+  const sd=_readStartDate(),ed=_readEndDate();
+  if(!sd||!ed){
+    document.getElementById('f-start-date').focus();
+    alert('Please set both start and end (date + time).');return;
+  }
+  if(ed<=sd){
+    document.getElementById('f-end-date').focus();
     alert('End must be after start. To run past midnight, pick tomorrow\'s date in the End field.');
     return;
   }
-  const startsAt=startParsed.iso;
-  const endsAt=endParsed.iso;
-  const endsNextDay=startParsed.date!==endParsed.date;
+  const _d2=n=>String(n).padStart(2,'0');
+  const startDate=`${sd.getFullYear()}-${_d2(sd.getMonth()+1)}-${_d2(sd.getDate())}`;
+  const startTime=`${_d2(sd.getHours())}:${_d2(sd.getMinutes())}:${_d2(sd.getSeconds())}`;
+  const endDate=`${ed.getFullYear()}-${_d2(ed.getMonth()+1)}-${_d2(ed.getDate())}`;
+  const endTime=`${_d2(ed.getHours())}:${_d2(ed.getMinutes())}:${_d2(ed.getSeconds())}`;
+  const startsAt=`${startDate}T${startTime}`;
+  const endsAt=`${endDate}T${endTime}`;
+  const endsNextDay=startDate!==endDate;
   const obj={
     artist,
-    date:startParsed.date,      // legacy: start date (YYYY-MM-DD)
-    start:startParsed.time,     // legacy: start time (HH:MM:SS)
-    end:endParsed.time,         // legacy: end time (HH:MM:SS)
+    date:startDate,             // legacy: start date (YYYY-MM-DD)
+    start:startTime,            // legacy: start time (HH:MM:SS)
+    end:endTime,                // legacy: end time (HH:MM:SS)
     startsAt,endsAt,endsNextDay,
     genre:document.getElementById('f-g').value.trim(),
     booth:curBooth,
