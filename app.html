@@ -1455,6 +1455,12 @@ const t2s=t=>{if(!t)return 0;const p=t.split(':').map(Number);return p[0]*3600+p
 const t2m=t=>t2s(t)/60;
 const nowSec=()=>{const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();};
 const nowMin=()=>nowSec()/60;
+// Festival-day adjusted "now in seconds": after midnight (< 07:00 clock time) we
+// add 86400 so we stay continuous with the previous evening's adjusted endSec.
+// CRITICAL: every remaining-time countdown that uses (endSec - now) must use
+// this instead of raw nowSec(), otherwise the second the clock crosses 00:00
+// the countdown for a still-running overnight show jumps by ~24 hours.
+const nowSecAdj=()=>{const n=nowSec();return n<7*3600?n+86400:n;};
 const s2cd=s=>{const neg=s<0,a=Math.abs(s)|0,m=Math.floor(a/60),sc=a%60;return(neg?'-':'')+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0');};
 const s2cdH=s=>{const neg=s<0,a=Math.abs(s)|0,h=Math.floor(a/3600),m=Math.floor((a%3600)/60),sc=a%60;return(neg?'-':'')+(h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'));};
 const durSec=(s,e)=>{let sm=t2s(s),em=t2s(e);if(em<=sm)em+=86400;return em-sm;};
@@ -2731,7 +2737,7 @@ function renderTPLive(){
   setTPPhoto(cur?.s?.photo||'');
   const bb=document.getElementById('tp-booth');bb.style.display='none';
   if(cur){
-    const n=nowSec(),rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const n=nowSecAdj(),rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
     setDot(col,true);
     document.getElementById('tp-st').textContent=rem<0?'OVERTIME':'Running';
@@ -2853,7 +2859,7 @@ function renderSched(){
       ${notes.length?`<div class="scard-fnotes">${notesHTML}</div>`:''}
       <div class="scard-ft">
         <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Note</button>
-        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,Math.ceil(em*60-nowSec())))}</span>`:''}
+        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,Math.ceil(em*60-nowSecAdj())))}</span>`:''}
         ${showIsToday&&!isNow&&!isPast&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
     </div>`;
@@ -2866,7 +2872,7 @@ function tickSched(){
   if(G.timerMode!=='live')return;
   const shows=getShows(G.activeStage,G.activeDay);
   const nm=nowMinAdj();
-  const ns=nowSec();
+  const ns=nowSecAdj();
   shows.forEach(s=>{
     const cd=document.getElementById('scd-'+s.id);if(!cd)return;
     // If the show isn't on today's date, hide its countdown so we don't show
@@ -2891,7 +2897,7 @@ function tickSched(){
   const cur=curShow(shows);
   if(mobCd){
     if(cur){
-      const remSec=cur.endSec-nowSec();
+      const remSec=cur.endSec-nowSecAdj();
       mobCd.textContent=s2cd(remSec>0?remSec:0);
       mobCd.style.background='rgba(99,102,241,.15)';
       mobCd.style.borderColor='rgba(99,102,241,.3)';
@@ -3009,7 +3015,7 @@ function renderFOH(){
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   const shows=getShows(G.activeStage,G.activeDay);
   const cur=curShow(shows),nxt=nxtShow(shows);
-  const n=nowSec(),nm=nowMinAdj();
+  const n=nowSecAdj(),nm=nowMinAdj();
   let liveHTML='';
   if(cur){
     const rem=cur.endSec-n,dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
@@ -3102,7 +3108,7 @@ function renderBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
-  const n=nowSec(),nm=nowMinAdj();
+  const n=nowSecAdj(),nm=nowMinAdj();
   const body=document.getElementById('bs-body');
 
   if(!shows.length){body.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:16px;text-align:center;margin-top:40px;">No shows scheduled for this day.</div>`;return;}
@@ -3211,7 +3217,7 @@ function renderBS(){
 function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
-  const n=nowSec(),nm=nowMinAdj();
+  const n=nowSecAdj(),nm=nowMinAdj();
   shows.forEach((s,i)=>{
     const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));
@@ -3257,7 +3263,7 @@ function renderSV(){
   const stage=activeStageObj();
   document.getElementById('sv-top').textContent=stage.emoji+' '+stage.name;
   if(cur){
-    const rem=cur.endSec-nowSec(),dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=cur.endSec-nowSecAdj(),dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
     document.getElementById('sv-artist').textContent=cur.s.artist;
     document.getElementById('sv-genre').textContent=cur.s.genre||'';
@@ -3463,7 +3469,7 @@ function tickFOH(){
   // Live card countdown
   const el=document.getElementById('foh-cd');
   if(el&&cur){
-    const rem=cur.endSec-nowSec(),tc=tColor(rem);
+    const rem=cur.endSec-nowSecAdj(),tc=tColor(rem);
     const dur=cur.endSec-cur.startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     el.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
     el.style.color=tc;
@@ -3562,7 +3568,7 @@ function tickOV(){
   if(!document.getElementById('stov').classList.contains('open'))return;
   const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
   const stages=G.stages||[];
-  const n=nowSec(),nm=nowMinAdj();
+  const n=nowSecAdj(),nm=nowMinAdj();
   const dayToday=isActiveDayToday();
   const perStageDay=window._stovStageDay||null;
   stages.forEach(st=>{
