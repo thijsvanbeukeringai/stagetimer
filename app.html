@@ -731,21 +731,38 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .daybtn{min-height:40px;padding:8px 14px;font-size:13px;}
   .proj-card-btn{min-height:40px;padding:0 14px;font-size:12px;}
   /* Dropdown items: bigger tap area + larger type */
-  .dd-item{min-height:44px;padding:11px 14px;font-size:14px;}
-  .dd-menu{min-width:200px;}
-  /* Form inputs: 46px gives the iOS native picker enough room and avoids
+  .dd-item{min-height:46px;padding:13px 16px;font-size:15px;}
+  .dd-menu{min-width:220px;}
+  /* Form inputs: 48px gives the iOS native picker enough room and avoids
      zoom-on-focus (font-size >= 16px prevents Safari zoom-in) */
-  .fi{min-height:46px;padding:11px 14px;font-size:16px;}
+  .fi{min-height:48px;padding:12px 14px;font-size:16px;}
   /* Select / dropdown style inputs need same min-height */
-  select.fi,select.admin-fi{min-height:46px;}
-  /* Booth pills */
-  .booth-opt{min-height:44px;font-size:15px;}
+  select.fi,select.admin-fi{min-height:48px;font-size:16px;}
+  /* Booth pills — they sit side-by-side so they need bigger area */
+  .booth-opt{min-height:48px;padding:12px 14px;font-size:16px;border-radius:10px;}
   /* Action icon buttons in tables / cards */
   .ws-icon-btn{width:44px !important;height:44px !important;}
   /* Stage selector in header */
-  #stage-sel{min-height:40px;padding:8px 14px;font-size:13px;}
+  #stage-sel{min-height:44px;padding:10px 14px;font-size:14px;}
   /* Day tabs scroll bar */
-  .fhbtn{min-height:40px;padding:8px 14px;font-size:13px;}
+  .fhbtn{min-height:44px;padding:10px 16px;font-size:14px;}
+  /* Show-card edit/delete icon buttons — always visible on mobile + bigger */
+  .scard-act{opacity:1 !important;gap:6px;}
+  .rb{width:40px;height:40px;font-size:15px;}
+  .frb{width:40px;height:40px;font-size:15px;}
+  /* FOH-style "+ Note" pill */
+  .foh-add-note{min-height:38px;padding:8px 12px;font-size:13px;}
+  /* Cancel / Priority pills in show drawer footer */
+  .dr-flag-btn{min-height:48px;font-size:14px;padding:12px 16px;}
+  /* Tab/Mode buttons (timer mode toggle) */
+  .tbtn{min-height:44px;padding:10px 14px;font-size:13px;}
+  /* Generic admin form fields in light backoffice — match the dark side */
+  .admin-fi{min-height:48px;padding:12px 14px;font-size:16px;}
+  textarea.fi,textarea.admin-fi{min-height:96px;}
+  /* Native <select> arrow stays visible because of padding-right */
+  select.fi,select.admin-fi{padding-right:36px;background-position:right 12px center;}
+  /* Bigger close × on modals / drawers */
+  .modal-close,.drawer-close,#drclose,#admin-close{min-width:44px;min-height:44px;font-size:24px;}
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3133,7 +3150,7 @@ function renderSched(){
       ${notes.length?`<div class="scard-fnotes">${notesHTML}</div>`:''}
       <div class="scard-ft">
         <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Note</button>
-        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,Math.ceil(em*60-nowSecAdj())))}</span>`:''}
+        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
         ${_showIsFuture(s)&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
     </div>`;
@@ -3145,23 +3162,22 @@ function selMCue(i){M.idx=i;mReset();renderTP();renderTbar();renderSched();}
 function tickSched(){
   if(G.timerMode!=='live')return;
   const shows=getShows(G.activeStage,G.activeDay);
-  const nm=nowMinAdj();
-  const ns=nowSecAdj();
+  const nowMs=Date.now();
   shows.forEach(s=>{
     const cd=document.getElementById('scd-'+s.id);if(!cd)return;
-    // If the show isn't on today's date, hide its countdown so we don't show
-    // misleading "starts in 24 min" for shows that aren't actually running today
-    if(!isShowToday(s)){cd.style.display='none';return;}
+    const sa=_showStartsAt(s),ea=_showEndsAt(s);
+    // No usable timestamps → hide
+    if(!sa||!ea){cd.style.display='none';return;}
+    const isLive=_showIsLive(s,nowMs);
+    const isPast=_showIsPast(s,nowMs);
+    if(isPast){cd.style.display='none';return;}
     cd.style.display='';
-    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=nm>=sm&&nm<em;
-    if(isNow){
-      const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
-      const remSec=Math.max(0,Math.ceil(endSec-ns));
+    if(isLive){
+      const remSec=Math.max(0,Math.ceil((ea.getTime()-nowMs)/1000));
       cd.textContent=s2cdH(remSec);
       cd.style.color=remSec<300?'#ef4444':remSec<900?'#f97316':'#22c55e';
     } else {
-      const secUntil=Math.max(0,(sm-nm)*60);
+      const secUntil=Math.max(0,Math.round((sa.getTime()-nowMs)/1000));
       cd.textContent=s2cdH(Math.ceil(secUntil));
       cd.style.color=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     }
@@ -3311,7 +3327,7 @@ function renderFOH(){
   }else{
     liveHTML=`<div class="foh-empty">${nxt?'Waiting for first artist…':'No shows scheduled'}</div>`;
   }
-  const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;const sm2=adjM(t2m(s.start));let em2=adjM(t2m(s.end));if(em2<=sm2)em2+=1440;return nm<em2;});
+  const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;return !_showIsPast(s);});
   const rows=upcoming.map(s=>{
     const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=_showIsLive(s);
@@ -3457,14 +3473,15 @@ function renderBS(){
       </div>`;
     } else {
       // UPCOMING (today): bar fills up as show approaches (0% = far, 100% = starting now)
+      const sa=_showStartsAt(s);
       const prevShow=shows[i-1];
-      const prevEndM=prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60);
-      const gapSec=Math.max(1,(sm-prevEndM)*60);
-      const timeUntilStart=Math.max(0,(sm-nm)*60);
+      const prevEa=prevShow?_showEndsAt(prevShow):null;
+      const timeUntilStart=sa?Math.max(0,Math.round((sa.getTime()-Date.now())/1000)):(sm-nm)*60;
+      const gapSec=(sa&&prevEa)?Math.max(1,Math.round((sa.getTime()-prevEa.getTime())/1000)):Math.max(1,(sm-(prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60)))*60);
       const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
       // Color: close = green (about to go on), far = muted blue
       const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
-      const rank=i-(shows.findIndex(x=>{const em2=adjM(t2m(x.end));return nm<em2;}));
+      const rank=i-(shows.findIndex(x=>{const ea2=_showEndsAt(x);return ea2?Date.now()<ea2.getTime():true;}));
 
       return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.06);">
         <div class="bs-row-top">
@@ -3493,19 +3510,18 @@ function renderBS(){
 function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
-  const n=nowSecAdj(),nm=nowMinAdj();
+  const nowMs=Date.now();
   shows.forEach((s,i)=>{
-    const showIsToday=isShowToday(s);
-    const sm=adjM(t2m(s.start));
-    let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=_showIsLive(s),isPast=_showIsPast(s);
+    const isNow=_showIsLive(s,nowMs),isPast=_showIsPast(s,nowMs);
     const cdEl=document.getElementById('bs-cd-'+i);
     const barEl=document.getElementById('bs-bar-'+i);
     if(!cdEl||!barEl)return;
     if(isNow){
-      const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
-      const startSec=t2s(s.start);
-      const rem=endSec-n,dur=endSec-startSec,pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+      const sa=_showStartsAt(s),ea=_showEndsAt(s);
+      if(!sa||!ea)return;
+      const rem=Math.round((ea.getTime()-nowMs)/1000);
+      const dur=Math.round((ea.getTime()-sa.getTime())/1000);
+      const pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       cdEl.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
       cdEl.style.color=col;
@@ -3515,12 +3531,11 @@ function tickBS(){
       const row=document.getElementById('bsr-'+i);
       if(row){row.style.borderColor=col+'33';row.style.background=tBg(col,pct/100*0.22);}
     }else if(!isPast){
+      const sa=_showStartsAt(s);if(!sa)return;
       const prevShow=shows[i-1];
-      const prevEndM=prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60);
-      const prevEndSec=prevEndM*60;
-      const startSec=sm*60;
-      const gapSec=Math.max(1,startSec-prevEndSec);
-      const timeUntilStart=Math.max(0,startSec-nm*60);
+      const prevEa=prevShow?_showEndsAt(prevShow):null;
+      const timeUntilStart=Math.max(0,Math.round((sa.getTime()-nowMs)/1000));
+      const gapSec=prevEa?Math.max(1,Math.round((sa.getTime()-prevEa.getTime())/1000)):Math.max(1,timeUntilStart);
       const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
       const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
       cdEl.textContent=s2cdH(Math.ceil(timeUntilStart));
@@ -3878,12 +3893,13 @@ function tickFOH(){
     if(bar){bar.style.width=pct.toFixed(1)+'%';bar.style.background=tc;}
   }
   // Per-row countdowns
-  const nma=nowMinAdj();
+  const nowMs=Date.now();
   shows.forEach(s=>{
     const cd=document.getElementById('foh-sr-cd-'+s.id);if(!cd)return;
-    if(!isShowToday(s)){cd.style.display='none';return;}
+    const sa=_showStartsAt(s);
+    if(!sa||_showIsPast(s,nowMs)){cd.style.display='none';return;}
     cd.style.display='';
-    const secUntil=Math.max(0,(adjM(t2m(s.start))-nma)*60);
+    const secUntil=Math.max(0,Math.round((sa.getTime()-nowMs)/1000));
     cd.textContent=s2cdH(Math.ceil(secUntil));
     cd.style.color=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
   });
@@ -3927,7 +3943,6 @@ function renderOV(){
   }
   const logo=document.getElementById('co-logo-stov');
   if(logo){const m=document.getElementById('co-logo-main');logo.src=m.src;logo.className=m.className;}
-  const nm=nowMinAdj();
   const dayToday=isActiveDayToday();
   const perStage=_OV_PER_STAGE_DAY();
   // Build per-stage effective day map (only used in public overview mode)
@@ -3940,8 +3955,8 @@ function renderOV(){
     const shows=getShows(st.id,dayId,!dIsToday).filter(s=>!s.cancelled);
     if(!shows.length)return false;
     if(!dIsToday)return true; // non-today: show all
-    const last=shows[shows.length-1];
-    return adjM(t2m(last.end))>nm; // hide if last show already ended
+    // hide stage if last show already ended (timestamp-based, robust around midnight)
+    return shows.some(s=>!_showIsPast(s));
   }).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
   // Stash for tickOV
   window._stovStageDay=perStage?stageDay:null;
@@ -3968,7 +3983,6 @@ function tickOV(){
   if(!document.getElementById('stov').classList.contains('open'))return;
   const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
   const stages=G.stages||[];
-  const n=nowSecAdj(),nm=nowMinAdj();
   const dayToday=isActiveDayToday();
   const perStageDay=window._stovStageDay||null;
   stages.forEach(st=>{
@@ -3985,18 +3999,23 @@ function tickOV(){
     const nxEl=document.getElementById('stovnx-'+st.id);
     if(!card||!cdEl)return;
     const nameEl=document.getElementById('stovname-'+st.id);
-    // Overnight-aware cur/nxt detection
+    // Timestamp-based cur/nxt detection — works across the 07:00 boundary, overnight shows, any timezone
+    const nowMs=Date.now();
     let cur=null,nxtObj=null;
     for(const s of shows){
-      if(!isShowToday(s))continue;
-      const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-      if(nm>=sm&&nm<em){
-        const startSec=t2s(s.start);
-        const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
-        cur={s,startSec,endSec};break;
-      }
+      if(!_showIsLive(s,nowMs))continue;
+      const sa=_showStartsAt(s),ea=_showEndsAt(s);
+      cur={s,startMs:sa?.getTime()||0,endMs:ea?.getTime()||0};break;
     }
-    if(!cur){for(const s of shows){if(!isShowToday(s))continue;const sm=adjM(t2m(s.start));if(sm>nm){nxtObj={s,startsIn:(sm-nm)*60};break;}}}
+    if(!cur){
+      let bestDt=Infinity,bestS=null;
+      for(const s of shows){
+        const sa=_showStartsAt(s);if(!sa)continue;
+        const dt=sa.getTime()-nowMs;
+        if(dt>0&&dt<bestDt){bestDt=dt;bestS=s;}
+      }
+      if(bestS)nxtObj={s:bestS,startsIn:Math.round(bestDt/1000)};
+    }
     if(cur){
       const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
@@ -5571,15 +5590,14 @@ function renderTL(){
       const ss=adjSS(s),es=adjES(s);
       const x=(ss-minSec)/3600*TL_PX;
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
-      const sm=ss/60,em=es/60;
-      const showIsToday=isShowToday(s);
       const isNow=_showIsLive(s),isPast=_showIsPast(s);
       const isCancelled=!!s.cancelled,isPriority=!!s.priority;
       const bColBase=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
       const bCol=isCancelled?'rgba(239,68,68,.5)':isNow?'#fbbf24':bColBase;
       const bBg=isCancelled?'rgba(239,68,68,.08)':isNow?'rgba(251,191,36,.18)':s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
       const border=isCancelled?'rgba(239,68,68,.35)':isNow?'#fbbf24':'rgba(255,255,255,.1)';
-      const pct=isNow?Math.min(100,(nm-sm)/(em-sm)*100):0;
+      const dur=_showDurationSec(s),elapsed=_showElapsedSec(s);
+      const pct=isNow&&dur>0?Math.min(100,Math.max(0,elapsed/dur*100)):0;
       const priorityDot=isPriority?`<span style="font-size:9px;line-height:1;flex-shrink:0;">⭐</span>`:'';
       const cancelLine=isCancelled?'text-decoration:line-through;opacity:.5;':'';
       const boothBadgeCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':null;
