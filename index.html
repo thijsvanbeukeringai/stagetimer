@@ -1133,8 +1133,9 @@ html,body{overflow-x:hidden;}
       {artist:'Âme b2b Jimi Jules',            start:'04:15', end:'05:30', booth:'B', dur:75},
     ];
     // Each demo show counts down for VISIBLE_DUR real seconds, ticks 1s per second.
-    const VISIBLE_DUR=180;     // 3-minute visible countdown per show
-    const OVERTIME_HOLD=5;     // seconds of overtime before transitioning to next show
+    const VISIBLE_DUR=900;     // 15-minute visible countdown per show — long enough
+                               // that a casual visitor never sees a transition.
+    const OVERTIME_HOLD=8;     // seconds of overtime before transitioning to next show
     const el={
       cd:document.getElementById('hero-demo-cd'),
       artist:document.getElementById('hero-demo-artist'),
@@ -1200,7 +1201,7 @@ html,body{overflow-x:hidden;}
         phaseStart=Date.now();
       }
     }
-    setInterval(tick,250);
+    setInterval(tick,1000);
     tick();
   })();
 </script>
