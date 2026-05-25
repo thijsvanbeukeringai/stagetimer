@@ -1336,23 +1336,100 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .ws-input:focus{border-color:#1E40AF;box-shadow:0 0 0 3px rgba(30,64,175,.08);}
 .ws-field-help{font-size:11.5px;color:#78716C;margin-top:5px;}
 
-/* === MOBILE: sidebar collapses === */
+/* === MOBILE: bottom tab bar (replaces horizontal-scroll sidebar) === */
+
+/* Desktop: hide the new mobile-only elements */
+#ws-mobile-topbar{display:none;}
+#ws-bottomnav{display:none;}
+
 @media(max-width:768px){
+  /* Layout: column stack — topbar, scrollable content, bottom nav */
   #dash{flex-direction:column !important;}
-  #ws-sidebar{
-    width:100%;height:auto;flex-direction:row;
-    padding:10px 14px;align-items:center;gap:12px;
-    border-right:none;border-bottom:1px solid rgba(28,25,23,.08);
+
+  /* Hide desktop sidebar entirely on mobile */
+  #ws-sidebar{display:none !important;}
+
+  /* ── Slim top bar: logo + workspace context ── */
+  #ws-mobile-topbar{
+    display:flex;align-items:center;gap:10px;
+    flex-shrink:0;
+    background:#FFFFFF;
+    border-bottom:1px solid rgba(28,25,23,.08);
+    padding:calc(env(safe-area-inset-top) + 11px) 16px 11px;
+    min-height:calc(50px + env(safe-area-inset-top));
+    position:sticky;top:0;z-index:50;
   }
-  #ws-sb-brand{padding:0;flex-shrink:0;}
-  #ws-sb-workspace{display:none;}
-  .ws-sb-section-label{display:none;}
-  .ws-sb-nav{flex-direction:row;overflow-x:auto;gap:2px;padding:0;flex:1;}
-  .ws-sb-link{padding:6px 11px;font-size:12px;white-space:nowrap;}
-  .ws-sb-link svg{display:none;}
-  .ws-sb-footer{display:none;}
-  #ws-main{padding:18px 14px 80px;}
+  #ws-mob-logo{
+    height:22px;width:auto;
+    filter:brightness(0) saturate(100%);
+    flex-shrink:0;
+  }
+  #ws-mob-context{
+    display:flex;align-items:baseline;gap:6px;
+    flex:1;min-width:0;
+    overflow:hidden;
+  }
+  #ws-mob-wsname{
+    font-size:13px;font-weight:700;color:#0A0A0B;
+    letter-spacing:-.15px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  #ws-mob-wsmeta{
+    font-size:11px;color:#52525B;
+    white-space:nowrap;flex-shrink:0;
+  }
+
+  /* ── Main scroll area: leave room for top bar + bottom nav ── */
+  #ws-main{
+    padding:18px 14px 0;
+    /* bottom padding = tab bar height (64px) + safe area */
+    padding-bottom:calc(64px + env(safe-area-inset-bottom));
+  }
   .ws-section-hdr h1{font-size:20px;}
+
+  /* ── Bottom tab bar ── */
+  #ws-bottomnav{
+    display:flex;
+    position:fixed;
+    bottom:0;left:0;right:0;
+    background:#FFFFFF;
+    border-top:1px solid rgba(28,25,23,.08);
+    /* account for iPhone home indicator */
+    padding-bottom:env(safe-area-inset-bottom);
+    z-index:200;
+    /* subtle shadow so content scrolls under it */
+    box-shadow:0 -1px 0 rgba(28,25,23,.06),0 -4px 16px rgba(28,25,23,.04);
+  }
+  .ws-tab{
+    flex:1;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;
+    padding:10px 4px;
+    min-height:64px;
+    background:none;border:none;cursor:pointer;
+    color:#78716C;
+    font:inherit;font-size:10px;font-weight:500;letter-spacing:.01em;
+    transition:color .15s,background .15s;
+    -webkit-tap-highlight-color:transparent;
+    /* ensure 44px+ touch target on all axes */
+    min-width:44px;
+  }
+  .ws-tab svg{
+    stroke:#78716C;
+    transition:stroke .15s;
+    flex-shrink:0;
+  }
+  .ws-tab:hover,
+  .ws-tab:focus-visible{
+    color:#0A0A0B;background:rgba(28,25,23,.04);
+  }
+  .ws-tab:hover svg,
+  .ws-tab:focus-visible svg{stroke:#0A0A0B;}
+  .ws-tab:focus-visible{outline:2px solid #1E40AF;outline-offset:-2px;}
+  .ws-tab.active{color:#1E40AF;}
+  .ws-tab.active svg{stroke:#1E40AF;}
+
+  /* ── Table tweaks ── */
   .ws-table-wrap{border-radius:10px;}
   .ws-table thead{display:none;}
   .ws-table,.ws-table tbody{display:block;width:100%;}
@@ -1370,14 +1447,31 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #admin-body{padding:14px !important;}
   #dash-body{padding:24px 18px !important;}
 
-  /* Admin header: hide brand logo/separator/cog to prevent overflow,
-     compact title + actions */
-  #admin-hdr{padding:0 12px !important;gap:6px !important;height:52px !important;}
+  /* Admin header: safe-area inset for iOS PWA status bar, compact actions */
+  #admin-hdr{
+    padding:calc(env(safe-area-inset-top) + 8px) 12px 8px !important;
+    gap:8px !important;
+    height:auto !important;min-height:calc(52px + env(safe-area-inset-top));
+    align-items:center;
+  }
+  #admin-hdr > div:first-child{flex:1;min-width:0;}
   #admin-hdr > div:first-child > img,
   #admin-hdr > div:first-child > div:nth-child(2),
   #admin-hdr > div:first-child > div:nth-child(3){display:none !important;}
-  #admin-hdr > div:first-child > span{font-size:13px !important;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55vw;}
-  #admin-hdr .hbtn{padding:6px 10px !important;font-size:11px !important;flex-shrink:0;}
+  #admin-hdr > div:first-child > span{
+    font-size:15px !important;font-weight:700;letter-spacing:-.3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    display:block;max-width:100%;
+  }
+  /* Spacer div pushing buttons right — collapse on mobile */
+  #admin-hdr > div[style*="flex:1"]{display:none !important;}
+  /* Icon-only buttons: hide all text nodes inside .hbtn except the SVG */
+  #admin-hdr .hbtn{
+    padding:0 !important;width:36px;height:36px;flex-shrink:0;
+    border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:0;
+    font-size:0 !important;
+  }
+  #admin-hdr .hbtn svg{font-size:14px;}
   #admin-hdr .hbtn-lbl{display:none;}
 
   /* Hide the 5 KPI cards on mobile; subscription breakdown becomes the lead */
@@ -2232,6 +2326,40 @@ function renderTbar(){
       </button>
     </div>
   </aside>
+
+  <!-- ── Mobile: slim top bar (logo + workspace context) ── -->
+  <div id="ws-mobile-topbar">
+    <img src="stagetimer-logo.png" alt="Stagetimer" id="ws-mob-logo">
+    <div id="ws-mob-context">
+      <span id="ws-mob-wsname">—</span>
+      <span id="ws-mob-wsmeta">—</span>
+    </div>
+  </div>
+
+  <!-- ── Mobile: bottom tab bar ── -->
+  <nav id="ws-bottomnav" aria-label="Workspace navigation">
+    <button class="ws-tab active" data-section="projects" onclick="showWsSection('projects')" aria-label="Projects">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"/></svg>
+      <span>Projects</span>
+    </button>
+    <button class="ws-tab" data-section="subscription" onclick="showWsSection('subscription')" aria-label="Subscription">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span>Subscription</span>
+    </button>
+    <button class="ws-tab" data-section="settings" onclick="showWsSection('settings')" aria-label="Settings">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+    <button class="ws-tab" data-section="profile" onclick="showWsSection('profile')" aria-label="Profile">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
+    <button class="ws-tab super-admin-only" data-section="admin" id="dash-admin-tab" onclick="openAdmin()" aria-label="Admin" style="display:none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>Admin</span>
+    </button>
+  </nav>
+
   <!-- ── Main content ── -->
   <main id="ws-main">
     <!-- Projects -->
@@ -4049,15 +4177,31 @@ function _updateWsSidebar(){
     const src=(CURRENT_USER?.name||CURRENT_USER?.email||'?').trim();
     avatar.textContent=src.charAt(0).toUpperCase()||'?';
   }
+  // Mirror workspace name + tier into mobile top bar
+  const mobWsName=document.getElementById('ws-mob-wsname');
+  const mobWsMeta=document.getElementById('ws-mob-wsmeta');
+  if(mobWsName)mobWsName.textContent=co?.name||(isAdmin()?'All workspaces':'No workspace');
+  if(mobWsMeta){
+    if(!co){mobWsMeta.textContent=isAdmin()?'Platform admin':'';}
+    else{
+      const tier=co.subscriptionTier?co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1):'Free';
+      const seats=co.extraSeats||0;
+      const seatText=seats>0?` · ${seats} paid seat${seats===1?'':'s'}`:'';
+      mobWsMeta.textContent=`${tier}${seatText}`;
+    }
+  }
 }
 
 function showWsSection(name){
   document.querySelectorAll('.ws-section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.ws-sb-link').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.ws-tab').forEach(b=>b.classList.remove('active'));
   const sec=document.getElementById('ws-'+name);
   if(sec)sec.classList.add('active');
   const link=document.querySelector(`.ws-sb-link[data-section="${name}"]`);
   if(link)link.classList.add('active');
+  const tab=document.querySelector(`.ws-tab[data-section="${name}"]`);
+  if(tab)tab.classList.add('active');
   if(name==='projects')renderDash();
   else if(name==='subscription')renderSubscriptionPage();
   else if(name==='settings')renderSettingsPage();
