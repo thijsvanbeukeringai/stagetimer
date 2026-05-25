@@ -457,6 +457,15 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 /* Company logo */
 .co-logo{height:26px;max-width:100px;object-fit:contain;border-radius:4px;display:none;flex-shrink:0;}
 .co-logo.vis{display:block;}
+/* Stagetimer brand mark — visible only on mobile fullscreen views (FOH/BS/TL).
+   Acts as a Home affordance: tapping returns to the dashboard via close handler. */
+.st-brand{display:none;align-items:center;gap:7px;color:#fff;text-decoration:none;font-family:var(--ff);
+  font-size:14px;font-weight:800;letter-spacing:-.02em;line-height:1;flex-shrink:0;
+  padding:6px 10px 6px 6px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  -webkit-tap-highlight-color:transparent;}
+.st-brand:active{background:rgba(255,255,255,.08);}
+.st-brand img{height:24px;width:24px;border-radius:5px;display:block;}
+.st-brand span{white-space:nowrap;}
 .co-logo-upload{width:28px;height:28px;border-radius:7px;border:1px dashed rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
 .co-logo-upload:hover{border-color:rgba(99,102,241,.5);color:#a5b4fc;background:rgba(99,102,241,.08);}
 .co-logo-thumb{height:22px;max-width:60px;object-fit:contain;border-radius:3px;cursor:pointer;}
@@ -711,16 +720,19 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 
   /* ═══════════════════════════════════════════════════════════════
      MOBILE FULLSCREEN HEADERS — FOH / Backstage / Timeline
-     Goal: stop the horizontal-overflow jam. Two rows, each ~44px tall,
-     everything finger-sized. Layout:
+     Locked structure:
 
-       Row 1: [stage select fills]  [clock]      [✕]
-       Row 2: [day dropdown fills]  [+ Show?]
+       Row 1: [ stagetimer logo ]                        [ ✕ ]
+       Row 2: [ stage select fills .............. ]  [ clock ]
+       Row 3: [ day dropdown ................... ]  [ + Show ]
+
+     Row 1 is invariant: brand left, close right, no exceptions.
+     Row 3's right cell is empty on Backstage / Timeline.
      ═══════════════════════════════════════════════════════════════ */
   #foh-hdr, #bs-hdr, #tl-hdr{
     display:grid;
-    grid-template-columns:1fr auto auto;
-    grid-template-rows:auto auto;
+    grid-template-columns:1fr auto;
+    grid-template-rows:auto auto auto;
     gap:8px;
     padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;
     height:auto;
@@ -728,18 +740,24 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
     flex-wrap:initial;
     align-items:center;
   }
-  /* Logo and big "Backstage · X" title eat space we don't have — hide them */
+  /* Show the Stagetimer brand on mobile — always row 1, column 1 */
+  #st-brand-foh, #st-brand-bs, #st-brand-tl{display:inline-flex;grid-column:1;grid-row:1;justify-self:start;}
+  /* Page-name and project logos are noise next to the brand on mobile */
   #foh-title, #bs-title, #tl-title{display:none;}
   #co-logo-bs, #co-logo-tl{display:none;}
-  /* Row 1: stage selector takes all available width */
-  #foh-ssel, #bs-ssel{grid-column:1;grid-row:1;min-height:44px;padding:8px 32px 8px 12px;font-size:15px;font-weight:700;width:100%;}
-  /* Timeline has no stage selector — leave column 1 empty (spacer eats it) */
+  /* Row 1, column 2: the close button */
+  #foh-close-btn, #bs-close-btn, #tl-close-btn{grid-column:2;grid-row:1;justify-self:end;min-height:44px;min-width:44px;padding:0;font-size:16px;justify-content:center;}
+  /* Row 2: stage select fills, clock right */
+  #foh-ssel, #bs-ssel{grid-column:1;grid-row:2;min-height:44px;padding:8px 32px 8px 12px;font-size:15px;font-weight:700;width:100%;}
   #tl-hdr-spacer{display:none;}
-  #foh-clock, #bs-clock, #tl-clock{grid-column:2;grid-row:1;margin:0;font-size:12px;text-align:right;}
-  #foh-close-btn, #bs-close-btn, #tl-close-btn{grid-column:3;grid-row:1;min-height:44px;min-width:44px;padding:0;font-size:14px;justify-content:center;}
-  /* Row 2: day picker spans whatever's left of the row */
-  #foh-dtabs, #bs-dtabs, #tl-dtabs{grid-column:1;grid-row:2;min-width:0;}
-  #foh-add-btn{grid-column:2/span 2;grid-row:2;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.4);color:#a5b4fc;justify-content:center;white-space:nowrap;}
+  #foh-clock, #bs-clock, #tl-clock{grid-column:2;grid-row:2;justify-self:end;margin:0;font-size:12px;text-align:right;min-width:64px;}
+  /* Timeline has no stage selector — place its clock on row 2 column 1 */
+  #tl-clock{grid-column:1/span 2;justify-self:end;}
+  /* Row 3: day picker fills, + Show (FOH only) on the right */
+  #foh-dtabs, #bs-dtabs, #tl-dtabs{grid-column:1;grid-row:3;min-width:0;}
+  /* Backstage / Timeline have no row-3 right cell so day picker spans full width */
+  #bs-dtabs, #tl-dtabs{grid-column:1/span 2;}
+  #foh-add-btn{grid-column:2;grid-row:3;justify-self:end;min-height:44px;padding:0 16px;font-size:13px;font-weight:800;background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.4);color:#a5b4fc;justify-content:center;white-space:nowrap;}
 
   /* Modals */
   #share-modal{width:95vw;padding:18px;}
@@ -2464,6 +2482,7 @@ function renderTbar(){
 <!-- FOH -->
 <div id="foh">
   <div id="foh-hdr">
+    <a class="st-brand" id="st-brand-foh" href="#" onclick="closeFOH();return false;" aria-label="Stagetimer home"><img src="/app-icon.svg" alt=""><span>stagetimer</span></a>
     <div id="foh-title">FOH · <span id="foh-sname">-</span></div>
     <div id="foh-dtabs"></div>
     <select id="foh-ssel" class="hsel"></select>
@@ -2999,6 +3018,7 @@ function renderTbar(){
 <!-- BACKSTAGE -->
 <div id="bs">
   <div id="bs-hdr">
+    <a class="st-brand" id="st-brand-bs" href="#" onclick="closeBS();return false;" aria-label="Stagetimer home"><img src="/app-icon.svg" alt=""><span>stagetimer</span></a>
     <img class="co-logo" id="co-logo-bs" alt="logo">
     <div id="bs-title">🎭 Backstage · <span id="bs-sname">-</span></div>
     <div id="bs-dtabs"></div>
@@ -3012,6 +3032,7 @@ function renderTbar(){
 <!-- TIMELINE -->
 <div id="tl">
   <div id="tl-hdr">
+    <a class="st-brand" id="st-brand-tl" href="#" onclick="closeTL();return false;" aria-label="Stagetimer home"><img src="/app-icon.svg" alt=""><span>stagetimer</span></a>
     <img class="co-logo" id="co-logo-tl" alt="logo">
     <div id="tl-title" style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;">▦ Timeline</div>
     <div id="tl-dtabs"></div>
