@@ -6,6 +6,28 @@
 <title>Stagetimer · Realtime production timing for every event</title>
 <meta name="description" content="Realtime production planning for festivals, conferences and church services. From backstage to FOH, everyone on the same schedule. From €12.95 per month.">
 <meta name="theme-color" content="#ffffff">
+<!-- PWA: when the landing page is added to the home screen, launch the
+     icon full-screen and jump straight to /app (real product, no
+     marketing chrome). Status bar follows page background. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stagetimer">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/stagetimer-logo.png">
+<link rel="icon" type="image/png" href="/stagetimer-logo.png">
+<script>
+// If launched as installed PWA (standalone), bypass the marketing page
+// entirely. iOS reports it via navigator.standalone, others via the
+// display-mode media query.
+(function(){
+  var isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+  var iosStandalone = window.navigator.standalone === true;
+  if (isStandalone || iosStandalone) {
+    location.replace('/app');
+  }
+})();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{

@@ -3,7 +3,7 @@
   "short_name": "Stagetimer",
   "description": "Live show timing for production teams. Backstage, FOH, and stage views — always in sync.",
   "start_url": "/app",
-  "scope": "/app",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0b0b0e",
