@@ -698,8 +698,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #admin-body{padding:14px;}
   .admin-cols{grid-template-columns:1fr;}
 
-  /* Backstage */
-  #bs-hdr{padding:0 12px;gap:6px;height:auto;min-height:50px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px;}
+  /* Backstage rows */
   #bs-body{padding:10px 12px;}
   .bs-row{padding:16px 14px 80px!important;margin-bottom:6px;}
   .bs-row-top{flex-direction:row!important;align-items:center!important;gap:12px!important;margin-bottom:12px!important;}
@@ -710,11 +709,37 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .bs-cd-lbl{font-size:10px!important;margin-bottom:2px!important;}
   .bs-cd{font-size:clamp(36px,11vw,52px)!important;line-height:1!important;}
 
-  /* Timeline header */
-  #tl-hdr{padding:0 10px;gap:6px;}
+  /* ═══════════════════════════════════════════════════════════════
+     MOBILE FULLSCREEN HEADERS — FOH / Backstage / Timeline
+     Goal: stop the horizontal-overflow jam. Two rows, each ~44px tall,
+     everything finger-sized. Layout:
 
-  /* FOH header */
-  #foh-hdr{padding:0 12px;gap:6px;}
+       Row 1: [stage select fills]  [clock]      [✕]
+       Row 2: [day dropdown fills]  [+ Show?]
+     ═══════════════════════════════════════════════════════════════ */
+  #foh-hdr, #bs-hdr, #tl-hdr{
+    display:grid;
+    grid-template-columns:1fr auto auto;
+    grid-template-rows:auto auto;
+    gap:8px;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;
+    height:auto;
+    overflow:visible;
+    flex-wrap:initial;
+    align-items:center;
+  }
+  /* Logo and big "Backstage · X" title eat space we don't have — hide them */
+  #foh-title, #bs-title, #tl-title{display:none;}
+  #co-logo-bs, #co-logo-tl{display:none;}
+  /* Row 1: stage selector takes all available width */
+  #foh-ssel, #bs-ssel{grid-column:1;grid-row:1;min-height:44px;padding:8px 32px 8px 12px;font-size:15px;font-weight:700;width:100%;}
+  /* Timeline has no stage selector — leave column 1 empty (spacer eats it) */
+  #tl-hdr-spacer{display:none;}
+  #foh-clock, #bs-clock, #tl-clock{grid-column:2;grid-row:1;margin:0;font-size:12px;text-align:right;}
+  #foh-close-btn, #bs-close-btn, #tl-close-btn{grid-column:3;grid-row:1;min-height:44px;min-width:44px;padding:0;font-size:14px;justify-content:center;}
+  /* Row 2: day picker spans whatever's left of the row */
+  #foh-dtabs, #bs-dtabs, #tl-dtabs{grid-column:1;grid-row:2;min-width:0;}
+  #foh-add-btn{grid-column:2/span 2;grid-row:2;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.4);color:#a5b4fc;justify-content:center;white-space:nowrap;}
 
   /* Modals */
   #share-modal{width:95vw;padding:18px;}
@@ -2439,12 +2464,12 @@ function renderTbar(){
 <!-- FOH -->
 <div id="foh">
   <div id="foh-hdr">
-    <div id="foh-title">FOH - <span id="foh-sname">-</span></div>
-    <div style="display:flex;gap:5px;" id="foh-dtabs"></div>
+    <div id="foh-title">FOH · <span id="foh-sname">-</span></div>
+    <div id="foh-dtabs"></div>
     <select id="foh-ssel" class="hsel"></select>
     <div id="foh-clock"></div>
-    <button class="fhbtn" onclick="openDrawer(null)">+ Show</button>
-    <button class="fhbtn" onclick="closeFOH()">✕ Close</button>
+    <button class="fhbtn" id="foh-add-btn" onclick="openDrawer(null)">+ Show</button>
+    <button class="fhbtn" id="foh-close-btn" onclick="closeFOH()">✕</button>
   </div>
   <div id="foh-body"><div id="foh-col"><div id="foh-col-body"></div></div></div>
 </div>
@@ -2975,11 +3000,11 @@ function renderTbar(){
 <div id="bs">
   <div id="bs-hdr">
     <img class="co-logo" id="co-logo-bs" alt="logo">
-    <div id="bs-title">🎭 Backstage - <span id="bs-sname">-</span></div>
-    <div style="display:flex;gap:5px;" id="bs-dtabs"></div>
+    <div id="bs-title">🎭 Backstage · <span id="bs-sname">-</span></div>
+    <div id="bs-dtabs"></div>
     <select id="bs-ssel" class="hsel" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
     <div id="bs-clock"></div>
-    <button class="bshbtn" id="bs-close-btn" onclick="closeBS()">✕ Close</button>
+    <button class="bshbtn" id="bs-close-btn" onclick="closeBS()">✕</button>
   </div>
   <div id="bs-body"></div>
 </div>
@@ -2988,11 +3013,11 @@ function renderTbar(){
 <div id="tl">
   <div id="tl-hdr">
     <img class="co-logo" id="co-logo-tl" alt="logo">
-    <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;">▦ Timeline</div>
-    <div style="display:flex;gap:5px;flex-shrink:0;" id="tl-dtabs"></div>
-    <div style="flex:1;"></div>
+    <div id="tl-title" style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;">▦ Timeline</div>
+    <div id="tl-dtabs"></div>
+    <div id="tl-hdr-spacer" style="flex:1;"></div>
     <div id="tl-clock" style="font-family:var(--ffm);font-size:13px;color:rgba(255,255,255,.3);flex-shrink:0;margin-right:4px;"></div>
-    <button class="fhbtn" id="tl-close-btn" onclick="closeTL()">✕ Close</button>
+    <button class="fhbtn" id="tl-close-btn" onclick="closeTL()">✕</button>
   </div>
   <div id="tl-scroll"><div id="tl-content"></div></div>
 </div>
