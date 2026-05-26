@@ -2035,7 +2035,9 @@ async function _pushProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   setSyncDot('ing');
   try{
-    const{error}=await supa.from('projects').upsert([{id:proj.id,name:proj.name,company_id:proj.companyId||'',created_at:proj.createdAt||new Date().toISOString(),created_by:proj.createdBy||null,data:proj.data}]);
+    // created_at is a bigint (ms epoch). Never fall back to an ISO string -
+    // that would fail the column type check and silently break the push.
+    const{error}=await supa.from('projects').upsert([{id:proj.id,name:proj.name,company_id:proj.companyId||null,created_at:proj.createdAt||Date.now(),created_by:proj.createdBy||null,data:proj.data}]);
     if(error)throw error;
     _pendingPush[id]=false;
     setSyncDot('ok');
@@ -5624,20 +5626,42 @@ function showLimitModal(chk){
 function closeLimitModal(){const ov=document.getElementById('limit-modal-ov');if(ov)ov.classList.remove('open');}
 function closeProjModal(){document.getElementById('proj-modal-ov').classList.remove('open');}
 async function createProject(){
-  const name=document.getElementById('pm-name').value.trim();if(!name)return;
-  const companyId=document.getElementById('pm-co').value;
-  const chk=canCreateProject(companyId);
-  if(!chk.ok){closeProjModal();showLimitModal(chk);return;}
-  const id=uid();
-  const firstDayId=uid();
-  const emptyData={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:firstDayId,days:[{id:firstDayId,name:'Day 1'}],timerMode:'live'};
-  const createdBy=CURRENT_USER?.id||null;
-  const proj={id,name,companyId,createdAt:Date.now(),createdBy,data:emptyData};
-  const{error}=await supa.from('projects').insert([{id,name,company_id:companyId||'',created_at:new Date(proj.createdAt).toISOString(),created_by:createdBy,data:emptyData}]);
-  if(error){alert('Failed to create project: '+error.message);return;}
-  APP.projects.push(proj);
-  saveAPP();
-  closeProjModal();renderDash();
+  const btn=document.querySelector('#proj-modal .btn-p');
+  try{
+    const nameEl=document.getElementById('pm-name');
+    if(!nameEl){console.error('[createProject] #pm-name not found');alert('Project name field missing - please reload.');return;}
+    const name=nameEl.value.trim();
+    if(!name){nameEl.focus();return;}
+    const coEl=document.getElementById('pm-co');
+    const companyId=coEl?coEl.value:(CURRENT_USER?.companyId||'');
+    const chk=canCreateProject(companyId);
+    if(!chk.ok){closeProjModal();showLimitModal(chk);return;}
+    if(btn){btn.disabled=true;btn.textContent='Creating...';}
+    const id=uid();
+    const firstDayId=uid();
+    const emptyData={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:firstDayId,days:[{id:firstDayId,name:'Day 1'}],timerMode:'live'};
+    const createdBy=CURRENT_USER?.id||null;
+    const createdAtMs=Date.now();
+    const proj={id,name,companyId,createdAt:createdAtMs,createdBy,data:emptyData};
+    // projects.created_at is a bigint (ms epoch), NOT a timestamp. Insert
+    // the raw number; previous ISO-string code broke creation entirely.
+    const row={id,name,company_id:companyId||null,created_at:createdAtMs,created_by:createdBy,data:emptyData};
+    console.log('[createProject] inserting',row);
+    const{error}=await supa.from('projects').insert([row]);
+    if(error){
+      console.error('[createProject] supabase error',error);
+      alert('Failed to create project: '+(error.message||JSON.stringify(error)));
+      return;
+    }
+    APP.projects.push(proj);
+    saveAPP();
+    closeProjModal();renderDash();
+  }catch(e){
+    console.error('[createProject] threw',e);
+    alert('Failed to create project: '+(e?.message||String(e)));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Create';}
+  }
 }
 
 // ── Admin
