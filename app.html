@@ -4760,7 +4760,9 @@ function adjustLiveShow(minutes){
   }
   // Write the live show's new end time. Start stays the same.
   _writeShowTimes(liveShow,liveStart,newLiveEnd);
-  save();
+  // Immediate push - viewer screens see the new times within ~500ms instead
+  // of waiting the full 300ms debounce + upsert + polling roundtrip.
+  save({immediate:true});
   renderAll();
   if(document.getElementById('foh')?.classList.contains('open'))renderFOH();
   if(document.getElementById('bs')?.classList.contains('open'))renderBS();
@@ -6881,12 +6883,13 @@ async function loadPublicView(){
     if(svExit)svExit.style.display='none';
     openSV();
     // Floor cues, blackout, mode toggles - any operator-side change must
-    // reach this Stage View in under a second. Same polling + realtime
-    // pattern as the other public share modes.
+    // reach this Stage View in under a second. Realtime is the primary
+    // signal; the 1-second polling is a belt-and-braces fallback that
+    // also drives overlay/blackout repaint in the same cycle.
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderSV();}}catch(e){}
-    },2000);
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderSV();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
     setupRealtime();
   } else if(PUBLIC_MODE==='timeline'){
     document.getElementById('app').style.display='none';
@@ -6911,8 +6914,8 @@ async function loadPublicView(){
         const keepDay=G.activeDay;
         loadG();
         if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-        renderTLDtabsPublic();renderTL();}}catch(e){}
-    },2000);
+        renderTLDtabsPublic();renderTL();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
     setupRealtime();
   } else if(PUBLIC_MODE==='overview'){
     document.getElementById('app').style.display='none';
@@ -6926,8 +6929,8 @@ async function loadPublicView(){
     openOV();
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderOV();}}catch(e){}
-    },2000);
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderOV();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
     setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
     // Standalone backstage: hide main app, hide controls
@@ -6946,8 +6949,8 @@ async function loadPublicView(){
     // Realtime updates
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderBS();}}catch(e){}
-    },2000);
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderBS();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
     setupRealtime();
   } else if(PUBLIC_MODE==='foh'){
     // Standalone FOH: read-only programme list for a specific stage.
@@ -6967,8 +6970,8 @@ async function loadPublicView(){
     // Realtime updates
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();}}catch(e){}
-    },2000);
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
     setupRealtime();
   }
   setInterval(tick,250);
