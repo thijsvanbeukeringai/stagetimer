@@ -4876,6 +4876,9 @@ function renderCueStatus(){
 // Floor-cue banner overlay. Lives in <body> so it can appear on every viewer
 // route: Stage View / Backstage / FOH (operator overlays AND their public
 // share-link versions). Hidden on the dashboard / Timeline / Overview.
+// Track last-rendered cue so we don't restart the pulse animation 4x per
+// second by re-setting className on every tick.
+let _cueLastKey='';
 function _renderCueOverlay(){
   const overlay=document.getElementById('cue-overlay');if(!overlay)return;
   const c=G&&G.cue;
@@ -4889,6 +4892,9 @@ function _renderCueOverlay(){
   // Cue is scoped to the stage it was sent for (G.activeStage at send time).
   const matchStage=!c||!c.stageId||c.stageId===G.activeStage;
   const visible=onViewerRoute&&_cueActive(c)&&matchStage;
+  const key=visible?(c.text+'|'+(c.color||'amber')+'|'+(c.sentAt||0)):'';
+  if(key===_cueLastKey)return;        // nothing changed - leave the DOM alone
+  _cueLastKey=key;
   if(!visible){overlay.className='';overlay.textContent='';return;}
   overlay.textContent=c.text;
   overlay.className='on cue-'+(c.color||'amber');
