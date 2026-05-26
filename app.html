@@ -78,6 +78,8 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 /* Dropdown menus */
 .dd{position:relative;flex-shrink:0;}
 .dd-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:200px;display:none;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.45);}
+/* Mobile native <select> for the dashboard day picker — hidden on desktop. */
+.day-select-dash{display:none;}
 .dd.open .dd-menu{display:block;}
 .dd-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:6px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;background:transparent;border:none;width:100%;text-align:left;font-family:var(--ff);}
 .dd-item:hover{background:var(--s3);}
@@ -627,12 +629,16 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   /* Row 2: stage select fills, day dropdown right — heights matched (48px) */
   #stage-sel{order:5;flex:1;min-width:0;font-size:15px;font-weight:700;
     min-height:48px;height:48px;padding:0 32px 0 12px;border-radius:10px;}
-  #hdr-daywrap{order:6;overflow:visible;flex-shrink:0;}
-  #hdr-daywrap .hbtn{min-height:48px;height:48px;padding:0 12px;border-radius:10px;font-size:14px;font-weight:700;}
-  /* Day dropdown menu must anchor to the right edge of the button, otherwise
-     it opens to the right and overflows the viewport on mobile.
-     !important overrides the inline left:0/right:auto from the markup. */
-  #day-dd .dd-menu{left:auto !important;right:0 !important;min-width:200px;max-width:calc(100vw - 24px);}
+  #hdr-daywrap{order:6;overflow:visible;flex-shrink:0;display:flex;}
+  /* On mobile we swap the button-style dropdown for a native <select> —
+     matches the FOH/BS/TL day pickers exactly and has no overflow risk. */
+  #day-dd{display:none !important;}
+  .day-select-dash{display:block;min-height:48px;height:48px;padding:0 38px 0 14px;
+    font-size:15px;font-weight:700;border-radius:10px;color:#fff;font-family:var(--ff);
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+    -webkit-appearance:none;appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='rgba(255,255,255,0.6)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;background-size:12px 8px;}
   /* Hide everything else from header on mobile */
   #mob-hdr-cd,#admin-dd,#user-dd,
   #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
@@ -2316,6 +2322,9 @@ function renderTbar(){
         </button>
         <div class="dd-menu" id="day-dd-menu" style="min-width:240px;max-width:calc(100vw - 24px);"></div>
       </div>
+      <!-- Mobile: native <select> mirrors the dropdown above. CSS hides one
+           or the other per viewport so styling stays consistent with FOH/BS. -->
+      <select id="day-sel-mobile" class="day-select-dash" aria-label="Pick day"></select>
       <div id="day-tabs" style="display:none;"></div>
     </div>
     <div style="flex:1;" id="hdr-spacer1"></div>
@@ -3330,7 +3339,7 @@ function renderHeader(){
   sel.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
   sel.value=G.activeStage;sel.onchange=()=>{G.activeStage=sel.value;M.idx=0;mReset();save();renderAll();};
 
-  // Day dropdown
+  // Day dropdown (desktop button-menu)
   const activeDay=getDays().find(d=>d.id===G.activeDay)||getDays()[0];
   const dayLbl=document.getElementById('day-dd-label');
   if(dayLbl)dayLbl.textContent=activeDay?activeDay.name:'Day';
@@ -3345,6 +3354,12 @@ function renderHeader(){
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Manage days
       </button>`;
+  }
+  // Day dropdown (mobile native <select>)
+  const daySel=document.getElementById('day-sel-mobile');
+  if(daySel){
+    daySel.innerHTML=getDays().map(d=>`<option value="${d.id}"${d.id===G.activeDay?' selected':''}>${escH(d.name)}</option>`).join('');
+    daySel.onchange=()=>setDay(daySel.value);
   }
 
   // FOH selects
