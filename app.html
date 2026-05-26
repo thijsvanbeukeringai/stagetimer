@@ -629,7 +629,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
     min-height:48px;height:48px;padding:0 32px 0 12px;border-radius:10px;}
   #hdr-daywrap{order:6;overflow:visible;flex-shrink:0;}
   #hdr-daywrap .hbtn{min-height:48px;height:48px;padding:0 12px;border-radius:10px;font-size:14px;font-weight:700;}
-  #day-dd .dd-menu{left:auto;right:0;}
+  /* Day dropdown menu must anchor to the right edge of the button, otherwise
+     it opens to the right and overflows the viewport on mobile.
+     !important overrides the inline left:0/right:auto from the markup. */
+  #day-dd .dd-menu{left:auto !important;right:0 !important;min-width:200px;max-width:calc(100vw - 24px);}
   /* Hide everything else from header on mobile */
   #mob-hdr-cd,#admin-dd,#user-dd,
   #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
@@ -2311,7 +2314,7 @@ function renderTbar(){
           <span id="day-dd-label" class="hbtn-lbl">-</span>
           <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         </button>
-        <div class="dd-menu" id="day-dd-menu" style="left:0;right:auto;min-width:240px;"></div>
+        <div class="dd-menu" id="day-dd-menu" style="min-width:240px;max-width:calc(100vw - 24px);"></div>
       </div>
       <div id="day-tabs" style="display:none;"></div>
     </div>
