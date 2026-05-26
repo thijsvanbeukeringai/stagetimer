@@ -648,20 +648,28 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
      panel below already has a "+ New show" button. Hide it here. */
   #hdr-add-show-btn{display:none!important;}
   #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
-  /* Bottom nav */
+  /* Bottom nav — fixed, polished, all-flat-icon */
   #mob-nav{
     display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;
-    background:var(--s1);border-top:1px solid var(--border);
-    padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    background:rgba(11,11,14,.92);backdrop-filter:saturate(1.4) blur(20px);
+    -webkit-backdrop-filter:saturate(1.4) blur(20px);
+    border-top:1px solid rgba(255,255,255,.06);
+    padding:8px 4px calc(8px + env(safe-area-inset-bottom));
     justify-content:space-around;
   }
   .mob-nav-btn{
-    display:flex;flex-direction:column;align-items:center;gap:3px;
-    background:none;border:none;color:var(--sub);font-family:var(--ff);
-    font-size:9px;font-weight:700;cursor:pointer;padding:4px 6px;border-radius:8px;
-    flex:1;letter-spacing:.03em;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    background:none;border:none;color:rgba(255,255,255,.45);
+    font-family:var(--ff);font-size:10px;font-weight:600;letter-spacing:.01em;
+    cursor:pointer;padding:6px 4px;border-radius:10px;
+    flex:1;min-width:0;-webkit-tap-highlight-color:transparent;
+    transition:color .15s,background .15s;
   }
-  .mob-nav-btn:active{background:var(--s2);}
+  .mob-nav-btn svg{width:22px;height:22px;display:block;flex-shrink:0;}
+  .mob-nav-btn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .mob-nav-btn:active{background:rgba(255,255,255,.05);color:#fff;}
+  .mob-nav-btn.active{color:#fff;}
+  .mob-nav-btn.active svg{color:#a5b4fc;}
   /* Add bottom padding to body content so it's not hidden behind nav */
   #body{padding-bottom:60px;}
 
@@ -2405,11 +2413,26 @@ function renderTbar(){
 
   <!-- Mobile bottom navigation (hidden on desktop) -->
   <div id="mob-nav">
-    <button class="mob-nav-btn" onclick="openBS()">🎭<span>Backstage</span></button>
-    <button class="mob-nav-btn" onclick="openFOH()">📺<span>FOH</span></button>
-    <button class="mob-nav-btn" onclick="openSV()">⛶<span>Stage View</span></button>
-    <button class="mob-nav-btn" onclick="openTL()">▦<span>Timeline</span></button>
-    <button class="mob-nav-btn" onclick="goToDash()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Projects</span></button>
+    <button class="mob-nav-btn" data-nav="bs" onclick="openBS()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 8a5 5 0 0 1 10 0v1.5a5 5 0 1 1-10 0V8z" opacity=".55"/><path d="M9 11a5 5 0 0 1 10 0v1.5a5 5 0 1 1-10 0V11z"/></svg>
+      <span>Backstage</span>
+    </button>
+    <button class="mob-nav-btn" data-nav="foh" onclick="openFOH()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="13" rx="2.5"/><rect x="7" y="19" width="10" height="1.6" rx=".8"/></svg>
+      <span>FOH</span>
+    </button>
+    <button class="mob-nav-btn" data-nav="sv" onclick="openSV()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h6v2H5v4H3V3zm12 0h6v6h-2V5h-4V3zM3 15h2v4h4v2H3v-6zm16 0h2v6h-6v-2h4v-4z"/><rect x="7" y="8" width="10" height="8" rx="1.2"/></svg>
+      <span>Stage View</span>
+    </button>
+    <button class="mob-nav-btn" data-nav="tl" onclick="openTL()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="6" height="6" rx="1.2"/><rect x="11" y="5" width="10" height="6" rx="1.2"/><rect x="3" y="13" width="10" height="6" rx="1.2"/><rect x="15" y="13" width="6" height="6" rx="1.2"/></svg>
+      <span>Timeline</span>
+    </button>
+    <button class="mob-nav-btn" data-nav="dash" onclick="goToDash()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 2 10v11a1 1 0 0 0 1 1h6v-7h6v7h6a1 1 0 0 0 1-1V10L12 2z"/></svg>
+      <span>Projects</span>
+    </button>
   </div>
 
   <div id="body">
@@ -3966,12 +3989,25 @@ function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='
 
 // ══ OPEN/CLOSE screens
 function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));}
-function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();}
-function closeFOH(){document.getElementById('foh').classList.remove('open');}
-function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();}
-function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();}
-function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();}
-function closeSV(){document.getElementById('sv').classList.remove('open');_releaseWakeLockIfIdle();}
+// Sync the bottom-nav active state with whichever overlay is currently open.
+// Called from open/close + goToDash so the highlighted tab always reflects
+// the view the user is on.
+function _syncMobNavActive(){
+  const map={bs:'bs',foh:'foh',sv:'sv',tl:'tl'};
+  let active='dash';
+  for(const id of Object.keys(map)){
+    if(document.getElementById(id)?.classList.contains('open')){active=map[id];break;}
+  }
+  document.querySelectorAll('#mob-nav .mob-nav-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.nav===active);
+  });
+}
+function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();_syncMobNavActive();}
+function closeFOH(){document.getElementById('foh').classList.remove('open');_syncMobNavActive();}
+function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();_syncMobNavActive();}
+function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
+function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();_syncMobNavActive();}
+function closeSV(){document.getElementById('sv').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 
 // ── Fullscreen API: when running in a browser (not installed as PWA),
 // auto-request fullscreen on the first user gesture. Particularly important
@@ -5650,8 +5686,9 @@ function openTL(){
     const sc=document.getElementById('tl-scroll');
     sc.scrollLeft=Math.max(0,nowX-sc.clientWidth/2);
   });
+  _syncMobNavActive();
 }
-function closeTL(){document.getElementById('tl').classList.remove('open');}
+function closeTL(){document.getElementById('tl').classList.remove('open');_syncMobNavActive();}
 
 function renderTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
@@ -5835,7 +5872,7 @@ function tickTL(){
 
 // Back to dashboard button (in header)
 function goToDash(){
-  save();showDash();
+  save();showDash();_syncMobNavActive();
 }
 
 // ══ CURRENT USER & ROLES
