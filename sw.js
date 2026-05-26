@@ -5,7 +5,7 @@
 // (festival wifi blip, mid-event reconnect), and only for the app shell.
 // Supabase / Stripe / OneSignal calls pass through untouched.
 
-const SW_VERSION = 'stagetimer-sw-v3';
+const SW_VERSION = 'stagetimer-sw-v4';
 const APP_SHELL_CACHE = SW_VERSION + '-shell';
 
 // Only these GET requests are intercepted + cached. Everything else (Supabase,
