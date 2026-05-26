@@ -7304,6 +7304,14 @@ async function _startApp(session){
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
+  // Fast path: incognito / signed-out users have no auth tokens in
+  // localStorage. Don't make them stare at a loading spinner while we
+  // wait for INITIAL_SESSION to confirm what we already know - show the
+  // login form immediately. The onAuthStateChange listener below stays
+  // wired up so a successful sign-in still kicks off _tryStartFromSession.
+  const _hasBackup=!!localStorage.getItem(ST_AUTH);
+  const _hasSbSession=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
+  if(!_hasBackup&&!_hasSbSession){_showLogin();}
   // Hard fallback: never let the loader hang forever (only for authenticated flow).
   // CRITICAL: don't bounce a session-holding user to login just because the network is slow.
   // If a Supabase session or our backup exists in localStorage, keep waiting for INITIAL_SESSION
