@@ -599,34 +599,35 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 
 /* ── RESPONSIVE ── */
 @media(max-width:700px){
-  /* Header: two rows */
-  /* Header: two clean rows */
-  #hdr{flex-wrap:wrap;height:auto;padding:calc(env(safe-area-inset-top) + 8px) 12px 6px;gap:6px;overflow-x:visible;}
-  /* Row 1: logo + sync + spacer + clock */
-  #co-logo-main{order:1;}
-  #logo{order:2;}
-  #sync-dot{order:3;}
-  #hdr-vsep1{display:none;}
-  #hdr-spacer1{order:4;flex:1;}
-  #clock-hdr{order:5;font-size:12px;}
-  #mob-hdr-break{display:block;width:100%;height:0;order:6;}
-  /* Row 2: stage select + day tabs */
-  #stage-sel{order:7;flex:1;min-width:0;font-size:12px;}
-  #hdr-daywrap{order:8;overflow:visible;flex-shrink:0;}
-  /* Day dropdown menu needs to open downward, not be clipped by header bounds.
-     On mobile we anchor it relative to viewport so the right edge stays on-screen. */
+  /* Header: three clean rows
+     Row 1: [ ⬛ stagetimer wordmark ]                  [ HH:MM:SS ]
+     Row 2: [ stage select ............ ]  [ day dropdown ]
+     Row 3: [ + Add show ........................................ ]
+  */
+  #hdr{flex-wrap:wrap;height:auto;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;gap:8px;overflow-x:visible;align-items:center;}
+  /* Hide the old logo / project logo / sync dot — brand element replaces them */
+  #logo, #co-logo-main, #sync-dot, #hdr-vsep1{display:none!important;}
+  /* Brand: row 1 left */
+  #st-brand-dash{display:inline-flex;order:1;flex-shrink:0;}
+  /* Row 1 spacer pushes the clock to the right */
+  #hdr-spacer1{order:2;flex:1;}
+  /* Clock: row 1 right — same big tabular-nums treatment as the overlay views */
+  #clock-hdr{display:block!important;order:3;font-size:18px;font-weight:700;color:#fff;
+    font-family:var(--ffm);font-variant-numeric:tabular-nums;letter-spacing:.02em;
+    text-align:right;min-width:96px;}
+  /* Break to row 2 */
+  #mob-hdr-break{display:block;width:100%;height:0;order:4;}
+  /* Row 2: stage select fills, day dropdown right */
+  #stage-sel{order:5;flex:1;min-width:0;font-size:15px;font-weight:700;min-height:44px;padding:8px 32px 8px 12px;}
+  #hdr-daywrap{order:6;overflow:visible;flex-shrink:0;}
   #day-dd .dd-menu{left:auto;right:0;}
   /* Hide everything else from header on mobile */
   #mob-hdr-cd,#admin-dd,#user-dd,
   #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
   .vsep{display:none!important;}
   #logo-name{display:none;}
-  #clock-hdr{display:none!important;}
-  /* "+ Add show" goes to its own full-width row below the stage/day selector
-     so it can't be clipped by the logos on row 1 */
-  #hdr-add-show-btn{display:flex!important;order:9;flex-basis:100%;justify-content:center;margin-top:4px;}
-  /* Project logo shrinks on mobile so it doesn't crowd out the brand logo */
-  #co-logo-main{max-height:22px;max-width:80px;}
+  /* "+ Add show" full-width on row 3 */
+  #hdr-add-show-btn{display:flex!important;order:7;flex-basis:100%;justify-content:center;margin-top:2px;min-height:44px;}
   #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
   /* Bottom nav */
   #mob-nav{
@@ -2274,8 +2275,9 @@ function renderTbar(){
 <!-- ══ APP ══ -->
 <div id="app">
   <div id="hdr">
-    <!-- Row 1 (mobile): logo, sync, day tabs, clock -->
+    <!-- Row 1 (mobile): brand left, clock right; (desktop): unchanged after brand -->
     <img class="co-logo" id="co-logo-main" alt="logo">
+    <a class="st-brand" id="st-brand-dash" href="#" onclick="goToDash();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
     <div id="logo" style="cursor:pointer;" onclick="goToDash()" title="Back to dashboard"><img id="logo-icon" src="stagetimer-logo.png" alt="Stagetimer"></div>
     <div id="sync-dot" title="Sync status"></div>
     <div class="vsep" id="hdr-vsep1"></div>
