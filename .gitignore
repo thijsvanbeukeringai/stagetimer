@@ -4,3 +4,11 @@
 .env.*.local
 .DS_Store
 supabase/.temp/
+
+# Local design/reference assets - not part of the shipped app
+inspiration/
+Stage Timer *.png
+stagetimer logo nieuw.png
+
+# Third-party SDK bundles dropped into the repo by accident
+*.zip
