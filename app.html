@@ -1839,6 +1839,12 @@ async function loadAPPRemote(){
       setupToken:c.setup_token,
       extraSeats:c.extra_seats||0,
       seatSubscriptionItemId:c.seat_subscription_item_id,
+      // 2026-05-26 pricing model
+      planSlug:c.plan_slug||null,
+      liveStagesLimit:c.live_stages_limit,        // null = unlimited
+      liveStagesOverride:c.live_stages_override,  // admin override (wins over limit)
+      passSlug:c.pass_slug||null,
+      passExpiresAt:c.pass_expires_at||null,
     }));
     if(usrsRes.data)APP.users=usrsRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id}));
     // Projects: keep cache on error (never wipe the user's data on transient failure),
@@ -4328,9 +4334,64 @@ function renderStageList(){
       <button onclick="delStage('${s.id}')" style="background:none;border:none;color:var(--sub);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:all .12s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--sub)'">×</button>
     </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">No stages created yet.</div>`;
 }
+// ═════════════════════════════════════════════════════════════════════════
+// STAGE LIMIT — pricing-plan enforcement (2026-05-26)
+//
+// Resolves the effective number of stages a workspace may create in the
+// current project, factoring in (in this order):
+//   1. super_admin           → always unlimited
+//   2. active event pass     → unlimited for the duration of the pass
+//   3. admin per-company override (liveStagesOverride) when set
+//   4. plan default          (liveStagesLimit)
+//   5. fallback              → 1
+// A return value of `null` means "unlimited".
+// ═════════════════════════════════════════════════════════════════════════
+function _passActive(co){
+  if(!co?.passExpiresAt)return false;
+  return new Date(co.passExpiresAt).getTime() > Date.now();
+}
+function _effectiveStageLimit(co){
+  // 1. Super admin: always unlimited.
+  if(CURRENT_USER?.role==='super_admin')return null;
+  if(!co)return 1;
+  // 2. Admin override wins over everything else (0 = locked, X = X).
+  if(co.liveStagesOverride!=null)return co.liveStagesOverride;
+  // 3. Active event pass: unlimited for its duration.
+  if(_passActive(co))return null;
+  // 4. Active or past-due subscription: use the limit denormalised by the webhook.
+  //    `null` here means unlimited (festival / pro-legacy / business-legacy).
+  const subActive=co.subscriptionStatus==='active'||co.subscriptionStatus==='past_due';
+  if(subActive&&co.planSlug){
+    return (co.liveStagesLimit===null||co.liveStagesLimit===undefined)?null:co.liveStagesLimit;
+  }
+  // 5. No active sub and no active pass → locked. The admin can lift this with
+  //    a liveStagesOverride if they want to keep a customer running.
+  return 0;
+}
+function _myCompanyRow(){
+  if(!CURRENT_USER?.companyId)return null;
+  return (APP.companies||[]).find(c=>c.id===CURRENT_USER.companyId)||null;
+}
+// Returns {allowed:boolean, limit:int|null, current:int, reason?:string}
+function checkStageLimit(){
+  const co=_myCompanyRow();
+  const limit=_effectiveStageLimit(co);
+  const current=(G.stages||[]).length;
+  if(limit===null)return{allowed:true,limit:null,current};
+  if(current<limit)return{allowed:true,limit,current};
+  const planLabel={freelancer:'Freelancer',team:'Team',festival:'Festival'}[co?.planSlug]||co?.planSlug||'your plan';
+  return{
+    allowed:false,limit,current,
+    reason:`Your ${planLabel} plan includes ${limit} live stage${limit===1?'':'s'}. Remove a stage or upgrade to add more.`
+  };
+}
+
 function addStage(){
   const name=document.getElementById('sm-name').value.trim();if(!name)return;
   const emoji=document.getElementById('sm-emoji').value.trim()||'🎵';
+  // Enforce stage limit BEFORE pushing to local state (and certainly before save()).
+  const limCheck=checkStageLimit();
+  if(!limCheck.allowed){alert(limCheck.reason);return;}
   const id=uid();
   if(!G.stages)G.stages=[];
   G.stages.push({id,name,emoji});
@@ -4419,7 +4480,11 @@ function importLineup(data){
       for(const row of byDate[dateStr]){
         const stageName=(row.stage||'').trim();if(!stageName)continue;
         let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
-        if(!stage){stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;}
+        if(!stage){
+          const lim=checkStageLimit();
+          if(!lim.allowed){alert(lim.reason+' Skipping new stage "'+stageName+'".');continue;}
+          stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;
+        }
         // Extract HH:MM:SS from ISO datetime
         const start=(row.start.includes('T')?row.start.split('T')[1]:'00:00')+':00';
         const end=(row.end.includes('T')?row.end.split('T')[1]:'00:00')+':00';
@@ -4451,7 +4516,11 @@ function importLineup(data){
       for(const stageBlock of stageList){
         const stageName=(stageBlock.stage||'').trim();if(!stageName)continue;
         let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
-        if(!stage){stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;}
+        if(!stage){
+          const lim=checkStageLimit();
+          if(!lim.allowed){alert(lim.reason+' Skipping new stage "'+stageName+'".');continue;}
+          stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;
+        }
         for(const act of (stageBlock.acts||[])){
           if(!act.artist||!act.time)continue;
           const dashIdx=act.time.lastIndexOf('-');if(dashIdx<1)continue;
@@ -4928,7 +4997,7 @@ async function removeMember(userId,displayName){
       supa.from('companies').select('*'),
     ]);
     if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id,planSlug:c.plan_slug||null,liveStagesLimit:c.live_stages_limit,liveStagesOverride:c.live_stages_override,passSlug:c.pass_slug||null,passExpiresAt:c.pass_expires_at||null}));
     saveAPP();
     renderSubscriptionPage();
     renderAdmin?.();
@@ -5084,7 +5153,7 @@ async function openAdmin(){
       supa.from('companies').select('*'),
     ]);
     if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||'',disabled:u.disabled||false}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id,planSlug:c.plan_slug||null,liveStagesLimit:c.live_stages_limit,liveStagesOverride:c.live_stages_override,passSlug:c.pass_slug||null,passExpiresAt:c.pass_expires_at||null}));
     saveAPP();
     renderAdmin();
   }catch(e){console.warn('[admin] refresh failed:',e);}
@@ -5404,17 +5473,32 @@ function renderAdmin(){
     if(c.lastPaidAt)dateLine.push('Last payment: '+_fmtDate(c.lastPaidAt));
     if(c.currentPeriodEnd)dateLine.push('Next: '+_fmtDate(c.currentPeriodEnd));
     const stripeUrl=c.stripeCustomerId?`https://dashboard.stripe.com/customers/${c.stripeCustomerId}`:'';
+    // Stage limit summary + admin override input. Override wins over plan default.
+    const planLimitTxt=(c.liveStagesLimit==null)?'∞':String(c.liveStagesLimit);
+    const overrideVal=(c.liveStagesOverride==null)?'':String(c.liveStagesOverride);
+    // Active pass row
+    const passActive=c.passExpiresAt && new Date(c.passExpiresAt).getTime()>Date.now();
+    const passLine=passActive?`<div style="font-size:11px;color:#fbbf24;margin-top:3px;">🎟 Active pass: ${escH(c.passSlug||'')} · expires ${_fmtDate(c.passExpiresAt)}</div>`:'';
     return`<div class="admin-item" style="align-items:flex-start;padding-top:14px;padding-bottom:14px;">
       <div class="admin-avatar admin-avatar-co" style="margin-top:1px;">${_initials(c.name)}</div>
       <div class="admin-item-info">
         <div class="admin-item-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span>${escH(c.name)}</span>
           ${_subBadge(c)}
-          ${c.subscriptionTier?`<span style="font-size:9px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em;text-transform:uppercase;">${escH(c.subscriptionTier)}</span>`:''}
+          ${c.planSlug?`<span style="font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);padding:2px 7px;border-radius:99px;">${escH(c.planSlug)}</span>`:c.subscriptionTier?`<span style="font-size:9px;color:rgba(255,255,255,.45);font-weight:600;letter-spacing:.04em;text-transform:uppercase;">${escH(c.subscriptionTier)}</span>`:''}
         </div>
         <div class="admin-item-sub">${userCount} user(s) · ${projCount} project(s)${c.extraSeats>0?` · ${c.extraSeats} paid seat${c.extraSeats===1?'':'s'}`:''}</div>
         ${contact?`<div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:4px;">📧 ${contact}</div>`:''}
         ${dateLine.length?`<div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:3px;font-family:var(--ffm);">${dateLine.join('  ·  ')}</div>`:''}
+        ${passLine}
+        ${isAdmin()?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:rgba(255,255,255,.6);flex-wrap:wrap;">
+          <span style="font-weight:600;">Live stages:</span>
+          <span style="color:rgba(255,255,255,.45);">plan = ${planLimitTxt}</span>
+          <span style="color:rgba(255,255,255,.35);">·</span>
+          <span style="font-weight:600;">override:</span>
+          <input type="number" min="0" step="1" placeholder="—" value="${overrideVal}" onchange="setStageOverride('${c.id}',this.value)" style="width:70px;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:#fff;font-family:var(--ffm);font-size:12px;text-align:center;">
+          <span style="color:rgba(255,255,255,.4);font-size:10px;">(blank = use plan)</span>
+        </div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
         <div style="display:flex;gap:2px;">
@@ -5522,6 +5606,26 @@ async function editCompany(id){
   if(error){alert('Update failed: '+error.message);return;}
   c.name=newName.trim();saveAPP();renderAdmin();
 }
+
+// Per-company override of the live-stages limit. Empty / blank input means
+// "use the plan default" (clears the override back to NULL in the DB).
+// Negative or non-numeric input is rejected.
+async function setStageOverride(id,rawValue){
+  if(!isAdmin())return;
+  const c=APP.companies.find(x=>x.id===id);if(!c)return;
+  const v=String(rawValue||'').trim();
+  let newVal=null;
+  if(v!==''){
+    const n=parseInt(v,10);
+    if(isNaN(n)||n<0){alert('Override must be a non-negative whole number, or blank to clear.');renderAdmin();return;}
+    newVal=n;
+  }
+  const{error}=await supa.from('companies').update({live_stages_override:newVal}).eq('id',id);
+  if(error){alert('Override update failed: '+error.message);return;}
+  c.liveStagesOverride=newVal;
+  saveAPP();renderAdmin();
+}
+window.setStageOverride=setStageOverride;
 async function delCompany(id){
   if(!isAdmin()){alert('Only Admin or Super Admin may delete workspaces.');return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
@@ -5595,7 +5699,7 @@ async function addUser(){
       supa.from('companies').select('*'),
     ]);
     if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id,planSlug:c.plan_slug||null,liveStagesLimit:c.live_stages_limit,liveStagesOverride:c.live_stages_override,passSlug:c.pass_slug||null,passExpiresAt:c.pass_expires_at||null}));
     saveAPP();
     renderAdmin();
     alert(data.message||'Invite sent.');
