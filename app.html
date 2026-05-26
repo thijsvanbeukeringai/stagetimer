@@ -138,6 +138,44 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .tb.pau{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.35);color:var(--orange);}
 .tb.stp{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
 #t-inf{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);font-family:var(--ffm);padding:0 2px;}
+/* Display mode bar - operator picks what the active stage's Stage View
+   renders: live countdown, wall clock, count-up timer, or blank screen. */
+#display-mode-bar{flex-shrink:0;border-top:1px solid var(--border);padding:10px 12px 12px;background:var(--s2);}
+.dm-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.dm-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.dm-btn{padding:8px 4px;border-radius:7px;border:1px solid var(--border2);background:var(--s3);color:var(--sub);font-family:var(--ff);font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;line-height:1.1;}
+.dm-btn:hover{background:var(--s4);color:var(--text);}
+.dm-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* Hidden-from-public marker: dims the schedule card and shows a 🙈 hint
+   so the operator can see at a glance which items won't render on shared
+   public links. */
+.scard.hidden-from-public{opacity:.55;}
+.scard.hidden-from-public::after{content:'🙈 Hidden';position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--sub);background:var(--s3);padding:2px 7px;border-radius:99px;border:1px solid var(--border2);}
+
+/* Quick-adjust bar - operator can extend/shorten the live show without
+   opening the drawer. Sits between the timer card and the cue panel. */
+#quick-adjust{flex-shrink:0;border-top:1px solid var(--border);padding:10px 12px 12px;background:var(--s1);}
+.qa-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.qa-btn{padding:10px 6px;border-radius:7px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-family:var(--ff);font-size:12px;font-weight:800;cursor:pointer;transition:all .12s;line-height:1;}
+.qa-btn:hover{transform:translateY(-1px);}
+.qa-btn:active{transform:scale(.96);}
+.qa-minus{color:#B91C1C;border-color:rgba(220,38,38,.3);background:rgba(220,38,38,.06);}
+.qa-minus:hover{background:rgba(220,38,38,.12);}
+.qa-plus {color:#15803D;border-color:rgba(22,163,74,.3);background:rgba(22,163,74,.06);}
+.qa-plus:hover{background:rgba(22,163,74,.12);}
+.qa-hint{font-size:10px;color:var(--sub);margin-top:6px;font-family:var(--ffm);}
+
+/* Blackout overlay - covers every public viewer screen (Stage View,
+   Backstage, FOH) when the operator hits the kill switch. Operator
+   dashboard stays unaffected so they can still drive the show. */
+#blackout-overlay{position:fixed;inset:0;z-index:9000;background:#000;display:none;
+  align-items:center;justify-content:center;color:rgba(255,255,255,.08);
+  font-family:var(--ffm);font-size:32px;font-weight:700;letter-spacing:.1em;
+  pointer-events:none;}
+#blackout-overlay.on{display:flex;}
+
 /* Public-mode (share-link) views drop every operator affordance.
    Used by the standalone FOH share so viewers can't edit notes / delete
    shows / open the drawer through the schedule rows. */
@@ -172,10 +210,14 @@ body.public-mode .scard{pointer-events:none;}
    FLOOR CUE PANEL (operator surface, in the timer panel).
    ───────────────────────────────────────────────────────────────────── */
 #cue-panel{flex-shrink:0;border-top:1px solid var(--border);padding:12px 12px 14px;background:var(--s2);}
-#cue-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;gap:8px;}
-.cue-title{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);}
-.cue-status{font-size:11px;color:var(--sub);font-family:var(--ffm);text-align:right;}
+#cue-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;}
+.cue-title{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);flex-shrink:0;}
+.cue-status{font-size:11px;color:var(--sub);font-family:var(--ffm);text-align:right;flex:1;min-width:0;}
 .cue-status strong{color:var(--text);font-weight:700;}
+.cue-blackout-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .15s;flex-shrink:0;}
+.cue-blackout-btn:hover{background:#1f2937;color:#fff;border-color:#374151;}
+.cue-blackout-btn.on{background:#dc2626;border-color:#dc2626;color:#fff;}
+.cue-blackout-btn.on:hover{background:#b91c1c;}
 #cue-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;}
 .cue-btn{padding:10px 8px;border-radius:7px;border:1px solid transparent;font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:all .12s;line-height:1;}
 .cue-btn:hover{transform:translateY(-1px);}
@@ -669,6 +711,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .dr-flag-btn:hover{background:var(--s4);}
 .dr-flag-btn.active-cancel{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5;}
 .dr-flag-btn.active-priority{background:rgba(234,179,8,.15);border-color:rgba(234,179,8,.4);color:#fbbf24;}
+.dr-flag-btn.active-hidden{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
 
 /* ── ANIMATIONS ── */
 @keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.6)}}
@@ -2081,7 +2124,7 @@ const nowMinAdj = () => { const n=nowMin(); return n<NIGHT_END_MIN?n+1440:n; };
 // next-day shows starting before 07:00 (overnight festival expansion). When strict=true,
 // returns ONLY shows belonging to that exact day - used by overview when not viewing today.
 const getShows=(stage,day,strict=false)=>{
-  const base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day);
+  let base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day);
   if(!strict){
     const dayIdx=(G.days||[]).findIndex(d=>d.id===day);
     const nextDay=(G.days||[])[dayIdx+1];
@@ -2089,6 +2132,11 @@ const getShows=(stage,day,strict=false)=>{
       const overnight=(G.shows||[]).filter(s=>s.stage===stage&&s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN);
       base.push(...overnight);
     }
+  }
+  // Public share-link views (PUBLIC_MODE set) hide shows flagged as hidden.
+  // Operator dashboard always sees everything so the show stays editable.
+  if(window.PUBLIC_MODE){
+    base=base.filter(s=>!s.hidden);
   }
   return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
 };
@@ -2396,6 +2444,11 @@ function renderTbar(){
   <div style="font-size:13px;color:var(--sub);font-family:var(--ff);">Loading…</div>
 </div>
 
+<!-- Full-bleed blackout overlay. Only renders on viewer-only views
+     (Stage View, Backstage, FOH and their public share-link versions).
+     Operator dashboard is excluded so the controller can keep driving. -->
+<div id="blackout-overlay">BLACKOUT</div>
+
 <!-- ══ APP ══ -->
 <div id="app">
   <div id="hdr">
@@ -2555,6 +2608,33 @@ function renderTbar(){
         </div>
         <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
       </div>
+      <!-- Display mode toggle: what the Stage View for the active stage shows.
+           Per-stage so the operator can put one stage on "Blank" (between sets)
+           while another stage keeps counting down. -->
+      <div id="display-mode-bar">
+        <div class="dm-label">Stage View shows</div>
+        <div class="dm-row">
+          <button class="dm-btn" data-mode="countdown" onclick="setSVMode('countdown')">Countdown</button>
+          <button class="dm-btn" data-mode="clock"     onclick="setSVMode('clock')">Clock</button>
+          <button class="dm-btn" data-mode="countup"   onclick="setSVMode('countup')">Count up</button>
+          <button class="dm-btn" data-mode="blank"     onclick="setSVMode('blank')">Blank</button>
+        </div>
+      </div>
+      <!-- Quick-adjust bar (Live clock mode only). Only visible when there's
+           a currently running show on the active stage. Extends/shortens the
+           live show on the fly; if the next show started exactly when this
+           one ended, the next show's start gets nudged by the same amount
+           while its end time stays put - so only one slot absorbs the change. -->
+      <div id="quick-adjust" style="display:none;">
+        <div class="qa-label">Adjust live show</div>
+        <div class="qa-row">
+          <button class="qa-btn qa-minus" onclick="adjustLiveShow(-5)">-5 min</button>
+          <button class="qa-btn qa-minus" onclick="adjustLiveShow(-1)">-1 min</button>
+          <button class="qa-btn qa-plus"  onclick="adjustLiveShow(1)">+1 min</button>
+          <button class="qa-btn qa-plus"  onclick="adjustLiveShow(5)">+5 min</button>
+        </div>
+        <div class="qa-hint" id="qa-hint">Next show's end time stays fixed.</div>
+      </div>
       <!-- ═══ Floor cue panel (broadcast / TV use). Operator types or taps a
            preset; the message flashes as a banner on every Stage View open
            for the active stage. Cue auto-dismisses after `durationMs`. ═══ -->
@@ -2562,6 +2642,12 @@ function renderTbar(){
         <div id="cue-hdr">
           <div class="cue-title">Floor cue</div>
           <div class="cue-status" id="cue-status">No active cue</div>
+          <!-- Blackout: kills all viewer screens instantly. Used between
+               segments / for go-to-break / emergency wipe. -->
+          <button id="blackout-btn" class="cue-blackout-btn" onclick="toggleBlackout()" title="Hide all viewer displays">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 0 1-5.2-9l8.2 8.2A6 6 0 0 1 12 18zm5.2-3L9 6.8A6 6 0 0 1 17.2 15z"/></svg>
+            <span id="blackout-btn-label">Blackout</span>
+          </button>
         </div>
         <div id="cue-presets">
           <button class="cue-btn cue-green"  onclick="sendCue('READY','green')">READY</button>
@@ -2659,6 +2745,7 @@ function renderTbar(){
     <div class="dr-flag-row">
       <button class="dr-flag-btn" id="dr-cancel-btn" onclick="toggleDrFlag('cancelled')">⊘ Cancelled</button>
       <button class="dr-flag-btn" id="dr-priority-btn" onclick="toggleDrFlag('priority')">⭐ Priority</button>
+      <button class="dr-flag-btn" id="dr-hidden-btn" onclick="toggleDrFlag('hidden')" title="Hide from public share screens. Still visible to operators.">🙈 Hidden</button>
     </div>
     <div class="dr-actions">
       <button class="btn-p" id="dr-save" onclick="saveShow()">Save show</button>
@@ -3394,7 +3481,7 @@ function renderSched(){
     </div>`).join('');
     const hasCrew=CREW_ROLES.some(r=>s.crew?.[r.id]?.name);
     const hasContent=s.note||hasCrew||notes.length;
-    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''}"
+    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}"
       onclick="${G.timerMode==='manual'?`selMCue(${i})`:''}">
       ${(isNow||isSel)?`<div class="spr" style="width:${pct.toFixed(1)}%;"></div>`:''}
       <div class="scard-top">
@@ -3831,6 +3918,54 @@ function renderSV(){
   const cur=curShow(shows),nxt=nxtShow(shows);
   const stage=activeStageObj();
   document.getElementById('sv-top').textContent=stage.name;
+  // Per-stage display mode (Countdown / Clock / Count Up / Blank). The operator
+  // picks this from the dashboard. Default = countdown (existing behaviour).
+  const svMode=_svMode(G.activeStage);
+  if(svMode==='blank'){
+    document.getElementById('sv-artist').textContent='';
+    document.getElementById('sv-genre').textContent='';
+    document.getElementById('sv-cd').style.display='none';
+    document.getElementById('sv-idle').style.display='none';
+    document.getElementById('sv-bar').style.width='0%';
+    document.getElementById('sv').style.background='#000';
+    document.getElementById('sv-next-name').textContent='';
+    document.getElementById('sv-next').style.opacity='0';
+    return;
+  }
+  if(svMode==='clock'){
+    // Show the wall clock big, keep artist visible if there's a live show.
+    const d=new Date();
+    const t=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    const showRef=cur?cur.s:(nxt?nxt.s:null);
+    document.getElementById('sv-artist').textContent=showRef?showRef.artist:'';
+    document.getElementById('sv-genre').textContent=showRef?(showRef.genre||''):'';
+    const cd=document.getElementById('sv-cd');
+    cd.textContent=t;cd.style.color='#fff';cd.style.display='block';cd.className='';
+    document.getElementById('sv-idle').style.display='none';
+    document.getElementById('sv-bar').style.width='0%';
+    document.getElementById('sv').style.background='#000';
+    document.getElementById('sv-next-name').textContent=nxt?nxt.s.artist:'-';
+    document.getElementById('sv-next').style.opacity=nxt?'1':'0';
+    return;
+  }
+  if(svMode==='countup'&&cur){
+    // Time elapsed since the live show started.
+    const elapsed=Math.max(0,Math.round((Date.now()-cur.startMs)/1000));
+    document.getElementById('sv-artist').textContent=cur.s.artist;
+    document.getElementById('sv-genre').textContent=cur.s.genre||'';
+    const cd=document.getElementById('sv-cd');
+    cd.textContent=s2cdH(elapsed);cd.style.color='#22c55e';cd.style.display='block';cd.className='';
+    document.getElementById('sv-idle').style.display='none';
+    const dur=Math.round((cur.endMs-cur.startMs)/1000);
+    const pct=dur>0?Math.min(100,(elapsed/dur)*100):0;
+    document.getElementById('sv-bar').style.width=pct+'%';
+    document.getElementById('sv-bar').style.background='#22c55e';
+    document.getElementById('sv').style.background='#000';
+    document.getElementById('sv-next-name').textContent=nxt?nxt.s.artist:'-';
+    document.getElementById('sv-next').style.opacity=nxt?'1':'0';
+    return;
+  }
+  // Default mode: countdown (existing behaviour below).
   if(cur){
     const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
@@ -3888,7 +4023,7 @@ function renderSV(){
 }
 
 // ══ DRAWER
-let editId=null,prefillBooth='',_drFlags={cancelled:false,priority:false};
+let editId=null,prefillBooth='',_drFlags={cancelled:false,priority:false,hidden:false};
 function toggleDrFlag(flag){
   _drFlags[flag]=!_drFlags[flag];
   _updateDrFlagBtns();
@@ -3896,12 +4031,14 @@ function toggleDrFlag(flag){
 function _updateDrFlagBtns(){
   const cb=document.getElementById('dr-cancel-btn');
   const pb=document.getElementById('dr-priority-btn');
+  const hb=document.getElementById('dr-hidden-btn');
   if(cb)cb.className='dr-flag-btn'+(_drFlags.cancelled?' active-cancel':'');
   if(pb)pb.className='dr-flag-btn'+(_drFlags.priority?' active-priority':'');
+  if(hb)hb.className='dr-flag-btn'+(_drFlags.hidden?' active-hidden':'');
 }
 function openDrawer(id,booth=null){
   editId=id;prefillBooth=booth;
-  _drFlags={cancelled:false,priority:false};
+  _drFlags={cancelled:false,priority:false,hidden:false};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
   document.getElementById('dr-save').textContent=id?'Save':'Create';
   if(id){
@@ -3915,6 +4052,7 @@ function openDrawer(id,booth=null){
       _photoB64=s.photo||'';
       _drFlags.cancelled=!!s.cancelled;
       _drFlags.priority=!!s.priority;
+      _drFlags.hidden=!!s.hidden;
       // Split date + time inputs (iOS Safari shows seconds on type="time"
       // with step="1" but not on datetime-local). Source of truth still the
       // canonical startsAt / endsAt.
@@ -4108,6 +4246,7 @@ function saveShow(){
     crew,photo,
     cancelled:_drFlags.cancelled||false,
     priority:_drFlags.priority||false,
+    hidden:_drFlags.hidden||false,
   };
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
   save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
@@ -4449,6 +4588,175 @@ function itemTypeBadge(s){
   return`<span class="it-badge it-${t}">${ITEM_TYPE_LABELS[t]}</span>`;
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// DISPLAY MODES - per-stage Stage View rendering option.
+//   countdown : default, live countdown (existing behaviour)
+//   clock     : big wall clock instead of countdown
+//   countup   : elapsed time since the live show started
+//   blank     : nothing on screen (between sets / break filler)
+// ══════════════════════════════════════════════════════════════════════════
+function _svMode(stageId){
+  return (G&&G.svModes&&G.svModes[stageId])||'countdown';
+}
+function setSVMode(mode){
+  if(!G.svModes)G.svModes={};
+  G.svModes[G.activeStage]=mode;
+  save({immediate:true});
+  renderDisplayModeBar();
+}
+window.setSVMode=setSVMode;
+function renderDisplayModeBar(){
+  const cur=_svMode(G&&G.activeStage);
+  document.querySelectorAll('#display-mode-bar .dm-btn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.mode===cur);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// QUICK ADJUST - extend or shorten the currently live show.
+//
+// When the operator hits +5 / -5 / +1 / -1, we shift ONLY the live show's
+// end time. If the very next show on the same stage/day starts exactly when
+// the live one ends (back-to-back), we also nudge that next show's start
+// by the same amount BUT leave its end fixed - so the next slot absorbs
+// the delta (gets shorter on +N, longer on -N). Anything after that stays
+// untouched.
+//
+// If there's a gap (next show starts later), we just extend into the gap
+// and don't touch anything else.
+// ══════════════════════════════════════════════════════════════════════════
+function _showsInOrder(){
+  // Same stage & day as the currently active one, sorted by real start ts.
+  return (G.shows||[])
+    .filter(s=>s.stage===G.activeStage && s.day===G.activeDay && !s.cancelled)
+    .sort((a,b)=>{
+      const A=_showStartsAt(a), B=_showStartsAt(b);
+      if(!A||!B)return 0;
+      return A.getTime()-B.getTime();
+    });
+}
+function _writeShowTimes(s, newStart, newEnd){
+  // newStart / newEnd are Date objects in local time. We must update both
+  // the legacy fields (date/start/end) and the canonical (startsAt/endsAt)
+  // so every render path keeps working.
+  const _d2=n=>String(n).padStart(2,'0');
+  const startDate=`${newStart.getFullYear()}-${_d2(newStart.getMonth()+1)}-${_d2(newStart.getDate())}`;
+  const startTime=`${_d2(newStart.getHours())}:${_d2(newStart.getMinutes())}:${_d2(newStart.getSeconds())}`;
+  const endDate=`${newEnd.getFullYear()}-${_d2(newEnd.getMonth()+1)}-${_d2(newEnd.getDate())}`;
+  const endTime=`${_d2(newEnd.getHours())}:${_d2(newEnd.getMinutes())}:${_d2(newEnd.getSeconds())}`;
+  s.date=startDate;
+  s.start=startTime;
+  s.end=endTime;
+  s.startsAt=`${startDate}T${startTime}`;
+  s.endsAt=`${endDate}T${endTime}`;
+  s.endsNextDay=startDate!==endDate;
+}
+function adjustLiveShow(minutes){
+  const shows=getShows(G.activeStage,G.activeDay);
+  const cur=curShow(shows);
+  if(!cur){alert('No live show to adjust on this stage.');return;}
+  const ordered=_showsInOrder();
+  const idx=ordered.findIndex(s=>s.id===cur.s.id);
+  if(idx<0){alert('Could not locate the live show in the schedule.');return;}
+  const liveShow=ordered[idx];
+  const liveStart=_showStartsAt(liveShow);
+  const liveEnd=_showEndsAt(liveShow);
+  if(!liveStart||!liveEnd)return;
+  const deltaMs=minutes*60*1000;
+  const newLiveEnd=new Date(liveEnd.getTime()+deltaMs);
+  // Don't allow the live show to end before it started (would be nonsense).
+  if(newLiveEnd<=liveStart){
+    alert('Cannot shorten the show below 0 minutes.');return;
+  }
+  // Find the next show. Adjust its start only if it was back-to-back with
+  // the live show (start matched the OLD live end within 1 second). Keep
+  // the next show's END time fixed so only that slot absorbs the change.
+  const next=ordered[idx+1];
+  if(next){
+    const nextStart=_showStartsAt(next);
+    const nextEnd=_showEndsAt(next);
+    if(nextStart && nextEnd){
+      const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
+      if(wasBackToBack){
+        const newNextStart=new Date(nextStart.getTime()+deltaMs);
+        if(newNextStart>=nextEnd){
+          alert("That would make the next show's slot zero or negative. Aborted.");return;
+        }
+        _writeShowTimes(next,newNextStart,nextEnd);
+      }
+    }
+  }
+  // Write the live show's new end time. Start stays the same.
+  _writeShowTimes(liveShow,liveStart,newLiveEnd);
+  save();
+  renderAll();
+  if(document.getElementById('foh')?.classList.contains('open'))renderFOH();
+  if(document.getElementById('bs')?.classList.contains('open'))renderBS();
+  if(document.getElementById('tl')?.classList.contains('open'))renderTL();
+}
+window.adjustLiveShow=adjustLiveShow;
+
+// Show/hide the quick-adjust bar based on whether there's a live show.
+function renderQuickAdjust(){
+  const bar=document.getElementById('quick-adjust');
+  if(!bar)return;
+  if(G.timerMode!=='live'){bar.style.display='none';return;}
+  const shows=getShows(G.activeStage,G.activeDay);
+  const cur=curShow(shows);
+  bar.style.display=cur?'block':'none';
+  if(cur){
+    const ordered=_showsInOrder();
+    const idx=ordered.findIndex(s=>s.id===cur.s.id);
+    const next=ordered[idx+1];
+    const hint=document.getElementById('qa-hint');
+    if(hint){
+      if(next){
+        const nextStart=_showStartsAt(next);
+        const liveEnd=_showEndsAt(cur.s);
+        const backToBack=nextStart && liveEnd && Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
+        hint.textContent=backToBack
+          ? `Next show (${escH(next.artist)}) absorbs the change - its end time stays fixed.`
+          : `No back-to-back next show; the change extends into the gap.`;
+      } else {
+        hint.textContent='No following show on this stage.';
+      }
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BLACKOUT - kill switch for viewer screens.
+// Sets G.blackout = true; every public view (Stage View, Backstage, FOH and
+// their share-link versions) blanks out via the #blackout-overlay element.
+// The operator dashboard is intentionally unaffected so the controller can
+// still see the schedule and end the blackout.
+// ══════════════════════════════════════════════════════════════════════════
+function toggleBlackout(){
+  G.blackout=!G.blackout;
+  save({immediate:true});
+  renderBlackout();
+}
+window.toggleBlackout=toggleBlackout;
+function renderBlackout(){
+  const on=!!(G&&G.blackout);
+  const overlay=document.getElementById('blackout-overlay');
+  // Only show the blackout on viewer-only routes. The operator dashboard
+  // stays visible so they can hit the button again to lift it.
+  const onViewerRoute = !!PUBLIC_MODE ||
+    document.getElementById('sv')?.classList.contains('open') ||
+    document.getElementById('bs')?.classList.contains('open') ||
+    document.getElementById('foh')?.classList.contains('open');
+  if(overlay) overlay.className = (on && onViewerRoute) ? 'on' : '';
+  // Update the operator-side button label/state if it exists.
+  const btn=document.getElementById('blackout-btn');
+  const lbl=document.getElementById('blackout-btn-label');
+  if(btn){
+    btn.className='cue-blackout-btn'+(on?' on':'');
+    if(lbl)lbl.textContent=on?'Blackout ON':'Blackout';
+    btn.title=on?'Click to lift blackout':'Hide all viewer displays';
+  }
+}
+
 const CUE_DEFAULT_DURATION_MS=8000;
 function sendCue(text,color,durationMs){
   const t=String(text||'').trim();if(!t)return;
@@ -4499,6 +4807,9 @@ function tick(){
   renderSV();
   _renderSVCue();
   renderCueStatus();
+  renderBlackout();
+  renderQuickAdjust();
+  renderDisplayModeBar();
   tickFOH();
   tickBS();
   tickTL();
@@ -6362,6 +6673,9 @@ const _urlP=new URLSearchParams(location.search);
 const PUBLIC_MODE=_urlP.get('mode');
 const PUBLIC_PID=_urlP.get('pid');
 const PUBLIC_SID=_urlP.get('sid');
+// Mirror onto window so functions defined earlier (e.g. getShows hidden-filter)
+// can read these without hitting a TDZ if called during init.
+window.PUBLIC_MODE=PUBLIC_MODE;
 const SIGNUP_SUCCESS=_urlP.get('signup')==='success'&&_urlP.get('cid')&&_urlP.get('t');
 const SIGNUP_CID=_urlP.get('cid');
 const SIGNUP_TOKEN=_urlP.get('t');
