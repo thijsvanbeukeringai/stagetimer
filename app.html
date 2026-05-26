@@ -7348,6 +7348,37 @@ async function _startApp(session){
   const _hasBackup=!!localStorage.getItem(ST_AUTH);
   const _hasSbSession=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
   if(!_hasBackup&&!_hasSbSession){_showLogin();}
+  // Eager session restore for returning users: don't wait the full 5s
+  // for Supabase's INITIAL_SESSION event - try our st_auth_v1 backup
+  // immediately, race it against a 3s timeout, and fall back to the
+  // login form if either fails. Cuts cold-start by ~5-15 seconds.
+  if(_hasBackup||_hasSbSession){
+    (async()=>{
+      try{
+        const timeoutSentinel={};
+        const restored=await Promise.race([
+          restoreAuthSession(),
+          new Promise(r=>setTimeout(()=>r(timeoutSentinel),3000))
+        ]);
+        if(_appStarted)return;
+        if(restored===timeoutSentinel){
+          console.warn('[auth] eager restore timed out after 3s, showing login');
+          _showLogin();
+          return;
+        }
+        if(restored){
+          console.log('[auth] eager restore succeeded, starting app');
+          await _tryStartFromSession(restored);
+        } else {
+          console.log('[auth] eager restore returned null, showing login');
+          _showLogin();
+        }
+      }catch(e){
+        console.warn('[auth] eager restore failed:',e?.message||e);
+        if(!_appStarted)_showLogin();
+      }
+    })();
+  }
   // Hard fallback: never let the loader hang forever (only for authenticated flow).
   // CRITICAL: don't bounce a session-holding user to login just because the network is slow.
   // If a Supabase session or our backup exists in localStorage, keep waiting for INITIAL_SESSION
