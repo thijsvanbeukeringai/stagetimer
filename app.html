@@ -4759,11 +4759,17 @@ function renderBlackout(){
   }
 }
 
-const CUE_DEFAULT_DURATION_MS=8000;
+// Cues are persistent by default: they stay visible on the Stage View
+// until the operator hits Clear or sends a new cue. The old 8-second
+// auto-dismiss was too short for broadcast use - a WRAP UP that vanishes
+// before the speaker looks up is worse than useless.
+// Pass a non-zero durationMs to sendCue() to opt into auto-expire.
 function sendCue(text,color,durationMs){
   const t=String(text||'').trim();if(!t)return;
   G.cue={text:t,color:color||'amber',stageId:G.activeStage||null,
-         sentAt:Date.now(),durationMs:durationMs||CUE_DEFAULT_DURATION_MS};
+         sentAt:Date.now(),
+         // null = stay until cleared (default for preset + custom cues)
+         durationMs:(durationMs&&durationMs>0)?durationMs:null};
   save({immediate:true});            // fire-and-forget realtime push
   renderCueStatus();
 }
@@ -4779,8 +4785,9 @@ function clearCue(){
 window.sendCue=sendCue;window.sendCustomCue=sendCustomCue;window.clearCue=clearCue;
 
 function _cueActive(c){
-  if(!c)return false;
-  const expiresAt=(c.sentAt||0)+(c.durationMs||CUE_DEFAULT_DURATION_MS);
+  if(!c||!c.text)return false;
+  if(!c.durationMs)return true;     // persistent until cleared
+  const expiresAt=(c.sentAt||0)+c.durationMs;
   return Date.now()<expiresAt;
 }
 function renderCueStatus(){
@@ -4788,8 +4795,12 @@ function renderCueStatus(){
   const c=G&&G.cue;
   if(!_cueActive(c)){el.textContent='No active cue';return;}
   const ageSec=Math.max(0,Math.round((Date.now()-c.sentAt)/1000));
-  const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-Date.now())/1000));
-  el.innerHTML=`Sent <strong>${escH(c.text)}</strong> · ${ageSec}s ago · clears in ${remain}s`;
+  if(c.durationMs){
+    const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-Date.now())/1000));
+    el.innerHTML=`Sent <strong>${escH(c.text)}</strong> · ${ageSec}s ago · clears in ${remain}s`;
+  }else{
+    el.innerHTML=`On air: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · <em style="color:var(--sub);">hit Clear to stop</em>`;
+  }
 }
 // Stage View overlay tick — runs on the main 250ms loop.
 function _renderSVCue(){
