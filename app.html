@@ -5748,7 +5748,18 @@ async function createProject(){
     // the raw number; previous ISO-string code broke creation entirely.
     const row={id,name,company_id:companyId||null,created_at:createdAtMs,created_by:createdBy,data:emptyData};
     console.log('[createProject] inserting',row);
-    const{error}=await supa.from('projects').insert([row]);
+    // Race against an 8-second timeout so the button can't sit on
+    // "Creating..." forever if Supabase / the network hangs.
+    const TIMEOUT=8000;
+    const insertPromise=supa.from('projects').insert([row]);
+    const timeoutPromise=new Promise(r=>setTimeout(()=>r({_timeout:true}),TIMEOUT));
+    const result=await Promise.race([insertPromise,timeoutPromise]);
+    if(result&&result._timeout){
+      console.error('[createProject] timed out after',TIMEOUT,'ms');
+      alert('Project creation timed out. Check your internet connection and try again.');
+      return;
+    }
+    const{error}=result;
     if(error){
       console.error('[createProject] supabase error',error);
       alert('Failed to create project: '+(error.message||JSON.stringify(error)));
