@@ -138,6 +138,74 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .tb.pau{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.35);color:var(--orange);}
 .tb.stp{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
 #t-inf{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);font-family:var(--ffm);padding:0 2px;}
+/* ─────────────────────────────────────────────────────────────────────
+   ITEM-TYPE BADGE (broadcast rundown). Optional per-show colour-coded
+   tag so a gallery director can scan the schedule for LIVE / VTR / GFX /
+   INT / OOV / BREAK at a glance instead of reading artist names.
+   ───────────────────────────────────────────────────────────────────── */
+.it-badge{display:inline-flex;align-items:center;font-family:var(--ffm);font-size:9px;font-weight:800;letter-spacing:.08em;
+  padding:2px 6px;border-radius:4px;line-height:1.4;flex-shrink:0;border:1px solid transparent;text-transform:uppercase;}
+.it-live  {background:rgba(220,38,38,.18);  border-color:rgba(220,38,38,.42); color:#fca5a5;}
+.it-vtr   {background:rgba(37,99,235,.18);  border-color:rgba(37,99,235,.42); color:#93c5fd;}
+.it-oov   {background:rgba(120,120,120,.18);border-color:rgba(120,120,120,.42);color:#cbd5e1;}
+.it-gfx   {background:rgba(124,58,237,.18); border-color:rgba(124,58,237,.42); color:#c4b5fd;}
+.it-int   {background:rgba(22,163,74,.18);  border-color:rgba(22,163,74,.42); color:#86efac;}
+.it-break {background:rgba(245,158,11,.18); border-color:rgba(245,158,11,.42); color:#fcd34d;}
+/* Light-theme variant for the dashboard backoffice */
+#dash .it-live  {background:rgba(220,38,38,.10); color:#B91C1C; border-color:rgba(220,38,38,.3);}
+#dash .it-vtr   {background:rgba(37,99,235,.10); color:#1E40AF; border-color:rgba(37,99,235,.3);}
+#dash .it-oov   {background:rgba(82,82,91,.10);  color:#3F3F46; border-color:rgba(82,82,91,.3);}
+#dash .it-gfx   {background:rgba(124,58,237,.10);color:#6D28D9; border-color:rgba(124,58,237,.3);}
+#dash .it-int   {background:rgba(22,163,74,.10); color:#15803D; border-color:rgba(22,163,74,.3);}
+#dash .it-break {background:rgba(245,158,11,.10);color:#B45309; border-color:rgba(245,158,11,.3);}
+
+/* ─────────────────────────────────────────────────────────────────────
+   FLOOR CUE PANEL (operator surface, in the timer panel).
+   ───────────────────────────────────────────────────────────────────── */
+#cue-panel{flex-shrink:0;border-top:1px solid var(--border);padding:12px 12px 14px;background:var(--s2);}
+#cue-hdr{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;gap:8px;}
+.cue-title{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);}
+.cue-status{font-size:11px;color:var(--sub);font-family:var(--ffm);text-align:right;}
+.cue-status strong{color:var(--text);font-weight:700;}
+#cue-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;}
+.cue-btn{padding:10px 8px;border-radius:7px;border:1px solid transparent;font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:all .12s;line-height:1;}
+.cue-btn:hover{transform:translateY(-1px);}
+.cue-btn:active{transform:scale(.96);}
+.cue-green {background:rgba(22,163,74,.12); border-color:rgba(22,163,74,.35); color:#15803D;}
+.cue-amber {background:rgba(245,158,11,.14); border-color:rgba(245,158,11,.4);  color:#B45309;}
+.cue-red   {background:rgba(220,38,38,.12);  border-color:rgba(220,38,38,.4);   color:#B91C1C;}
+.cue-blue  {background:rgba(37,99,235,.12);  border-color:rgba(37,99,235,.35);  color:#1E40AF;}
+.cue-purple{background:rgba(124,58,237,.12); border-color:rgba(124,58,237,.35); color:#6D28D9;}
+#cue-custom{display:flex;gap:6px;}
+#cue-input{flex:1;min-width:0;padding:8px 10px;border-radius:7px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-family:var(--ff);font-size:13px;outline:none;}
+#cue-input:focus{border-color:var(--accent);}
+#cue-send{padding:8px 14px;border-radius:7px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-family:var(--ff);font-size:12px;font-weight:700;cursor:pointer;}
+#cue-send:hover{opacity:.9;}
+#cue-clear{padding:8px 12px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--sub);font-family:var(--ff);font-size:12px;font-weight:600;cursor:pointer;}
+#cue-clear:hover{color:var(--red);border-color:rgba(220,38,38,.35);}
+/* ─────────────────────────────────────────────────────────────────────
+   FLOOR CUE BANNER on the Stage View. Full-bleed flashing message.
+   ───────────────────────────────────────────────────────────────────── */
+#sv-cue{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 80px);left:50%;transform:translateX(-50%);
+  padding:clamp(20px,3vw,40px) clamp(40px,6vw,96px);
+  font-size:clamp(40px,8vw,128px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;
+  border-radius:18px;text-align:center;line-height:1;z-index:100;
+  box-shadow:0 0 80px rgba(0,0,0,.55);max-width:90vw;
+  animation:cue-pulse 1.1s ease-in-out infinite;}
+#sv-cue.on{display:block;}
+#sv-cue.cue-red    {background:#dc2626;color:#fff;}
+#sv-cue.cue-amber  {background:#f59e0b;color:#08080e;}
+#sv-cue.cue-green  {background:#16a34a;color:#fff;}
+#sv-cue.cue-blue   {background:#2563eb;color:#fff;}
+#sv-cue.cue-purple {background:#7c3aed;color:#fff;}
+@keyframes cue-pulse{0%,100%{transform:translateX(-50%) scale(1);opacity:1;}50%{transform:translateX(-50%) scale(1.025);opacity:.92;}}
+@media(max-width:700px){
+  #cue-panel{padding:10px;}
+  #cue-presets{grid-template-columns:repeat(2,1fr);}
+  .cue-btn{font-size:13px;padding:13px 6px;}
+  #cue-input{font-size:16px;}
+  #sv-cue{top:calc(env(safe-area-inset-top) + 56px);}
+}
 
 /* ── SCHEDULE PANEL ── */
 #spanel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
@@ -2477,6 +2545,28 @@ function renderTbar(){
         </div>
         <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
       </div>
+      <!-- ═══ Floor cue panel (broadcast / TV use). Operator types or taps a
+           preset; the message flashes as a banner on every Stage View open
+           for the active stage. Cue auto-dismisses after `durationMs`. ═══ -->
+      <div id="cue-panel">
+        <div id="cue-hdr">
+          <div class="cue-title">Floor cue</div>
+          <div class="cue-status" id="cue-status">No active cue</div>
+        </div>
+        <div id="cue-presets">
+          <button class="cue-btn cue-green"  onclick="sendCue('READY','green')">READY</button>
+          <button class="cue-btn cue-amber"  onclick="sendCue('5 MIN','amber')">5 MIN</button>
+          <button class="cue-btn cue-amber"  onclick="sendCue('1 MIN','amber')">1 MIN</button>
+          <button class="cue-btn cue-red"    onclick="sendCue('WRAP UP','red')">WRAP UP</button>
+          <button class="cue-btn cue-blue"   onclick="sendCue('STAND BY','blue')">STAND BY</button>
+          <button class="cue-btn cue-purple" onclick="sendCue('GO TO BREAK','purple')">GO TO BREAK</button>
+        </div>
+        <div id="cue-custom">
+          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" onkeydown="if(event.key==='Enter')sendCustomCue()">
+          <button id="cue-send" onclick="sendCustomCue()">Send</button>
+          <button id="cue-clear" onclick="clearCue()" title="Clear active cue">Clear</button>
+        </div>
+      </div>
     </div>
 
     <!-- SCHEDULE PANEL -->
@@ -2538,7 +2628,21 @@ function renderTbar(){
          as a hidden input so existing reads/writes continue to work without
          touching downstream display code. -->
     <input type="hidden" id="f-g" value="">
-    <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-none" id="bo-none" onclick="selBooth('')">-</div><div class="booth-opt" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div></div></div>
+    <div class="frow">
+      <div class="fg" style="flex:1;min-width:0;">
+        <label class="fl" for="f-type">Type <span style="color:var(--sub);font-weight:500;">(optional, broadcast use)</span></label>
+        <select id="f-type" class="fi">
+          <option value="">-</option>
+          <option value="live">LIVE</option>
+          <option value="vtr">VTR</option>
+          <option value="oov">OOV</option>
+          <option value="gfx">GFX</option>
+          <option value="int">INT</option>
+          <option value="break">BREAK</option>
+        </select>
+      </div>
+      <div class="fg" style="flex:0 0 auto;"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-none" id="bo-none" onclick="selBooth('')">-</div><div class="booth-opt" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div></div></div>
+    </div>
     <div class="fg"><label class="fl" for="f-n">Note</label><textarea class="fi" id="f-n" placeholder="Internal note…"></textarea></div>
   </div>
   <div id="drfooter">
@@ -3141,6 +3245,9 @@ function renderTbar(){
     <div id="sv-hdr-clock"></div>
     <button id="sv-close-btn" class="fhbtn" onclick="closeSV()">✕</button>
   </div>
+  <!-- Floor-cue banner: shown above the artist + countdown when an operator
+       fires a cue. Auto-hides when the cue expires (durationMs). -->
+  <div id="sv-cue"></div>
   <button id="sv-exit" onclick="closeSV()">ESC - Close</button>
   <div id="sv-top">-</div>
   <div id="sv-artist"></div>
@@ -3283,6 +3390,7 @@ function renderSched(){
       <div class="scard-top">
         <span class="scard-time">${s.start.slice(0,5)}<span style="color:var(--dim)"> – </span>${s.end.slice(0,5)}</span>
         <span class="scard-name">${escH(s.artist)}</span>
+        ${itemTypeBadge(s)}
         ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${s.booth}</span>`:''}
         <span class="scard-act">
           <button class="rb" onclick="openDrawer('${s.id}');event.stopPropagation()">✏️</button>
@@ -3473,7 +3581,7 @@ function renderFOH(){
     const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const tc=tColor(rem);
     liveHTML=`<div class="foh-now">
-      <div class="foh-now-lbl" style="color:${tc};"><span class="foh-now-dot lp" style="background:${tc};"></span>Now Playing ${fohBoothBadge(cur.s.booth)}</div>
+      <div class="foh-now-lbl" style="color:${tc};"><span class="foh-now-dot lp" style="background:${tc};"></span>Now Playing ${itemTypeBadge(cur.s)} ${fohBoothBadge(cur.s.booth)}</div>
       <div class="foh-now-row">
         <div class="foh-now-artist">${escH(cur.s.artist)}</div>
         <div class="foh-now-cd ${shouldBlink(rem)?'ot':''}" id="foh-cd" style="color:${tc};">${s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1))}</div>
@@ -3499,6 +3607,7 @@ function renderFOH(){
       <div class="foh-sr-m">
         <div class="foh-sr-top">
           <div class="foh-sr-a">${escH(s.artist)}</div>
+          ${itemTypeBadge(s)}
           ${fohBoothBadge(s.booth)}
         </div>
         ${fohCrewHTML(s)}
@@ -3594,6 +3703,7 @@ function renderBS(){
           <div class="bs-row-left">
             <div class="bs-badge" style="color:${col};">
               <span class="bs-badge-dot lp" style="background:${col};"></span>LIVE
+              ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
               ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${s.booth}</span>`:''}
             </div>
             <div class="bs-artist">${escH(s.artist)}</div>
@@ -3645,6 +3755,7 @@ function renderBS(){
           <div class="bs-row-left">
             <div class="bs-badge" style="color:rgba(255,255,255,.3);">
               NEXT ${rank>0?rank:''}
+              ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
               ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${s.booth}</span>`:''}
             </div>
             <div class="bs-artist" style="color:rgba(255,255,255,.75);">${escH(s.artist)}</div>
@@ -3788,6 +3899,7 @@ function openDrawer(id,booth=null){
     if(s){
       document.getElementById('f-a').value=s.artist||'';
       document.getElementById('f-g').value=s.genre||'';
+      document.getElementById('f-type').value=s.type||'';
       document.getElementById('f-n').value=s.note||'';
       selBooth(s.booth||'');
       _photoB64=s.photo||'';
@@ -3812,7 +3924,7 @@ function openDrawer(id,booth=null){
       else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}
     }
   }else{
-    document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';
+    document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-type').value='';
     clearPhoto();selBooth(booth||'');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
@@ -3981,6 +4093,7 @@ function saveShow(){
     startsAt,endsAt,endsNextDay,
     genre:document.getElementById('f-g').value.trim(),
     booth:curBooth,
+    type:document.getElementById('f-type').value||'',  // item type (broadcast rundown)
     note:document.getElementById('f-n').value.trim(),
     crew,photo,
     cancelled:_drFlags.cancelled||false,
@@ -4306,12 +4419,76 @@ function tickOV(){
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// FLOOR CUE — operator → Stage View flash message (broadcast use case).
+//
+// The cue lives on the project state (G.cue) so the existing Supabase
+// realtime sync just carries it from operator to every open Stage View on
+// that workspace. After `durationMs` the banner auto-hides locally; the
+// row stays in the DB until the next cue overwrites it. No new schema.
+//
+// Shape: { text, color, stageId, sentAt, durationMs }
+//   stageId is the active stage at send time; viewers filter on it so a
+//   cue meant for Stage A never shows up on Stage B's screen.
+// ══════════════════════════════════════════════════════════════════════════
+// Item-type badge helper. Returns an empty string if the show has no type
+// set, so festival users see no clutter unless they opt in via the drawer.
+const ITEM_TYPE_LABELS={live:'LIVE',vtr:'VTR',oov:'OOV',gfx:'GFX',int:'INT',break:'BREAK'};
+function itemTypeBadge(s){
+  const t=s&&s.type;if(!t||!ITEM_TYPE_LABELS[t])return'';
+  return`<span class="it-badge it-${t}">${ITEM_TYPE_LABELS[t]}</span>`;
+}
+
+const CUE_DEFAULT_DURATION_MS=8000;
+function sendCue(text,color,durationMs){
+  const t=String(text||'').trim();if(!t)return;
+  G.cue={text:t,color:color||'amber',stageId:G.activeStage||null,
+         sentAt:Date.now(),durationMs:durationMs||CUE_DEFAULT_DURATION_MS};
+  save({immediate:true});            // fire-and-forget realtime push
+  renderCueStatus();
+}
+function sendCustomCue(){
+  const inp=document.getElementById('cue-input');if(!inp)return;
+  const t=inp.value.trim();if(!t)return;
+  sendCue(t,'amber');
+  inp.value='';
+}
+function clearCue(){
+  G.cue=null;save({immediate:true});renderCueStatus();
+}
+window.sendCue=sendCue;window.sendCustomCue=sendCustomCue;window.clearCue=clearCue;
+
+function _cueActive(c){
+  if(!c)return false;
+  const expiresAt=(c.sentAt||0)+(c.durationMs||CUE_DEFAULT_DURATION_MS);
+  return Date.now()<expiresAt;
+}
+function renderCueStatus(){
+  const el=document.getElementById('cue-status');if(!el)return;
+  const c=G&&G.cue;
+  if(!_cueActive(c)){el.textContent='No active cue';return;}
+  const ageSec=Math.max(0,Math.round((Date.now()-c.sentAt)/1000));
+  const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-Date.now())/1000));
+  el.innerHTML=`Sent <strong>${escH(c.text)}</strong> · ${ageSec}s ago · clears in ${remain}s`;
+}
+// Stage View overlay tick — runs on the main 250ms loop.
+function _renderSVCue(){
+  const overlay=document.getElementById('sv-cue');if(!overlay)return;
+  const c=G&&G.cue;
+  const visible=_cueActive(c)&&(!c.stageId||c.stageId===G.activeStage);
+  if(!visible){overlay.className='';overlay.textContent='';return;}
+  overlay.textContent=c.text;
+  overlay.className='on cue-'+(c.color||'amber');
+}
+
 // ══ TICK (every 250ms)
 function tick(){
   if(!G)return; // app not initialized yet
   updateClock();
   renderTP();
   renderSV();
+  _renderSVCue();
+  renderCueStatus();
   tickFOH();
   tickBS();
   tickTL();
