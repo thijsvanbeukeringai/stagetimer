@@ -1,4 +1,4 @@
-// Stagetimer service worker — conservative network-first strategy.
+// Stagetimer service worker - conservative network-first strategy.
 //
 // Critical: live users are currently on the app. This SW must NEVER serve
 // stale HTML for too long. It only steps in when the network actively fails
@@ -20,7 +20,7 @@ const SHELL_PATHS = new Set([
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(APP_SHELL_CACHE);
-    // Best-effort prefetch — don't fail install if one asset can't be fetched.
+    // Best-effort prefetch - don't fail install if one asset can't be fetched.
     await Promise.all([...SHELL_PATHS].map((p) =>
       fetch(p, { cache: 'no-cache' })
         .then((res) => res.ok ? cache.put(p, res.clone()) : null)

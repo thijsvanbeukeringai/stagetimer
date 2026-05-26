@@ -18,10 +18,10 @@
   <circle cx="512" cy="512" r="324" fill="none"
           stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
 
-  <!-- Single live-dot at 12 o'clock (amber tip — the only accent) -->
+  <!-- Single live-dot at 12 o'clock (amber tip - the only accent) -->
   <circle cx="512" cy="188" r="42" fill="#FBBF24"
           stroke="#1E3A8A" stroke-width="14"/>
 
-  <!-- Center play triangle — universal "live / running" mark -->
+  <!-- Center play triangle - universal "live / running" mark -->
   <path d="M 442 392 L 442 632 L 650 512 Z" fill="#FFFFFF"/>
 </svg>

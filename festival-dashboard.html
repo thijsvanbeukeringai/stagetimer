@@ -228,11 +228,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #fohn-modal-title{font-size:13px;font-weight:800;color:var(--text);margin-bottom:2px;}
 #fohn-modal-sub{font-size:11px;color:var(--sub);}
 .fohn-actions{display:flex;gap:7px;margin-top:4px;}
-/* Crew — drawer */
+/* Crew - drawer */
 .crew-rows{display:flex;flex-direction:column;gap:6px;}
 .crew-row{display:flex;align-items:center;gap:8px;}
 .crew-lbl{font-size:11px;font-weight:700;color:var(--sub);width:52px;flex-shrink:0;}
-/* Crew — FOH */
+/* Crew - FOH */
 .foh-crew{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:3px;}
 .foh-crew-row{display:flex;align-items:center;gap:10px;padding:3px 0;}
 .foh-crew-role{font-size:10px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.28);width:46px;flex-shrink:0;}
@@ -610,7 +610,7 @@ const tColor=s=>{
 };
 // Should blink? (< 60s or overtime)
 const shouldBlink=s=>s<30;
-// tBg: translucent version of tColor — used for row background fill
+// tBg: translucent version of tColor - used for row background fill
 const _crgb={'#22c55e':'34,197,94','#f97316':'249,115,22','#ef4444':'239,68,68'};
 const tBg=(col,a)=>`rgba(${_crgb[col]||'255,255,255'},${Math.min(1,a).toFixed(3)})`;
 
@@ -699,7 +699,7 @@ function saveAPP(){
 }
 
 async function _pushMeta(){
-  // Companies and users are synced explicitly on add/delete — no bulk upsert here
+  // Companies and users are synced explicitly on add/delete - no bulk upsert here
   // to avoid re-inserting records deleted directly in Supabase.
   setSyncDot('ok');
 }
@@ -748,7 +748,7 @@ function setupRealtime(){
 }
 
 const getShows=(stage,day)=>(G.shows||[]).filter(s=>s.stage===stage&&s.day===day).sort((a,b)=>t2s(a.start)-t2s(b.start));
-const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'—',emoji:''};
+const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'-',emoji:''};
 // Returns true only if the active day has no date set (no restriction) OR its date matches today
 const isActiveDayToday=()=>{const day=(G.days||[]).find(d=>d.id===G.activeDay);if(!day||!day.date)return true;return day.date===todayStr();};
 function curShow(shows){if(!isActiveDayToday())return null;const n=nowMin();for(const s of shows){const sm=t2m(s.start),em=t2m(s.end)+(t2m(s.end)<=t2m(s.start)?1440:0);if(n>=sm&&n<em)return{s,startSec:sm*60,endSec:em*60};}return null;}
@@ -769,9 +769,9 @@ function renderTbar(){
   const sh=getShows(G.activeStage,G.activeDay),s=sh[M.idx];
   const pb=document.getElementById('btn-pp');
   if(M.state==='running'){pb.textContent='⏸ Pauze';pb.className='tb pau';}else{pb.textContent='▶ Start';pb.className='tb go';}
-  document.getElementById('t-cs').textContent=s?s.start.slice(0,5):'—';
-  document.getElementById('t-ce').textContent=s?s.end.slice(0,5):'—';
-  document.getElementById('t-cn').textContent=sh.length?`${M.idx+1}/${sh.length}`:'—';
+  document.getElementById('t-cs').textContent=s?s.start.slice(0,5):'-';
+  document.getElementById('t-ce').textContent=s?s.end.slice(0,5):'-';
+  document.getElementById('t-cn').textContent=sh.length?`${M.idx+1}/${sh.length}`:'-';
 }
 </script>
 
@@ -835,7 +835,7 @@ function renderTbar(){
       <div style="font-size:14px;font-weight:800;">Lineup importeren via JSON</div>
       <button onclick="closeJSONModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
-    <div style="font-size:11px;color:var(--sub);line-height:1.6;">Verwacht formaat — elke dag als sleutel met <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> en <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
+    <div style="font-size:11px;color:var(--sub);line-height:1.6;">Verwacht formaat - elke dag als sleutel met <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> en <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
     <code style="font-size:10px;color:var(--sub);">{"vrijdag":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code></div>
     <textarea id="json-input-area" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"vrijdag":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artiest naam"}]}]}}'></textarea>
     <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
@@ -931,17 +931,17 @@ function renderTbar(){
       </div>
       <div id="tinner">
         <div id="tp-photo-wrap"><img id="tp-photo" src="" alt=""></div>
-        <div id="tp-stage">—</div>
-        <div id="tp-sr"><span id="tp-dot"></span><span id="tp-st">—</span></div>
-        <div id="tp-artist">—</div>
-        <div id="tp-genre">—</div>
+        <div id="tp-stage">-</div>
+        <div id="tp-sr"><span id="tp-dot"></span><span id="tp-st">-</span></div>
+        <div id="tp-artist">-</div>
+        <div id="tp-genre">-</div>
         <div id="tp-booth"></div>
         <div id="tp-cd" style="color:var(--dim);">--:--</div>
         <div id="tp-cdlbl">resterend</div>
         <div id="tp-bw"><div id="tp-bar"></div></div>
         <div id="tp-next">
           <div id="tp-nl">Up Next</div>
-          <div id="tp-na">—</div>
+          <div id="tp-na">-</div>
           <div id="tp-nt"></div>
         </div>
       </div>
@@ -952,7 +952,7 @@ function renderTbar(){
           <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
           <button class="tb" onclick="mNext()">⏭</button>
         </div>
-        <div id="t-inf"><span id="t-cs">—</span><span id="t-cn">—</span><span id="t-ce">—</span></div>
+        <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
       </div>
     </div>
 
@@ -991,10 +991,10 @@ function renderTbar(){
       <div class="fg"><label class="fl" for="f-s">Starttijd</label><input class="fi" id="f-s" type="time" step="1"></div>
       <div class="fg"><label class="fl" for="f-e">Eindtijd</label><input class="fi" id="f-e" type="time" step="1"></div>
     </div>
-    <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">—</span></div>
+    <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
     <div class="frow">
       <div class="fg"><label class="fl" for="f-g">Genre</label><input class="fi" id="f-g" type="text" placeholder="bijv. Techno"></div>
-      <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-A" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div><div class="booth-opt" id="bo-none" onclick="selBooth('')">—</div></div></div>
+      <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-A" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div><div class="booth-opt" id="bo-none" onclick="selBooth('')">-</div></div></div>
     </div>
     <div class="fg"><label class="fl" for="f-n">Notitie</label><textarea class="fi" id="f-n" placeholder="Interne notitie…"></textarea></div>
     <div class="fg"><label class="fl">Crew</label><div class="crew-rows">
@@ -1011,7 +1011,7 @@ function renderTbar(){
 <!-- FOH -->
 <div id="foh">
   <div id="foh-hdr">
-    <div id="foh-title">FOH — <span id="foh-sname">—</span></div>
+    <div id="foh-title">FOH - <span id="foh-sname">-</span></div>
     <div style="display:flex;gap:5px;" id="foh-dtabs"></div>
     <select id="foh-ssel" class="hsel"></select>
     <div id="foh-clock"></div>
@@ -1207,7 +1207,7 @@ function renderTbar(){
 <div id="crew-modal-ov" onclick="if(event.target===this)closeCrewModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
   <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:380px;display:flex;flex-direction:column;gap:12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:800;">Crew — pushmeldingen</div>
+      <div style="font-size:14px;font-weight:800;">Crew - pushmeldingen</div>
       <button onclick="closeCrewModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="font-size:12px;color:var(--sub);">Selecteer wie pushmeldingen ontvangt (10 min voor einde show).</div>
@@ -1265,7 +1265,7 @@ function renderTbar(){
 <div id="bs">
   <div id="bs-hdr">
     <img class="co-logo" id="co-logo-bs" alt="logo">
-    <div id="bs-title">🎭 Backstage — <span id="bs-sname">—</span></div>
+    <div id="bs-title">🎭 Backstage - <span id="bs-sname">-</span></div>
     <div style="display:flex;gap:5px;" id="bs-dtabs"></div>
     <select id="bs-ssel" class="hsel" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
     <div id="bs-clock"></div>
@@ -1307,14 +1307,14 @@ function renderTbar(){
 
 <!-- STAGE VIEW -->
 <div id="sv">
-  <button id="sv-exit" onclick="closeSV()">ESC — Sluiten</button>
-  <div id="sv-top">—</div>
+  <button id="sv-exit" onclick="closeSV()">ESC - Sluiten</button>
+  <div id="sv-top">-</div>
   <div id="sv-artist"></div>
   <div id="sv-genre"></div>
   <div id="sv-cd">--:--</div>
   <div id="sv-idle"></div>
   <div id="sv-bw"><div id="sv-bar"></div></div>
-  <div id="sv-next"><span style="font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.25);">Up next</span><span id="sv-next-name">—</span></div>
+  <div id="sv-next"><span style="font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.25);">Up next</span><span id="sv-next-name">-</span></div>
   <div id="sv-clock"></div>
 </div>
 
@@ -1338,7 +1338,7 @@ function renderTPLive(){
     document.getElementById('tp-st').textContent=rem<0?'OVERTIME':'Running';
     document.getElementById('tp-st').style.color=col;
     document.getElementById('tp-artist').textContent=cur.s.artist;
-    document.getElementById('tp-genre').textContent=cur.s.genre||'—';
+    document.getElementById('tp-genre').textContent=cur.s.genre||'-';
     if(cur.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+cur.s.booth;bb.style.background=cur.s.booth==='A'?'rgba(99,102,241,.2)':'rgba(34,197,94,.15)';bb.style.color=cur.s.booth==='A'?'#a5b4fc':'#86efac';}
     setCD(rem,col,rem<0?'OVERTIME':'resterend');
     document.getElementById('tp-bar').style.width=pct+'%';document.getElementById('tp-bar').style.background=col;
@@ -1346,14 +1346,14 @@ function renderTPLive(){
   }else if(nxt){
     setDot('var(--dim)',false);
     document.getElementById('tp-st').textContent='Straks';document.getElementById('tp-st').style.color='var(--sub)';
-    document.getElementById('tp-artist').textContent=nxt.s.artist;document.getElementById('tp-genre').textContent=nxt.s.genre||'—';
+    document.getElementById('tp-artist').textContent=nxt.s.artist;document.getElementById('tp-genre').textContent=nxt.s.genre||'-';
     if(nxt.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+nxt.s.booth;bb.style.background=nxt.s.booth==='A'?'rgba(99,102,241,.15)':'rgba(34,197,94,.1)';bb.style.color=nxt.s.booth==='A'?'#a5b4fc':'#86efac';}
     const el=document.getElementById('tp-cd');el.textContent=nxt.s.start.slice(0,5);el.style.color='rgba(255,255,255,.4)';el.className='';
     document.getElementById('tp-cdlbl').textContent='starttijd';document.getElementById('tp-cdlbl').style.color='var(--sub)';
     document.getElementById('tp-bar').style.width='0%';setNxt(null);
   }else{
     setDot('var(--dim)',false);document.getElementById('tp-st').textContent='Geen show';document.getElementById('tp-st').style.color='var(--sub)';
-    document.getElementById('tp-artist').textContent='—';document.getElementById('tp-genre').textContent='—';
+    document.getElementById('tp-artist').textContent='-';document.getElementById('tp-genre').textContent='-';
     const el=document.getElementById('tp-cd');el.textContent='--:--';el.style.color='var(--dim)';el.className='';
     document.getElementById('tp-cdlbl').textContent='resterend';document.getElementById('tp-cdlbl').style.color='var(--sub)';
     document.getElementById('tp-bar').style.width='0%';setNxt(null);
@@ -1363,7 +1363,7 @@ function renderTPManual(){
   const shows=getShows(G.activeStage,G.activeDay);
   const stage=activeStageObj();
   document.getElementById('tp-stage').textContent=stage.emoji+' '+stage.name;
-  const s=shows[M.idx];if(!s){document.getElementById('tp-artist').textContent='—';setTPPhoto('');return;}
+  const s=shows[M.idx];if(!s){document.getElementById('tp-artist').textContent='-';setTPPhoto('');return;}
   setTPPhoto(s.photo||'');
   const remMs=mRem(),remSec=remMs/1000,pct=Math.max(0,Math.min(100,(1-remMs/M.durMs)*100));
   const col=tColor(remSec);
@@ -1372,11 +1372,11 @@ function renderTPManual(){
   setDot(M.state==='running'?col:'var(--dim)',M.state==='running');
   document.getElementById('tp-st').textContent=M.state==='running'?(remSec<0?'OVERTIME':'Running'):M.state==='paused'?'Paused':'Idle';
   document.getElementById('tp-st').style.color=M.state==='running'?col:'var(--sub)';
-  document.getElementById('tp-artist').textContent=s.artist;document.getElementById('tp-genre').textContent=s.genre||'—';
+  document.getElementById('tp-artist').textContent=s.artist;document.getElementById('tp-genre').textContent=s.genre||'-';
   setCD(remSec,M.state==='idle'?'rgba(255,255,255,.4)':col,M.state==='idle'?'duur':remSec<0?'OVERTIME':'resterend');
   document.getElementById('tp-bar').style.width=pct+'%';document.getElementById('tp-bar').style.background=col;
   const nx=shows[M.idx+1];
-  document.getElementById('tp-na').textContent=nx?nx.artist:'— geen —';
+  document.getElementById('tp-na').textContent=nx?nx.artist:'- geen -';
   document.getElementById('tp-nt').textContent=nx?nx.start.slice(0,5):'';
 }
 function setDot(col,pulse){const d=document.getElementById('tp-dot');d.style.background=col;d.className=pulse?'lp':'';}
@@ -1389,7 +1389,7 @@ function setCD(remSec,col,lbl){
   document.getElementById('tp-cdlbl').style.color=remSec<0?col:'var(--sub)';
 }
 function setNxt(nxt){
-  document.getElementById('tp-na').textContent=nxt?nxt.s.artist:'— geen —';
+  document.getElementById('tp-na').textContent=nxt?nxt.s.artist:'- geen -';
   document.getElementById('tp-nt').textContent=nxt?nxt.s.start.slice(0,5):'';
 }
 
@@ -1809,7 +1809,7 @@ function renderSV(){
     document.getElementById('sv-idle').style.display='block';document.getElementById('sv-idle').textContent='Geen actieve show';
     document.getElementById('sv-bar').style.width='0%';document.getElementById('sv').style.background='#000';
   }
-  document.getElementById('sv-next-name').textContent=nxt?nxt.s.artist:'—';
+  document.getElementById('sv-next-name').textContent=nxt?nxt.s.artist:'-';
   document.getElementById('sv-next').style.opacity=nxt?'1':'0';
 }
 
@@ -1831,7 +1831,7 @@ let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
 document.getElementById('f-s').addEventListener('input',updDur);
 document.getElementById('f-e').addEventListener('input',updDur);
-function updDur(){const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;document.getElementById('dur-txt').textContent=s&&e?'Duur: '+fmtDur(durSec(s,e)):'—';}
+function updDur(){const s=document.getElementById('f-s').value,e=document.getElementById('f-e').value;document.getElementById('dur-txt').textContent=s&&e?'Duur: '+fmtDur(durSec(s,e)):'-';}
 // ── Photo
 let _photoB64='';
 function previewPhoto(inp){
@@ -1938,8 +1938,8 @@ function renderOV(){
         <span class="stov-stage-dot" id="stovdot-${si}" style="background:rgba(255,255,255,.2);"></span>
         ${escH(st.emoji||'🎵')} ${escH(st.name)}
       </div>
-      <div class="stov-status" id="stovst-${si}" style="color:rgba(255,255,255,.28);">—</div>
-      <div class="stov-artist" id="stovart-${si}">—</div>
+      <div class="stov-status" id="stovst-${si}" style="color:rgba(255,255,255,.28);">-</div>
+      <div class="stov-artist" id="stovart-${si}">-</div>
       <div class="stov-cd" id="stovcd-${si}" style="color:rgba(255,255,255,.2);">--:--</div>
       <div class="stov-cd-lbl" id="stovcl-${si}">resterend</div>
       <div class="stov-bw"><div class="stov-bar" id="stovbar-${si}" style="width:0%;"></div></div>
@@ -2020,7 +2020,7 @@ function tickOV(){
       card.style.borderColor='rgba(255,255,255,.07)';
       dotEl.style.background='rgba(255,255,255,.2)';
       stEl.textContent='Geen shows';stEl.style.color='rgba(255,255,255,.28)';
-      artEl.textContent='—';
+      artEl.textContent='-';
       cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
       clEl.textContent='';barEl.style.width='0%';nxEl.innerHTML='';
     }
@@ -2195,7 +2195,7 @@ function importLineup(data){
     }
   }
 
-  // Dedup stages by name (case-insensitive) — merge duplicates created by repeated imports
+  // Dedup stages by name (case-insensitive) - merge duplicates created by repeated imports
   const _stageMap=new Map(),_stageRemap=new Map();
   for(const st of G.stages){
     const k=st.name.trim().toLowerCase();
@@ -2418,7 +2418,7 @@ function renderAdmin(){
   if(usrCount)usrCount.textContent=APP.users.length;
   // Companies dropdown
   const sel=document.getElementById('adm-usr-co');
-  sel.innerHTML=`<option value="">— Geen bedrijf —</option>`+APP.companies.map(c=>`<option value="${c.id}">${escH(c.name)}</option>`).join('');
+  sel.innerHTML=`<option value="">- Geen bedrijf -</option>`+APP.companies.map(c=>`<option value="${c.id}">${escH(c.name)}</option>`).join('');
   usrList.innerHTML=APP.users.map(u=>{
     const co=APP.companies.find(c=>c.id===u.companyId);
     const initials=(u.name||u.email||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -2489,7 +2489,7 @@ async function addUser(){
   saveAPP();
   supa.from('app_users').insert([{id:newId,name,email,role,company_id:companyId||''}]);
 
-  // Use Edge Function to create auth user — avoids touching the admin session
+  // Use Edge Function to create auth user - avoids touching the admin session
   try{
     const{data:{session:adminSession}}=await supa.auth.getSession();
     await fetch(`${SUPA_URL}/functions/v1/create-auth-user`,{
@@ -2627,7 +2627,7 @@ function renderTL(){
 
   const nm=nowMin();
 
-  // Stage rows — only show stages that have at least one show on the active day
+  // Stage rows - only show stages that have at least one show on the active day
   const stageIds=new Set(stages.map(st=>st.id));
   const activeStages=stages.filter(stage=>shows.some(s=>s.stage===stage.id));
   const orphanShows=shows.filter(s=>!stageIds.has(s.stage));
@@ -2794,7 +2794,7 @@ async function requestPushPermission(){
     return;
   }
   try{
-    // Must call requestPermission directly from click — no async wait before this
+    // Must call requestPermission directly from click - no async wait before this
     await window._OS.Notifications.requestPermission();
     if(CURRENT_USER?.id)await window._OS.login(CURRENT_USER.id);
     updateCrewPermBtn();
@@ -2819,7 +2819,7 @@ async function scheduleProjectPushes(){
       include_external_user_ids:memberIds,
       channel_for_external_user_ids:'push',
       headings:{en:`${show.artist||'Show'} bijna klaar`,nl:`${show.artist||'Show'} bijna klaar`},
-      contents:{en:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} — nog ~10 min.`,nl:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} — nog ~10 min.`},
+      contents:{en:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} - nog ~10 min.`,nl:`${show.artist||'Show'} op ${stageName} eindigt om ${show.endTime} - nog ~10 min.`},
       send_after:new Date(notifMs).toISOString()
     };
     fetch('https://onesignal.com/api/v1/notifications',{
@@ -2836,7 +2836,7 @@ function openShareModal(projId){
   const proj=APP.projects.find(p=>p.id===projId);if(!proj)return;
   const stages=proj.data?.stages||[];
   const base=_shareBase();
-  document.getElementById('share-modal-title').textContent='🔗 Links — '+escH(proj.name);
+  document.getElementById('share-modal-title').textContent='🔗 Links - '+escH(proj.name);
   // Timeline link (whole project, no stage)
   const tlUrl=`${base}?mode=timeline&pid=${projId}`;
   const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
@@ -3230,7 +3230,7 @@ async function _startApp(session){
   try{
     await Promise.all([loadAPPRemote(),loadCurrentUser(session)]);
     updateRoleUI();refreshLogo();setupRealtime();
-    // Always re-render dash with fresh data — only open it if user hasn't navigated to a project yet
+    // Always re-render dash with fresh data - only open it if user hasn't navigated to a project yet
     if(!APP.activeProjectId||document.getElementById('dash').classList.contains('open')){
       document.getElementById('dash').classList.add('open');
       renderDash();
@@ -3244,7 +3244,7 @@ async function _startApp(session){
   try{loadAPPCache();}catch(e){} // initialize APP before loadOT
   loadOT();
   setTimeout(()=>{const l=document.getElementById('loader');if(l&&l.style.display!=='none')_hideLoader();},12000);
-  // Public share link — skip auth entirely
+  // Public share link - skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
@@ -3252,7 +3252,7 @@ async function _startApp(session){
     return;
   }
 
-  // Layer 1: onAuthStateChange — catches INITIAL_SESSION (stored session on page load)
+  // Layer 1: onAuthStateChange - catches INITIAL_SESSION (stored session on page load)
   // and SIGNED_IN (after manual login or token refresh)
   supa.auth.onAuthStateChange(async(event,sess)=>{
     if(event==='TOKEN_REFRESHED'&&sess){saveAuthSession(sess);return;}
@@ -3284,7 +3284,7 @@ async function _startApp(session){
     }catch(e){}
   }
 
-  // Layer 4: nothing worked — show login screen
+  // Layer 4: nothing worked - show login screen
   if(!_appStarted)_hideLoader();
 })();
 updateClock();
