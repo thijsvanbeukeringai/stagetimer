@@ -177,14 +177,24 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 #blackout-overlay.on{display:flex;}
 
 /* Public-mode (share-link) views drop every operator affordance.
-   Used by the standalone FOH share so viewers can't edit notes / delete
-   shows / open the drawer through the schedule rows. */
+   Used by all standalone share modes (stage / backstage / foh / timeline
+   / overview) so viewers can't edit shows or escape into the operator
+   dashboard. */
 body.public-mode .foh-sr-act,
 body.public-mode .foh-add-note,
 body.public-mode .scard-act,
 body.public-mode .frb{display:none !important;}
 body.public-mode .foh-srow,
 body.public-mode .scard{pointer-events:none;}
+/* Every close-the-overlay path must be neutralised so a viewer can't
+   click into the operator dashboard. The brand logo stays visible but
+   becomes a non-interactive label - no closeXXX() trigger. */
+body.public-mode #sv-close-btn,
+body.public-mode #bs-close-btn,
+body.public-mode #foh-close-btn,
+body.public-mode #tl-close-btn,
+body.public-mode #sv-exit{display:none !important;}
+body.public-mode .st-brand{pointer-events:none;cursor:default;}
 /* ─────────────────────────────────────────────────────────────────────
    ITEM-TYPE BADGE (broadcast rundown). Optional per-show colour-coded
    tag so a gallery director can scan the schedule for LIVE / VTR / GFX /
@@ -4351,7 +4361,7 @@ document.addEventListener('visibilitychange',()=>{
   const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -6815,7 +6825,18 @@ async function loadPublicView(){
   if(PUBLIC_SID)G.activeStage=PUBLIC_SID;
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='none';
+  // Mark the page as a public viewer route so CSS hides operator controls
+  // and JS skips dashboard fallbacks. Applies to all share-link modes.
+  document.body.classList.add('public-mode');
   if(PUBLIC_MODE==='stage'){
+    // Hide the operator app entirely; viewer screen only.
+    document.getElementById('app').style.display='none';
+    // Strip every close affordance - the share-link must not allow the
+    // viewer to exit to the operator dashboard.
+    const svClose=document.getElementById('sv-close-btn');
+    if(svClose)svClose.style.display='none';
+    const svExit=document.getElementById('sv-exit');
+    if(svExit)svExit.style.display='none';
     openSV();
     // Floor cues, blackout, mode toggles - any operator-side change must
     // reach this Stage View in under a second. Same polling + realtime
@@ -6888,10 +6909,8 @@ async function loadPublicView(){
     setupRealtime();
   } else if(PUBLIC_MODE==='foh'){
     // Standalone FOH: read-only programme list for a specific stage.
-    // Hide the main app, hide the close + stage/day selectors, mark <body>
-    // as public so operator-only affordances (edit/delete icons, +Note
-    // button) drop out via CSS.
-    document.body.classList.add('public-mode');
+    // Hide the main app, hide the close + stage/day selectors. The
+    // body.public-mode class is already set above for every viewer route.
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('foh-close-btn');
     if(closeBtn)closeBtn.style.display='none';
