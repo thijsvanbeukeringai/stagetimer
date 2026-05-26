@@ -60,14 +60,16 @@
   }catch(_){}
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* Early-paint helpers: with no auth tokens in localStorage we know the
    answer before supabase-js even loads, so just CSS-flip the right
-   element on first parse. */
+   element on first parse. These rules MUST appear before the
+   parser-blocking supabase-js external script tag - otherwise the rules
+   aren't parsed until that bundle finishes downloading. */
 html.no-session #loader{display:none !important;}
 html.no-session #login{display:flex !important;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
