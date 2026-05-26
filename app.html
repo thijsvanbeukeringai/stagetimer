@@ -35,30 +35,39 @@
       .then(r=>r.ok?r.json():null).then(arr=>(arr&&arr[0])||null).catch(()=>null);
   }catch(e){}
 })();
-// EARLY LOGIN PAINT - if the user has no auth tokens in localStorage AND
-// this isn't a public share link or signup-success page, hide the loader
-// and show the login form as soon as the DOM is ready. Without this, the
-// blocking supabase-js CDN script (next line) makes incognito visitors
-// stare at the spinner until the bundle downloads and INITIAL_SESSION
-// fires - several seconds on cold cache. This decision needs zero network
-// and runs synchronously before the bundle even starts downloading.
+// EARLY NO-SESSION DETECTION (CSS-driven, no DOM, no network).
+// Inline + synchronous, placed BEFORE any blocking external script so the
+// `html.no-session` class lands on <html> as soon as parsing reaches this
+// point. The CSS below then hides #loader and shows #login the instant
+// those elements appear in the DOM. Incognito / signed-out users see the
+// login form on first paint - they don't have to wait for supabase-js to
+// finish downloading from a CDN.
 (function(){
   try{
-    const p=new URLSearchParams(location.search);
-    if(p.get('mode')||p.get('signup'))return;     // public share / post-payment flows
-    const hasBackup=!!localStorage.getItem('st_auth_v1');
-    const hasSb=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
-    if(hasBackup||hasSb)return;
-    function show(){
-      const l=document.getElementById('loader');if(l)l.style.display='none';
-      const li=document.getElementById('login');if(li)li.classList.add('open');
-    }
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',show);
-    else show();
-  }catch(e){}
+    var p=new URLSearchParams(location.search);
+    if(p.get('mode')||p.get('signup'))return;     // share-link / post-payment flows
+    var hasSession=false;
+    try{
+      if(localStorage.getItem('st_auth_v1'))hasSession=true;
+      if(!hasSession){
+        for(var i=0;i<localStorage.length;i++){
+          var k=localStorage.key(i);
+          if(k&&k.indexOf('sb-')===0&&k.lastIndexOf('-auth-token')===k.length-11){hasSession=true;break;}
+        }
+      }
+    }catch(_){/* private mode locks localStorage - treat as no session */}
+    if(!hasSession)document.documentElement.classList.add('no-session');
+  }catch(_){}
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* Early-paint helpers: with no auth tokens in localStorage we know the
+   answer before supabase-js even loads, so just CSS-flip the right
+   element on first parse. */
+html.no-session #loader{display:none !important;}
+html.no-session #login{display:flex !important;}
+</style>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
