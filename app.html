@@ -1876,7 +1876,10 @@ window._OS=null;
 const _isPublic=!!(new URLSearchParams(location.search).get('mode'));
 // OneSignal is only configured for the production domain. Skip init on
 // preview/localhost so it doesn't throw "Can only be used on: …" errors.
-window._OS_ENABLED=!_isPublic&&(location.hostname==='stagetimer.nl'||location.hostname==='www.stagetimer.nl');
+// OneSignal app is only configured for the apex domain (no www). Loading
+// it on www.stagetimer.nl throws "Can only be used on: https://stagetimer.nl"
+// in the console - harmless but noisy. Skip the SDK there entirely.
+window._OS_ENABLED=!_isPublic&&location.hostname==='stagetimer.nl';
 if(window._OS_ENABLED){
   OneSignalDeferred.push(async function(OneSignal){
     try{
