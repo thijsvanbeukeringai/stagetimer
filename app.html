@@ -2065,11 +2065,12 @@ function setupRealtime(){
         localStorage.setItem(AKEY,JSON.stringify(APP));
         if(p.id===APP.activeProjectId){
           loadG();
-          if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
+          if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
           if(PUBLIC_MODE==='overview'){renderOV();}
           else if(PUBLIC_MODE==='timeline'){renderTL();}
           else if(PUBLIC_MODE==='backstage'){renderBS();}
           else if(PUBLIC_MODE==='foh'){renderFOH();}
+          else if(PUBLIC_MODE==='stage'){renderSV();}
           else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
         }
         const dashEl=document.getElementById('dash');if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
@@ -6769,6 +6770,14 @@ async function loadPublicView(){
   document.getElementById('loader').style.display='none';
   if(PUBLIC_MODE==='stage'){
     openSV();
+    // Floor cues, blackout, mode toggles - any operator-side change must
+    // reach this Stage View in under a second. Same polling + realtime
+    // pattern as the other public share modes.
+    setInterval(async()=>{
+      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderSV();}}catch(e){}
+    },2000);
+    setupRealtime();
   } else if(PUBLIC_MODE==='timeline'){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('tl-close-btn');
