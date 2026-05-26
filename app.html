@@ -6452,9 +6452,10 @@ async function setNewPassword(){
 
 // ══ INIT
 // Where should the user land after login?
-//   super_admin → Admin (Beheer) page — they manage the whole platform
-//   company_admin (and any other role) → their workspace dashboard
-function _landingPage(){return CURRENT_USER?.role==='super_admin'?'admin':'dash';}
+// Everyone — including super_admin — lands on the workspace dashboard.
+// Super admins still have the Admin section reachable from the sidebar
+// (the gear / "Beheer" link) when they actually need it.
+function _landingPage(){return'dash';}
 function _initUI(){
   if(!G){const fid=uid();G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:fid,days:[{id:fid,name:'Day 1'}],timerMode:'live'};}
   // Always open dash underneath so closing the admin overlay falls back to projects
