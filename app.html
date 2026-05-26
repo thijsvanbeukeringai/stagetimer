@@ -77,7 +77,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 #sync-dot.ing{background:#f97316;}
 /* Dropdown menus */
 .dd{position:relative;flex-shrink:0;}
-.dd-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:200px;display:none;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.45);}
+.dd-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:4px;min-width:200px;display:none;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.45);max-height:70vh;overflow-y:auto;}
 /* Mobile native <select> for the dashboard day picker - hidden on desktop. */
 .day-select-dash{display:none;}
 .dd.open .dd-menu{display:block;}
@@ -3441,11 +3441,10 @@ function renderSched(){
   const allShows=getShows(G.activeStage,G.activeDay);
   const n=nowMinAdj();
   const isMob=window.innerWidth<=700;
-  // Use timestamp-based liveness so a show at 01:00-02:30 isn't filtered out
-  // because the festival-day boundary (07:00) puts the clock in "yesterday".
-  const shows=isMob&&G.timerMode==='live'
-    ?allShows.filter(s=>!_showIsPast(s))
-    :allShows;
+  // Mobile and desktop must always show the same set of shows. Previously
+  // past shows were hidden on mobile in Live mode - that caused the
+  // operator to think the data differed between devices. Always show all.
+  const shows=allShows;
   document.getElementById('show-cnt').textContent=allShows.length===1?'1 show':allShows.length+' shows';
   const nsBtn=document.getElementById('new-show-btn');
   const hasStages=G.stages&&G.stages.length>0;
