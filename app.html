@@ -358,6 +358,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #sv-clock{position:fixed;bottom:22px;right:26px;font-family:var(--ffm);font-size:12px;color:rgba(255,255,255,.15);}
 #sv-exit{position:fixed;top:18px;right:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.28);padding:4px 11px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.06em;transition:all .2s;cursor:auto;}
 #sv-exit:hover{background:rgba(255,255,255,.14);color:#fff;}
+/* Stage View top header — mirrors FOH/Backstage/Timeline.
+   Desktop hides it (clean broadcast look), mobile shows brand + clock + close. */
+#sv-hdr{display:none;}
+#sv-hdr-clock{font-family:var(--ffm);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
 
 /* ── DASHBOARD ── */
 #dash{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;}
@@ -620,9 +624,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
     text-align:right;min-width:96px;}
   /* Break to row 2 */
   #mob-hdr-break{display:block;width:100%;height:0;order:4;}
-  /* Row 2: stage select fills, day dropdown right */
-  #stage-sel{order:5;flex:1;min-width:0;font-size:15px;font-weight:700;min-height:44px;padding:8px 32px 8px 12px;}
+  /* Row 2: stage select fills, day dropdown right — heights matched (48px) */
+  #stage-sel{order:5;flex:1;min-width:0;font-size:15px;font-weight:700;
+    min-height:48px;height:48px;padding:0 32px 0 12px;border-radius:10px;}
   #hdr-daywrap{order:6;overflow:visible;flex-shrink:0;}
+  #hdr-daywrap .hbtn{min-height:48px;height:48px;padding:0 12px;border-radius:10px;font-size:14px;font-weight:700;}
   #day-dd .dd-menu{left:auto;right:0;}
   /* Hide everything else from header on mobile */
   #mob-hdr-cd,#admin-dd,#user-dd,
@@ -749,6 +755,19 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   }
   /* Row 1, col 1: Stagetimer brand (mark + wordmark) */
   #st-brand-foh, #st-brand-bs, #st-brand-tl{display:inline-flex;grid-column:1;grid-row:1;justify-self:start;}
+
+  /* Stage View — same header treatment, fixed at top */
+  #sv-hdr{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+    position:fixed;top:0;left:0;right:0;z-index:5;
+    padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;
+    background:linear-gradient(180deg,rgba(0,0,0,.85),rgba(0,0,0,0));pointer-events:none;}
+  #sv-hdr > *{pointer-events:auto;}
+  #st-brand-sv{display:inline-flex;justify-self:start;}
+  #sv-hdr-clock{justify-self:center;font-size:18px;font-weight:700;color:#fff;min-width:96px;text-align:center;}
+  #sv-close-btn{justify-self:end;min-height:44px;min-width:44px;padding:0;font-size:16px;justify-content:center;}
+  /* Old ESC button + bottom clock are redundant on mobile */
+  #sv-exit{display:none !important;}
+  #sv-clock{display:none !important;}
   /* Row 1, col 2: local time, big and centered */
   #foh-clock, #bs-clock, #tl-clock{grid-column:2;grid-row:1;justify-self:center;margin:0;
     font-family:var(--ffm);font-size:18px;font-weight:700;color:#fff;letter-spacing:.02em;
@@ -758,8 +777,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   /* Page-title text and project logos are gone — only Stagetimer brand */
   #foh-title, #bs-title, #tl-title{display:none;}
   #co-logo-bs, #co-logo-tl{display:none;}
-  /* Row 2: stage select (cols 1-2) + day picker (col 3) on the SAME row */
-  #foh-ssel, #bs-ssel{grid-column:1/span 2;grid-row:2;min-height:44px;padding:8px 32px 8px 12px;font-size:15px;font-weight:700;width:100%;}
+  /* Row 2: stage select (cols 1-2) + day picker (col 3) on the SAME row.
+     Stage select and day select must match height — both 48px. */
+  #foh-ssel, #bs-ssel{grid-column:1/span 2;grid-row:2;min-height:48px;height:48px;padding:0 32px 0 12px;font-size:15px;font-weight:700;width:100%;border-radius:10px;}
   #tl-hdr-spacer{display:none;}
   #foh-dtabs, #bs-dtabs{grid-column:3;grid-row:2;min-width:0;justify-self:stretch;}
   /* Timeline has no stage selector — day picker fills full row 2 */
@@ -3077,6 +3097,11 @@ function renderTbar(){
 
 <!-- STAGE VIEW -->
 <div id="sv">
+  <div id="sv-hdr">
+    <a class="st-brand" id="st-brand-sv" href="#" onclick="closeSV();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
+    <div id="sv-hdr-clock"></div>
+    <button id="sv-close-btn" class="fhbtn" onclick="closeSV()">✕</button>
+  </div>
   <button id="sv-exit" onclick="closeSV()">ESC - Close</button>
   <div id="sv-top">-</div>
   <div id="sv-artist"></div>
@@ -4017,6 +4042,7 @@ function updateClock(){
   document.getElementById('foh-clock').textContent=t;
   document.getElementById('bs-clock').textContent=t;
   document.getElementById('sv-clock').textContent=t;
+  const svH=document.getElementById('sv-hdr-clock');if(svH)svH.textContent=t;
   document.getElementById('tl-clock').textContent=t;
   const otvc=document.getElementById('otv-clock');if(otvc)otvc.textContent=t;
 }
