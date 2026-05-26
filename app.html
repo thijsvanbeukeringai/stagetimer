@@ -626,8 +626,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
   .vsep{display:none!important;}
   #logo-name{display:none;}
-  /* "+ Add show" full-width on row 3 */
-  #hdr-add-show-btn{display:flex!important;order:7;flex-basis:100%;justify-content:center;margin-top:2px;min-height:44px;}
+  /* "+ Add show" in the header is redundant on mobile — the Schedule
+     panel below already has a "+ New show" button. Hide it here. */
+  #hdr-add-show-btn{display:none!important;}
   #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
   /* Bottom nav */
   #mob-nav{
@@ -754,14 +755,14 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   /* Page-title text and project logos are gone — only Stagetimer brand */
   #foh-title, #bs-title, #tl-title{display:none;}
   #co-logo-bs, #co-logo-tl{display:none;}
-  /* Row 2: stage select spans all 3 columns */
-  #foh-ssel, #bs-ssel{grid-column:1/span 3;grid-row:2;min-height:44px;padding:8px 32px 8px 12px;font-size:15px;font-weight:700;width:100%;}
+  /* Row 2: stage select (cols 1-2) + day picker (col 3) on the SAME row */
+  #foh-ssel, #bs-ssel{grid-column:1/span 2;grid-row:2;min-height:44px;padding:8px 32px 8px 12px;font-size:15px;font-weight:700;width:100%;}
   #tl-hdr-spacer{display:none;}
-  /* Row 3: day picker fills cols 1-2, + Show (FOH only) on col 3.
-     Backstage / Timeline have no add button so the day picker spans all 3. */
-  #foh-dtabs, #bs-dtabs, #tl-dtabs{grid-column:1/span 2;grid-row:3;min-width:0;}
-  #bs-dtabs, #tl-dtabs{grid-column:1/span 3;}
-  #foh-add-btn{grid-column:3;grid-row:3;justify-self:stretch;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;
+  #foh-dtabs, #bs-dtabs{grid-column:3;grid-row:2;min-width:0;justify-self:stretch;}
+  /* Timeline has no stage selector — day picker fills full row 2 */
+  #tl-dtabs{grid-column:1/span 3;grid-row:2;min-width:0;}
+  /* Row 3 (FOH only): full-width "+ Show" primary action */
+  #foh-add-btn{grid-column:1/span 3;grid-row:3;justify-self:stretch;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;
     background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.4);color:#a5b4fc;justify-content:center;white-space:nowrap;}
 
   /* Modals */
