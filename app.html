@@ -138,6 +138,15 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .tb.pau{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.35);color:var(--orange);}
 .tb.stp{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
 #t-inf{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);font-family:var(--ffm);padding:0 2px;}
+/* Public-mode (share-link) views drop every operator affordance.
+   Used by the standalone FOH share so viewers can't edit notes / delete
+   shows / open the drawer through the schedule rows. */
+body.public-mode .foh-sr-act,
+body.public-mode .foh-add-note,
+body.public-mode .scard-act,
+body.public-mode .frb{display:none !important;}
+body.public-mode .foh-srow,
+body.public-mode .scard{pointer-events:none;}
 /* ─────────────────────────────────────────────────────────────────────
    ITEM-TYPE BADGE (broadcast rundown). Optional per-show colour-coded
    tag so a gallery director can scan the schedule for LIVE / VTR / GFX /
@@ -2011,10 +2020,11 @@ function setupRealtime(){
         localStorage.setItem(AKEY,JSON.stringify(APP));
         if(p.id===APP.activeProjectId){
           loadG();
-          if(PUBLIC_MODE==='backstage'&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
+          if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
           if(PUBLIC_MODE==='overview'){renderOV();}
           else if(PUBLIC_MODE==='timeline'){renderTL();}
           else if(PUBLIC_MODE==='backstage'){renderBS();}
+          else if(PUBLIC_MODE==='foh'){renderFOH();}
           else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
         }
         const dashEl=document.getElementById('dash');if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
@@ -4198,7 +4208,7 @@ document.addEventListener('visibilitychange',()=>{
   const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeSV();closeOTV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -6316,6 +6326,7 @@ function openShareModal(projId){
   const stageBlocks=stages.length?stages.map(st=>{
     const stageUrl=`${base}?mode=stage&pid=${projId}&sid=${st.id}`;
     const bsUrl=`${base}?mode=backstage&pid=${projId}&sid=${st.id}`;
+    const fohUrl=`${base}?mode=foh&pid=${projId}&sid=${st.id}`;
     return`<div class="share-stage-block">
       <div class="share-stage-name">${escH(st.name)}</div>
       <div class="share-link-row">
@@ -6327,6 +6338,11 @@ function openShareModal(projId){
         <span class="share-link-label">Backstage</span>
         <span class="share-link-url" title="${bsUrl}">${bsUrl}</span>
         <button class="share-copy-btn" onclick="copyLink(this,'${bsUrl}')">Copy</button>
+      </div>
+      <div class="share-link-row">
+        <span class="share-link-label">FOH</span>
+        <span class="share-link-url" title="${fohUrl}">${fohUrl}</span>
+        <button class="share-copy-btn" onclick="copyLink(this,'${fohUrl}')">Copy</button>
       </div>
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">No stages created in this project.</div>`;
@@ -6475,6 +6491,29 @@ async function loadPublicView(){
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderBS();}}catch(e){}
+    },2000);
+    setupRealtime();
+  } else if(PUBLIC_MODE==='foh'){
+    // Standalone FOH: read-only programme list for a specific stage.
+    // Hide the main app, hide the close + stage/day selectors, mark <body>
+    // as public so operator-only affordances (edit/delete icons, +Note
+    // button) drop out via CSS.
+    document.body.classList.add('public-mode');
+    document.getElementById('app').style.display='none';
+    const closeBtn=document.getElementById('foh-close-btn');
+    if(closeBtn)closeBtn.style.display='none';
+    const fohSel=document.getElementById('foh-ssel');
+    if(fohSel)fohSel.style.display='none';
+    const fohDtabs=document.getElementById('foh-dtabs');
+    if(fohDtabs)fohDtabs.style.display='none';
+    // Auto-select today
+    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
+    if(todayDay)G.activeDay=todayDay.id;
+    openFOH();
+    // Realtime updates
+    setInterval(async()=>{
+      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();}}catch(e){}
     },2000);
     setupRealtime();
   }
