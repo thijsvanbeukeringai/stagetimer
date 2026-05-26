@@ -105,13 +105,16 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .mdb.on{background:var(--s1);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.5);}
 #tinner{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 16px 8px;overflow:hidden;}
 #tinner.has-photo{justify-content:flex-start;padding-top:0;}
-#tp-stage{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--sub);margin-bottom:12px;}
-#tp-sr{display:flex;align-items:center;gap:5px;margin-bottom:8px;}
+/* Meta row above the artist name: stage · status · booth on a single line */
+#tp-meta{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.tp-meta-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.18);flex-shrink:0;}
+#tp-stage{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--sub);margin:0;}
+#tp-sr{display:flex;align-items:center;gap:5px;margin:0;}
 #tp-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);}
 #tp-st{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);}
 #tp-artist{font-size:15px;font-weight:800;letter-spacing:-.3px;text-align:center;margin-bottom:2px;line-height:1.2;padding:0 4px;}
-#tp-genre{font-size:10px;color:var(--sub);margin-bottom:3px;}
-#tp-booth{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;margin-bottom:14px;display:none;}
+#tp-genre{font-size:10px;color:var(--sub);margin-bottom:14px;}
+#tp-booth{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;margin:0;display:none;}
 #tp-cd{font-family:var(--ffm);font-size:52px;font-weight:700;line-height:1;letter-spacing:-.04em;text-align:center;transition:color .4s;margin-bottom:5px;font-variant-numeric:tabular-nums;}
 #tp-cdlbl{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);margin-bottom:14px;}
 #tp-bw{width:100%;height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-bottom:14px;}
@@ -2388,11 +2391,15 @@ function renderTbar(){
       </div>
       <div id="tinner">
         <div id="tp-photo-wrap"><img id="tp-photo" src="" alt=""></div>
-        <div id="tp-stage">-</div>
-        <div id="tp-sr"><span id="tp-dot"></span><span id="tp-st">-</span></div>
+        <div id="tp-meta">
+          <div id="tp-stage">-</div>
+          <div class="tp-meta-dot"></div>
+          <div id="tp-sr"><span id="tp-dot"></span><span id="tp-st">-</span></div>
+          <div class="tp-meta-dot" id="tp-meta-dot-booth"></div>
+          <div id="tp-booth"></div>
+        </div>
         <div id="tp-artist">-</div>
         <div id="tp-genre">-</div>
-        <div id="tp-booth"></div>
         <div id="tp-cd" style="color:var(--dim);">--:--</div>
         <div id="tp-cdlbl">remaining</div>
         <div id="tp-bw"><div id="tp-bar"></div></div>
@@ -3094,6 +3101,7 @@ function renderTPLive(){
   document.getElementById('tp-stage').textContent=stage.name;
   setTPPhoto(cur?.s?.photo||'');
   const bb=document.getElementById('tp-booth');bb.style.display='none';
+  const boothSep=document.getElementById('tp-meta-dot-booth');if(boothSep)boothSep.style.display='none';
   if(cur){
     const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
@@ -3102,7 +3110,7 @@ function renderTPLive(){
     document.getElementById('tp-st').style.color=col;
     document.getElementById('tp-artist').textContent=cur.s.artist;
     document.getElementById('tp-genre').textContent=cur.s.genre||'-';
-    if(cur.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+cur.s.booth;bb.style.background=cur.s.booth==='A'?'rgba(99,102,241,.2)':'rgba(34,197,94,.15)';bb.style.color=cur.s.booth==='A'?'#a5b4fc':'#86efac';}
+    if(cur.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+cur.s.booth;bb.style.background=cur.s.booth==='A'?'rgba(99,102,241,.2)':'rgba(34,197,94,.15)';bb.style.color=cur.s.booth==='A'?'#a5b4fc':'#86efac';if(boothSep)boothSep.style.display='block';}
     setCD(rem,col,rem<0?'OVERTIME':'remaining');
     document.getElementById('tp-bar').style.width=pct+'%';document.getElementById('tp-bar').style.background=col;
     setNxt(nxt);
@@ -3110,7 +3118,7 @@ function renderTPLive(){
     setDot('var(--dim)',false);
     document.getElementById('tp-st').textContent='Up Next';document.getElementById('tp-st').style.color='var(--sub)';
     document.getElementById('tp-artist').textContent=nxt.s.artist;document.getElementById('tp-genre').textContent=nxt.s.genre||'-';
-    if(nxt.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+nxt.s.booth;bb.style.background=nxt.s.booth==='A'?'rgba(99,102,241,.15)':'rgba(34,197,94,.1)';bb.style.color=nxt.s.booth==='A'?'#a5b4fc':'#86efac';}
+    if(nxt.s.booth){bb.style.display='inline-block';bb.textContent='Booth '+nxt.s.booth;bb.style.background=nxt.s.booth==='A'?'rgba(99,102,241,.15)':'rgba(34,197,94,.1)';bb.style.color=nxt.s.booth==='A'?'#a5b4fc':'#86efac';if(boothSep)boothSep.style.display='block';}
     const el=document.getElementById('tp-cd');el.textContent=nxt.s.start.slice(0,5);el.style.color='rgba(255,255,255,.4)';el.className='';
     document.getElementById('tp-cdlbl').textContent='start time';document.getElementById('tp-cdlbl').style.color='var(--sub)';
     document.getElementById('tp-bar').style.width='0%';setNxt(null);
@@ -3131,7 +3139,9 @@ function renderTPManual(){
   const remMs=mRem(),remSec=remMs/1000,pct=Math.max(0,Math.min(100,(1-remMs/M.durMs)*100));
   const col=tColor(remSec);
   const bb=document.getElementById('tp-booth');
-  if(s.booth){bb.style.display='inline-block';bb.textContent='Booth '+s.booth;bb.style.background=s.booth==='A'?'rgba(99,102,241,.2)':'rgba(34,197,94,.15)';bb.style.color=s.booth==='A'?'#a5b4fc':'#86efac';}else{bb.style.display='none';}
+  const boothSepM=document.getElementById('tp-meta-dot-booth');
+  if(s.booth){bb.style.display='inline-block';bb.textContent='Booth '+s.booth;bb.style.background=s.booth==='A'?'rgba(99,102,241,.2)':'rgba(34,197,94,.15)';bb.style.color=s.booth==='A'?'#a5b4fc':'#86efac';if(boothSepM)boothSepM.style.display='block';}
+  else{bb.style.display='none';if(boothSepM)boothSepM.style.display='none';}
   setDot(M.state==='running'?col:'var(--dim)',M.state==='running');
   document.getElementById('tp-st').textContent=M.state==='running'?(remSec<0?'OVERTIME':'Running'):M.state==='paused'?'Paused':'Idle';
   document.getElementById('tp-st').style.color=M.state==='running'?col:'var(--sub)';
