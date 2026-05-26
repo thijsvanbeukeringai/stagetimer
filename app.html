@@ -237,25 +237,25 @@ body.public-mode .scard{pointer-events:none;}
 /* ─────────────────────────────────────────────────────────────────────
    FLOOR CUE BANNER on the Stage View. Full-bleed flashing message.
    ───────────────────────────────────────────────────────────────────── */
-#sv-cue{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 80px);left:50%;transform:translateX(-50%);
+#cue-overlay{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 80px);left:50%;transform:translateX(-50%);
   padding:clamp(20px,3vw,40px) clamp(40px,6vw,96px);
   font-size:clamp(40px,8vw,128px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;
-  border-radius:18px;text-align:center;line-height:1;z-index:100;
+  border-radius:18px;text-align:center;line-height:1;z-index:9500;
   box-shadow:0 0 80px rgba(0,0,0,.55);max-width:90vw;
   animation:cue-pulse 1.1s ease-in-out infinite;}
-#sv-cue.on{display:block;}
-#sv-cue.cue-red    {background:#dc2626;color:#fff;}
-#sv-cue.cue-amber  {background:#f59e0b;color:#08080e;}
-#sv-cue.cue-green  {background:#16a34a;color:#fff;}
-#sv-cue.cue-blue   {background:#2563eb;color:#fff;}
-#sv-cue.cue-purple {background:#7c3aed;color:#fff;}
+#cue-overlay.on{display:block;}
+#cue-overlay.cue-red    {background:#dc2626;color:#fff;}
+#cue-overlay.cue-amber  {background:#f59e0b;color:#08080e;}
+#cue-overlay.cue-green  {background:#16a34a;color:#fff;}
+#cue-overlay.cue-blue   {background:#2563eb;color:#fff;}
+#cue-overlay.cue-purple {background:#7c3aed;color:#fff;}
 @keyframes cue-pulse{0%,100%{transform:translateX(-50%) scale(1);opacity:1;}50%{transform:translateX(-50%) scale(1.025);opacity:.92;}}
 @media(max-width:700px){
   #cue-panel{padding:10px;}
   #cue-presets{grid-template-columns:repeat(2,1fr);}
   .cue-btn{font-size:13px;padding:13px 6px;}
   #cue-input{font-size:16px;}
-  #sv-cue{top:calc(env(safe-area-inset-top) + 56px);}
+  #cue-overlay{top:calc(env(safe-area-inset-top) + 56px);}
 }
 
 /* ── SCHEDULE PANEL ── */
@@ -2452,6 +2452,11 @@ function renderTbar(){
      Operator dashboard is excluded so the controller can keep driving. -->
 <div id="blackout-overlay">BLACKOUT</div>
 
+<!-- Floor-cue banner - global so it can appear on Stage View, Backstage and
+     FOH (operator overlays AND their public share-link versions). One DOM
+     element, _renderCueOverlay() decides when to show. -->
+<div id="cue-overlay"></div>
+
 <!-- ══ APP ══ -->
 <div id="app">
   <div id="hdr">
@@ -3345,9 +3350,6 @@ function renderTbar(){
     <div id="sv-hdr-clock"></div>
     <button id="sv-close-btn" class="fhbtn" onclick="closeSV()">✕</button>
   </div>
-  <!-- Floor-cue banner: shown above the artist + countdown when an operator
-       fires a cue. Auto-hides when the cue expires (durationMs). -->
-  <div id="sv-cue"></div>
   <button id="sv-exit" onclick="closeSV()">ESC - Close</button>
   <div id="sv-top">-</div>
   <div id="sv-artist"></div>
@@ -4670,21 +4672,43 @@ function adjustLiveShow(minutes){
   if(newLiveEnd<=liveStart){
     alert('Cannot shorten the show below 0 minutes.');return;
   }
-  // Find the next show. Adjust its start only if it was back-to-back with
-  // the live show (start matched the OLD live end within 1 second). Keep
-  // the next show's END time fixed so only that slot absorbs the change.
-  const next=ordered[idx+1];
-  if(next){
-    const nextStart=_showStartsAt(next);
-    const nextEnd=_showEndsAt(next);
-    if(nextStart && nextEnd){
-      const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
-      if(wasBackToBack){
-        const newNextStart=new Date(nextStart.getTime()+deltaMs);
-        if(newNextStart>=nextEnd){
-          alert("That would make the next show's slot zero or negative. Aborted.");return;
+  // Ask the operator: push the whole rest of the lineup back/forward, or only
+  // let the immediately following slot absorb the change?
+  //   OK     → cascade: shift every show after this one by delta
+  //   Cancel → only the next slot absorbs (its end stays fixed). Far rest
+  //            of the lineup keeps its original times.
+  const sign=minutes>=0?'+':'';
+  const cascade=confirm(
+    `Adjust live show "${liveShow.artist}" by ${sign}${minutes} min.\n\n`+
+    `Push the rest of the lineup by ${sign}${minutes} min too?\n\n`+
+    `OK = cascade through every following show\n`+
+    `Cancel = only the next slot absorbs the change (its end time stays fixed)`
+  );
+
+  if(cascade){
+    // Shift every following show on this stage/day by deltaMs.
+    for(let i=idx+1;i<ordered.length;i++){
+      const s=ordered[i];
+      const sa=_showStartsAt(s),ea=_showEndsAt(s);
+      if(!sa||!ea)continue;
+      _writeShowTimes(s,new Date(sa.getTime()+deltaMs),new Date(ea.getTime()+deltaMs));
+    }
+  } else {
+    // Original "single-slot absorbs" behaviour: only the next show's START
+    // moves (if it was back-to-back); its END stays fixed.
+    const next=ordered[idx+1];
+    if(next){
+      const nextStart=_showStartsAt(next);
+      const nextEnd=_showEndsAt(next);
+      if(nextStart && nextEnd){
+        const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
+        if(wasBackToBack){
+          const newNextStart=new Date(nextStart.getTime()+deltaMs);
+          if(newNextStart>=nextEnd){
+            alert("That would make the next show's slot zero or negative. Aborted.");return;
+          }
+          _writeShowTimes(next,newNextStart,nextEnd);
         }
-        _writeShowTimes(next,newNextStart,nextEnd);
       }
     }
   }
@@ -4803,10 +4827,22 @@ function renderCueStatus(){
   }
 }
 // Stage View overlay tick — runs on the main 250ms loop.
-function _renderSVCue(){
-  const overlay=document.getElementById('sv-cue');if(!overlay)return;
+// Floor-cue banner overlay. Lives in <body> so it can appear on every viewer
+// route: Stage View / Backstage / FOH (operator overlays AND their public
+// share-link versions). Hidden on the dashboard / Timeline / Overview.
+function _renderCueOverlay(){
+  const overlay=document.getElementById('cue-overlay');if(!overlay)return;
   const c=G&&G.cue;
-  const visible=_cueActive(c)&&(!c.stageId||c.stageId===G.activeStage);
+  // Only render on viewer routes: any of the fullscreen overlays open
+  // (operator-side use) OR a public share-link mode (sv/bs/foh).
+  const sv=document.getElementById('sv')?.classList.contains('open');
+  const bs=document.getElementById('bs')?.classList.contains('open');
+  const foh=document.getElementById('foh')?.classList.contains('open');
+  const publicViewer=PUBLIC_MODE==='stage'||PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh';
+  const onViewerRoute=sv||bs||foh||publicViewer;
+  // Cue is scoped to the stage it was sent for (G.activeStage at send time).
+  const matchStage=!c||!c.stageId||c.stageId===G.activeStage;
+  const visible=onViewerRoute&&_cueActive(c)&&matchStage;
   if(!visible){overlay.className='';overlay.textContent='';return;}
   overlay.textContent=c.text;
   overlay.className='on cue-'+(c.color||'amber');
@@ -4818,7 +4854,7 @@ function tick(){
   updateClock();
   renderTP();
   renderSV();
-  _renderSVCue();
+  _renderCueOverlay();
   renderCueStatus();
   renderBlackout();
   renderQuickAdjust();
