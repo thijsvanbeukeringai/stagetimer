@@ -5748,21 +5748,43 @@ async function createProject(){
     // the raw number; previous ISO-string code broke creation entirely.
     const row={id,name,company_id:companyId||null,created_at:createdAtMs,created_by:createdBy,data:emptyData};
     console.log('[createProject] inserting',row);
-    // Race against an 8-second timeout so the button can't sit on
-    // "Creating..." forever if Supabase / the network hangs.
-    const TIMEOUT=8000;
-    const insertPromise=supa.from('projects').insert([row]);
-    const timeoutPromise=new Promise(r=>setTimeout(()=>r({_timeout:true}),TIMEOUT));
-    const result=await Promise.race([insertPromise,timeoutPromise]);
-    if(result&&result._timeout){
-      console.error('[createProject] timed out after',TIMEOUT,'ms');
-      alert('Project creation timed out. Check your internet connection and try again.');
-      return;
+    // Direct fetch instead of supa.from().insert(). The supa client was
+    // hanging - probably an auth-refresh deadlock when the access token is
+    // stale. RLS is disabled on `projects` so the anon key is enough to
+    // write a row. AbortController gives us a hard 8s ceiling no matter
+    // what happens internally.
+    const ctrl=new AbortController();
+    const tmo=setTimeout(()=>ctrl.abort(),8000);
+    let session;
+    try{const r=await supa.auth.getSession();session=r?.data?.session;}catch(_){}
+    const bearer=session?.access_token||SUPA_KEY;
+    let res;
+    try{
+      res=await fetch(`${SUPA_URL}/rest/v1/projects`,{
+        method:'POST',
+        signal:ctrl.signal,
+        headers:{
+          'Content-Type':'application/json',
+          'apikey':SUPA_KEY,
+          'Authorization':`Bearer ${bearer}`,
+          'Prefer':'return=minimal',
+        },
+        body:JSON.stringify(row),
+      });
+    }catch(e){
+      clearTimeout(tmo);
+      if(e?.name==='AbortError'){
+        console.error('[createProject] timed out after 8s');
+        alert('Project creation timed out. Check your internet connection and try again.');
+        return;
+      }
+      throw e;
     }
-    const{error}=result;
-    if(error){
-      console.error('[createProject] supabase error',error);
-      alert('Failed to create project: '+(error.message||JSON.stringify(error)));
+    clearTimeout(tmo);
+    if(!res.ok){
+      const body=await res.text().catch(()=>'');
+      console.error('[createProject] HTTP',res.status,body);
+      alert('Failed to create project: HTTP '+res.status+(body?' - '+body:''));
       return;
     }
     APP.projects.push(proj);
