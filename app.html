@@ -2534,10 +2534,11 @@ function renderTbar(){
     <input type="hidden" id="f-starts-at">
     <input type="hidden" id="f-ends-at">
     <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
-    <div class="frow">
-      <div class="fg"><label class="fl" for="f-g">Genre</label><input class="fi" id="f-g" type="text" placeholder="e.g. Techno"></div>
-      <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-A" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div><div class="booth-opt" id="bo-none" onclick="selBooth('')">-</div></div></div>
-    </div>
+    <!-- Genre is intentionally not surfaced in the UI; the data field is kept
+         as a hidden input so existing reads/writes continue to work without
+         touching downstream display code. -->
+    <input type="hidden" id="f-g" value="">
+    <div class="fg"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-none" id="bo-none" onclick="selBooth('')">-</div><div class="booth-opt" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div></div></div>
     <div class="fg"><label class="fl" for="f-n">Note</label><textarea class="fi" id="f-n" placeholder="Internal note…"></textarea></div>
   </div>
   <div id="drfooter">
@@ -3766,7 +3767,7 @@ function renderSV(){
 }
 
 // ══ DRAWER
-let editId=null,prefillBooth='A',_drFlags={cancelled:false,priority:false};
+let editId=null,prefillBooth='',_drFlags={cancelled:false,priority:false};
 function toggleDrFlag(flag){
   _drFlags[flag]=!_drFlags[flag];
   _updateDrFlagBtns();
@@ -3812,7 +3813,7 @@ function openDrawer(id,booth=null){
     }
   }else{
     document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';
-    clearPhoto();selBooth(booth||'A');
+    clearPhoto();selBooth(booth||'');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
     let startDt;
