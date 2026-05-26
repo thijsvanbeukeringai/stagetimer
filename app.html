@@ -784,9 +784,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #foh-dtabs, #bs-dtabs{grid-column:3;grid-row:2;min-width:0;justify-self:stretch;}
   /* Timeline has no stage selector — day picker fills full row 2 */
   #tl-dtabs{grid-column:1/span 3;grid-row:2;min-width:0;}
-  /* Row 3 (FOH only): full-width "+ Show" primary action */
-  #foh-add-btn{grid-column:1/span 3;grid-row:3;justify-self:stretch;min-height:44px;padding:0 14px;font-size:13px;font-weight:800;
-    background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.4);color:#a5b4fc;justify-content:center;white-space:nowrap;}
+  /* "+ Show" header button removed from FOH — adding shows happens from the
+     dashboard. Leaving the grid at 2 rows only. */
 
   /* Modals */
   #share-modal{width:95vw;padding:18px;}
@@ -2521,7 +2520,6 @@ function renderTbar(){
     <div id="foh-dtabs"></div>
     <select id="foh-ssel" class="hsel"></select>
     <div id="foh-clock"></div>
-    <button class="fhbtn" id="foh-add-btn" onclick="openDrawer(null)">+ Show</button>
     <button class="fhbtn" id="foh-close-btn" onclick="closeFOH()">✕</button>
   </div>
   <div id="foh-body"><div id="foh-col"><div id="foh-col-body"></div></div></div>
@@ -3438,7 +3436,6 @@ function renderFOH(){
       ${fohNotesHTML(cur.s.id)}
       <div style="display:flex;gap:6px;margin-top:8px;">
         <button class="foh-add-note" onclick="openFohnModal('${cur.s.id}','${escH(cur.s.artist)}');event.stopPropagation()">+ Note</button>
-        <button class="frb" style="width:auto;padding:0 10px;opacity:1;" onclick="openDrawer('${cur.s.id}')">✏️ Edit</button>
       </div>
     </div>`;
   }else{
@@ -3472,11 +3469,7 @@ function renderFOH(){
     </div>`;
   }).join('')||`<div style="padding:16px 28px;font-size:12px;color:rgba(255,255,255,.2);">No shows</div>`;
   document.getElementById('foh-col-body').innerHTML=liveHTML+
-    `<div class="foh-up-hdr">Schedule</div>`+rows+
-    `<button class="foh-add" onclick="openDrawer(null)">
-      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      Add show
-    </button>`;
+    `<div class="foh-up-hdr">Schedule</div>`+rows;
 }
 
 // ══ FOH NOTES
