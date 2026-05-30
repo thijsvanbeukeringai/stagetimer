@@ -2142,6 +2142,34 @@ function save(opts){
 async function _pushProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   setSyncDot('ing');
+  // SAFETY NET: refuse to wipe a populated server with our empty local
+  // state. This caught a live-festival bug where an operator tab with
+  // stale localStorage (shows=[]) kept clobbering the lineup after we
+  // restored it via SQL. Trigger: local shows array is empty AND project
+  // has stages configured (= not a fresh project). Then peek the server;
+  // if it has shows, adopt them and skip the write entirely.
+  const localShows=(proj.data&&Array.isArray(proj.data.shows))?proj.data.shows:[];
+  const localStages=(proj.data&&Array.isArray(proj.data.stages))?proj.data.stages:[];
+  if(localShows.length===0&&localStages.length>0){
+    try{
+      const peekRes=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(proj.id)}&select=data`,{
+        headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Accept':'application/json'},
+      });
+      if(peekRes.ok){
+        const arr=await peekRes.json();
+        const serverData=arr?.[0]?.data;
+        if(serverData&&Array.isArray(serverData.shows)&&serverData.shows.length>0){
+          console.warn('[_pushProject] ABORT clobber: local has 0 shows, server has',serverData.shows.length,'- adopting server state');
+          proj.data=serverData;
+          localStorage.setItem(AKEY,JSON.stringify(APP));
+          if(id===APP.activeProjectId){loadG();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
+          setSyncDot('ok');
+          _pendingPush[id]=false;
+          return;
+        }
+      }
+    }catch(e){console.warn('[_pushProject] peek failed, proceeding:',e);}
+  }
   // Direct REST PATCH bypasses supa.from() - that client can deadlock on
   // stale auth refresh and silently swallow the upsert, which left
   // operators thinking shows were saved while the DB stayed empty (the
