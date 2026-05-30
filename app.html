@@ -7526,14 +7526,46 @@ async function doLogin(){
   errEl.style.display='none';
   if(!email||!pw){errEl.textContent='Please enter email and password.';errEl.style.display='block';return;}
   btn.textContent='Working…';btn.disabled=true;
-  const{data:{session},error}=await supa.auth.signInWithPassword({email,password:pw});
-  if(error){
-    errEl.textContent='Login failed: '+error.message;
-    errEl.style.display='block';
-    btn.textContent='Log in';btn.disabled=false;
-  }else{
+  // Direct REST to Supabase auth. The JS client supa.auth.signInWithPassword
+  // has hung in production (the same family of deadlocks we've been chasing
+  // all day). 10s ceiling means the button never stays on "Working…" forever.
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),10000);
+  try{
+    const res=await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`,{
+      method:'POST',
+      signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
+      body:JSON.stringify({email,password:pw}),
+    });
+    clearTimeout(tmo);
+    if(!res.ok){
+      const body=await res.json().catch(()=>({}));
+      const msg=body.error_description||body.msg||body.error||('HTTP '+res.status);
+      errEl.textContent='Login failed: '+msg;
+      errEl.style.display='block';
+      btn.textContent='Log in';btn.disabled=false;
+      return;
+    }
+    const session=await res.json();
+    // Hand the session to the supa client so Realtime + future supa.from()
+    // calls carry the JWT. Don't block on it - if setSession hangs we still
+    // proceed; localStorage 'sb-*' keys give the next page load the session.
+    try{
+      const setPromise=supa.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token});
+      await Promise.race([setPromise,new Promise(r=>setTimeout(r,2000))]);
+    }catch(e){console.warn('[doLogin] setSession warn:',e);}
     saveAuthSession(session);
     await _tryStartFromSession(session);
+  }catch(e){
+    clearTimeout(tmo);
+    if(e?.name==='AbortError'){
+      errEl.textContent='Login timed out after 10s. Check your connection and try again.';
+    }else{
+      errEl.textContent='Login failed: '+(e?.message||String(e));
+    }
+    errEl.style.display='block';
+    btn.textContent='Log in';btn.disabled=false;
   }
 }
 function doLogout(){
