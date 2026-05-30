@@ -2142,20 +2142,47 @@ function save(opts){
 async function _pushProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   setSyncDot('ing');
+  // Direct REST PATCH bypasses supa.from() - that client can deadlock on
+  // stale auth refresh and silently swallow the upsert, which left
+  // operators thinking shows were saved while the DB stayed empty (the
+  // lineup wipe bug). RLS is OFF on projects so anon key is enough.
+  // AbortController gives us a hard 10s ceiling.
+  const row={
+    id:proj.id,
+    name:proj.name,
+    company_id:proj.companyId||null,
+    created_at:proj.createdAt||Date.now(),
+    created_by:proj.createdBy||null,
+    data:proj.data,
+  };
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),10000);
   try{
-    // created_at is a bigint (ms epoch). Never fall back to an ISO string -
-    // that would fail the column type check and silently break the push.
-    const{error}=await supa.from('projects').upsert([{id:proj.id,name:proj.name,company_id:proj.companyId||null,created_at:proj.createdAt||Date.now(),created_by:proj.createdBy||null,data:proj.data}]);
-    if(error)throw error;
+    const res=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(proj.id)}`,{
+      method:'PATCH',
+      signal:ctrl.signal,
+      headers:{
+        'Content-Type':'application/json',
+        'apikey':SUPA_KEY,
+        'Authorization':`Bearer ${SUPA_KEY}`,
+        'Prefer':'return=minimal',
+      },
+      body:JSON.stringify(row),
+    });
+    clearTimeout(tmo);
+    if(!res.ok){
+      const body=await res.text().catch(()=>'');
+      throw new Error('HTTP '+res.status+(body?' - '+body:''));
+    }
     _pendingPush[id]=false;
     setSyncDot('ok');
   }catch(e){
+    clearTimeout(tmo);
     _pendingPush[id]=false;
     setSyncDot('err');
-    console.error('Project sync failed:',e);
-    // Show visible warning so data loss is never silent
+    console.error('[_pushProject] failed:',e);
     const d=document.getElementById('sync-dot');
-    if(d){d.title='Save failed: '+((e&&e.message)||JSON.stringify(e));}
+    if(d){d.title='Save failed: '+((e&&e.message)||String(e));}
   }
 }
 
