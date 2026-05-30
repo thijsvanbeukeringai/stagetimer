@@ -228,6 +228,68 @@ body.public-mode #foh-close-btn,
 body.public-mode #tl-close-btn,
 body.public-mode #sv-exit{display:none !important;}
 body.public-mode .st-brand{pointer-events:none;cursor:default;}
+
+/* ─────────────────────────────────────────────────────────────────────
+   ARTIST CHECK-IN viewer (mode=checkin). Full-screen list of every
+   show grouped by stage with a single tap to mark the artist as
+   arrived. Writes back to projects.data so the operator overview
+   reflects it instantly. */
+#ci{position:fixed;inset:0;z-index:7000;background:#08080e;display:none;flex-direction:column;color:#fff;overflow:hidden;}
+#ci.open{display:flex;}
+#ci-hdr{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;background:rgba(255,255,255,.02);}
+#ci-title{font-size:14px;font-weight:800;color:#fff;letter-spacing:-.2px;white-space:nowrap;}
+#ci-sub{font-size:11px;color:rgba(255,255,255,.4);font-family:var(--ffm);letter-spacing:.04em;text-transform:uppercase;}
+#ci-clock{font-family:var(--ffm);font-size:13px;color:rgba(255,255,255,.35);margin-left:auto;}
+#ci-summary{font-family:var(--ffm);font-size:11px;color:rgba(255,255,255,.5);padding:6px 10px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+#ci-summary strong{color:#22c55e;font-weight:800;}
+#ci-body{flex:1;overflow-y:auto;padding:22px;}
+#ci-grid{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:28px;}
+.ci-stage{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden;}
+.ci-stage-hdr{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.015);}
+.ci-stage-name{font-size:13px;font-weight:800;color:#fff;letter-spacing:.02em;}
+.ci-stage-count{font-family:var(--ffm);font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;margin-left:auto;}
+.ci-stage-list{display:flex;flex-direction:column;}
+.ci-row{display:grid;grid-template-columns:88px 1fr auto;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s ease;}
+.ci-row:last-child{border-bottom:none;}
+.ci-row.arrived{background:rgba(34,197,94,.05);}
+.ci-row.past{opacity:.55;}
+.ci-time{font-family:var(--ffm);font-size:13px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:.02em;}
+.ci-artist{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.1px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.ci-artist .ci-arrived-meta{display:block;font-size:10px;font-weight:500;font-family:var(--ffm);color:#22c55e;margin-top:3px;letter-spacing:.04em;text-transform:uppercase;}
+.ci-toggle{appearance:none;border:1.5px solid rgba(255,255,255,.18);background:transparent;color:rgba(255,255,255,.7);
+  font-size:13px;font-weight:700;padding:10px 18px;border-radius:9px;cursor:pointer;min-width:140px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all .15s ease;font-family:inherit;}
+.ci-toggle:hover{border-color:rgba(255,255,255,.3);color:#fff;}
+.ci-toggle:active{transform:translateY(1px);}
+.ci-toggle.on{background:#22c55e;border-color:#22c55e;color:#04130a;box-shadow:0 0 0 1px rgba(34,197,94,.15);}
+.ci-toggle.on:hover{background:#16a34a;border-color:#16a34a;}
+.ci-toggle .ci-tick{width:14px;height:14px;}
+.ci-empty{text-align:center;padding:60px 20px;color:rgba(255,255,255,.3);font-size:14px;}
+@media (max-width:700px){
+  #ci-hdr{padding:10px 14px;flex-wrap:wrap;gap:8px;}
+  #ci-title{font-size:13px;}
+  #ci-clock{display:none;}
+  #ci-body{padding:14px;}
+  .ci-row{grid-template-columns:60px 1fr;grid-template-rows:auto auto;gap:6px 12px;padding:12px 14px;}
+  .ci-toggle{grid-column:1/-1;justify-self:stretch;min-width:0;width:100%;padding:12px;}
+  .ci-stage-hdr{padding:10px 14px;}
+  .ci-artist{font-size:14px;}
+}
+
+/* Operator overview "Arrived" pill - shows on the live/up-next card. */
+.stov-arrived{display:inline-flex;align-items:center;gap:4px;font-family:var(--ffm);font-size:9px;font-weight:800;
+  letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-left:8px;vertical-align:middle;
+  background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
+.stov-arrived.no{background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.1);}
+
+/* Schedule row checkmark - small clickable dot the operator can flip. */
+.sc-arrived{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.18);color:transparent;cursor:pointer;
+  flex-shrink:0;margin-right:2px;transition:all .12s ease;}
+.sc-arrived:hover{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08);}
+.sc-arrived.on{background:#22c55e;border-color:#22c55e;color:#04130a;}
+.sc-arrived.on svg{width:11px;height:11px;}
+
 /* ─────────────────────────────────────────────────────────────────────
    ITEM-TYPE BADGE (broadcast rundown). Optional per-show colour-coded
    tag so a gallery director can scan the schedule for LIVE / VTR / GFX /
@@ -2117,7 +2179,8 @@ function setupRealtime(){
           else if(PUBLIC_MODE==='backstage'){renderBS();}
           else if(PUBLIC_MODE==='foh'){renderFOH();}
           else if(PUBLIC_MODE==='stage'){renderSV();}
-          else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
+          else if(PUBLIC_MODE==='checkin'){renderCI();}
+          else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('ci').classList.contains('open'))renderCI();}
         }
         const dashEl=document.getElementById('dash');if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
       } else if(payload.eventType==='DELETE'){
@@ -3343,6 +3406,22 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- ARTIST CHECK-IN (share-link mode=checkin) -->
+<div id="ci">
+  <div id="ci-hdr">
+    <a class="st-brand" id="st-brand-ci" href="#" onclick="closeCI();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
+    <div>
+      <div id="ci-title">Artist Check-in</div>
+      <div id="ci-sub" style="margin-top:2px;">Tap to mark arrived</div>
+    </div>
+    <div id="ci-dtabs"></div>
+    <div id="ci-clock"></div>
+    <div id="ci-summary"><strong id="ci-arr">0</strong> / <span id="ci-tot">0</span> arrived</div>
+    <button class="fhbtn" id="ci-close-btn" onclick="closeCI()">✕</button>
+  </div>
+  <div id="ci-body"><div id="ci-grid"></div></div>
+</div>
+
 <!-- BACKSTAGE -->
 <div id="bs">
   <div id="bs-hdr">
@@ -3531,11 +3610,13 @@ function renderSched(){
     </div>`).join('');
     const hasCrew=CREW_ROLES.some(r=>s.crew?.[r.id]?.name);
     const hasContent=s.note||hasCrew||notes.length;
+    const arrivedDot=`<button class="sc-arrived ${s.arrived?'on':''}" title="${s.arrived?'Checked in':'Not checked in - click to mark arrived'}" onclick="ciToggleArrived('${s.id}');event.stopPropagation()">${s.arrived?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}</button>`;
     return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}"
       onclick="${G.timerMode==='manual'?`selMCue(${i})`:''}">
       ${(isNow||isSel)?`<div class="spr" style="width:${pct.toFixed(1)}%;"></div>`:''}
       <div class="scard-top">
         <span class="scard-time">${s.start.slice(0,5)}<span style="color:var(--dim)"> – </span>${s.end.slice(0,5)}</span>
+        ${arrivedDot}
         <span class="scard-name">${escH(s.artist)}</span>
         ${itemTypeBadge(s)}
         ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${s.booth}</span>`:''}
@@ -4397,7 +4478,7 @@ document.addEventListener('visibilitychange',()=>{
   const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -4575,7 +4656,12 @@ function tickOV(){
       card.style.borderColor=isPrio?'':''+upCol+'33';
       dotEl.style.background=isPrio?'#fbbf24':'#ef4444';if(nameEl)nameEl.style.color=isPrio?'#fbbf24':'#ef4444';
       stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
-      artEl.textContent=nxtObj.s.artist;artEl.style.color=isPrio?'#fbbf24':'#fff';
+      // Show arrival status for the up-next artist - critical info for the
+      // operator: green pill if the artist checked in, dim "Awaiting" if not.
+      const arrPill=nxtObj.s.arrived
+        ?`<span class="stov-arrived">✓ Arrived</span>`
+        :`<span class="stov-arrived no">Awaiting</span>`;
+      artEl.innerHTML=escH(nxtObj.s.artist)+arrPill;artEl.style.color=isPrio?'#fbbf24':'#fff';
       const siCeil=Math.ceil(nxtObj.startsIn);
       const cdTxt=siCeil>3600?Math.ceil(siCeil/3600)+' h':siCeil>900?Math.ceil(siCeil/60)+' min':s2cdH(siCeil);
       cdEl.textContent=cdTxt;cdEl.style.color=upCol;cdEl.className='stov-cd';
@@ -5751,13 +5837,13 @@ async function createProject(){
     // Direct fetch instead of supa.from().insert(). The supa client was
     // hanging - probably an auth-refresh deadlock when the access token is
     // stale. RLS is disabled on `projects` so the anon key is enough to
-    // write a row. AbortController gives us a hard 8s ceiling no matter
-    // what happens internally.
+    // write a row, and we already have created_by from CURRENT_USER - so
+    // we skip supa.auth.getSession() entirely (that call was the new hang
+    // source: it can stall on a stale refresh token even though the fetch
+    // below is already protected by AbortController). AbortController
+    // gives us a hard 8s ceiling no matter what happens internally.
     const ctrl=new AbortController();
     const tmo=setTimeout(()=>ctrl.abort(),8000);
-    let session;
-    try{const r=await supa.auth.getSession();session=r?.data?.session;}catch(_){}
-    const bearer=session?.access_token||SUPA_KEY;
     let res;
     try{
       res=await fetch(`${SUPA_URL}/rest/v1/projects`,{
@@ -5766,7 +5852,7 @@ async function createProject(){
         headers:{
           'Content-Type':'application/json',
           'apikey':SUPA_KEY,
-          'Authorization':`Bearer ${bearer}`,
+          'Authorization':`Bearer ${SUPA_KEY}`,
           'Prefer':'return=minimal',
         },
         body:JSON.stringify(row),
@@ -6778,8 +6864,9 @@ function openShareModal(projId){
   // Timeline link (whole project, no stage)
   const tlUrl=`${base}?mode=timeline&pid=${projId}`;
   const ovUrl=`${base}?mode=overview&pid=${projId}`;
+  const ciUrl=`${base}?mode=checkin&pid=${projId}`;
   const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
-    <div class="share-stage-name">▦ Timeline &amp; Overview</div>
+    <div class="share-stage-name">▦ Timeline, Overview &amp; Check-in</div>
     <div class="share-link-row">
       <span class="share-link-label">Timeline</span>
       <span class="share-link-url" title="${tlUrl}">${tlUrl}</span>
@@ -6789,6 +6876,11 @@ function openShareModal(projId){
       <span class="share-link-label">Overview</span>
       <span class="share-link-url" title="${ovUrl}">${ovUrl}</span>
       <button class="share-copy-btn" onclick="copyLink(this,'${ovUrl}')">Copy</button>
+    </div>
+    <div class="share-link-row">
+      <span class="share-link-label">Check-in</span>
+      <span class="share-link-url" title="${ciUrl}">${ciUrl}</span>
+      <button class="share-copy-btn" onclick="copyLink(this,'${ciUrl}')">Copy</button>
     </div>
   </div>`;
   // Per-stage links
@@ -6819,6 +6911,131 @@ function openShareModal(projId){
   document.getElementById('share-ov').classList.add('open');
 }
 function closeShareModal(){document.getElementById('share-ov').classList.remove('open');}
+
+// ══ ARTIST CHECK-IN viewer (share-link mode=checkin).
+// Operator and check-in viewer share the same projects.data column.
+// A tap on the Arrived button flips show.arrived locally, repaints the
+// row, and pushes the updated data via direct REST PATCH. The 1-second
+// polling + Realtime subscription on every other viewer fans the change
+// out across the operator dashboard and all share-link screens.
+function openCI(){document.getElementById('ci').classList.add('open');renderCI();}
+function closeCI(){if(PUBLIC_MODE==='checkin')return;document.getElementById('ci').classList.remove('open');}
+function _pickDayCI(id){G.activeDay=id;renderCI();}
+function renderCI(){
+  const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
+  const titleEl=document.getElementById('ci-title');
+  if(titleEl&&proj)titleEl.textContent=proj.name+' · Check-in';
+  // Day picker
+  const dtabs=document.getElementById('ci-dtabs');
+  if(dtabs)dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayCI');
+  const grid=document.getElementById('ci-grid');if(!grid)return;
+  const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay&&!s.cancelled);
+  let total=0,arrived=0;
+  const blocks=stages.map(st=>{
+    const shows=dayShows.filter(s=>s.stage===st.id).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+    if(!shows.length)return'';
+    let stageArr=0;
+    const rows=shows.map(s=>{
+      total++;
+      const isArr=!!s.arrived;
+      if(isArr){arrived++;stageArr++;}
+      const past=_showIsPast(s);
+      const arrTime=s.arrivedAt?_fmtArrivedTime(s.arrivedAt):'';
+      return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}">
+        <div class="ci-time">${(s.start||'').slice(0,5)}</div>
+        <div class="ci-artist">${escH(s.artist||'(no name)')}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${arrTime}</span>`:''}</div>
+        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived('${s.id}')">
+          ${isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived'}
+        </button>
+      </div>`;
+    }).join('');
+    return`<div class="ci-stage">
+      <div class="ci-stage-hdr">
+        <div class="ci-stage-name">${escH(st.name)}</div>
+        <div class="ci-stage-count">${stageArr}/${shows.length} arrived</div>
+      </div>
+      <div class="ci-stage-list">${rows}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+  grid.innerHTML=blocks||`<div class="ci-empty">No shows scheduled for this day.</div>`;
+  const arrEl=document.getElementById('ci-arr'),totEl=document.getElementById('ci-tot');
+  if(arrEl)arrEl.textContent=arrived;
+  if(totEl)totEl.textContent=total;
+}
+function _fmtArrivedTime(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+
+// In-flight tracker so the 1s poll in checkin mode doesn't briefly overwrite
+// an optimistic toggle while the PATCH is still in flight.
+let _ciWriteInFlight=0;
+// Toggle arrived for a show. Optimistic local update + immediate persist.
+// In public checkin mode there is no Supabase auth session, so we PATCH the
+// projects row directly with the anon key. RLS is OFF on projects.
+async function ciToggleArrived(showId){
+  const s=(G.shows||[]).find(x=>x.id===showId);if(!s)return;
+  const wasArrived=!!s.arrived;
+  s.arrived=!wasArrived;
+  s.arrivedAt=s.arrived?Date.now():null;
+  // Immediate UI repaint - in checkin mode just repaint the list; in
+  // operator mode update the schedule + overview if open + checkin view if open.
+  if(PUBLIC_MODE==='checkin')renderCI();
+  else{
+    try{renderSched();}catch(e){}
+    if(document.getElementById('stov')?.classList.contains('open'))renderOV();
+    if(document.getElementById('ci')?.classList.contains('open'))renderCI();
+  }
+  // Persist - in operator mode, go through the regular save() so the
+  // syncDot, localStorage mirror and Realtime fanout all happen as usual.
+  if(!PUBLIC_MODE){save({immediate:true});return;}
+  // Public checkin mode: READ-MODIFY-WRITE. The previous version PATCHed the
+  // entire `data` JSONB with whatever the checkin tab had in memory - if that
+  // snapshot was stale (operator just added a show), the PATCH clobbered the
+  // new show and Realtime echoed the wipe back to the operator's view. NEW
+  // FLOW: fetch the freshest data, mutate ONLY the arrived bit of the
+  // matching show by id, then PATCH back. The lineup is now untouchable.
+  _ciWriteInFlight++;
+  const newArrived=s.arrived;
+  const newArrivedAt=s.arrivedAt;
+  try{
+    const readRes=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(PUBLIC_PID)}&select=data`,{
+      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Accept':'application/json'},
+    });
+    if(!readRes.ok)throw new Error('Read failed: HTTP '+readRes.status);
+    const rows=await readRes.json();
+    const fresh=rows?.[0]?.data;
+    if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
+    const idx=fresh.shows.findIndex(x=>x.id===showId);
+    if(idx<0)throw new Error('Show not found in latest data');
+    fresh.shows[idx].arrived=newArrived;
+    fresh.shows[idx].arrivedAt=newArrivedAt;
+    // Adopt fresh snapshot locally so any pending operator edits are
+    // visible immediately and we never write stale state next round.
+    const proj=APP.projects.find(p=>p.id===PUBLIC_PID);if(proj)proj.data=fresh;
+    const keepDay=G.activeDay;
+    G=fresh;
+    if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
+    const res=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(PUBLIC_PID)}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Prefer':'return=minimal'},
+      body:JSON.stringify({data:fresh}),
+    });
+    if(!res.ok){
+      const body=await res.text().catch(()=>'');
+      throw new Error('Write failed: HTTP '+res.status+(body?' - '+body:''));
+    }
+    renderCI(); // repaint - may now also show other operator edits
+  }catch(e){
+    // Revert optimistic UI on failure
+    const s2=(G.shows||[]).find(x=>x.id===showId);
+    if(s2){s2.arrived=wasArrived;s2.arrivedAt=wasArrived?s2.arrivedAt:null;}
+    renderCI();
+    console.error('[ciToggleArrived]',e);
+    alert('Check-in save failed: '+(e?.message||String(e)));
+  }finally{
+    _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
+  }
+}
+
 function copyLink(btn,url){
   navigator.clipboard.writeText(url).then(()=>{
     btn.textContent='✓ Copied';btn.classList.add('copied');
@@ -7004,6 +7221,36 @@ async function loadPublicView(){
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
+    setupRealtime();
+  } else if(PUBLIC_MODE==='checkin'){
+    // Artist check-in. WRITE-capable share-link: anyone with the URL can
+    // flip arrived on / off. Hide the operator app + close button, force
+    // today's day, then poll the projects row every second so concurrent
+    // changes from operator or other check-in devices appear instantly.
+    document.getElementById('app').style.display='none';
+    const closeBtn=document.getElementById('ci-close-btn');
+    if(closeBtn)closeBtn.style.display='none';
+    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
+    if(todayDay)G.activeDay=todayDay.id;
+    else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
+    openCI();
+    // Clock
+    setInterval(()=>{
+      const cl=document.getElementById('ci-clock');if(!cl)return;
+      const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    },1000);
+    // Poll for updates (operator marked someone arrived, other device etc).
+    // Skip the polling repaint if the user is mid-toggle (request in flight) -
+    // the optimistic local state would otherwise flicker back to the server's
+    // prior value for a beat before the PATCH lands.
+    setInterval(async()=>{
+      if(_ciWriteInFlight>0)return;
+      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
+        const keepDay=G.activeDay;loadG();
+        if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
+        renderCI();_renderCueOverlay();renderBlackout();}}catch(e){}
     },1000);
     setupRealtime();
   }
