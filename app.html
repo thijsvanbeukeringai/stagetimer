@@ -2040,13 +2040,37 @@ function loadAPPCache(){
 }
 
 // Load from Supabase (async, merges into APP)
+// Direct-REST GET with anon key + user JWT, hard 10s ceiling.
+// supa.from(...).select() has hung in production (same deadlock family as
+// signInWithPassword / upsert). PostgREST returns the same shape: data[] or
+// error string. We mimic { data, error } so callers don't change.
+async function _restGet(table){
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),10000);
+  let jwt=SUPA_KEY;
+  try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=*`,{
+      signal:ctrl.signal,
+      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'},
+    });
+    clearTimeout(tmo);
+    if(!res.ok){const txt=await res.text().catch(()=>'');return{data:null,error:{message:'HTTP '+res.status+(txt?' '+txt:'')}};}
+    const data=await res.json().catch(()=>null);
+    return{data,error:null};
+  }catch(e){
+    clearTimeout(tmo);
+    return{data:null,error:{message:e?.name==='AbortError'?'timeout':(e?.message||String(e))}};
+  }
+}
+
 async function loadAPPRemote(){
   setSyncDot('ing');
   try{
     const[cosRes,usrsRes,projsRes]=await Promise.all([
-      supa.from('companies').select('*'),
-      supa.from('app_users').select('*'),
-      supa.from('projects').select('*')
+      _restGet('companies'),
+      _restGet('app_users'),
+      _restGet('projects')
     ]);
     // Update companies + users whenever their fetch succeeds - even if projects
     // fetch fails (iOS Safari token expiry, transient RLS, etc.). Otherwise a
@@ -6784,24 +6808,31 @@ function isCompanyAdmin(){return['admin','super_admin','company_admin'].includes
 
 async function loadCurrentUser(session){
   if(!session)return;
-  // Try to find by email in app_users
-  const{data:rows,error:findErr}=await supa.from('app_users').select('*').eq('email',session.user.email).limit(1);
-  if(findErr){console.warn('app_users lookup failed:',findErr);return;}
-  const found=rows?.[0]||null;
-  if(found){
-    CURRENT_USER={id:found.id,name:found.name,email:found.email,role:found.role,companyId:found.company_id};
-  }else{
-    // Only auto-create if the entire table is empty (very first user ever)
-    const{data:all,error:allErr}=await supa.from('app_users').select('id').limit(1);
-    if(allErr||!all||all.length>0)return; // table has users → don't auto-create
-    const newAdmin={id:uid(),name:session.user.email.split('@')[0],email:session.user.email,role:'admin',company_id:''};
-    await supa.from('app_users').insert([newAdmin]);
-    CURRENT_USER={...newAdmin,companyId:''};
-    APP.users.push(CURRENT_USER);
+  const email=session.user?.email||session.email;
+  if(!email)return;
+  // Direct REST instead of supa.from() - same hang-protection as everywhere
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),8000);
+  let jwt=SUPA_KEY;
+  try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
+  try{
+    const url=`${SUPA_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&select=*&limit=1`;
+    const res=await fetch(url,{signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'}});
+    clearTimeout(tmo);
+    if(!res.ok){console.warn('[loadCurrentUser] HTTP',res.status);return;}
+    const rows=await res.json();
+    const found=rows?.[0]||null;
+    if(found){
+      CURRENT_USER={id:found.id,name:found.name,email:found.email,role:found.role,companyId:found.company_id};
+    }
+    // Skip the empty-table auto-create branch in the new path; festival operators are
+    // never the first user. If you actually need to bootstrap, do it via SQL.
+    if(CURRENT_USER)localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
+    updateRoleUI();
+  }catch(e){
+    clearTimeout(tmo);
+    console.warn('[loadCurrentUser] failed:',e?.message||e);
   }
-  // Cache current user so it's available immediately on next page load
-  if(CURRENT_USER)localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
-  updateRoleUI();
 }
 
 function isSuperAdmin(){return CURRENT_USER?.role==='super_admin';}
