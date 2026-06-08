@@ -7741,10 +7741,50 @@ async function _startApp(session){
     initOneSignalUser(CURRENT_USER?.id);
   }catch(e){console.error('startApp:',e);}
 }
+// ══ AUTH INIT v2 - linear, no listeners, no races.
+// Replaces the old onAuthStateChange + race-fallback maze. Single
+// straight-line flow:
+//   1. Cache + share-link + signup branches first.
+//   2. No stored token -> show login form.
+//   3. Stored token -> probe /auth/v1/user (5s timeout).
+//      ok    -> start app.
+//      401   -> refresh via /auth/v1/token?grant_type=refresh_token.
+//      other -> wipe token, show login.
+// Every network call has an AbortController. supa.auth is touched
+// fire-and-forget for Realtime only; the UI never waits on it.
+async function _authProbe(access_token){
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),5000);
+  try{
+    const res=await fetch(`${SUPA_URL}/auth/v1/user`,{
+      signal:ctrl.signal,
+      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${access_token}`,'Accept':'application/json'},
+    });
+    clearTimeout(tmo);
+    if(res.ok)return await res.json();
+    return null;
+  }catch(e){clearTimeout(tmo);return null;}
+}
+async function _authRefresh(refresh_token){
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),5000);
+  try{
+    const res=await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`,{
+      method:'POST',
+      signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
+      body:JSON.stringify({refresh_token}),
+    });
+    clearTimeout(tmo);
+    if(res.ok)return await res.json();
+    return null;
+  }catch(e){clearTimeout(tmo);return null;}
+}
+
 (async()=>{
-  try{loadAPPCache();}catch(e){} // initialize APP before loadOT
+  try{loadAPPCache();}catch(e){}
   loadOT();
-  // Post-payment signup completion - show password setup overlay, skip the rest
+  // Post-payment signup completion
   if(SIGNUP_SUCCESS){
     _hideLoader();
     document.getElementById('login').classList.remove('open');
@@ -7752,119 +7792,51 @@ async function _startApp(session){
     setTimeout(()=>document.getElementById('su-fin-pw').focus(),120);
     return;
   }
-  // Public share link - skip auth entirely (must happen BEFORE the auth-flow fallback timeout)
+  // Public share link - skip auth entirely
   if(PUBLIC_MODE&&PUBLIC_PID){
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
-  // Fast path: incognito / signed-out users have no auth tokens in
-  // localStorage. Don't make them stare at a loading spinner while we
-  // wait for INITIAL_SESSION to confirm what we already know - show the
-  // login form immediately. The onAuthStateChange listener below stays
-  // wired up so a successful sign-in still kicks off _tryStartFromSession.
-  const _hasBackup=!!localStorage.getItem(ST_AUTH);
-  const _hasSbSession=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
-  if(!_hasBackup&&!_hasSbSession){_showLogin();}
-  // Eager session restore for returning users: don't wait the full 5s
-  // for Supabase's INITIAL_SESSION event - try our st_auth_v1 backup
-  // immediately, race it against a 3s timeout, and fall back to the
-  // login form if either fails. Cuts cold-start by ~5-15 seconds.
-  if(_hasBackup||_hasSbSession){
-    (async()=>{
-      try{
-        const timeoutSentinel={};
-        const restored=await Promise.race([
-          restoreAuthSession(),
-          new Promise(r=>setTimeout(()=>r(timeoutSentinel),3000))
-        ]);
-        if(_appStarted)return;
-        if(restored===timeoutSentinel){
-          console.warn('[auth] eager restore timed out after 3s, showing login');
-          _showLogin();
-          return;
-        }
-        if(restored){
-          console.log('[auth] eager restore succeeded, starting app');
-          await _tryStartFromSession(restored);
-        } else {
-          console.log('[auth] eager restore returned null, showing login');
-          _showLogin();
-        }
-      }catch(e){
-        console.warn('[auth] eager restore failed:',e?.message||e);
-        if(!_appStarted)_showLogin();
-      }
-    })();
-  }
-  // Hard fallback: never let the loader hang forever (only for authenticated flow).
-  // CRITICAL: don't bounce a session-holding user to login just because the network is slow.
-  // If a Supabase session or our backup exists in localStorage, keep waiting for INITIAL_SESSION
-  // and only fall back to login after a longer timeout - and even then only if both keys are gone.
-  setTimeout(()=>{
-    if(_appStarted)return;
-    const hasBackup=!!localStorage.getItem(ST_AUTH);
-    const hasSbSession=Object.keys(localStorage).some(k=>k.startsWith('sb-')&&k.endsWith('-auth-token'));
-    if(hasBackup||hasSbSession){
-      console.log('[auth] 5s elapsed, session keys present - extending wait for INITIAL_SESSION');
-      // Second-stage fallback at 15s: if STILL nothing happened, try a manual restore one last time.
-      setTimeout(async()=>{
-        if(_appStarted)return;
-        try{
-          const restored=await restoreAuthSession();
-          if(restored){await _tryStartFromSession(restored);return;}
-        }catch(e){console.warn('[auth] late restore failed:',e);}
-        if(!_appStarted)_showLogin();
-      },10000);
-      return;
-    }
+  // No stored session -> straight to login. Fast path for incognito.
+  let stored=null;
+  try{stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');}catch(_){}
+  if(!stored||!stored.access_token||!stored.refresh_token){
     _showLogin();
-  },5000);
-
-  // Track whether INITIAL_SESSION has fired - used to distinguish a fresh sign-in
-  // from a session restore (some SDK builds emit SIGNED_IN instead of INITIAL_SESSION).
-  let _initialSessionSeen=false;
-  // Single source of truth: onAuthStateChange. Supabase fires INITIAL_SESSION on init -
-  // with the restored session if persistSession found one, or null if not.
-  supa.auth.onAuthStateChange(async(event,sess)=>{
-    console.log('[auth] event:',event,'hasSession:',!!sess,'invited:',sess?.user?.user_metadata?.invited);
-    if(sess)saveAuthSession(sess);
-    if(event==='INITIAL_SESSION')_initialSessionSeen=true;
-    if(event==='TOKEN_REFRESHED')return;
-    if(event==='PASSWORD_RECOVERY'){
-      _hideLoader();
-      document.getElementById('login').classList.remove('open');
-      document.getElementById('set-pw').classList.add('open');
-      return;
+    return;
+  }
+  // Stored session -> swap login form for loader while we validate.
+  document.getElementById('login').classList.remove('open');
+  document.getElementById('loader').style.display='flex';
+  let user=await _authProbe(stored.access_token);
+  let access_token=stored.access_token;
+  let refresh_token=stored.refresh_token;
+  if(!user){
+    const refreshed=await _authRefresh(refresh_token);
+    if(refreshed&&refreshed.access_token){
+      access_token=refreshed.access_token;
+      refresh_token=refreshed.refresh_token||refresh_token;
+      saveAuthSession(refreshed);
+      user=await _authProbe(access_token);
     }
-    // Only show set-password modal for a TRULY fresh sign-in: app must already be running
-    // (so this isn't the initial restore) AND user metadata says invited. Otherwise the
-    // cached JWT keeps user_metadata.invited=true forever and trips this on every refresh.
-    if(event==='SIGNED_IN'&&sess?.user?.user_metadata?.invited&&_initialSessionSeen&&_appStarted){
-      _hideLoader();
-      document.getElementById('login').classList.remove('open');
-      document.getElementById('set-pw').classList.add('open');
-      return;
-    }
-    if(sess&&!_appStarted){await _tryStartFromSession(sess);return;}
-    // No session delivered - show login (only on initial / signed-out events, not refreshes)
-    if((event==='INITIAL_SESSION'||event==='SIGNED_OUT')&&!sess&&!_appStarted){
-      // Last-chance backup restore in case Supabase's own storage was cleared but ours wasn't
-      const backup=localStorage.getItem(ST_AUTH);
-      if(backup){
-        console.log('[auth] no session from Supabase, trying st_auth_v1 backup');
-        try{
-          const restored=await restoreAuthSession();
-          if(restored){console.log('[auth] backup restore succeeded');await _tryStartFromSession(restored);return;}
-          console.log('[auth] backup restore returned null');
-        }catch(e){console.warn('[auth] backup restore threw:',e);}
-      }else{
-        console.log('[auth] no st_auth_v1 backup present');
-      }
-      _showLogin();
-    }
-  });
+  }
+  if(!user){
+    // Token dead. Wipe it and bounce to login.
+    saveAuthSession(null);
+    _hideLoader();
+    _showLogin();
+    return;
+  }
+  // Hand session to supa client for Realtime - background, never awaited.
+  try{
+    supa.auth.setSession({access_token,refresh_token})
+      .catch(e=>console.warn('[init] setSession bg warn:',e));
+  }catch(e){console.warn('[init] setSession threw:',e);}
+  _appStarted=true;
+  _showLogoutBtn(true);
+  try{await _startApp({access_token,refresh_token,user});}
+  catch(e){console.error('[init] _startApp failed:',e);_hideLoader();_appStarted=false;_showLogin();}
 })();
 updateClock();
 setInterval(tick,250);
