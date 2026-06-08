@@ -811,6 +811,60 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .stov-stage-name{font-size:9px;letter-spacing:.04em;}
   .stov-cd{font-size:20px;}
 }
+/* ─────────────────────────────────────────────────────────────────────
+   CONTROL ROOM WALL view (mode=wall). 4x4 fixed grid, huge typography,
+   pure-black background. Read from 3-5 metres. One status colour per
+   cell, drives the border + accent. No badges, no cue indicators here -
+   floor cues use the global #cue-overlay if active. */
+#wv{position:fixed;inset:0;z-index:7100;background:#000;display:none;flex-direction:column;color:#fff;overflow:hidden;font-family:var(--ff);}
+#wv.open{display:flex;}
+#wv-hdr{flex-shrink:0;display:flex;align-items:center;gap:16px;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,.06);background:#000;}
+#wv-title{font-size:13px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;}
+#wv-sub{font-size:11px;color:rgba(255,255,255,.3);font-family:var(--ffm);letter-spacing:.08em;text-transform:uppercase;}
+#wv-clock{margin-left:auto;font-family:var(--ffm);font-size:20px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+#wv-body{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:8px;padding:8px;overflow:hidden;}
+.wv-cell{position:relative;background:#0a0a0a;border:3px solid rgba(255,255,255,.08);border-radius:18px;padding:18px 22px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;transition:border-color .35s ease, background .35s ease, opacity .35s ease;min-height:0;}
+.wv-cell.empty{background:transparent;border-color:rgba(255,255,255,.04);}
+.wv-cell.idle{opacity:.45;}
+.wv-cell.live-green{border-color:#22c55e;background:rgba(34,197,94,.04);}
+.wv-cell.live-orange{border-color:#f97316;background:rgba(249,115,22,.05);}
+.wv-cell.live-red{border-color:#ef4444;background:rgba(239,68,68,.07);animation:wv-overtime 1s ease-in-out infinite;}
+.wv-cell.upnext-amber{border-color:#fbbf24;background:rgba(251,191,36,.04);}
+.wv-cell.upnext-gray{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.03);}
+.wv-cell.ended{border-color:rgba(239,68,68,.2);background:rgba(255,255,255,.01);}
+.wv-cell.blackout{background:#000;border-color:rgba(239,68,68,.6);}
+.wv-cell.blackout .wv-stage,.wv-cell.blackout .wv-artist,.wv-cell.blackout .wv-cd,.wv-cell.blackout .wv-next{visibility:hidden;}
+.wv-cell.blackout::after{content:'BLACKOUT';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--ffm);font-weight:900;font-size:clamp(28px,3.2vw,52px);color:#ef4444;letter-spacing:.16em;animation:blink 1.4s ease-in-out infinite;}
+
+.wv-stage{font-size:clamp(16px,1.6vw,24px);font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.85);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wv-now{display:flex;flex-direction:column;gap:4px;margin-top:6px;flex:1;justify-content:center;}
+.wv-artist{font-size:clamp(18px,1.9vw,28px);font-weight:800;color:#fff;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wv-artist.placeholder{color:rgba(255,255,255,.25);font-weight:600;}
+.wv-time{font-family:var(--ffm);font-size:clamp(11px,1vw,14px);font-weight:600;color:rgba(255,255,255,.45);letter-spacing:.05em;font-variant-numeric:tabular-nums;}
+.wv-cd{font-family:var(--ffm);font-size:clamp(46px,6.5vw,108px);font-weight:800;line-height:.95;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:#fff;text-align:left;margin:6px 0;}
+.wv-cd.green{color:#22c55e;}
+.wv-cd.orange{color:#f97316;}
+.wv-cd.red{color:#ef4444;}
+.wv-cd.amber{color:#fbbf24;}
+.wv-cd.gray{color:rgba(255,255,255,.4);}
+.wv-next{display:flex;align-items:center;gap:10px;font-size:clamp(14px,1.3vw,20px);font-weight:700;color:rgba(255,255,255,.7);line-height:1.2;min-height:1.4em;}
+.wv-next .arr{color:rgba(255,255,255,.35);font-size:.85em;flex-shrink:0;}
+.wv-next .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;}
+.wv-next .tm{font-family:var(--ffm);font-size:.7em;color:rgba(255,255,255,.45);flex-shrink:0;font-variant-numeric:tabular-nums;letter-spacing:.04em;}
+
+@keyframes wv-overtime{0%,100%{box-shadow:inset 0 0 0 0 rgba(239,68,68,0);}50%{box-shadow:inset 0 0 0 6px rgba(239,68,68,.3);}}
+
+/* Few-stage layouts: keep a sensible grid instead of forcing 4x4 with
+   12 empty cells. The control room can pick what fits their event. */
+#wv-body[data-stages="1"]{grid-template-columns:1fr;grid-template-rows:1fr;}
+#wv-body[data-stages="2"]{grid-template-columns:repeat(2,1fr);grid-template-rows:1fr;}
+#wv-body[data-stages="3"]{grid-template-columns:repeat(3,1fr);grid-template-rows:1fr;}
+#wv-body[data-stages="4"]{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);}
+#wv-body[data-stages="5"],#wv-body[data-stages="6"]{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);}
+#wv-body[data-stages="7"],#wv-body[data-stages="8"]{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);}
+#wv-body[data-stages="9"]{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);}
+#wv-body[data-stages="10"],#wv-body[data-stages="11"],#wv-body[data-stages="12"]{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);}
+
 .dr-flag-row{display:flex;gap:8px;margin-top:4px;}
 .dr-flag-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
 .dr-flag-btn:hover{background:var(--s4);}
@@ -2259,7 +2313,8 @@ function setupRealtime(){
           else if(PUBLIC_MODE==='foh'){renderFOH();}
           else if(PUBLIC_MODE==='stage'){renderSV();}
           else if(PUBLIC_MODE==='checkin'){renderCI();}
-          else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('ci').classList.contains('open'))renderCI();}
+          else if(PUBLIC_MODE==='wall'){renderWV();}
+          else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('ci').classList.contains('open'))renderCI();if(document.getElementById('wv').classList.contains('open'))renderWV();}
         }
         const dashEl=document.getElementById('dash');if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
       } else if(payload.eventType==='DELETE'){
@@ -3485,6 +3540,16 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- CONTROL ROOM WALL (share-link mode=wall) -->
+<div id="wv">
+  <div id="wv-hdr">
+    <div id="wv-title">Control Wall</div>
+    <div id="wv-sub"></div>
+    <div id="wv-clock"></div>
+  </div>
+  <div id="wv-body"></div>
+</div>
+
 <!-- ARTIST CHECK-IN (share-link mode=checkin) -->
 <div id="ci">
   <div id="ci-hdr">
@@ -4557,7 +4622,7 @@ document.addEventListener('visibilitychange',()=>{
   const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='wall')closeWV();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -4780,6 +4845,148 @@ function tickOV(){
       artEl.textContent='-';artEl.style.color='#fff';cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
       barEl.style.width='0%';nxEl.innerHTML='';
     }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CONTROL ROOM WALL — 4x4 (auto-shrink) high-density rundown for fixed
+// wall-mounted displays. Read from 3-5 metres: pure colour-driven status,
+// huge countdown, current + next artist with start times, nothing else.
+// Same data sources as Stage Overview but a totally different layout
+// optimised for "what eist mijn aandacht NU?" at distance.
+function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');renderWV();}
+function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').classList.remove('open');}
+function renderWV(){
+  const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
+  const subEl=document.getElementById('wv-sub');
+  if(subEl&&proj)subEl.textContent=proj.name;
+  // Auto-select today
+  const today=festivalDayStr();
+  const todayDay=(G.days||[]).find(d=>d.date===today);
+  const useDay=todayDay?todayDay.id:G.activeDay;
+  const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  const body=document.getElementById('wv-body');if(!body)return;
+  // Cell count drives grid layout via data-stages attr (CSS picks layout)
+  body.dataset.stages=String(Math.min(stages.length,16));
+  // Build cell shells in stable order so tickWV can just mutate by id.
+  const cells=stages.slice(0,16).map(st=>`
+    <div class="wv-cell" id="wvc-${st.id}">
+      <div class="wv-stage">${escH(st.name)}</div>
+      <div class="wv-now">
+        <div class="wv-artist placeholder" id="wva-${st.id}">—</div>
+        <div class="wv-time" id="wvt-${st.id}"></div>
+      </div>
+      <div class="wv-cd gray" id="wvcd-${st.id}">--:--</div>
+      <div class="wv-next" id="wvn-${st.id}"></div>
+    </div>`).join('');
+  // Pad with empty cells so a 5-stage event doesn't get a weird ragged grid
+  // beyond the CSS-defined layouts (CSS handles up to 12; pad to 16 above).
+  const total=stages.length;
+  let pad='';
+  if(total>12){
+    const fill=16-total;
+    for(let i=0;i<fill;i++)pad+='<div class="wv-cell empty"></div>';
+  }
+  body.innerHTML=cells+pad;
+  // Stash day so tickWV uses the same one across ticks (avoids flicker if
+  // activeDay changes from realtime mid-tick).
+  body.dataset.day=useDay||'';
+  tickWV();
+}
+function tickWV(){
+  const wv=document.getElementById('wv');if(!wv||!wv.classList.contains('open'))return;
+  const clk=document.getElementById('wv-clock');
+  if(clk){const d=new Date();clk.textContent=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;}
+  const body=document.getElementById('wv-body');if(!body)return;
+  const dayId=body.dataset.day||G.activeDay;
+  const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl')).slice(0,16);
+  const nowMs=Date.now();
+  const blackoutOn=!!(G.blackout);
+  stages.forEach(st=>{
+    const cell=document.getElementById('wvc-'+st.id);if(!cell)return;
+    if(blackoutOn){cell.className='wv-cell blackout';return;}
+    const shows=getShows(st.id,dayId).filter(s=>!s.cancelled);
+    const artEl=document.getElementById('wva-'+st.id);
+    const tEl=document.getElementById('wvt-'+st.id);
+    const cdEl=document.getElementById('wvcd-'+st.id);
+    const nxEl=document.getElementById('wvn-'+st.id);
+    // Find live + next
+    let cur=null,nxt=null;
+    for(const s of shows){
+      if(_showIsLive(s,nowMs)){cur=s;break;}
+    }
+    if(!cur){
+      let bestDt=Infinity;
+      for(const s of shows){
+        const sa=_showStartsAt(s);if(!sa)continue;
+        const dt=sa.getTime()-nowMs;
+        if(dt>0&&dt<bestDt){bestDt=dt;nxt=s;}
+      }
+    }else{
+      nxt=shows[shows.indexOf(cur)+1]||null;
+    }
+    let cls='wv-cell';
+    if(cur){
+      const ea=_showEndsAt(cur);const sa=_showStartsAt(cur);
+      const remSec=ea?Math.round((ea.getTime()-nowMs)/1000):0;
+      // Status -> border colour
+      if(remSec<0)cls+=' live-red';
+      else if(remSec<300)cls+=' live-orange';
+      else cls+=' live-green';
+      if(artEl){artEl.textContent=cur.artist||'(no name)';artEl.className='wv-artist';}
+      if(tEl){
+        const startTxt=cur.start?cur.start.slice(0,5):'';
+        const endTxt=cur.end?cur.end.slice(0,5):'';
+        tEl.textContent=startTxt&&endTxt?`${startTxt} → ${endTxt}`:'';
+      }
+      if(cdEl){
+        const abs=Math.abs(remSec);
+        const mm=Math.floor(abs/60),ss=abs%60;
+        const txt=(remSec<0?'-':'')+String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+        cdEl.textContent=txt;
+        cdEl.className='wv-cd '+(remSec<0?'red':remSec<300?'orange':'green');
+      }
+      if(nxEl){
+        if(nxt){
+          const nstart=nxt.start?nxt.start.slice(0,5):'';
+          nxEl.innerHTML=`<span class="arr">→</span><span class="nm">${escH(nxt.artist||'(no name)')}</span><span class="tm">${nstart}</span>`;
+        }else{nxEl.innerHTML='';}
+      }
+    }else if(nxt){
+      const sa=_showStartsAt(nxt);
+      const secUntil=sa?Math.max(0,Math.round((sa.getTime()-nowMs)/1000)):0;
+      const isClose=secUntil<600;
+      cls+=isClose?' upnext-amber':' upnext-gray';
+      if(artEl){artEl.textContent=nxt.artist||'(no name)';artEl.className='wv-artist';}
+      if(tEl){tEl.textContent='Up next at '+(nxt.start?nxt.start.slice(0,5):'');}
+      if(cdEl){
+        const mm=Math.floor(secUntil/60),ss=secUntil%60;
+        cdEl.textContent=(secUntil>3600?Math.floor(secUntil/3600)+'h '+Math.floor((secUntil%3600)/60)+'m':String(mm).padStart(2,'0')+':'+String(ss).padStart(2,'0'));
+        cdEl.className='wv-cd '+(isClose?'amber':'gray');
+      }
+      // Show the one after the next on the bottom line too
+      const idx=shows.indexOf(nxt);
+      const after=shows[idx+1];
+      if(nxEl){
+        if(after){
+          const astart=after.start?after.start.slice(0,5):'';
+          nxEl.innerHTML=`<span class="arr">then</span><span class="nm">${escH(after.artist||'(no name)')}</span><span class="tm">${astart}</span>`;
+        }else{nxEl.innerHTML='';}
+      }
+    }else if(shows.length){
+      cls+=' ended';
+      if(artEl){artEl.textContent='Ended';artEl.className='wv-artist placeholder';}
+      if(tEl)tEl.textContent='';
+      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd gray';}
+      if(nxEl)nxEl.innerHTML='';
+    }else{
+      cls+=' idle';
+      if(artEl){artEl.textContent='—';artEl.className='wv-artist placeholder';}
+      if(tEl)tEl.textContent='No shows scheduled';
+      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd gray';}
+      if(nxEl)nxEl.innerHTML='';
+    }
+    if(cell.className!==cls)cell.className=cls;
   });
 }
 
@@ -6951,8 +7158,9 @@ function openShareModal(projId){
   const tlUrl=`${base}?mode=timeline&pid=${projId}`;
   const ovUrl=`${base}?mode=overview&pid=${projId}`;
   const ciUrl=`${base}?mode=checkin&pid=${projId}`;
+  const wvUrl=`${base}?mode=wall&pid=${projId}`;
   const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
-    <div class="share-stage-name">▦ Timeline, Overview &amp; Check-in</div>
+    <div class="share-stage-name">▦ Timeline, Overview, Check-in &amp; Wall</div>
     <div class="share-link-row">
       <span class="share-link-label">Timeline</span>
       <span class="share-link-url" title="${tlUrl}">${tlUrl}</span>
@@ -6967,6 +7175,11 @@ function openShareModal(projId){
       <span class="share-link-label">Check-in</span>
       <span class="share-link-url" title="${ciUrl}">${ciUrl}</span>
       <button class="share-copy-btn" onclick="copyLink(this,'${ciUrl}')">Copy</button>
+    </div>
+    <div class="share-link-row">
+      <span class="share-link-label">Control Wall</span>
+      <span class="share-link-url" title="${wvUrl}">${wvUrl}</span>
+      <button class="share-copy-btn" onclick="copyLink(this,'${wvUrl}')">Copy</button>
     </div>
   </div>`;
   // Per-stage links
@@ -7307,6 +7520,24 @@ async function loadPublicView(){
     setInterval(async()=>{
       try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();_renderCueOverlay();renderBlackout();}}catch(e){}
+    },1000);
+    setupRealtime();
+  } else if(PUBLIC_MODE==='wall'){
+    // Control room wall display. No login, no chrome to escape into the
+    // operator dashboard. 1s polling + Realtime for instant sync; tickWV
+    // every 250ms drives the countdown.
+    document.getElementById('app').style.display='none';
+    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
+    if(todayDay)G.activeDay=todayDay.id;
+    else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
+    openWV();
+    setInterval(tickWV,250);
+    setInterval(async()=>{
+      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
+        const keepDay=G.activeDay;loadG();
+        if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
+        renderWV();_renderCueOverlay();renderBlackout();}}catch(e){}
     },1000);
     setupRealtime();
   } else if(PUBLIC_MODE==='checkin'){
