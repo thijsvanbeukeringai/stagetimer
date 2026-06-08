@@ -7579,15 +7579,27 @@ async function doLogin(){
       return;
     }
     const session=await res.json();
-    // Hand the session to the supa client so Realtime + future supa.from()
-    // calls carry the JWT. Don't block on it - if setSession hangs we still
-    // proceed; localStorage 'sb-*' keys give the next page load the session.
-    try{
-      const setPromise=supa.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token});
-      await Promise.race([setPromise,new Promise(r=>setTimeout(r,2000))]);
-    }catch(e){console.warn('[doLogin] setSession warn:',e);}
+    // Persist the session FIRST (sync, can't fail without throwing).
     saveAuthSession(session);
-    await _tryStartFromSession(session);
+    // Take the UI past the login form RIGHT NOW. Don't depend on
+    // _tryStartFromSession or the onAuthStateChange race to hide the form -
+    // that path becomes a no-op if _appStarted was flipped elsewhere and
+    // the user is left staring at a "Working..." button forever.
+    btn.textContent='Log in';btn.disabled=false;
+    document.getElementById('login').classList.remove('open');
+    document.getElementById('loader').style.display='flex';
+    _showLogoutBtn(true);
+    // Hand the session to the supa client in the background so Realtime
+    // and future supa.* calls carry the JWT. Truly fire-and-forget - if
+    // it hangs, we don't care; localStorage 'sb-*' keys are the backup.
+    try{
+      supa.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token})
+        .catch(e=>console.warn('[doLogin] setSession bg warn:',e));
+    }catch(e){console.warn('[doLogin] setSession threw:',e);}
+    // Start the app. Even if this hangs, the user already sees the loader
+    // instead of a stuck Working button.
+    if(_appStarted){console.log('[doLogin] _appStarted already true - skipping _tryStartFromSession');}
+    else{await _tryStartFromSession(session);}
   }catch(e){
     clearTimeout(tmo);
     if(e?.name==='AbortError'){
