@@ -7545,8 +7545,12 @@ async function _tryStartFromSession(sess){
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='flex';
   _showLogoutBtn(true);
+  // Don't bounce the user back to login on any error here. The token is
+  // saved; the user IS authenticated. Worst case they see a partially
+  // loaded dashboard. Better than the bug where a transient _startApp
+  // hiccup kicked the operator back to login mid-show.
   try{await _startApp(sess);}
-  catch(e){console.error('[auth] _startApp failed, falling back to login:',e);_appStarted=false;_showLogin();}
+  catch(e){console.error('[auth] _startApp threw - staying logged in:',e);_hideLoader();}
 }
 
 async function doLogin(){
@@ -7586,6 +7590,11 @@ async function doLogin(){
     // that path becomes a no-op if _appStarted was flipped elsewhere and
     // the user is left staring at a "Working..." button forever.
     btn.textContent='Log in';btn.disabled=false;
+    // CRITICAL: drop the early-paint html.no-session class. The CSS rule
+    // `html.no-session #login{display:flex !important;}` keeps the form
+    // visible despite removing .open - that bug bounced freshly logged-in
+    // incognito users back to the login screen for hours today.
+    document.documentElement.classList.remove('no-session');
     document.getElementById('login').classList.remove('open');
     document.getElementById('loader').style.display='flex';
     _showLogoutBtn(true);
@@ -7807,6 +7816,9 @@ async function _authRefresh(refresh_token){
     return;
   }
   // Stored session -> swap login form for loader while we validate.
+  // Drop the early-paint html.no-session guard so the CSS !important
+  // rule stops forcing the login overlay visible.
+  document.documentElement.classList.remove('no-session');
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='flex';
   let user=await _authProbe(stored.access_token);
