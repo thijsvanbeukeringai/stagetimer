@@ -5,7 +5,7 @@
 // (festival wifi blip, mid-event reconnect), and only for the app shell.
 // Supabase / Stripe / OneSignal calls pass through untouched.
 
-const SW_VERSION = 'stagetimer-sw-v19';
+const SW_VERSION = 'stagetimer-sw-v20';
 const APP_SHELL_CACHE = SW_VERSION + '-shell';
 
 // Only these GET requests are intercepted + cached. Everything else (Supabase,
@@ -79,3 +79,4 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
+
