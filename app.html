@@ -4981,9 +4981,9 @@ function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').
 function _wvDayLabel(d){
   if(!d)return '';
   if(d.name&&d.date){
-    try{const dt=new Date(d.date);const day=dt.getDate();const mo=dt.toLocaleString('nl-NL',{month:'long'});return `${d.name} · ${day} ${mo}`;}catch(_){return d.name;}
+    try{const dt=new Date(d.date);const day=dt.getDate();const mo=dt.toLocaleString('nl-NL',{month:'long'});return `Geplande tijden ${d.name.toLowerCase()} — ${day} ${mo}`;}catch(_){return `Geplande tijden ${d.name.toLowerCase()}`;}
   }
-  return d.name||'';
+  return d.name?`Geplande tijden ${d.name.toLowerCase()}`:'';
 }
 // Light/dark theme - persisted in localStorage so the same wall display
 // keeps its preference across page reloads / SW updates.
