@@ -849,9 +849,24 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #wv-brand{display:flex;align-items:center;gap:14px;flex-shrink:0;}
 #wv-brand .wv-logo{height:34px;width:34px;border-radius:8px;display:block;}
 #wv-brand .wv-mark{height:20px;width:auto;display:block;filter:brightness(0) invert(var(--wv-logo-invert));opacity:.92;}
-#wv-theme-btn{appearance:none;background:transparent;border:1px solid var(--wv-edge);color:var(--wv-text-mute);padding:8px 10px;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-left:14px;transition:border-color .2s, color .2s;font-family:inherit;}
-#wv-theme-btn:hover{border-color:var(--wv-text-mute);color:var(--wv-text);}
+#wv-theme-btn,#wv-day-btn{appearance:none;background:transparent;border:1px solid var(--wv-edge);color:var(--wv-text-mute);padding:8px 10px;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:border-color .2s, color .2s;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.04em;}
+#wv-theme-btn{margin-left:14px;}
+#wv-day-btn{margin-left:10px;padding:8px 12px;position:relative;}
+#wv-theme-btn:hover,#wv-day-btn:hover{border-color:var(--wv-text-mute);color:var(--wv-text);}
 #wv-theme-btn svg{width:16px;height:16px;display:block;}
+#wv-day-btn .lbl{font-family:var(--ffm);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
+#wv-day-btn .chev{width:10px;height:10px;opacity:.55;}
+#wv-day-btn.override{border-color:rgba(96,165,250,.55);color:var(--wv-text);}
+#wv-day-btn.override::before{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:#60a5fa;box-shadow:0 0 6px rgba(96,165,250,.7);}
+#wv-day-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:200px;background:var(--wv-cell-bg);border:1px solid var(--wv-edge);border-radius:6px;box-shadow:0 12px 30px rgba(0,0,0,.45);padding:4px;display:none;z-index:10;}
+#wv-day-menu.open{display:block;}
+#wv-day-menu button{appearance:none;width:100%;text-align:left;background:transparent;border:none;color:var(--wv-text);padding:10px 12px;border-radius:4px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#wv-day-menu button:hover{background:rgba(127,127,127,.12);}
+#wv-day-menu button.on{color:var(--wv-text);}
+#wv-day-menu button.on::after{content:'✓';color:#60a5fa;font-weight:700;}
+#wv-day-menu button .sub{font-family:var(--ffm);font-size:10px;font-weight:600;color:var(--wv-text-mute);letter-spacing:.08em;text-transform:uppercase;}
+#wv-day-menu .sep{height:1px;background:var(--wv-edge);margin:4px 8px;}
+#wv-day-wrap{position:relative;}
 #wv-hdr-center{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0;}
 #wv-project{font-size:clamp(16px,1.4vw,22px);font-weight:700;letter-spacing:-.005em;color:var(--wv-text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 #wv-day{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);text-transform:uppercase;letter-spacing:.22em;}
@@ -3636,6 +3651,13 @@ function renderTbar(){
       <button id="wv-theme-btn" onclick="wvToggleTheme()" aria-label="Toggle light/dark">
         <svg id="wv-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
+      <div id="wv-day-wrap">
+        <button id="wv-day-btn" onclick="wvToggleDayMenu(event)" aria-label="Select day">
+          <span class="lbl" id="wv-day-btn-lbl">Auto</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="wv-day-menu"></div>
+      </div>
     </div>
   </div>
   <div id="wv-body"></div>
@@ -4984,6 +5006,58 @@ function wvToggleTheme(){
   localStorage.setItem(WV_THEME_KEY,cur==='light'?'dark':'light');
   wvApplyTheme();
 }
+// Wall day override - null/empty = follow today's festival day,
+// otherwise pin to a specific day_id. Persists per-device so a
+// control room display keeps its forced day across reloads.
+const WV_DAY_KEY='st_wall_day_override';
+function _wvDayOverrideId(){return localStorage.getItem(WV_DAY_KEY)||'';}
+function _wvActiveDayId(){
+  const override=_wvDayOverrideId();
+  if(override&&(G.days||[]).some(d=>d.id===override))return override;
+  const today=festivalDayStr();
+  const todayDay=(G.days||[]).find(d=>d.date===today);
+  return todayDay?todayDay.id:(G.activeDay||(G.days||[])[0]?.id||'');
+}
+function wvDaySet(id){
+  if(id==='')localStorage.removeItem(WV_DAY_KEY);
+  else localStorage.setItem(WV_DAY_KEY,id);
+  wvCloseDayMenu();
+  renderWV();
+}
+function wvToggleDayMenu(e){
+  if(e)e.stopPropagation();
+  const m=document.getElementById('wv-day-menu');
+  if(!m)return;
+  if(m.classList.contains('open')){wvCloseDayMenu();return;}
+  // Build menu HTML on open so the day list stays fresh
+  const overrideId=_wvDayOverrideId();
+  const days=G.days||[];
+  let html=`<button class="${overrideId===''?'on':''}" onclick="wvDaySet('')"><span>Auto (today)</span><span class="sub">${_wvDayShortLabel(_wvAutoDay())}</span></button>`;
+  if(days.length){html+='<div class="sep"></div>';}
+  html+=days.map(d=>`<button class="${overrideId===d.id?'on':''}" onclick="wvDaySet('${d.id}')"><span>${escH(d.name||'(unnamed)')}</span><span class="sub">${d.date||''}</span></button>`).join('');
+  m.innerHTML=html;
+  m.classList.add('open');
+  // Close on outside click
+  setTimeout(()=>document.addEventListener('click',wvCloseDayMenuOutside,{once:true}),0);
+}
+function wvCloseDayMenu(){
+  const m=document.getElementById('wv-day-menu');if(m)m.classList.remove('open');
+}
+function wvCloseDayMenuOutside(e){
+  const wrap=document.getElementById('wv-day-wrap');
+  if(wrap&&!wrap.contains(e.target))wvCloseDayMenu();
+  else setTimeout(()=>document.addEventListener('click',wvCloseDayMenuOutside,{once:true}),0);
+}
+function _wvAutoDay(){
+  const today=festivalDayStr();
+  const d=(G.days||[]).find(dd=>dd.date===today);
+  return d||null;
+}
+function _wvDayShortLabel(d){
+  if(!d)return '—';
+  return (d.name||'')+(d.date?' · '+d.date:'');
+}
+
 // HH:MM:SS formatter used by the Wall countdowns. Always 8 chars,
 // monospace tabular-nums in the CSS keeps the width rock-stable so
 // the readout doesn't jitter once per second. Negative input yields
@@ -5001,13 +5075,17 @@ function renderWV(){
   const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
   const projEl=document.getElementById('wv-project');
   if(projEl)projEl.textContent=proj?proj.name:'';
-  // Auto-select today
-  const today=festivalDayStr();
-  const todayDay=(G.days||[]).find(d=>d.date===today);
-  const useDay=todayDay?todayDay.id:G.activeDay;
+  // Day source of truth: override > today > G.activeDay
+  const useDay=_wvActiveDayId();
   const dayObj=(G.days||[]).find(d=>d.id===useDay);
   const dayEl=document.getElementById('wv-day');
   if(dayEl)dayEl.textContent=_wvDayLabel(dayObj);
+  // Update day-selector button label + override indicator
+  const overrideId=_wvDayOverrideId();
+  const dayBtn=document.getElementById('wv-day-btn');
+  const dayBtnLbl=document.getElementById('wv-day-btn-lbl');
+  if(dayBtn)dayBtn.classList.toggle('override',!!overrideId);
+  if(dayBtnLbl)dayBtnLbl.textContent=overrideId?(dayObj?.name||'Day'):'Auto';
   const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl'));
   const body=document.getElementById('wv-body');if(!body)return;
   body.dataset.stages=String(Math.min(stages.length,16));
