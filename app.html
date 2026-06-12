@@ -5006,6 +5006,66 @@ function wvToggleTheme(){
   localStorage.setItem(WV_THEME_KEY,cur==='light'?'dark':'light');
   wvApplyTheme();
 }
+// ═══ WALL TIME SYNC ═══════════════════════════════════════════════════════
+// Control room PCs are often locked-down with broken or drifting system
+// clocks. Pull the authoritative time from Supabase's HTTP Date header
+// once on init and every 60s after, then add the offset to every clock,
+// countdown and festival-day calculation inside the Wall view. The rest
+// of the app keeps using local time - this only affects mode=wall.
+let WV_TIME_OFFSET=0;
+async function wvSyncTime(){
+  try{
+    const ctrl=new AbortController();
+    const tmo=setTimeout(()=>ctrl.abort(),5000);
+    const r=await fetch(`${SUPA_URL}/rest/v1/`,{
+      method:'HEAD',
+      signal:ctrl.signal,
+      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
+      cache:'no-store',
+    });
+    clearTimeout(tmo);
+    const dateHdr=r.headers.get('date');
+    if(dateHdr){
+      const serverMs=new Date(dateHdr).getTime();
+      if(!isNaN(serverMs)){
+        const localMs=Date.now();
+        const offset=serverMs-localMs;
+        WV_TIME_OFFSET=offset;
+        if(Math.abs(offset)>5000)console.warn('[wv] client clock off by',Math.round(offset/1000),'s - using server time');
+      }
+    }
+  }catch(e){console.warn('[wv] time sync failed:',e?.message||e);}
+}
+function _wvNow(){return Date.now()+WV_TIME_OFFSET;}
+// Force Europe/Amsterdam regardless of the client's timezone setting.
+// Belt-and-braces: even if a control room PC has its timezone wrong
+// (set to UTC or somewhere else), the wall reads correctly.
+function _wvAmsParts(ms){
+  const d=new Date(ms);
+  try{
+    const parts=new Intl.DateTimeFormat('en-GB',{
+      timeZone:'Europe/Amsterdam',
+      year:'numeric',month:'2-digit',day:'2-digit',
+      hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
+    }).formatToParts(d);
+    const g=t=>parts.find(p=>p.type===t).value;
+    return{Y:+g('year'),Mo:+g('month')-1,Da:+g('day'),h:+g('hour'),m:+g('minute'),s:+g('second')};
+  }catch(e){
+    // Intl unsupported (very old browser) - fall back to local
+    return{Y:d.getFullYear(),Mo:d.getMonth(),Da:d.getDate(),h:d.getHours(),m:d.getMinutes(),s:d.getSeconds()};
+  }
+}
+function _wvFestivalDayStr(){
+  const p=_wvAmsParts(_wvNow());
+  let Y=p.Y,Mo=p.Mo,Da=p.Da;
+  if(p.h<7){
+    // Roll back one day in Amsterdam local terms
+    const back=new Date(Date.UTC(Y,Mo,Da-1));
+    Y=back.getUTCFullYear();Mo=back.getUTCMonth();Da=back.getUTCDate();
+  }
+  return `${Y}-${String(Mo+1).padStart(2,'0')}-${String(Da).padStart(2,'0')}`;
+}
+
 // Wall day override - null/empty = follow today's festival day,
 // otherwise pin to a specific day_id. Persists per-device so a
 // control room display keeps its forced day across reloads.
@@ -5014,7 +5074,9 @@ function _wvDayOverrideId(){return localStorage.getItem(WV_DAY_KEY)||'';}
 function _wvActiveDayId(){
   const override=_wvDayOverrideId();
   if(override&&(G.days||[]).some(d=>d.id===override))return override;
-  const today=festivalDayStr();
+  // Use server-corrected festival day so a wrong system clock can't push
+  // the wall onto the wrong day.
+  const today=_wvFestivalDayStr();
   const todayDay=(G.days||[]).find(d=>d.date===today);
   return todayDay?todayDay.id:(G.activeDay||(G.days||[])[0]?.id||'');
 }
@@ -5049,7 +5111,7 @@ function wvCloseDayMenuOutside(e){
   else setTimeout(()=>document.addEventListener('click',wvCloseDayMenuOutside,{once:true}),0);
 }
 function _wvAutoDay(){
-  const today=festivalDayStr();
+  const today=_wvFestivalDayStr();
   const d=(G.days||[]).find(dd=>dd.date===today);
   return d||null;
 }
@@ -5122,17 +5184,19 @@ function renderWV(){
 }
 function tickWV(){
   const wv=document.getElementById('wv');if(!wv||!wv.classList.contains('open'))return;
-  // Header clock: HH:MM (huge) + seconds (small grey)
-  const d=new Date();
-  const hh=String(d.getHours()).padStart(2,'0');
-  const mm=String(d.getMinutes()).padStart(2,'0');
-  const ss=String(d.getSeconds()).padStart(2,'0');
+  // Header clock + countdowns all driven by server-corrected time +
+  // forced to Europe/Amsterdam display, so neither a wrong system clock
+  // nor a wrong system timezone on the wall PC can make the wall lie.
+  const nowMs=_wvNow();
+  const p=_wvAmsParts(nowMs);
+  const hh=String(p.h).padStart(2,'0');
+  const mm=String(p.m).padStart(2,'0');
+  const ss=String(p.s).padStart(2,'0');
   const clk=document.getElementById('wv-clock');if(clk)clk.textContent=`${hh}:${mm}`;
   const clkS=document.getElementById('wv-clock-seconds');if(clkS)clkS.textContent=ss;
   const body=document.getElementById('wv-body');if(!body)return;
   const dayId=body.dataset.day||G.activeDay;
   const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl')).slice(0,16);
-  const nowMs=Date.now();
   const blackoutOn=!!(G.blackout);
   stages.forEach(st=>{
     const cell=document.getElementById('wvc-'+st.id);if(!cell)return;
@@ -7773,6 +7837,10 @@ async function loadPublicView(){
     // operator dashboard. 1s polling + Realtime for instant sync; tickWV
     // every 250ms drives the countdown.
     document.getElementById('app').style.display='none';
+    // Sync time with the server immediately + every 60s, so a drifting
+    // or wrong-set system clock on a corp control-room PC never matters.
+    wvSyncTime();
+    setInterval(wvSyncTime,60000);
     const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
     if(todayDay)G.activeDay=todayDay.id;
     else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
