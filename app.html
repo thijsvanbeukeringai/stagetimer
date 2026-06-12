@@ -2220,15 +2220,20 @@ function save(opts){
 async function _pushProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   setSyncDot('ing');
-  // SAFETY NET: refuse to wipe a populated server with our empty local
-  // state. This caught a live-festival bug where an operator tab with
-  // stale localStorage (shows=[]) kept clobbering the lineup after we
-  // restored it via SQL. Trigger: local shows array is empty AND project
-  // has stages configured (= not a fresh project). Then peek the server;
-  // if it has shows, adopt them and skip the write entirely.
+  // SAFETY NET: refuse to clobber a populated server with our stale local
+  // state. Catches two scenarios that hit live festivals today:
+  //   1. Full wipe: local shows=[] while server has shows (stale tab,
+  //      cache from before a manual SQL restore, etc.)
+  //   2. Partial wipe: local is missing entire stages worth of shows
+  //      compared to server (operator tab loaded mid-edit by a peer
+  //      device, then saves something and clobbers the missing stage)
+  // Threshold for #2 is `lostShows >= 5` - a single delete or two are
+  // legitimate edits; losing five at once is always a sign of staleness.
+  // Only fires when the project has stages (= real festival, not a
+  // blank new project). Costs one extra REST GET per save (~80-150ms).
   const localShows=(proj.data&&Array.isArray(proj.data.shows))?proj.data.shows:[];
   const localStages=(proj.data&&Array.isArray(proj.data.stages))?proj.data.stages:[];
-  if(localShows.length===0&&localStages.length>0){
+  if(localStages.length>0){
     try{
       const peekRes=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(proj.id)}&select=data`,{
         headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Accept':'application/json'},
@@ -2236,14 +2241,21 @@ async function _pushProject(id){
       if(peekRes.ok){
         const arr=await peekRes.json();
         const serverData=arr?.[0]?.data;
-        if(serverData&&Array.isArray(serverData.shows)&&serverData.shows.length>0){
-          console.warn('[_pushProject] ABORT clobber: local has 0 shows, server has',serverData.shows.length,'- adopting server state');
-          proj.data=serverData;
-          localStorage.setItem(AKEY,JSON.stringify(APP));
-          if(id===APP.activeProjectId){loadG();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
-          setSyncDot('ok');
-          _pendingPush[id]=false;
-          return;
+        if(serverData&&Array.isArray(serverData.shows)){
+          const serverCount=serverData.shows.length;
+          const localCount=localShows.length;
+          const lostShows=serverCount-localCount;
+          const fullWipe=localCount===0&&serverCount>0;
+          const partialWipe=lostShows>=5;
+          if(fullWipe||partialWipe){
+            console.warn('[_pushProject] ABORT clobber: local',localCount,'shows, server',serverCount,'(',lostShows,'lost) - adopting server state');
+            proj.data=serverData;
+            localStorage.setItem(AKEY,JSON.stringify(APP));
+            if(id===APP.activeProjectId){loadG();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
+            setSyncDot('ok');
+            _pendingPush[id]=false;
+            return;
+          }
         }
       }
     }catch(e){console.warn('[_pushProject] peek failed, proceeding:',e);}
