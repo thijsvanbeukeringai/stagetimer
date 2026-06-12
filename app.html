@@ -883,7 +883,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .wv-row .wv-time{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;margin-left:auto;}
 .wv-artist{font-size:clamp(17px,1.9vw,28px);font-weight:600;color:var(--wv-text);line-height:1.15;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px;}
 .wv-artist.placeholder{color:var(--wv-text-dim);font-weight:500;}
-.wv-cd{font-family:var(--ffm);font-size:clamp(48px,7vw,124px);font-weight:600;line-height:.92;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:var(--wv-text);text-align:left;margin:4px 0 6px;}
+.wv-cd{font-family:var(--ffm);font-size:clamp(34px,4.6vw,76px);font-weight:600;line-height:.95;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--wv-text);text-align:left;margin:6px 0 8px;white-space:nowrap;}
 .wv-cd.over{color:var(--wv-overtime);}
 .wv-cd.dim{color:var(--wv-text-dim);}
 
@@ -4962,6 +4962,18 @@ function wvToggleTheme(){
   localStorage.setItem(WV_THEME_KEY,cur==='light'?'dark':'light');
   wvApplyTheme();
 }
+// HH:MM:SS formatter used by the Wall countdowns. Always 8 chars,
+// monospace tabular-nums in the CSS keeps the width rock-stable so
+// the readout doesn't jitter once per second. Negative input yields
+// "-HH:MM:SS" for overtime.
+function _wvFmtHMS(sec){
+  const isNeg=sec<0;
+  const abs=Math.abs(Math.floor(sec));
+  const h=Math.floor(abs/3600);
+  const m=Math.floor((abs%3600)/60);
+  const s=abs%60;
+  return (isNeg?'-':'')+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
 function renderWV(){
   wvApplyTheme();
   const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
@@ -4992,7 +5004,7 @@ function renderWV(){
         <span class="wv-time" id="wvt-${st.id}"></span>
       </div>
       <div class="wv-artist placeholder" id="wva-${st.id}">—</div>
-      <div class="wv-cd dim" id="wvcd-${st.id}">--:--</div>
+      <div class="wv-cd dim" id="wvcd-${st.id}">00:00:00</div>
       <div class="wv-divider"></div>
       <div class="wv-next-wrap">
         <div class="wv-next-label"><span>Next</span><span class="tm" id="wvnt-${st.id}"></span></div>
@@ -5060,9 +5072,7 @@ function tickWV(){
         tEl.textContent=startTxt&&endTxt?`${startTxt} — ${endTxt}`:'';
       }
       if(cdEl){
-        const abs=Math.abs(remSec);
-        const mmC=Math.floor(abs/60),ssC=abs%60;
-        cdEl.textContent=(isOver?'-':'')+String(mmC).padStart(2,'0')+':'+String(ssC).padStart(2,'0');
+        cdEl.textContent=_wvFmtHMS(remSec);
         cdEl.className='wv-cd'+(isOver?' over':'');
       }
       if(nxEl){
@@ -5077,8 +5087,7 @@ function tickWV(){
       if(artEl){artEl.textContent=nxt.artist||'(no name)';artEl.className='wv-artist';}
       if(tEl)tEl.textContent='Starts at '+(nxt.start?nxt.start.slice(0,5):'');
       if(cdEl){
-        const mmU=Math.floor(secUntil/60),ssU=secUntil%60;
-        cdEl.textContent=secUntil>3600?Math.floor(secUntil/3600)+'h '+String(Math.floor((secUntil%3600)/60)).padStart(2,'0')+'m':String(mmU).padStart(2,'0')+':'+String(ssU).padStart(2,'0');
+        cdEl.textContent=_wvFmtHMS(secUntil);
         cdEl.className='wv-cd dim';
       }
       const idx=shows.indexOf(nxt);
@@ -5093,7 +5102,7 @@ function tickWV(){
       if(stEl){stEl.textContent='Ended';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='Ended';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No more shows today';
-      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd dim';}
+      if(cdEl){cdEl.textContent='00:00:00';cdEl.className='wv-cd dim';}
       if(nxEl){nxEl.textContent='—';nxEl.className='wv-next placeholder';}
       if(nxTimeEl)nxTimeEl.textContent='';
     }else{
@@ -5101,7 +5110,7 @@ function tickWV(){
       if(stEl){stEl.textContent='—';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='—';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No shows scheduled';
-      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd dim';}
+      if(cdEl){cdEl.textContent='00:00:00';cdEl.className='wv-cd dim';}
       if(nxEl){nxEl.textContent='—';nxEl.className='wv-next placeholder';}
       if(nxTimeEl)nxTimeEl.textContent='';
     }
