@@ -812,106 +812,100 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .stov-cd{font-size:20px;}
 }
 /* ─────────────────────────────────────────────────────────────────────
-   CONTROL ROOM WALL view (mode=wall). Designed for a 50k-visitor festival
-   control room with police + production staff watching. Read from 3-5
-   metres. Single-status border colour, huge countdown, refined header
-   with Stagetimer logo and large clock.
-
-   Audit pass principles:
-   - Logo top-left, clock top-right, project + day name in the centre.
-   - Cell layout: NOW row (label + start-end pill), artist (huge), live
-     countdown (massive), divider, NEXT row (label + name + start time).
-   - Progress bar runs along the top edge of live cells.
-   - Floor-cue overlay handled globally by the shared #cue-overlay.
-   - Blackout flips the cell to a high-contrast warning state.
+   CONTROL ROOM WALL view (mode=wall). Bloomberg-terminal aesthetic:
+   single dark background, monochrome typography, colour ONLY on the
+   countdown (white normally, red on overtime). No gradients, no
+   tinted backgrounds, no decorative pills. Read from 3-5 metres.
+   Hangs in a 50k-visitor festival control room - has to look like
+   broadcast infrastructure, not a marketing dashboard.
    ───────────────────────────────────────────────────────────────────── */
-#wv{position:fixed;inset:0;z-index:7100;background:#05060a;display:none;flex-direction:column;color:#fff;overflow:hidden;font-family:var(--ff);
-  --wv-edge:rgba(255,255,255,.07);
+#wv{position:fixed;inset:0;z-index:7100;background:#000;display:none;flex-direction:column;color:#fff;overflow:hidden;font-family:var(--ff);
+  --wv-bg:#000;
+  --wv-cell-bg:#0a0a0a;
+  --wv-edge:rgba(255,255,255,.09);
   --wv-edge-soft:rgba(255,255,255,.04);
-  --wv-text:#fff;
-  --wv-text-mute:rgba(255,255,255,.42);
-  --wv-text-dim:rgba(255,255,255,.22);
+  --wv-text:#fafafa;
+  --wv-text-mute:rgba(250,250,250,.5);
+  --wv-text-dim:rgba(250,250,250,.28);
+  --wv-overtime:#ef4444;
+  --wv-logo-invert:1;
 }
+#wv.light{
+  --wv-bg:#f5f5f4;
+  --wv-cell-bg:#fff;
+  --wv-edge:rgba(0,0,0,.1);
+  --wv-edge-soft:rgba(0,0,0,.05);
+  --wv-text:#0a0a0a;
+  --wv-text-mute:rgba(10,10,10,.5);
+  --wv-text-dim:rgba(10,10,10,.28);
+  --wv-overtime:#dc2626;
+  --wv-logo-invert:0;
+}
+#wv{background:var(--wv-bg);color:var(--wv-text);}
 #wv.open{display:flex;}
-#wv-hdr{flex-shrink:0;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px;padding:18px 28px 16px;border-bottom:1px solid var(--wv-edge);background:linear-gradient(180deg,#0a0c12 0%,#06070b 100%);}
-#wv-brand{display:flex;align-items:center;gap:12px;flex-shrink:0;}
-#wv-brand .wv-logo{height:32px;width:32px;border-radius:7px;display:block;}
-#wv-brand .wv-mark{height:20px;width:auto;display:block;filter:brightness(0) invert(1);opacity:.88;}
-#wv-hdr-center{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;min-width:0;}
-#wv-project{font-size:clamp(15px,1.3vw,20px);font-weight:800;letter-spacing:.01em;color:#fff;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-#wv-day{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);text-transform:uppercase;letter-spacing:.16em;}
-#wv-clock-wrap{display:flex;align-items:baseline;gap:10px;flex-shrink:0;}
-#wv-clock{font-family:var(--ffm);font-size:clamp(28px,2.8vw,40px);font-weight:800;color:#fff;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1;}
-#wv-clock-seconds{font-family:var(--ffm);font-size:clamp(14px,1.3vw,18px);font-weight:700;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-#wv-status{font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);text-transform:uppercase;letter-spacing:.18em;display:flex;align-items:center;gap:6px;margin-left:14px;padding-left:14px;border-left:1px solid var(--wv-edge);}
-#wv-status .dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.6);animation:wv-pulse 2.4s ease-in-out infinite;}
-@keyframes wv-pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
-#wv-body{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:10px;padding:10px;overflow:hidden;}
 
-.wv-cell{position:relative;background:#0b0d13;border:1px solid var(--wv-edge);border-radius:14px;padding:20px 22px 18px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .35s ease, background .35s ease, opacity .35s ease;min-height:0;}
+/* Header: classy, restrained. Logo + project + day + clock + theme. */
+#wv-hdr{flex-shrink:0;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:32px;padding:20px 32px;border-bottom:1px solid var(--wv-edge);background:var(--wv-bg);}
+#wv-brand{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+#wv-brand .wv-logo{height:34px;width:34px;border-radius:8px;display:block;}
+#wv-brand .wv-mark{height:20px;width:auto;display:block;filter:brightness(0) invert(var(--wv-logo-invert));opacity:.92;}
+#wv-theme-btn{appearance:none;background:transparent;border:1px solid var(--wv-edge);color:var(--wv-text-mute);padding:8px 10px;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;margin-left:14px;transition:border-color .2s, color .2s;font-family:inherit;}
+#wv-theme-btn:hover{border-color:var(--wv-text-mute);color:var(--wv-text);}
+#wv-theme-btn svg{width:16px;height:16px;display:block;}
+#wv-hdr-center{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;min-width:0;}
+#wv-project{font-size:clamp(16px,1.4vw,22px);font-weight:700;letter-spacing:-.005em;color:var(--wv-text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+#wv-day{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);text-transform:uppercase;letter-spacing:.22em;}
+#wv-clock-wrap{display:flex;align-items:baseline;gap:8px;flex-shrink:0;}
+#wv-clock{font-family:var(--ffm);font-size:clamp(30px,3vw,44px);font-weight:600;color:var(--wv-text);letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1;}
+#wv-clock-seconds{font-family:var(--ffm);font-size:clamp(14px,1.2vw,18px);font-weight:500;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+#wv-status{display:none;}
+
+#wv-body{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:12px;padding:14px;overflow:hidden;}
+
+/* Cell: single flat surface, hairline border. No tints. No gradients. */
+.wv-cell{position:relative;background:var(--wv-cell-bg);border:1px solid var(--wv-edge);border-radius:6px;padding:22px 26px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s ease, opacity .3s ease;min-height:0;}
 .wv-cell.empty{background:transparent;border-color:var(--wv-edge-soft);}
-.wv-cell.empty::before,.wv-cell.empty::after{display:none;}
-.wv-cell.idle{opacity:.5;}
-.wv-cell.live-green{border-color:#22c55e;background:linear-gradient(180deg,rgba(34,197,94,.07) 0%,rgba(34,197,94,.02) 60%);}
-.wv-cell.live-orange{border-color:#f97316;background:linear-gradient(180deg,rgba(249,115,22,.08) 0%,rgba(249,115,22,.02) 60%);}
-.wv-cell.live-red{border-color:#ef4444;background:linear-gradient(180deg,rgba(239,68,68,.12) 0%,rgba(239,68,68,.03) 60%);animation:wv-overtime 1s ease-in-out infinite;}
-.wv-cell.upnext-amber{border-color:#fbbf24;background:linear-gradient(180deg,rgba(251,191,36,.07) 0%,rgba(251,191,36,.02) 60%);}
-.wv-cell.upnext-gray{border-color:rgba(99,102,241,.45);background:linear-gradient(180deg,rgba(99,102,241,.06) 0%,rgba(99,102,241,.02) 60%);}
-.wv-cell.ended{border-color:var(--wv-edge);background:#0a0b10;}
+.wv-cell.idle{opacity:.55;}
+.wv-cell.live-over{border-color:rgba(239,68,68,.6);}
 .wv-cell.blackout{background:#000;border-color:rgba(239,68,68,.7);}
-.wv-cell.blackout .wv-stage,.wv-cell.blackout .wv-row,.wv-cell.blackout .wv-artist,.wv-cell.blackout .wv-cd,.wv-cell.blackout .wv-divider,.wv-cell.blackout .wv-bar{visibility:hidden;}
-.wv-cell.blackout::after{content:'BLACKOUT';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--ffm);font-weight:900;font-size:clamp(24px,2.8vw,48px);color:#ef4444;letter-spacing:.18em;animation:blink 1.4s ease-in-out infinite;}
+.wv-cell.blackout > *{visibility:hidden;}
+.wv-cell.blackout::after{content:'BLACKOUT';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--ffm);font-weight:800;font-size:clamp(24px,2.8vw,48px);color:var(--wv-overtime);letter-spacing:.22em;animation:blink 1.4s ease-in-out infinite;visibility:visible;}
 
-/* Progress bar runs along the top edge during a live show */
-.wv-bar{position:absolute;top:0;left:0;height:3px;background:rgba(255,255,255,.85);transition:width .4s linear, background .35s ease;}
-.wv-cell.live-green .wv-bar{background:#22c55e;}
-.wv-cell.live-orange .wv-bar{background:#f97316;}
-.wv-cell.live-red .wv-bar{background:#ef4444;}
+/* Top row: STAGE label + tiny status text (no pill, just text) */
+.wv-stage-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--wv-edge);}
+.wv-stage{font-size:clamp(13px,1.2vw,17px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--wv-text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.wv-status-txt{font-family:var(--ffm);font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--wv-text-mute);flex-shrink:0;}
+.wv-status-txt.live{color:var(--wv-text);}
+.wv-status-txt.over{color:var(--wv-overtime);}
 
-/* Top row: STAGE NAME + tiny status pill */
-.wv-stage-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:auto;}
-.wv-stage{font-size:clamp(14px,1.4vw,20px);font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--wv-text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
-.wv-pill{font-family:var(--ffm);font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px;border-radius:99px;flex-shrink:0;line-height:1.4;}
-.wv-pill.live{background:rgba(34,197,94,.18);color:#86efac;border:1px solid rgba(34,197,94,.4);}
-.wv-pill.live-warn{background:rgba(249,115,22,.18);color:#fed7aa;border:1px solid rgba(249,115,22,.5);}
-.wv-pill.live-over{background:rgba(239,68,68,.22);color:#fecaca;border:1px solid rgba(239,68,68,.55);animation:blink 1s ease-in-out infinite;}
-.wv-pill.upnext{background:rgba(251,191,36,.16);color:#fde68a;border:1px solid rgba(251,191,36,.45);}
-.wv-pill.idle{background:rgba(255,255,255,.05);color:var(--wv-text-mute);border:1px solid var(--wv-edge);}
+/* NOW block - small label, artist, countdown */
+.wv-row{display:flex;align-items:baseline;gap:10px;font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;margin-bottom:6px;}
+.wv-row .wv-time{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;margin-left:auto;}
+.wv-artist{font-size:clamp(17px,1.9vw,28px);font-weight:600;color:var(--wv-text);line-height:1.15;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px;}
+.wv-artist.placeholder{color:var(--wv-text-dim);font-weight:500;}
+.wv-cd{font-family:var(--ffm);font-size:clamp(48px,7vw,124px);font-weight:600;line-height:.92;letter-spacing:-.055em;font-variant-numeric:tabular-nums;color:var(--wv-text);text-align:left;margin:4px 0 6px;}
+.wv-cd.over{color:var(--wv-overtime);}
+.wv-cd.dim{color:var(--wv-text-dim);}
 
-/* NOW block: small label, artist, countdown */
-.wv-row{display:flex;align-items:baseline;gap:8px;font-family:var(--ffm);font-size:10px;font-weight:800;color:var(--wv-text-mute);letter-spacing:.18em;text-transform:uppercase;margin-bottom:6px;}
-.wv-row .wv-time{font-family:var(--ffm);font-size:11px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.06em;text-transform:none;font-variant-numeric:tabular-nums;margin-left:auto;}
-.wv-artist{font-size:clamp(18px,2.1vw,32px);font-weight:800;color:var(--wv-text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
-.wv-artist.placeholder{color:var(--wv-text-dim);font-weight:600;}
-.wv-cd{font-family:var(--ffm);font-size:clamp(46px,6.8vw,116px);font-weight:800;line-height:.92;letter-spacing:-.045em;font-variant-numeric:tabular-nums;color:#fff;text-align:left;margin:0 0 4px;}
-.wv-cd.green{color:#22c55e;}
-.wv-cd.orange{color:#f97316;}
-.wv-cd.red{color:#ef4444;}
-.wv-cd.amber{color:#fbbf24;}
-.wv-cd.gray{color:var(--wv-text-dim);}
+/* NEXT block - mirror NOW typography, but smaller */
+.wv-divider{height:1px;background:var(--wv-edge);margin:16px 0 12px;}
+.wv-next-wrap{display:flex;flex-direction:column;gap:5px;}
+.wv-next-label{font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;display:flex;align-items:baseline;gap:10px;}
+.wv-next-label .tm{font-size:11px;font-weight:600;color:var(--wv-text-mute);margin-left:auto;letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;}
+.wv-next{font-size:clamp(14px,1.3vw,20px);font-weight:500;color:var(--wv-text);line-height:1.2;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wv-next.placeholder{color:var(--wv-text-dim);}
 
-.wv-divider{height:1px;background:var(--wv-edge);margin:14px 0 10px;}
-
-/* NEXT block */
-.wv-next-wrap{display:flex;flex-direction:column;gap:4px;}
-.wv-next-label{font-family:var(--ffm);font-size:10px;font-weight:800;color:var(--wv-text-mute);letter-spacing:.18em;text-transform:uppercase;display:flex;align-items:baseline;gap:8px;}
-.wv-next-label .tm{font-size:11px;font-weight:700;color:var(--wv-text-mute);margin-left:auto;letter-spacing:.06em;text-transform:none;font-variant-numeric:tabular-nums;}
-.wv-next{font-size:clamp(15px,1.4vw,22px);font-weight:700;color:rgba(255,255,255,.82);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wv-next.placeholder{color:var(--wv-text-dim);font-weight:600;}
-
-@keyframes wv-overtime{0%,100%{box-shadow:inset 0 0 0 0 rgba(239,68,68,0);}50%{box-shadow:inset 0 0 0 4px rgba(239,68,68,.32);}}
-
-/* Mobile / smaller screens get more compact paddings + slightly smaller text */
+/* Mobile / smaller screens get more compact paddings */
 @media (max-width:900px){
-  #wv-hdr{padding:12px 16px;gap:12px;}
+  #wv-hdr{padding:14px 18px;gap:14px;}
   #wv-brand .wv-logo{height:26px;width:26px;}
   #wv-brand .wv-mark{height:16px;}
   #wv-clock{font-size:24px;}
   #wv-clock-seconds{font-size:13px;}
-  #wv-status{display:none;}
-  #wv-body{padding:6px;gap:6px;}
-  .wv-cell{padding:14px 16px 12px;border-radius:11px;}
-  .wv-divider{margin:10px 0 8px;}
+  #wv-body{padding:8px;gap:8px;}
+  .wv-cell{padding:16px 18px;border-radius:5px;}
+  .wv-stage-row{margin-bottom:14px;padding-bottom:10px;}
+  .wv-divider{margin:12px 0 8px;}
 }
 
 /* Few-stage layouts: keep a sensible grid instead of forcing 4x4 with
@@ -3626,7 +3620,9 @@ function renderTbar(){
     <div id="wv-clock-wrap">
       <div id="wv-clock">--:--</div>
       <div id="wv-clock-seconds">--</div>
-      <div id="wv-status"><span class="dot"></span><span id="wv-status-txt">Live</span></div>
+      <button id="wv-theme-btn" onclick="wvToggleTheme()" aria-label="Toggle light/dark">
+        <svg id="wv-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
     </div>
   </div>
   <div id="wv-body"></div>
@@ -4936,7 +4932,7 @@ function tickOV(){
 // huge countdown, current + next artist with start times, nothing else.
 // Same data sources as Stage Overview but a totally different layout
 // optimised for "what eist mijn aandacht NU?" at distance.
-function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');renderWV();}
+function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');wvApplyTheme();renderWV();}
 function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').classList.remove('open');}
 function _wvDayLabel(d){
   if(!d)return '';
@@ -4945,7 +4941,29 @@ function _wvDayLabel(d){
   }
   return d.name||'';
 }
+// Light/dark theme - persisted in localStorage so the same wall display
+// keeps its preference across page reloads / SW updates.
+const WV_THEME_KEY='st_wall_theme';
+function wvApplyTheme(){
+  const wv=document.getElementById('wv');if(!wv)return;
+  const stored=localStorage.getItem(WV_THEME_KEY);
+  const light=stored==='light';
+  wv.classList.toggle('light',light);
+  const ic=document.getElementById('wv-theme-icon');
+  if(ic){
+    // Crescent moon when dark (click to switch to light), sun when light.
+    ic.innerHTML=light
+      ?'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>'
+      :'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  }
+}
+function wvToggleTheme(){
+  const cur=localStorage.getItem(WV_THEME_KEY);
+  localStorage.setItem(WV_THEME_KEY,cur==='light'?'dark':'light');
+  wvApplyTheme();
+}
 function renderWV(){
+  wvApplyTheme();
   const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
   const projEl=document.getElementById('wv-project');
   if(projEl)projEl.textContent=proj?proj.name:'';
@@ -4961,19 +4979,20 @@ function renderWV(){
   body.dataset.stages=String(Math.min(stages.length,16));
   body.dataset.day=useDay||'';
   // Build cell shells once - tickWV mutates content by id, no re-render.
+  // Bloomberg-terminal aesthetic: stage label, status text, NOW + countdown,
+  // hairline divider, NEXT. Nothing decorative.
   const cells=stages.slice(0,16).map(st=>`
-    <div class="wv-cell" id="wvc-${st.id}">
-      <div class="wv-bar" id="wvb-${st.id}" style="width:0%"></div>
+    <div class="wv-cell idle" id="wvc-${st.id}">
       <div class="wv-stage-row">
         <div class="wv-stage">${escH(st.name)}</div>
-        <div class="wv-pill idle" id="wvp-${st.id}">Idle</div>
+        <div class="wv-status-txt" id="wvp-${st.id}">—</div>
       </div>
       <div class="wv-row">
         <span>Now</span>
         <span class="wv-time" id="wvt-${st.id}"></span>
       </div>
       <div class="wv-artist placeholder" id="wva-${st.id}">—</div>
-      <div class="wv-cd gray" id="wvcd-${st.id}">--:--</div>
+      <div class="wv-cd dim" id="wvcd-${st.id}">--:--</div>
       <div class="wv-divider"></div>
       <div class="wv-next-wrap">
         <div class="wv-next-label"><span>Next</span><span class="tm" id="wvnt-${st.id}"></span></div>
@@ -4991,7 +5010,7 @@ function renderWV(){
 }
 function tickWV(){
   const wv=document.getElementById('wv');if(!wv||!wv.classList.contains('open'))return;
-  // Header clock: split HH:MM (huge) + seconds (smaller)
+  // Header clock: HH:MM (huge) + seconds (small grey)
   const d=new Date();
   const hh=String(d.getHours()).padStart(2,'0');
   const mm=String(d.getMinutes()).padStart(2,'0');
@@ -5003,18 +5022,6 @@ function tickWV(){
   const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl')).slice(0,16);
   const nowMs=Date.now();
   const blackoutOn=!!(G.blackout);
-  // Header status indicator: how many of today's stages are live now?
-  let liveCount=0;
-  stages.forEach(st=>{
-    const shows=getShows(st.id,dayId).filter(s=>!s.cancelled);
-    for(const s of shows){if(_showIsLive(s,nowMs)){liveCount++;break;}}
-  });
-  const statusEl=document.getElementById('wv-status-txt');
-  if(statusEl){
-    statusEl.textContent=blackoutOn?'Blackout':`${liveCount} live · ${stages.length} stages`;
-  }
-  const statusWrap=document.getElementById('wv-status');
-  if(statusWrap)statusWrap.querySelector('.dot').style.background=blackoutOn?'#ef4444':'#22c55e';
   stages.forEach(st=>{
     const cell=document.getElementById('wvc-'+st.id);if(!cell)return;
     if(blackoutOn){cell.className='wv-cell blackout';return;}
@@ -5024,13 +5031,10 @@ function tickWV(){
     const cdEl=document.getElementById('wvcd-'+st.id);
     const nxEl=document.getElementById('wvn-'+st.id);
     const nxTimeEl=document.getElementById('wvnt-'+st.id);
-    const pillEl=document.getElementById('wvp-'+st.id);
-    const barEl=document.getElementById('wvb-'+st.id);
+    const stEl=document.getElementById('wvp-'+st.id);
     // Find live + next
     let cur=null,nxt=null;
-    for(const s of shows){
-      if(_showIsLive(s,nowMs)){cur=s;break;}
-    }
+    for(const s of shows){if(_showIsLive(s,nowMs)){cur=s;break;}}
     if(!cur){
       let bestDt=Infinity;
       for(const s of shows){
@@ -5038,89 +5042,66 @@ function tickWV(){
         const dt=sa.getTime()-nowMs;
         if(dt>0&&dt<bestDt){bestDt=dt;nxt=s;}
       }
-    }else{
-      nxt=shows[shows.indexOf(cur)+1]||null;
-    }
+    }else{nxt=shows[shows.indexOf(cur)+1]||null;}
     let cls='wv-cell';
     if(cur){
-      const ea=_showEndsAt(cur);const sa=_showStartsAt(cur);
+      const ea=_showEndsAt(cur);
       const remSec=ea?Math.round((ea.getTime()-nowMs)/1000):0;
-      const dur=ea&&sa?Math.round((ea.getTime()-sa.getTime())/1000):0;
-      const elapsed=dur-remSec;
-      const pct=dur>0?Math.max(0,Math.min(100,(elapsed/dur)*100)):0;
-      // Status -> border colour + pill
-      let statusCol,pillCls;
-      if(remSec<0){statusCol='red';pillCls='live-over';cls+=' live-red';}
-      else if(remSec<300){statusCol='orange';pillCls='live-warn';cls+=' live-orange';}
-      else{statusCol='green';pillCls='live';cls+=' live-green';}
-      if(pillEl){pillEl.className='wv-pill '+pillCls;pillEl.textContent=remSec<0?'Overtime':'Live';}
-      if(barEl)barEl.style.width=pct.toFixed(1)+'%';
+      const isOver=remSec<0;
+      if(isOver)cls+=' live-over';
+      if(stEl){
+        stEl.textContent=isOver?'Overtime':'Live';
+        stEl.className='wv-status-txt '+(isOver?'over':'live');
+      }
       if(artEl){artEl.textContent=cur.artist||'(no name)';artEl.className='wv-artist';}
       if(tEl){
         const startTxt=cur.start?cur.start.slice(0,5):'';
         const endTxt=cur.end?cur.end.slice(0,5):'';
-        tEl.textContent=startTxt&&endTxt?`${startTxt} → ${endTxt}`:'';
+        tEl.textContent=startTxt&&endTxt?`${startTxt} — ${endTxt}`:'';
       }
       if(cdEl){
         const abs=Math.abs(remSec);
         const mmC=Math.floor(abs/60),ssC=abs%60;
-        const txt=(remSec<0?'-':'')+String(mmC).padStart(2,'0')+':'+String(ssC).padStart(2,'0');
-        cdEl.textContent=txt;
-        cdEl.className='wv-cd '+statusCol;
+        cdEl.textContent=(isOver?'-':'')+String(mmC).padStart(2,'0')+':'+String(ssC).padStart(2,'0');
+        cdEl.className='wv-cd'+(isOver?' over':'');
       }
       if(nxEl){
-        if(nxt){
-          nxEl.textContent=nxt.artist||'(no name)';
-          nxEl.className='wv-next';
-        }else{
-          nxEl.textContent='End of programme';
-          nxEl.className='wv-next placeholder';
-        }
+        if(nxt){nxEl.textContent=nxt.artist||'(no name)';nxEl.className='wv-next';}
+        else{nxEl.textContent='End of programme';nxEl.className='wv-next placeholder';}
       }
       if(nxTimeEl)nxTimeEl.textContent=nxt&&nxt.start?nxt.start.slice(0,5):'';
     }else if(nxt){
       const sa=_showStartsAt(nxt);
       const secUntil=sa?Math.max(0,Math.round((sa.getTime()-nowMs)/1000)):0;
-      const isClose=secUntil<600;
-      cls+=isClose?' upnext-amber':' upnext-gray';
-      if(pillEl){pillEl.className='wv-pill '+(isClose?'upnext':'idle');pillEl.textContent=isClose?'Up next':'Scheduled';}
-      if(barEl)barEl.style.width='0%';
+      if(stEl){stEl.textContent=secUntil<600?'Up next':'Scheduled';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent=nxt.artist||'(no name)';artEl.className='wv-artist';}
       if(tEl)tEl.textContent='Starts at '+(nxt.start?nxt.start.slice(0,5):'');
       if(cdEl){
         const mmU=Math.floor(secUntil/60),ssU=secUntil%60;
         cdEl.textContent=secUntil>3600?Math.floor(secUntil/3600)+'h '+String(Math.floor((secUntil%3600)/60)).padStart(2,'0')+'m':String(mmU).padStart(2,'0')+':'+String(ssU).padStart(2,'0');
-        cdEl.className='wv-cd '+(isClose?'amber':'gray');
+        cdEl.className='wv-cd dim';
       }
-      // Bottom: show the one after that
       const idx=shows.indexOf(nxt);
       const after=shows[idx+1];
       if(nxEl){
-        if(after){
-          nxEl.textContent=after.artist||'(no name)';
-          nxEl.className='wv-next';
-        }else{
-          nxEl.textContent='End of programme';
-          nxEl.className='wv-next placeholder';
-        }
+        if(after){nxEl.textContent=after.artist||'(no name)';nxEl.className='wv-next';}
+        else{nxEl.textContent='End of programme';nxEl.className='wv-next placeholder';}
       }
       if(nxTimeEl)nxTimeEl.textContent=after&&after.start?after.start.slice(0,5):'';
     }else if(shows.length){
-      cls+=' ended';
-      if(pillEl){pillEl.className='wv-pill idle';pillEl.textContent='Ended';}
-      if(barEl)barEl.style.width='100%';
+      cls+=' idle';
+      if(stEl){stEl.textContent='Ended';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='Ended';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No more shows today';
-      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd gray';}
+      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd dim';}
       if(nxEl){nxEl.textContent='—';nxEl.className='wv-next placeholder';}
       if(nxTimeEl)nxTimeEl.textContent='';
     }else{
       cls+=' idle';
-      if(pillEl){pillEl.className='wv-pill idle';pillEl.textContent='No data';}
-      if(barEl)barEl.style.width='0%';
+      if(stEl){stEl.textContent='—';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='—';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No shows scheduled';
-      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd gray';}
+      if(cdEl){cdEl.textContent='--:--';cdEl.className='wv-cd dim';}
       if(nxEl){nxEl.textContent='—';nxEl.className='wv-next placeholder';}
       if(nxTimeEl)nxTimeEl.textContent='';
     }
