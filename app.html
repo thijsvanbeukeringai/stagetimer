@@ -3976,8 +3976,17 @@ function renderHeader(){
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   document.getElementById('bs-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayBS','bshbtn');
 
-  // Timeline day tabs
-  document.getElementById('tl-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayTL');
+  // Timeline day tabs - signature-cached so we don't destroy an open
+  // <select> picker on iOS Safari when an unrelated render happens
+  // (8s tick, Realtime echo, etc).
+  const tlDt=document.getElementById('tl-dtabs');
+  if(tlDt){
+    const tlSig=(getDays()||[]).map(d=>d.id+':'+(d.name||'')+':'+(d.date||'')).join('|')+'#'+(G.activeDay||'');
+    if(tlDt.dataset.sig!==tlSig){
+      tlDt.dataset.sig=tlSig;
+      tlDt.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayTL');
+    }
+  }
 }
 function setDay(d){G.activeDay=d;M.idx=0;mReset();save();renderAll();if(document.getElementById('tl').classList.contains('open'))renderTL();}
 // Day-picker handlers - kept thin so they can be referenced from inline onclick/onchange.
@@ -7601,10 +7610,17 @@ async function loadPublicView(){
     if(todayDay)G.activeDay=todayDay.id;
     else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
     // Render day-selector tabs (read-only, no save())
-    window._publicSetDay=function(id){G.activeDay=id;renderTLDtabsPublic();renderTL();};
-    window.renderTLDtabsPublic=function(){
+    window._publicSetDay=function(id){G.activeDay=id;renderTLDtabsPublic(true);renderTL();};
+    // Cache the signature of (days list + activeDay) so the 1s polling
+    // doesn't blow away an open <select> picker on iOS Safari every
+    // second. Only rebuild when something visible actually changed, or
+    // when the caller explicitly forces it (e.g. after a user pick).
+    window.renderTLDtabsPublic=function(force){
       const dt=document.getElementById('tl-dtabs');
       if(!dt)return;
+      const sig=(G.days||[]).map(d=>d.id+':'+(d.name||'')+':'+(d.date||'')).join('|')+'#'+(G.activeDay||'');
+      if(!force&&dt.dataset.sig===sig)return;
+      dt.dataset.sig=sig;
       dt.innerHTML=_dayPickerHTML(G.activeDay,'_publicSetDay');
     };
     renderTLDtabsPublic();
