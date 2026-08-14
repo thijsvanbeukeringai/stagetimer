@@ -828,6 +828,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   --wv-text-mute:rgba(250,250,250,.5);
   --wv-text-dim:rgba(250,250,250,.28);
   --wv-overtime:#ef4444;
+  --wv-star:#fbbf24;
   --wv-logo-invert:1;
 }
 #wv.light{
@@ -839,6 +840,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   --wv-text-mute:rgba(10,10,10,.5);
   --wv-text-dim:rgba(10,10,10,.28);
   --wv-overtime:#dc2626;
+  --wv-star:#d97706;
   --wv-logo-invert:0;
 }
 #wv{background:var(--wv-bg);color:var(--wv-text);}
@@ -886,20 +888,24 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .wv-cell.blackout > *{visibility:hidden;}
 .wv-cell.blackout::after{content:'BLACKOUT';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--ffm);font-weight:800;font-size:clamp(24px,2.8vw,48px);color:var(--wv-overtime);letter-spacing:.22em;animation:blink 1.4s ease-in-out infinite;visibility:visible;}
 
-/* Top row: STAGE label + tiny status text (no pill, just text) */
-.wv-stage-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--wv-edge);position:relative;}
+/* Top row: STAGE label + tiny status text (no pill, just text).
+   Every cell carries the same banner geometry - edge to edge via negative
+   margins - so stage names land on one baseline across the whole wall.
+   Only the fill changes per theme and per state. */
+.wv-stage-row{display:flex;align-items:baseline;justify-content:space-between;gap:14px;position:relative;
+  margin:calc(-1 * var(--wv-pad-y)) calc(-1 * var(--wv-pad-x)) 16px;
+  padding:14px var(--wv-pad-x) 12px;
+  border-bottom:1px solid var(--wv-edge);
+  border-radius:6px 6px 0 0;}
 /* LIGHT MODE: soft glass-gradient banner across the stage-name row,
    orange -> blue -> mint, low-saturation so it reads as material, not
    marketing. Extends to the cell edges via negative margins. */
 #wv.light .wv-stage-row{
-  margin:calc(-1 * var(--wv-pad-y)) calc(-1 * var(--wv-pad-x)) 16px;
-  padding:14px var(--wv-pad-x) 12px;
   background:linear-gradient(95deg,rgba(255,138,76,.55) 0%,rgba(255,176,120,.45) 28%,rgba(96,165,250,.5) 58%,rgba(45,212,191,.55) 100%);
   backdrop-filter:blur(8px) saturate(135%);
   -webkit-backdrop-filter:blur(8px) saturate(135%);
   border-bottom:1px solid rgba(0,0,0,.1);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -1px 0 rgba(0,0,0,.04);
-  border-radius:6px 6px 0 0;
 }
 /* DARK STAGE: nothing is playing on this stage right now (gap, changeover,
    programme finished, or nothing scheduled). Colour means "running", so the
@@ -911,9 +917,6 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .wv-cell.dark .wv-stage{color:var(--wv-text-mute);}
 #wv .wv-cell.dark .wv-stage-row{
   background:linear-gradient(95deg,rgba(127,127,127,.16) 0%,rgba(127,127,127,.09) 55%,rgba(127,127,127,.14) 100%);
-  margin:calc(-1 * var(--wv-pad-y)) calc(-1 * var(--wv-pad-x)) 16px;
-  padding:14px var(--wv-pad-x) 12px;
-  border-radius:6px 6px 0 0;
   box-shadow:none;
   backdrop-filter:none;-webkit-backdrop-filter:none;
 }
@@ -929,8 +932,14 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 /* NOW block - small label, artist, countdown */
 .wv-row{display:flex;align-items:baseline;gap:10px;font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;margin-bottom:6px;}
 .wv-row .wv-time{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;margin-left:auto;}
-.wv-artist{font-size:clamp(22px,2.5vw,40px);font-weight:600;color:var(--wv-text);line-height:1.1;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
+.wv-artist{display:flex;align-items:baseline;gap:.3em;min-width:0;overflow:hidden;font-size:clamp(22px,2.5vw,40px);font-weight:600;color:var(--wv-text);line-height:1.1;letter-spacing:-.015em;margin-bottom:8px;}
+.wv-artist .wv-nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .wv-artist.placeholder{color:var(--wv-text-dim);font-weight:500;}
+/* Priority flag (the ⭐ toggle in the show drawer). Drawn as a text glyph
+   rather than the emoji the timeline uses: it inherits the surrounding
+   type scale, stays crisp at wall sizes, and sits outside the name's
+   ellipsis so a long artist name can never swallow it. */
+.wv-star{color:var(--wv-star);font-size:.8em;line-height:1;flex-shrink:0;}
 /* Countdown + caption. A bare ticking number reads as "a show is running",
    so when the clock is counting towards a start instead of an end it gets
    an explicit "starts in" next to it. */
@@ -953,9 +962,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .wv-up-wrap{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
 .wv-up-label{font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;margin-bottom:9px;flex-shrink:0;}
 .wv-up-list{display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden;}
-.wv-up-row{display:flex;align-items:baseline;gap:14px;min-width:0;flex-shrink:0;}
-.wv-up-time{font-family:var(--ffm);font-size:clamp(14px,1.32vw,22px);font-weight:600;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex-shrink:0;}
-.wv-up-name{font-size:clamp(18px,1.8vw,29px);font-weight:500;color:var(--wv-text);line-height:1.15;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;}
+/* No `gap` here: the star has to sit tight against the name it belongs to,
+   while the time column keeps its own wider column spacing. */
+.wv-up-row{display:flex;align-items:baseline;min-width:0;flex-shrink:0;font-size:clamp(18px,1.8vw,29px);}
+.wv-up-time{font-family:var(--ffm);font-size:clamp(14px,1.32vw,22px);font-weight:600;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex-shrink:0;margin-right:14px;}
+.wv-up-name{font-weight:500;color:var(--wv-text);line-height:1.15;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;}
+.wv-up-row .wv-star{margin-left:.3em;}
 .wv-up-empty{font-size:clamp(18px,1.68vw,26px);font-weight:500;color:var(--wv-text-dim);line-height:1.2;}
 
 /* Size the cell to ITS OWN height, not the viewport. The rules above use
@@ -967,8 +979,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
    Older browsers fall back to the vw sizing above. */
 @supports (container-type:size){
   .wv-cell{container-type:size;--wv-pad-y:min(22px,4cqh);--wv-pad-x:min(26px,3.4cqw);}
-  .wv-stage-row{margin-bottom:min(18px,3.2cqh);padding-bottom:min(12px,2.2cqh);gap:min(14px,2cqw);}
-  #wv.light .wv-stage-row,#wv .wv-cell.dark .wv-stage-row{margin-bottom:min(16px,2.8cqh);padding-top:min(14px,2.6cqh);padding-bottom:min(12px,2.2cqh);}
+  .wv-stage-row{margin-bottom:min(16px,2.8cqh);padding-top:min(14px,2.6cqh);padding-bottom:min(12px,2.2cqh);gap:min(14px,2cqw);}
   .wv-cd-row{gap:min(12px,1.4cqw);}
   .wv-cd-cap{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);}
   .wv-stage{font-size:clamp(10px,min(4.4cqh,2.5cqw),22px);}
@@ -981,10 +992,31 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .wv-divider{margin:min(18px,2.6cqh) 0 min(13px,1.9cqh);}
   .wv-up-label{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);margin-bottom:min(12px,1.7cqh);}
   .wv-up-list{gap:min(10px,1.3cqh);}
-  .wv-up-row{gap:min(18px,1.8cqw);}
-  .wv-up-time{font-size:clamp(9px,min(5.2cqh,2.6cqw),29px);}
-  .wv-up-name{font-size:clamp(12px,min(6.2cqh,3.8cqw),37px);}
+  .wv-up-row{font-size:clamp(12px,min(6.2cqh,3.8cqw),37px);}
+  .wv-up-time{font-size:clamp(9px,min(5.2cqh,2.6cqw),29px);margin-right:min(18px,1.8cqw);}
   .wv-up-empty{font-size:clamp(12px,min(6.2cqh,3.8cqw),35px);}
+
+  /* Short cells (dense grids, or a 4x4 on a 1366px screen) can't carry the
+     full NOW block AND five upcoming rows. Tighten the block that describes
+     one show before touching the list - the schedule is what the room reads
+     when a cell is small. Thresholds are CONTENT-box heights (what a size
+     container actually queries), calibrated against a headless clipping
+     matrix over 1..16 stages x {1366x768, 1600x900, 1920x1080, 2560x1440}. */
+  @container (max-height:260px){
+    .wv-stage-row{padding-top:min(10px,2cqh);padding-bottom:min(9px,1.8cqh);margin-bottom:min(10px,2.2cqh);}
+    .wv-row{margin-bottom:min(4px,.9cqh);}
+    .wv-artist{font-size:clamp(13px,min(8.6cqh,5cqw),30px);margin-bottom:min(6px,1.3cqh);}
+    .wv-cd{font-size:clamp(16px,min(12cqh,7cqw),44px);}
+    .wv-cell.dark .wv-cd{font-size:clamp(13px,min(8cqh,5cqw),34px);}
+    .wv-divider{margin:min(8px,1.7cqh) 0 min(6px,1.3cqh);}
+    .wv-up-label{margin-bottom:min(6px,1.4cqh);}
+    .wv-up-list{gap:min(5px,1.1cqh);}
+    .wv-up-row{font-size:clamp(11px,min(5.9cqh,3.6cqw),30px);}
+  }
+  /* Below this there is no honest way to show five rows: drop rows off the
+     end rather than slicing one in half. */
+  @container (max-height:130px){ .wv-up-row:nth-child(n+4){display:none;} }
+  @container (max-height:100px){ .wv-up-row:nth-child(n+3){display:none;} }
 }
 
 /* Mobile / smaller screens get more compact paddings */
@@ -5212,18 +5244,24 @@ function _wvFmtRange(s){
   if(a&&b)return a+' — '+b;
   return a||b||'';
 }
+// Artist name plus the amber star when the show is flagged Priority.
+// The star is a sibling of the name, never inside it, so the name's
+// ellipsis can't eat it.
+function _wvNameHTML(s){
+  return `<span class="wv-nm">${escH(s.artist||'(no name)')}</span>`+(s.priority?'<span class="wv-star">★</span>':'');
+}
 // Paint the Next-up list. tickWV runs once a second, so the list is only
 // rewritten when its content actually changed - otherwise a wall display
 // would rebuild 16 lists per second for nothing.
 function _wvSetUpcoming(el,list,emptyTxt){
   if(!el)return;
   const sig=list.length
-    ? list.map(s=>[s.id,s.start||'',s.end||'',s.artist||''].join('|')).join('~')
+    ? list.map(s=>[s.id,s.start||'',s.end||'',s.artist||'',s.priority?'*':''].join('|')).join('~')
     : '∅'+emptyTxt;
   if(el.dataset.sig===sig)return;
   el.dataset.sig=sig;
   el.innerHTML=list.length
-    ? list.map(s=>`<div class="wv-up-row"><span class="wv-up-time">${escH(_wvFmtRange(s))}</span><span class="wv-up-name">${escH(s.artist||'(no name)')}</span></div>`).join('')
+    ? list.map(s=>`<div class="wv-up-row"><span class="wv-up-time">${escH(_wvFmtRange(s))}</span><span class="wv-up-name">${escH(s.artist||'(no name)')}</span>${s.priority?'<span class="wv-star">★</span>':''}</div>`).join('')
     : `<div class="wv-up-empty">${escH(emptyTxt)}</div>`;
 }
 function renderWV(){
@@ -5327,7 +5365,7 @@ function tickWV(){
         stEl.textContent=isOver?'Overtime':'Live';
         stEl.className='wv-status-txt '+(isOver?'over':'live');
       }
-      if(artEl){artEl.textContent=cur.artist||'(no name)';artEl.className='wv-artist';}
+      if(artEl){artEl.innerHTML=_wvNameHTML(cur);artEl.className='wv-artist';}
       if(tEl){
         const startTxt=cur.start?cur.start.slice(0,5):'';
         const endTxt=cur.end?cur.end.slice(0,5):'';
