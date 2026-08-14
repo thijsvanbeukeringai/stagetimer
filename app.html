@@ -878,7 +878,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #wv-body{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:12px;padding:14px;overflow:hidden;}
 
 /* Cell: single flat surface, hairline border. No tints. No gradients. */
-.wv-cell{position:relative;background:var(--wv-cell-bg);border:1px solid var(--wv-edge);border-radius:6px;padding:22px 26px;display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s ease, opacity .3s ease;min-height:0;}
+.wv-cell{position:relative;background:var(--wv-cell-bg);border:1px solid var(--wv-edge);border-radius:6px;--wv-pad-y:22px;--wv-pad-x:26px;padding:var(--wv-pad-y) var(--wv-pad-x);display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s ease, opacity .3s ease;min-height:0;}
 .wv-cell.empty{background:transparent;border-color:var(--wv-edge-soft);}
 .wv-cell.idle{opacity:.55;}
 .wv-cell.live-over{border-color:rgba(239,68,68,.6);}
@@ -892,8 +892,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
    orange -> blue -> mint, low-saturation so it reads as material, not
    marketing. Extends to the cell edges via negative margins. */
 #wv.light .wv-stage-row{
-  margin:-22px -26px 16px;
-  padding:14px 26px 12px;
+  margin:calc(-1 * var(--wv-pad-y)) calc(-1 * var(--wv-pad-x)) 16px;
+  padding:14px var(--wv-pad-x) 12px;
   background:linear-gradient(95deg,rgba(255,138,76,.55) 0%,rgba(255,176,120,.45) 28%,rgba(96,165,250,.5) 58%,rgba(45,212,191,.55) 100%);
   backdrop-filter:blur(8px) saturate(135%);
   -webkit-backdrop-filter:blur(8px) saturate(135%);
@@ -909,19 +909,50 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 /* NOW block - small label, artist, countdown */
 .wv-row{display:flex;align-items:baseline;gap:10px;font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;margin-bottom:6px;}
 .wv-row .wv-time{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;margin-left:auto;}
-.wv-artist{font-size:clamp(17px,1.9vw,28px);font-weight:600;color:var(--wv-text);line-height:1.15;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px;}
+.wv-artist{font-size:clamp(22px,2.5vw,40px);font-weight:600;color:var(--wv-text);line-height:1.1;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
 .wv-artist.placeholder{color:var(--wv-text-dim);font-weight:500;}
-.wv-cd{font-family:var(--ffm);font-size:clamp(34px,4.6vw,76px);font-weight:600;line-height:.95;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--wv-text);text-align:left;margin:6px 0 8px;white-space:nowrap;}
+.wv-cd{font-family:var(--ffm);font-size:clamp(30px,3.9vw,64px);font-weight:600;line-height:.95;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--wv-text);text-align:left;margin:4px 0 6px;white-space:nowrap;}
 .wv-cd.over{color:var(--wv-overtime);}
 .wv-cd.dim{color:var(--wv-text-dim);}
 
-/* NEXT block - mirror NOW typography, but smaller */
-.wv-divider{height:1px;background:var(--wv-edge);margin:16px 0 12px;}
-.wv-next-wrap{display:flex;flex-direction:column;gap:5px;}
-.wv-next-label{font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;display:flex;align-items:baseline;gap:10px;}
-.wv-next-label .tm{font-size:11px;font-weight:600;color:var(--wv-text-mute);margin-left:auto;letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;}
-.wv-next{font-size:clamp(14px,1.3vw,20px);font-weight:500;color:var(--wv-text);line-height:1.2;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.wv-next.placeholder{color:var(--wv-text-dim);}
+/* NEXT UP block - the following shows on this stage with start—end times.
+   Fills whatever height is left in the cell; rows that don't fit are
+   clipped rather than squeezed, so the top of the list stays readable
+   from 3-5 metres no matter how many stages share the grid. */
+.wv-divider{height:1px;background:var(--wv-edge);margin:14px 0 10px;}
+.wv-up-wrap{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
+.wv-up-label{font-family:var(--ffm);font-size:10px;font-weight:700;color:var(--wv-text-mute);letter-spacing:.22em;text-transform:uppercase;margin-bottom:9px;flex-shrink:0;}
+.wv-up-list{display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden;}
+.wv-up-row{display:flex;align-items:baseline;gap:14px;min-width:0;flex-shrink:0;}
+.wv-up-time{font-family:var(--ffm);font-size:clamp(12px,1.1vw,18px);font-weight:600;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex-shrink:0;}
+.wv-up-name{font-size:clamp(15px,1.5vw,24px);font-weight:500;color:var(--wv-text);line-height:1.15;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;}
+.wv-up-empty{font-size:clamp(15px,1.4vw,22px);font-weight:500;color:var(--wv-text-dim);line-height:1.2;}
+
+/* Size the cell to ITS OWN height, not the viewport. The rules above use
+   vw, which ignores how many rows the grid was split into - a 4x4 wall
+   gets quarter-height cells but full-height type, and the Next-up list
+   gets sliced off mid-row. With container queries every vertical cost is
+   expressed in cqh, so the whole cell shrinks in proportion and all five
+   upcoming shows keep fitting from a 2x1 grid down to 4x4.
+   Older browsers fall back to the vw sizing above. */
+@supports (container-type:size){
+  .wv-cell{container-type:size;--wv-pad-y:min(22px,4cqh);--wv-pad-x:min(26px,3.4cqw);}
+  .wv-stage-row{margin-bottom:min(18px,3.2cqh);padding-bottom:min(12px,2.2cqh);gap:min(14px,2cqw);}
+  #wv.light .wv-stage-row{margin-bottom:min(16px,2.8cqh);padding-top:min(14px,2.6cqh);padding-bottom:min(12px,2.2cqh);}
+  .wv-stage{font-size:clamp(10px,min(4.4cqh,2.5cqw),22px);}
+  .wv-status-txt{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);}
+  .wv-row{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);margin-bottom:min(8px,1.1cqh);}
+  .wv-row .wv-time{font-size:clamp(8px,min(2.9cqh,1.7cqw),14px);}
+  .wv-artist{font-size:clamp(14px,min(10cqh,5.8cqw),54px);margin-bottom:min(11px,1.5cqh);}
+  .wv-cd{font-size:clamp(18px,min(15.5cqh,9.2cqw),84px);margin:min(6px,.8cqh) 0 min(8px,1.1cqh);}
+  .wv-divider{margin:min(18px,2.6cqh) 0 min(13px,1.9cqh);}
+  .wv-up-label{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);margin-bottom:min(12px,1.7cqh);}
+  .wv-up-list{gap:min(10px,1.3cqh);}
+  .wv-up-row{gap:min(18px,1.8cqw);}
+  .wv-up-time{font-size:clamp(8px,min(4.3cqh,2.2cqw),24px);}
+  .wv-up-name{font-size:clamp(10px,min(5.2cqh,3.2cqw),31px);}
+  .wv-up-empty{font-size:clamp(10px,min(5.2cqh,3.2cqw),29px);}
+}
 
 /* Mobile / smaller screens get more compact paddings */
 @media (max-width:900px){
@@ -931,9 +962,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #wv-clock{font-size:24px;}
   #wv-clock-seconds{font-size:13px;}
   #wv-body{padding:8px;gap:8px;}
-  .wv-cell{padding:16px 18px;border-radius:5px;}
+  .wv-cell{--wv-pad-y:16px;--wv-pad-x:18px;border-radius:5px;}
   .wv-stage-row{margin-bottom:14px;padding-bottom:10px;}
   .wv-divider{margin:12px 0 8px;}
+  .wv-up-label{margin-bottom:6px;}
+  .wv-up-list{gap:5px;}
+  .wv-up-row{gap:10px;}
 }
 
 /* Few-stage layouts: keep a sensible grid instead of forcing 4x4 with
@@ -5132,6 +5166,33 @@ function _wvFmtHMS(sec){
   const s=abs%60;
   return (isNeg?'-':'')+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
 }
+
+// How many upcoming shows the Wall lists per stage under "Next up".
+const WV_UPCOMING=5;
+
+// "22:00 — 23:15" for the Next-up rows. Falls back to whichever half of
+// the range the show actually has, so a slot without an end time still
+// shows something useful instead of a dangling dash.
+function _wvFmtRange(s){
+  const a=s.start?s.start.slice(0,5):'';
+  const b=s.end?s.end.slice(0,5):'';
+  if(a&&b)return a+' — '+b;
+  return a||b||'';
+}
+// Paint the Next-up list. tickWV runs once a second, so the list is only
+// rewritten when its content actually changed - otherwise a wall display
+// would rebuild 16 lists per second for nothing.
+function _wvSetUpcoming(el,list,emptyTxt){
+  if(!el)return;
+  const sig=list.length
+    ? list.map(s=>[s.id,s.start||'',s.end||'',s.artist||''].join('|')).join('~')
+    : '∅'+emptyTxt;
+  if(el.dataset.sig===sig)return;
+  el.dataset.sig=sig;
+  el.innerHTML=list.length
+    ? list.map(s=>`<div class="wv-up-row"><span class="wv-up-time">${escH(_wvFmtRange(s))}</span><span class="wv-up-name">${escH(s.artist||'(no name)')}</span></div>`).join('')
+    : `<div class="wv-up-empty">${escH(emptyTxt)}</div>`;
+}
 function renderWV(){
   wvApplyTheme();
   const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
@@ -5168,9 +5229,9 @@ function renderWV(){
       <div class="wv-artist placeholder" id="wva-${st.id}">—</div>
       <div class="wv-cd dim" id="wvcd-${st.id}">00:00:00</div>
       <div class="wv-divider"></div>
-      <div class="wv-next-wrap">
-        <div class="wv-next-label"><span>Next</span><span class="tm" id="wvnt-${st.id}"></span></div>
-        <div class="wv-next placeholder" id="wvn-${st.id}">—</div>
+      <div class="wv-up-wrap">
+        <div class="wv-up-label">Next up</div>
+        <div class="wv-up-list" id="wvup-${st.id}"></div>
       </div>
     </div>`).join('');
   const total=stages.length;
@@ -5205,10 +5266,10 @@ function tickWV(){
     const artEl=document.getElementById('wva-'+st.id);
     const tEl=document.getElementById('wvt-'+st.id);
     const cdEl=document.getElementById('wvcd-'+st.id);
-    const nxEl=document.getElementById('wvn-'+st.id);
-    const nxTimeEl=document.getElementById('wvnt-'+st.id);
+    const upEl=document.getElementById('wvup-'+st.id);
     const stEl=document.getElementById('wvp-'+st.id);
-    // Find live + next
+    // Find the show for the NOW block: the live one, else the soonest
+    // upcoming one. Everything after it feeds the Next-up list.
     let cur=null,nxt=null;
     for(const s of shows){if(_showIsLive(s,nowMs)){cur=s;break;}}
     if(!cur){
@@ -5218,7 +5279,7 @@ function tickWV(){
         const dt=sa.getTime()-nowMs;
         if(dt>0&&dt<bestDt){bestDt=dt;nxt=s;}
       }
-    }else{nxt=shows[shows.indexOf(cur)+1]||null;}
+    }
     let cls='wv-cell';
     if(cur){
       const ea=_showEndsAt(cur);
@@ -5239,11 +5300,8 @@ function tickWV(){
         cdEl.textContent=_wvFmtHMS(remSec);
         cdEl.className='wv-cd'+(isOver?' over':'');
       }
-      if(nxEl){
-        if(nxt){nxEl.textContent=nxt.artist||'(no name)';nxEl.className='wv-next';}
-        else{nxEl.textContent='End of programme';nxEl.className='wv-next placeholder';}
-      }
-      if(nxTimeEl)nxTimeEl.textContent=nxt&&nxt.start?nxt.start.slice(0,5):'';
+      const idx=shows.indexOf(cur);
+      _wvSetUpcoming(upEl,shows.slice(idx+1,idx+1+WV_UPCOMING),'End of programme');
     }else if(nxt){
       const sa=_showStartsAt(nxt);
       const secUntil=sa?Math.max(0,Math.round((sa.getTime()-nowMs)/1000)):0;
@@ -5255,28 +5313,21 @@ function tickWV(){
         cdEl.className='wv-cd dim';
       }
       const idx=shows.indexOf(nxt);
-      const after=shows[idx+1];
-      if(nxEl){
-        if(after){nxEl.textContent=after.artist||'(no name)';nxEl.className='wv-next';}
-        else{nxEl.textContent='End of programme';nxEl.className='wv-next placeholder';}
-      }
-      if(nxTimeEl)nxTimeEl.textContent=after&&after.start?after.start.slice(0,5):'';
+      _wvSetUpcoming(upEl,shows.slice(idx+1,idx+1+WV_UPCOMING),'End of programme');
     }else if(shows.length){
       cls+=' idle';
       if(stEl){stEl.textContent='Ended';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='Ended';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No more shows today';
       if(cdEl){cdEl.textContent='00:00:00';cdEl.className='wv-cd dim';}
-      if(nxEl){nxEl.textContent='—';nxEl.className='wv-next placeholder';}
-      if(nxTimeEl)nxTimeEl.textContent='';
+      _wvSetUpcoming(upEl,[],'End of programme');
     }else{
       cls+=' idle';
       if(stEl){stEl.textContent='—';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='—';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No shows scheduled';
       if(cdEl){cdEl.textContent='00:00:00';cdEl.className='wv-cd dim';}
-      if(nxEl){nxEl.textContent='—';nxEl.className='wv-next placeholder';}
-      if(nxTimeEl)nxTimeEl.textContent='';
+      _wvSetUpcoming(upEl,[],'—');
     }
     if(cell.className!==cls)cell.className=cls;
   });
