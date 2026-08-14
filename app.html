@@ -964,11 +964,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .wv-up-list{display:flex;flex-direction:column;gap:7px;min-height:0;overflow:hidden;}
 /* No `gap` here: the star has to sit tight against the name it belongs to,
    while the time column keeps its own wider column spacing. */
-.wv-up-row{display:flex;align-items:baseline;min-width:0;flex-shrink:0;font-size:clamp(18px,1.8vw,29px);}
-.wv-up-time{font-family:var(--ffm);font-size:clamp(14px,1.32vw,22px);font-weight:600;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex-shrink:0;margin-right:14px;}
+.wv-up-row{display:flex;align-items:baseline;min-width:0;flex-shrink:0;font-size:clamp(22px,2.16vw,35px);}
+.wv-up-time{font-family:var(--ffm);font-size:clamp(17px,1.58vw,26px);font-weight:600;color:var(--wv-text-mute);font-variant-numeric:tabular-nums;letter-spacing:-.01em;flex-shrink:0;margin-right:14px;}
 .wv-up-name{font-weight:500;color:var(--wv-text);line-height:1.15;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto;}
 .wv-up-row .wv-star{margin-left:.3em;}
-.wv-up-empty{font-size:clamp(18px,1.68vw,26px);font-weight:500;color:var(--wv-text-dim);line-height:1.2;}
+.wv-up-empty{font-size:clamp(22px,2.02vw,31px);font-weight:500;color:var(--wv-text-dim);line-height:1.2;}
 
 /* Size the cell to ITS OWN height, not the viewport. The rules above use
    vw, which ignores how many rows the grid was split into - a 4x4 wall
@@ -992,9 +992,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .wv-divider{margin:min(18px,2.6cqh) 0 min(13px,1.9cqh);}
   .wv-up-label{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);margin-bottom:min(12px,1.7cqh);}
   .wv-up-list{gap:min(10px,1.3cqh);}
-  .wv-up-row{font-size:clamp(12px,min(6.2cqh,3.8cqw),37px);}
-  .wv-up-time{font-size:clamp(9px,min(5.2cqh,2.6cqw),29px);margin-right:min(18px,1.8cqw);}
-  .wv-up-empty{font-size:clamp(12px,min(6.2cqh,3.8cqw),35px);}
+  .wv-up-row{font-size:clamp(14px,min(7.4cqh,4.6cqw),44px);}
+  .wv-up-time{font-size:clamp(11px,min(6.2cqh,3.1cqw),35px);margin-right:min(18px,1.8cqw);}
+  .wv-up-empty{font-size:clamp(14px,min(7.4cqh,4.6cqw),42px);}
 
   /* Short cells (dense grids, or a 4x4 on a 1366px screen) can't carry the
      full NOW block AND five upcoming rows. Tighten the block that describes
@@ -1011,7 +1011,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
     .wv-divider{margin:min(8px,1.7cqh) 0 min(6px,1.3cqh);}
     .wv-up-label{margin-bottom:min(6px,1.4cqh);}
     .wv-up-list{gap:min(5px,1.1cqh);}
-    .wv-up-row{font-size:clamp(11px,min(5.9cqh,3.6cqw),30px);}
+    .wv-up-row{font-size:clamp(13px,min(7.1cqh,4.3cqw),36px);}
   }
   /* Below this there is no honest way to show five rows: drop rows off the
      end rather than slicing one in half. */
