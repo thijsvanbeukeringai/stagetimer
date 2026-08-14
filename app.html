@@ -904,7 +904,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   margin:calc(-1 * var(--wv-pad-y)) calc(-1 * var(--wv-pad-x)) 16px;
   padding:14px var(--wv-pad-x) 12px;
   border-bottom:1px solid var(--wv-edge);
-  border-radius:6px 6px 0 0;}
+  border-radius:5px 5px 0 0;} /* 6px cell radius minus the 1px border it nests inside */
 /* LIGHT MODE: soft glass-gradient banner across the stage-name row,
    orange -> blue -> mint, low-saturation so it reads as material, not
    marketing. Extends to the cell edges via negative margins. */
@@ -986,7 +986,14 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
    upcoming shows keep fitting from a 2x1 grid down to 4x4.
    Older browsers fall back to the vw sizing above. */
 @supports (container-type:size){
-  .wv-cell{container-type:size;--wv-pad-y:min(22px,4cqh);--wv-pad-x:min(26px,3.4cqw);}
+  /* NB: --wv-pad-* must never use container units. A custom property is
+     substituted as tokens, not as a computed length, so `4cqh` would
+     resolve against the viewport here (the cell is its own container, and
+     has no container ancestor) but against the cell inside .wv-stage-row -
+     two different pixel values, and the banner's negative margin would
+     stop short of the card edge. Density-based padding lives in px on
+     #wv-body[data-stages] instead. */
+  .wv-cell{container-type:size;}
   .wv-stage-row{margin-bottom:min(16px,2.8cqh);padding-top:min(14px,2.6cqh);padding-bottom:min(12px,2.2cqh);gap:min(14px,2cqw);}
   .wv-cd-row{gap:min(12px,1.4cqw);}
   .wv-cd-cap{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);}
@@ -1053,6 +1060,15 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #wv-body[data-stages="7"],#wv-body[data-stages="8"]{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);}
 #wv-body[data-stages="9"]{grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);}
 #wv-body[data-stages="10"],#wv-body[data-stages="11"],#wv-body[data-stages="12"]{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);}
+
+/* Denser grids get tighter cells. In px on purpose - see the note in the
+   container-query block: the banner's negative margin has to compute to
+   exactly this value from inside the cell. */
+#wv-body[data-stages="7"] .wv-cell,#wv-body[data-stages="8"] .wv-cell,
+#wv-body[data-stages="9"] .wv-cell,#wv-body[data-stages="10"] .wv-cell,
+#wv-body[data-stages="11"] .wv-cell,#wv-body[data-stages="12"] .wv-cell{--wv-pad-y:14px;--wv-pad-x:18px;}
+#wv-body[data-stages="13"] .wv-cell,#wv-body[data-stages="14"] .wv-cell,
+#wv-body[data-stages="15"] .wv-cell,#wv-body[data-stages="16"] .wv-cell{--wv-pad-y:10px;--wv-pad-x:14px;}
 
 .dr-flag-row{display:flex;gap:8px;margin-top:4px;}
 .dr-flag-btn{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2);background:var(--s3);color:var(--sub);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
