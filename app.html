@@ -829,6 +829,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   --wv-text-dim:rgba(250,250,250,.28);
   --wv-overtime:#ef4444;
   --wv-star:#fbbf24;
+  --wv-live-bg:rgba(16,185,129,.14);
+  --wv-live-edge:rgba(16,185,129,.45);
   --wv-logo-invert:1;
 }
 #wv.light{
@@ -841,6 +843,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   --wv-text-dim:rgba(10,10,10,.28);
   --wv-overtime:#dc2626;
   --wv-star:#d97706;
+  --wv-live-bg:#e6f8ee;
+  --wv-live-edge:rgba(5,150,105,.38);
   --wv-logo-invert:0;
 }
 #wv{background:var(--wv-bg);color:var(--wv-text);}
@@ -880,9 +884,13 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #wv-body{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:12px;padding:14px;overflow:hidden;}
 
 /* Cell: single flat surface, hairline border. No tints. No gradients. */
-.wv-cell{position:relative;background:var(--wv-cell-bg);border:1px solid var(--wv-edge);border-radius:6px;--wv-pad-y:22px;--wv-pad-x:26px;padding:var(--wv-pad-y) var(--wv-pad-x);display:flex;flex-direction:column;overflow:hidden;transition:border-color .3s ease, opacity .3s ease;min-height:0;}
+.wv-cell{position:relative;background:var(--wv-cell-bg);border:1px solid var(--wv-edge);border-radius:6px;--wv-pad-y:22px;--wv-pad-x:26px;padding:var(--wv-pad-y) var(--wv-pad-x);display:flex;flex-direction:column;overflow:hidden;transition:background-color .4s ease, border-color .3s ease, opacity .3s ease;min-height:0;}
 .wv-cell.empty{background:transparent;border-color:var(--wv-edge-soft);}
 .wv-cell.idle{opacity:.55;}
+/* A show is on: the whole card goes green. Fills the largest surface the
+   wall has, so "this area is running" is legible from across the room
+   before anyone reads a stage name. */
+.wv-cell.live{background:var(--wv-live-bg);border-color:var(--wv-live-edge);}
 .wv-cell.live-over{border-color:rgba(239,68,68,.6);}
 .wv-cell.blackout{background:#000;border-color:rgba(239,68,68,.7);}
 .wv-cell.blackout > *{visibility:hidden;}
@@ -5360,6 +5368,7 @@ function tickWV(){
       const ea=_showEndsAt(cur);
       const remSec=ea?Math.round((ea.getTime()-nowMs)/1000):0;
       const isOver=remSec<0;
+      cls+=' live';
       if(isOver)cls+=' live-over';
       if(stEl){
         stEl.textContent=isOver?'Overtime':'Live';
