@@ -901,6 +901,26 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -1px 0 rgba(0,0,0,.04);
   border-radius:6px 6px 0 0;
 }
+/* DARK STAGE: nothing is playing on this stage right now (gap, changeover,
+   programme finished, or nothing scheduled). Colour means "running", so the
+   stage-name banner - the largest, most scannable element on the wall -
+   drops to neutral grey the moment a stage goes quiet. That reads across
+   a 12-cell wall without anyone parsing a single word.
+   The Next-up list keeps full contrast: when a stage is dark, its schedule
+   is exactly what the control room needs to read. */
+.wv-cell.dark .wv-stage{color:var(--wv-text-mute);}
+#wv .wv-cell.dark .wv-stage-row{
+  background:linear-gradient(95deg,rgba(127,127,127,.16) 0%,rgba(127,127,127,.09) 55%,rgba(127,127,127,.14) 100%);
+  margin:calc(-1 * var(--wv-pad-y)) calc(-1 * var(--wv-pad-x)) 16px;
+  padding:14px var(--wv-pad-x) 12px;
+  border-radius:6px 6px 0 0;
+  box-shadow:none;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+}
+#wv.light .wv-cell.dark .wv-stage-row{
+  background:linear-gradient(95deg,rgba(10,10,10,.1) 0%,rgba(10,10,10,.055) 55%,rgba(10,10,10,.09) 100%);
+  border-bottom:1px solid rgba(0,0,0,.09);
+}
 .wv-stage{font-size:clamp(13px,1.2vw,17px);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--wv-text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
 .wv-status-txt{font-family:var(--ffm);font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--wv-text-mute);flex-shrink:0;}
 .wv-status-txt.live{color:var(--wv-text);}
@@ -911,9 +931,19 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .wv-row .wv-time{font-family:var(--ffm);font-size:11px;font-weight:600;color:var(--wv-text-mute);letter-spacing:.04em;text-transform:none;font-variant-numeric:tabular-nums;margin-left:auto;}
 .wv-artist{font-size:clamp(22px,2.5vw,40px);font-weight:600;color:var(--wv-text);line-height:1.1;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px;}
 .wv-artist.placeholder{color:var(--wv-text-dim);font-weight:500;}
+/* Countdown + caption. A bare ticking number reads as "a show is running",
+   so when the clock is counting towards a start instead of an end it gets
+   an explicit "starts in" next to it. */
+.wv-cd-row{display:flex;align-items:baseline;gap:12px;min-width:0;}
+.wv-cd-cap{font-family:var(--ffm);font-size:clamp(9px,.85vw,13px);font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--wv-text-dim);white-space:nowrap;}
+.wv-cd-cap:empty{display:none;}
 .wv-cd{font-family:var(--ffm);font-size:clamp(30px,3.9vw,64px);font-weight:600;line-height:.95;letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--wv-text);text-align:left;margin:4px 0 6px;white-space:nowrap;}
 .wv-cd.over{color:var(--wv-overtime);}
 .wv-cd.dim{color:var(--wv-text-dim);}
+/* A dark stage still counts down to its next start, but at reduced size:
+   a full-height number is the wall's signal for "a show is running". */
+.wv-cell.dark .wv-cd{font-size:clamp(22px,2.6vw,42px);}
+.wv-cd:empty{display:none;}
 
 /* NEXT UP block - the following shows on this stage with start—end times.
    Fills whatever height is left in the cell; rows that don't fit are
@@ -938,13 +968,16 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 @supports (container-type:size){
   .wv-cell{container-type:size;--wv-pad-y:min(22px,4cqh);--wv-pad-x:min(26px,3.4cqw);}
   .wv-stage-row{margin-bottom:min(18px,3.2cqh);padding-bottom:min(12px,2.2cqh);gap:min(14px,2cqw);}
-  #wv.light .wv-stage-row{margin-bottom:min(16px,2.8cqh);padding-top:min(14px,2.6cqh);padding-bottom:min(12px,2.2cqh);}
+  #wv.light .wv-stage-row,#wv .wv-cell.dark .wv-stage-row{margin-bottom:min(16px,2.8cqh);padding-top:min(14px,2.6cqh);padding-bottom:min(12px,2.2cqh);}
+  .wv-cd-row{gap:min(12px,1.4cqw);}
+  .wv-cd-cap{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);}
   .wv-stage{font-size:clamp(10px,min(4.4cqh,2.5cqw),22px);}
   .wv-status-txt{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);}
   .wv-row{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);margin-bottom:min(8px,1.1cqh);}
   .wv-row .wv-time{font-size:clamp(8px,min(2.9cqh,1.7cqw),14px);}
   .wv-artist{font-size:clamp(14px,min(10cqh,5.8cqw),54px);margin-bottom:min(11px,1.5cqh);}
   .wv-cd{font-size:clamp(18px,min(15.5cqh,9.2cqw),84px);margin:min(6px,.8cqh) 0 min(8px,1.1cqh);}
+  .wv-cell.dark .wv-cd{font-size:clamp(14px,min(9.5cqh,5.6cqw),50px);}
   .wv-divider{margin:min(18px,2.6cqh) 0 min(13px,1.9cqh);}
   .wv-up-label{font-size:clamp(7px,min(2.7cqh,1.5cqw),13px);margin-bottom:min(12px,1.7cqh);}
   .wv-up-list{gap:min(10px,1.3cqh);}
@@ -5227,7 +5260,10 @@ function renderWV(){
         <span class="wv-time" id="wvt-${st.id}"></span>
       </div>
       <div class="wv-artist placeholder" id="wva-${st.id}">—</div>
-      <div class="wv-cd dim" id="wvcd-${st.id}">00:00:00</div>
+      <div class="wv-cd-row">
+        <div class="wv-cd dim" id="wvcd-${st.id}"></div>
+        <div class="wv-cd-cap" id="wvcc-${st.id}"></div>
+      </div>
       <div class="wv-divider"></div>
       <div class="wv-up-wrap">
         <div class="wv-up-label">Next up</div>
@@ -5266,6 +5302,7 @@ function tickWV(){
     const artEl=document.getElementById('wva-'+st.id);
     const tEl=document.getElementById('wvt-'+st.id);
     const cdEl=document.getElementById('wvcd-'+st.id);
+    const capEl=document.getElementById('wvcc-'+st.id);
     const upEl=document.getElementById('wvup-'+st.id);
     const stEl=document.getElementById('wvp-'+st.id);
     // Find the show for the NOW block: the live one, else the soonest
@@ -5300,34 +5337,43 @@ function tickWV(){
         cdEl.textContent=_wvFmtHMS(remSec);
         cdEl.className='wv-cd'+(isOver?' over':'');
       }
+      if(capEl)capEl.textContent='';
       const idx=shows.indexOf(cur);
       _wvSetUpcoming(upEl,shows.slice(idx+1,idx+1+WV_UPCOMING),'End of programme');
     }else if(nxt){
+      // Nothing on stage right now. The NOW block says exactly that - the
+      // upcoming artist belongs in the Next-up list, not in the slot that
+      // answers "what is playing". Under 10 minutes it's a changeover
+      // between two shows; beyond that the stage is simply dark.
+      cls+=' dark';
       const sa=_showStartsAt(nxt);
       const secUntil=sa?Math.max(0,Math.round((sa.getTime()-nowMs)/1000)):0;
-      if(stEl){stEl.textContent=secUntil<600?'Up next':'Scheduled';stEl.className='wv-status-txt';}
-      if(artEl){artEl.textContent=nxt.artist||'(no name)';artEl.className='wv-artist';}
-      if(tEl)tEl.textContent='Starts at '+(nxt.start?nxt.start.slice(0,5):'');
+      if(stEl){stEl.textContent=secUntil<600?'Changeover':'Dark';stEl.className='wv-status-txt';}
+      if(artEl){artEl.textContent='No show';artEl.className='wv-artist placeholder';}
+      if(tEl)tEl.textContent='Next at '+(nxt.start?nxt.start.slice(0,5):'');
       if(cdEl){
         cdEl.textContent=_wvFmtHMS(secUntil);
         cdEl.className='wv-cd dim';
       }
+      if(capEl)capEl.textContent='starts in';
       const idx=shows.indexOf(nxt);
-      _wvSetUpcoming(upEl,shows.slice(idx+1,idx+1+WV_UPCOMING),'End of programme');
+      _wvSetUpcoming(upEl,shows.slice(idx,idx+WV_UPCOMING),'End of programme');
     }else if(shows.length){
-      cls+=' idle';
+      cls+=' dark idle';
       if(stEl){stEl.textContent='Ended';stEl.className='wv-status-txt';}
-      if(artEl){artEl.textContent='Ended';artEl.className='wv-artist placeholder';}
+      if(artEl){artEl.textContent='No show';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No more shows today';
-      if(cdEl){cdEl.textContent='00:00:00';cdEl.className='wv-cd dim';}
+      if(cdEl){cdEl.textContent='';cdEl.className='wv-cd dim';}
+      if(capEl)capEl.textContent='';
       _wvSetUpcoming(upEl,[],'End of programme');
     }else{
-      cls+=' idle';
-      if(stEl){stEl.textContent='—';stEl.className='wv-status-txt';}
-      if(artEl){artEl.textContent='—';artEl.className='wv-artist placeholder';}
-      if(tEl)tEl.textContent='No shows scheduled';
-      if(cdEl){cdEl.textContent='00:00:00';cdEl.className='wv-cd dim';}
-      _wvSetUpcoming(upEl,[],'—');
+      cls+=' dark idle';
+      if(stEl){stEl.textContent='No shows';stEl.className='wv-status-txt';}
+      if(artEl){artEl.textContent='No show';artEl.className='wv-artist placeholder';}
+      if(tEl)tEl.textContent='Nothing scheduled';
+      if(cdEl){cdEl.textContent='';cdEl.className='wv-cd dim';}
+      if(capEl)capEl.textContent='';
+      _wvSetUpcoming(upEl,[],'No shows on this stage');
     }
     if(cell.className!==cls)cell.className=cls;
   });
