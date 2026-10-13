@@ -136,7 +136,7 @@ De code staat in de sectie `// ══ SAVE / SYNC` van `app.html`; het commentaa
 4. **Verwijderen**: een show of dag die lokaal ontbreekt maar op de server staat, wordt alleen verwijderd als hij bewust is weggehaald (`_markIntentionalRemoval`: verwijderen, dag verwijderen, import). Anders is het verouderde data en komt hij terug, met een melding.
 5. **Wipe guard**: een lege lokale lineup overschrijft nooit een gevulde server. Realtime-berichten zonder `data` worden genegeerd en het project wordt opnieuw opgehaald.
 6. **Fouten**: een mislukte save houdt `_pendingPush` vast (en de `beforeunload`-waarschuwing) en probeert opnieuw na 1, 2, 5, 10 en daarna elke 30 s, en meteen bij `online` of als het tabblad weer zichtbaar wordt. Bij een 401 wordt het token één keer ververst. Een weigering op de planlimiet (`PT402`) haalt de geweigerde stage(s) lokaal weg en slaat de rest alsnog op.
-7. **Opslagstatus**: `setSaveState('saved' | 'saving' | 'unsaved', detail)` stuurt de sync-stip (met tooltip) en het event `st:savestate`. De stip is nooit groen als een save mislukte of de wipe guard ingreep.
+7. **Opslagstatus**: `setSaveState('saved' | 'saving' | 'unsaved', detail)` stuurt het event `st:savestate`. Het bedieningsscherm toont dat op elk formaat als label *Saved / Saving… / Not saved* (tik voor de reden); de oude sync-stip zit daarin. De stip is nooit groen als een save mislukte of de wipe guard ingreep.
 8. **Cache**: `localStorage` vol (base64-foto's)? Dan wordt de offline kopie zonder foto's bewaard; de server-push hangt nooit van de cache af.
 9. **Na een onderbreking** (offline, slaapstand, realtime opnieuw verbonden): eerst openstaande wijzigingen pushen, anders het open project opnieuw ophalen. Zonder realtime pollt de app elke 30 s.
 
