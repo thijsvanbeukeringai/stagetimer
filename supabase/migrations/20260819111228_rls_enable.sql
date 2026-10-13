@@ -12,6 +12,10 @@
 --   * anon: no table access at all. Public share links go through
 --     get_shared_project() / set_show_arrived() (share_link_rpcs migration).
 --   * authenticated: rows of their own workspace (admins: all), and only
+--       projects   UPDATE(data, name, company_id)  [the columns app.html
+--                  PATCHes: saves send data, rename sends name, the delCompany
+--                  fallback sends company_id; version / deleted_at /
+--                  deleted_by only change through the RPCs]
 --       app_users  UPDATE(name)
 --       companies  SELECT(all columns except setup_token),
 --                  UPDATE(name, live_stages_override)  [policy: company_admin
@@ -48,7 +52,14 @@
 --          has_table_privilege('anon','public.companies','select'),         -- false
 --          has_column_privilege('authenticated','public.companies','setup_token','select'), -- false
 --          has_column_privilege('authenticated','public.app_users','role','update'),        -- false
---          has_column_privilege('authenticated','public.app_users','name','update');        -- true
+--          has_column_privilege('authenticated','public.app_users','name','update'),        -- true
+--          has_column_privilege('authenticated','public.projects','data','update'),         -- true
+--          has_table_privilege('authenticated','public.projects','update');                 -- false (columns only)
+--   -- if project_history_soft_delete is applied (expect false):
+--   select has_column_privilege('authenticated','public.projects','deleted_at','update');
+--   -- replica identity vs. realtime column list: see PART 3 of the hotfix
+--   -- (never relreplident 'f' together with a column list), plus the
+--   -- write smoke test there.
 --   select policyname, tablename from pg_policies where schemaname='public' order by 2,1;
 --   From outside, with the anon key in $ANON (expect [] or 401, never rows):
 --     curl -s "https://<ref>.supabase.co/rest/v1/projects?select=id&limit=1" \
@@ -62,7 +73,10 @@
 --   alter table public.app_users disable row level security;
 --   alter table public.companies disable row level security;
 --   grant select, insert, update, delete on public.projects  to anon, authenticated;
---   grant select, insert, update, delete on public.app_users to anon, authenticated;
+--   -- (the table-level grant above supersedes block 4a's UPDATE column list)
+--   grant select, insert, update, delete on public.app_users to authenticated;
+--   grant select on public.app_users to anon;
+--   -- anon writes on app_users/companies stay revoked (step 0, urgent lockdown).
 --   -- companies: deliberately NOT re-opened. authenticated keeps the
 --   -- column-limited SELECT (no setup_token) + UPDATE(name, live_stages_override)
 --   -- from block 4b, which is all the app needs; public views never read it.
@@ -214,7 +228,18 @@ revoke all on public.projects  from anon;
 revoke all on public.app_users from anon;
 revoke all on public.companies from anon;
 
--- 4a. app_users: read via policy, write only the display name.
+-- 4a. projects: insert/delete/select via policy; UPDATE only the columns
+--     app.html PATCHes (_patchProjectData: data; renameProject: name;
+--     delCompany fallback: company_id). version, deleted_at and deleted_by
+--     are written only by triggers and SECURITY DEFINER RPCs (save_project,
+--     soft_delete_project, restore_*). Otherwise an operator could backdate
+--     deleted_at and let purge_deleted_projects hard-delete a live project.
+--     Columns that do not exist yet are not mentioned, so this works with or
+--     without the versioning / history migrations.
+revoke update on public.projects from authenticated;
+grant update (data, name, company_id) on public.projects to authenticated;
+
+--     app_users: read via policy, write only the display name.
 revoke insert, update, delete on public.app_users from authenticated;
 grant update (name) on public.app_users to authenticated;
 
@@ -237,23 +262,70 @@ grant update (name, live_stages_override) on public.companies to authenticated;
 -- INSERT/DELETE stay granted to authenticated; the policies above limit them
 -- to super_admin (admin "create / delete workspace").
 
--- 4c. Realtime: publish companies WITHOUT setup_token (identical to hotfix
---     PART 2d). Only touches the publication if companies is in it.
+-- 4c. Realtime: publish companies WITHOUT setup_token. IDENTICAL to hotfix
+--     PART 2d, including the replica identity check: with REPLICA IDENTITY
+--     FULL the column list is skipped (NOTICE) unless you opted in, because
+--     a list that does not cover the replica identity makes every
+--     UPDATE/DELETE on companies fail. Details and the opt-in: header of
+--     20261013090000_hotfix_setup_token.sql.
 do $$
-declare cols text;
+declare
+  cols      text;
+  ident     "char";
+  has_list  boolean;
+  opt_in    boolean := coalesce(current_setting('stagetimer.companies_replica_identity_default', true), '') = 'on';
+  uncovered text;
 begin
-  if exists (select 1 from pg_publication_tables
-              where pubname = 'supabase_realtime'
-                and schemaname = 'public' and tablename = 'companies') then
-    select string_agg(quote_ident(column_name), ', ' order by ordinal_position)
-      into cols
-      from information_schema.columns
-     where table_schema = 'public' and table_name = 'companies'
-       and column_name <> 'setup_token'
-       and is_generated = 'NEVER';
-    execute 'alter publication supabase_realtime drop table public.companies';
-    execute format('alter publication supabase_realtime add table public.companies (%s)', cols);
+  if not exists (select 1 from pg_publication_tables
+                  where pubname = 'supabase_realtime'
+                    and schemaname = 'public' and tablename = 'companies') then
+    return;
   end if;
+  select c.relreplident into ident from pg_class c where c.oid = 'public.companies'::regclass;
+  select pr.prattrs is not null into has_list
+    from pg_publication_rel pr join pg_publication p on p.oid = pr.prpubid
+   where p.pubname = 'supabase_realtime' and pr.prrelid = 'public.companies'::regclass;
+
+  -- FULL + a column list = every UPDATE/DELETE on companies fails.
+  if ident = 'f' and not opt_in then
+    if has_list then   -- repair the broken state an older version of this block left behind
+      execute 'alter publication supabase_realtime drop table public.companies';
+      execute 'alter publication supabase_realtime add table public.companies';
+    end if;
+    raise notice 'companies has REPLICA IDENTITY FULL: realtime column list NOT applied (it would break every UPDATE/DELETE on companies). setup_token stays protected by the column SELECT grant. Opt-in to switch to REPLICA IDENTITY DEFAULT: see the file header.';
+    return;
+  end if;
+  if ident = 'f' then
+    -- Opt-in. Realtime old records on companies then carry the primary key
+    -- only; app.html (_onCompanyChange) reads payload.new only.
+    execute 'alter table public.companies replica identity default';
+    raise notice 'companies: REPLICA IDENTITY FULL -> DEFAULT (opt-in)';
+    ident := 'd';
+  end if;
+
+  -- The replica identity (primary key / chosen index) must be inside the
+  -- list. It always is, unless it uses setup_token or a generated column;
+  -- anything unexpected: leave the publication alone.
+  select string_agg(a.attname, ', ') into uncovered
+    from pg_index i
+    join pg_attribute a on a.attrelid = i.indrelid and a.attnum = any (i.indkey)
+   where i.indrelid = 'public.companies'::regclass
+     and ((ident = 'd' and i.indisprimary) or (ident = 'i' and i.indisreplident))
+     and (a.attname = 'setup_token' or a.attgenerated <> '');
+  if uncovered is not null or ident not in ('d', 'i') then
+    raise notice 'companies: replica identity % (%) does not fit a column list; realtime column list NOT applied, the column grant still protects setup_token',
+      ident, coalesce(uncovered, '-');
+    return;
+  end if;
+
+  select string_agg(quote_ident(column_name), ', ' order by ordinal_position)
+    into cols
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'companies'
+     and column_name <> 'setup_token'
+     and is_generated = 'NEVER';          -- generated columns cannot be published
+  execute 'alter publication supabase_realtime drop table public.companies';
+  execute format('alter publication supabase_realtime add table public.companies (%s)', cols);
 end $$;
 
 commit;

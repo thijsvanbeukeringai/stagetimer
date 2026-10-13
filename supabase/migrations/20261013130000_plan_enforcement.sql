@@ -37,6 +37,10 @@
 --   Machine callers (service_role, SQL editor, cron) and the restore RPCs
 --   (stagetimer.skip_plan_guard) are never checked.
 --
+--   EXECUTE: nothing in this file is callable by anon or authenticated.
+--   company_stage_limit / company_can_create_projects accept any company id,
+--   so granting them would leak other workspaces' billing state.
+--
 -- ENFORCEMENT MODE  (public.backend_settings key 'plan_enforcement')
 --   'log'     DEFAULT. Violations are written to public.plan_violations and
 --             the write SUCCEEDS. Run like this for at least a week.
@@ -81,6 +85,10 @@
 --     from public.projects p left join public.companies c on c.id::text = p.company_id::text
 --    where public.company_stage_limit(p.company_id::text) is not null
 --      and public._json_array_len(p.data->'stages') > public.company_stage_limit(p.company_id::text);
+--   -- No client can call the plan helpers (all false):
+--   select has_function_privilege('authenticated','public.company_stage_limit(text)','execute'),
+--          has_function_privilege('authenticated','public.company_can_create_projects(text)','execute'),
+--          has_function_privilege('anon','public._plan_violation(text,text,text,jsonb)','execute');
 --   -- After a week in 'log' mode:
 --   select kind, company_id, count(*), max(at) from public.plan_violations group by 1,2 order by 4 desc;
 --
@@ -129,7 +137,9 @@ set search_path = public
 as $$
   select coalesce((select value from public.backend_settings where key = p_key), p_default)
 $$;
-revoke all on function public._setting(text, text) from public;
+-- Supabase grants EXECUTE on new functions to anon/authenticated directly,
+-- so every helper in this file is revoked by name, not only from public.
+revoke all on function public._setting(text, text) from public, anon, authenticated;
 
 create or replace function public._json_array_len(p jsonb)
 returns int
@@ -138,6 +148,7 @@ immutable
 as $$
   select case when jsonb_typeof(p) = 'array' then jsonb_array_length(p) else 0 end
 $$;
+revoke all on function public._json_array_len(jsonb) from public, anon, authenticated;
 
 create table if not exists public.plan_violations (
   id          bigint generated always as identity primary key,
@@ -207,10 +218,11 @@ as $$
      where co.id::text = nullif(p_company_id, '')), false)
 $$;
 
-revoke all on function public.company_stage_limit(text)         from public;
-revoke all on function public.company_can_create_projects(text) from public;
-grant execute on function public.company_stage_limit(text)         to authenticated;
-grant execute on function public.company_can_create_projects(text) to authenticated;
+-- Not granted to clients: they take ANY company id and would tell one
+-- workspace another one's plan state. Only the trigger (owner) and the SQL
+-- editor use them; app.html computes its own limit from its own company row.
+revoke all on function public.company_stage_limit(text)         from public, anon, authenticated;
+revoke all on function public.company_can_create_projects(text) from public, anon, authenticated;
 
 -- ── Violation handler ──────────────────────────────────────────────────
 create or replace function public._plan_violation(p_kind text, p_project_id text, p_company_id text, p_detail jsonb)
@@ -238,7 +250,7 @@ begin
           coalesce(nullif(auth.jwt() ->> 'email', ''), nullif(auth.jwt() ->> 'role', ''), 'sql'), p_detail);
 end
 $$;
-revoke all on function public._plan_violation(text, text, text, jsonb) from public;
+revoke all on function public._plan_violation(text, text, text, jsonb) from public, anon, authenticated;
 
 -- ── Trigger ────────────────────────────────────────────────────────────
 create or replace function public.projects_plan_guard()
@@ -290,3 +302,5 @@ drop trigger if exists projects_plan_guard on public.projects;
 create trigger projects_plan_guard
   before insert or update on public.projects
   for each row execute function public.projects_plan_guard();
+-- Trigger functions need no EXECUTE grant to fire.
+revoke all on function public.projects_plan_guard() from public, anon, authenticated;
