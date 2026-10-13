@@ -229,3 +229,32 @@ baseTest.describe('auth at boot', () => {
     expect(await page.evaluate(() => localStorage.getItem('st_auth_v1'))).toBeTruthy();
   });
 });
+
+const { FESTIVAL: _F, ams: _ams } = require('../support/seed');
+// Id normalisation must never touch legitimate legacy ids: share links carry
+// the stage id in &sid=, so rewriting e.g. an id with a space or an emoji
+// would leave a booth screen blank.
+baseTest.describe('legacy stage ids survive id normalisation', () => {
+  const LEGACY = 'Main Stage 🎪 #1';
+  const relabel = (backend) => backend.updateProject(_F.projectId, (d) => {
+    d.stages.forEach(s => { if (s.id === _F.stages.main) s.id = LEGACY; });
+    d.shows.forEach(s => { if (s.stage === _F.stages.main) s.stage = LEGACY; });
+    if (d.activeStage === _F.stages.main) d.activeStage = LEGACY;
+  });
+  baseTest('share link with &sid=<legacy id> still shows the live act', async ({ page, st, backend }) => {
+    relabel(backend);
+    await st.gotoPublic({ mode: 'stage', sid: LEGACY, at: _ams('2026-07-10', '16:00') });
+    await expect(page.locator('#sv-artist')).toHaveText("DJ O'Neil");
+  });
+  baseTest.describe('operator', () => {
+    baseTest.use({ stAuth: 'admin' });
+    baseTest('opening the project keeps the legacy id (no rewrite, no save)', async ({ page, st, backend }) => {
+      relabel(backend);
+      await st.gotoApp({ at: _ams('2026-07-10', '16:00') });
+      await st.openProject();
+      await page.waitForTimeout(500);
+      expect(await page.evaluate(id => G.stages.some(s => s.id === id), LEGACY)).toBe(true);
+      expect(backend.project(_F.projectId).data.stages.some(s => s.id === LEGACY)).toBe(true);
+    });
+  });
+});

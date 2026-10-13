@@ -3145,8 +3145,12 @@ async function loadAPPRemote(){
 // id is derived from the old one, so every device picks the same and the
 // merge converges instead of duplicating shows. Valid ids are never touched:
 // share links carry stage ids in &sid=.
-const _ID_OK=/^[A-Za-z0-9_.:-]{1,64}$/;
-const _safeId=v=>typeof v==='number'||(typeof v==='string'&&_ID_OK.test(v));
+// Only ids that can break out of an HTML attribute or an inline JS string are
+// rewritten. A whitelist would also rewrite legitimate legacy ids (spaces,
+// emoji, long ids) and silently break existing share links (&sid=<stage id>),
+// so this is a blacklist on purpose. Rendering still escapes every id.
+const _ID_BAD=/[<>"'`\\&\u0000-\u001f\u007f\u2028\u2029]/;
+const _safeId=v=>typeof v==='number'||(typeof v==='string'&&v.length>0&&v.length<=256&&!_ID_BAD.test(v));
 function _remapId(old,taken){
   let h=2166136261;const t=String(old);
   for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}
