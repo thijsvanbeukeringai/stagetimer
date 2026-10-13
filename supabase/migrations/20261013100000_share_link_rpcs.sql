@@ -54,7 +54,7 @@
 --      the same browser, or (before RLS) any anonymous FOH viewer pressing a
 --      crew-status button, PATCHes G back to projects - with the stripped data
 --      that would wipe photos, notes and crew. Hard requirement.
---   2. Then call {p_id: PUBLIC_PID, p_mode: PUBLIC_MODE} in the <head> early
+--   2. (NOT DONE yet, see PHASE B) Then call {p_id: PUBLIC_PID, p_mode: PUBLIC_MODE} in the <head> early
 --      fetch, in loadPublicView and in the seven 1-second polls. PostgREST
 --      picks the overload by argument names; p_mode has NO default on purpose
 --      (a default would make {p_id} ambiguous between the two).
@@ -279,6 +279,12 @@ grant execute on function public.set_show_arrived(text, text, boolean, bigint) t
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- PHASE B - DO NOT RUN with the rest of this file.
+-- STATUS 2026-10-13: NOT READY. app.html still calls get_shared_project with
+-- {p_id} only (p_mode is deliberately not wired: stripped data could change
+-- what Stage View renders, e.g. photos). Running PHASE B now strips photos
+-- from every share link, Stage View included. It may only run after a future
+-- app release passes p_mode with a 2-arg -> 1-arg -> table fallback chain AND
+-- the booth suite proves Stage View is identical with stripped data.
 -- Run only when (1) the app calls the 2-arg version everywhere, (2) the app
 -- never saves in PUBLIC_MODE, and (3) a few days have passed so cached tabs
 -- reloaded. After this, the legacy call returns the union of what any public

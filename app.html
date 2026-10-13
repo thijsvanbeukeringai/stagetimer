@@ -3436,7 +3436,7 @@ let _revN=0;
 const _newRev=()=>Date.now().toString(36)+'-'+_CLIENT_ID+'-'+(++_revN);
 const _sentRevs=new Set();
 const _BACKOFF=[1000,2000,5000,10000,30000];
-function _syncSt(id){return _sync[id]||(_sync[id]={inflight:false,again:false,attempt:0,retryT:null,err:'',note:'',ackSeq:0,ackRev:null,serverDirty:false,fetching:false,waiters:[]});}
+function _syncSt(id){return _sync[id]||(_sync[id]={inflight:false,again:false,attempt:0,retryT:null,err:'',note:'',ackSeq:0,ackRev:null,serverDirty:false,fetching:false,refetchAgain:false,waiters:[]});}
 
 // Minimal REST helper: user token (or anon key), hard timeout, errors carry .status.
 async function _sbFetch(path,init,ms,anon){
@@ -3500,10 +3500,13 @@ function _planError(e){
 // The server refused `out` because it has more stages than the plan allows.
 // It only checks growth: a save may keep the stage count the server already
 // has (S) or stay within the limit. Remove the newest stages that are not on
-// the server until the count fits, from the local copy (shows stay, exactly
-// like delStage), register them as intentional removals so the merge cannot
-// bring them back, and tell the operator. Returns false when there is
-// nothing of ours to remove (then the error stands).
+// the server until the count fits, from the local copy, register them as
+// intentional removals so the merge cannot bring them back, and tell the
+// operator. A stage this device created (not in the base the server last
+// acknowledged) takes its shows that never reached the server with it: kept,
+// they were orphans no screen lists (e.g. an import that added stages).
+// Shows already on the server stay, exactly like delStage. Returns false
+// when there is nothing of ours to remove (then the error stands).
 function _dropRefusedStages(id,S,out,pe){
   const proj=APP.projects.find(p=>p.id===id);
   if(!proj||!_isObj(proj.data)||!Array.isArray(proj.data.stages))return false;
@@ -3514,8 +3517,18 @@ function _dropRefusedStages(id,S,out,pe){
   const drop=added.slice(Math.max(0,added.length-Math.max(0,sent.length-allowed)));
   if(!drop.length)return false;
   const ids=new Set(drop.map(x=>x.id));
-  _markIntentionalRemoval([],{stages:[...ids]});
+  const B=_getBase(id);
+  const inBase=new Set((B&&Array.isArray(B.stages)?B.stages:[]).map(x=>x&&x.id));
+  const srvShows=new Set((Array.isArray(S.shows)?S.shows:[]).map(x=>x&&x.id));
+  const fresh=new Set([...ids].filter(x=>!inBase.has(x)));
+  const goneShows=(Array.isArray(proj.data.shows)?proj.data.shows:[]).filter(x=>x&&fresh.has(x.stage)&&!srvShows.has(x.id)).map(x=>x.id);
+  _markIntentionalRemoval(goneShows,{stages:[...ids]});
   proj.data.stages=proj.data.stages.filter(x=>!(x&&ids.has(x.id)));
+  if(goneShows.length){
+    const g=new Set(goneShows);
+    proj.data.shows=proj.data.shows.filter(x=>!(x&&g.has(x.id)));
+    if(_isObj(proj.data.fohNotes))for(const k of goneShows)delete proj.data.fohNotes[k];
+  }
   if(ids.has(proj.data.activeStage))proj.data.activeStage=proj.data.stages[0]?.id||null;
   _editSeq[id]=(_editSeq[id]||0)+1;
   _pendingPush[id]=true;
@@ -3523,7 +3536,9 @@ function _dropRefusedStages(id,S,out,pe){
   if(id===APP.activeProjectId){loadG();_rerenderActive();}
   const names=drop.map(x=>'"'+(x.name||'Stage')+'"').join(', ');
   const msg=(pe.message||'Your plan does not include more live stages.')
-    +` ${drop.length===1?'Stage':'Stages'} ${names} ${drop.length===1?'was':'were'} removed again so your other changes can be saved. Upgrade the plan to add ${drop.length===1?'it':'them'}.`;
+    +` ${drop.length===1?'Stage':'Stages'} ${names} ${drop.length===1?'was':'were'} removed again`
+    +(goneShows.length?`, with the ${goneShows.length} show${goneShows.length===1?'':'s'} planned on ${drop.length===1?'it':'them'},`:'')
+    +` so your other changes can be saved. Upgrade the plan to add ${drop.length===1?'it':'them'}.`;
   console.warn('[_pushProject] plan limit: removed stages the server refused:',[...ids],pe);
   if(typeof _opNotice==='function')_opNotice(msg,{key:'plan-stage-limit',sticky:true});
   return true;
@@ -3695,17 +3710,21 @@ async function _refetchProject(id){
   if(!id||window.PUBLIC_MODE)return;
   const st=_syncSt(id);
   if(st.inflight){st.serverDirty=true;return;}
-  if(st.fetching)return;
-  st.fetching=true;const ack0=st.ackSeq;
+  // A request while a GET is out must not be dropped: that GET may predate
+  // the change it announces. Remember it and fetch once more afterwards.
+  if(st.fetching){st.refetchAgain=true;return;}
+  st.fetching=true;st.refetchAgain=false;const ack0=st.ackSeq;
   try{
     const row=await _withAuthRetry(()=>_fetchProjectRow(id));
     if(st.inflight){st.serverDirty=true;return;}
-    if(st.ackSeq!==ack0)return;   // a push landed meanwhile and is newer than this answer
+    // A push landed meanwhile and is newer than this answer; fetch again
+    // rather than lose whatever change triggered this refetch.
+    if(st.ackSeq!==ack0){st.refetchAgain=true;return;}
     if(!row){console.warn('[sync] project not visible on the server (deleted / no access):',id);return;}
     if(!_validData(row.data)){console.warn('[sync] server row has no valid data, ignored:',id);return;}
     _adoptServer(id,row.data,row.name);
   }catch(e){console.warn('[sync] refetch failed:',humanError(e,'Loading the latest data'),e);}
-  finally{st.fetching=false;}
+  finally{st.fetching=false;if(st.refetchAgain){st.refetchAgain=false;_refetchProject(id);}}
 }
 // Catch up after a gap (offline, sleep, realtime down): push what is pending
 // (the push merges with the server), otherwise refetch the open project.
@@ -5931,7 +5950,10 @@ async function _mConfirmReset(action,okLabel){
 async function selMCueUI(i){
   const s=getShows(G.activeStage,G.activeDay)[i];if(!s||s.id===M.showId)return;
   if(!await _mConfirmReset(`Cueing "${s.artist}"`,'Cue and reset'))return;
-  selMCue(i);
+  // By id: a realtime update during the dialog can reorder the list, and
+  // index i would then cue another show.
+  const j=getShows(G.activeStage,G.activeDay).findIndex(x=>x.id===s.id);
+  if(j>=0)selMCue(j);
 }
 async function mPrevUI(){if(await _mConfirmReset('Cueing the previous show','Cue previous show'))mPrev();}
 async function mNextUI(){if(await _mConfirmReset('Cueing the next show','Cue next show'))mNext();}
@@ -8142,7 +8164,11 @@ async function delStage(id){
     ? `Stage "${st.name}" is deleted. Its ${n} show${n===1?'':'s'} stay${n===1?'s':''} in the project data but ${n===1?'is':'are'} no longer shown on any screen. Share links for this stage stop working.`
     : `Stage "${st.name}" has no shows. Share links for this stage stop working.`;
   if(!await stDialog.confirm(msg,{title:'Delete this stage?',okLabel:'Delete stage',danger:true}))return;
-  G.stages=G.stages.filter(s=>s.id!==id);
+  // Without this the wipe guard refuses deleting the last stage of a project
+  // without shows (empty local lineup over a server that still has it), and
+  // the stage came back with "Not saved".
+  _markIntentionalRemoval([],{stages:[id]});
+  G.stages=(G.stages||[]).filter(s=>s.id!==id);
   if(G.activeStage===id)G.activeStage=G.stages[0]?.id||null;
   save();renderAll();renderStageList();
 }
@@ -8457,6 +8483,7 @@ function _applyLineupImport(plan){
   if(_stageRemap.size){
     G.stages=G.stages.filter(st=>!_stageRemap.has(st.id));
     G.shows=G.shows.map(s=>_stageRemap.has(s.stage)?{...s,stage:_stageRemap.get(s.stage)}:s);
+    if(_stageRemap.has(G.activeStage))G.activeStage=_stageRemap.get(G.activeStage);
   }
 
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
@@ -8464,7 +8491,8 @@ function _applyLineupImport(plan){
 
   // Tell the anti-wipe guard these removals are intended, so it does not
   // restore the server copy over a confirmed import.
-  if(typeof _markIntentionalRemoval==='function')_markIntentionalRemoval(removedIds);
+  // The merged duplicate stages too, or the merge keeps them as "stale".
+  if(typeof _markIntentionalRemoval==='function')_markIntentionalRemoval(removedIds,{stages:[..._stageRemap.keys()]});
   const projectId=APP.activeProjectId;
   save();renderAll();
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
@@ -8530,7 +8558,15 @@ async function setDayDate(id,date,inp){
     const ok=await stDialog.open({title:`Change the date of "${d.name}"?`,
       message:`From ${d.date?_fmtDay(d.date):'no date'} to ${date?_fmtDay(date):'no date'}.`,html,wide:true,
       actions:[{label:'Cancel',value:false,kind:'secondary'},{label:'Change date',value:true,kind:'primary',submit:true}],cancelValue:false});
-    if(!ok){if(inp&&document.contains(inp))inp.value=d.date||'';return;}
+    // Re-resolve after the dialog: a realtime update meanwhile rebuilt G
+    // (loadG), and a change to the old object would never be saved.
+    const cur=G.days.find(x=>x.id===id);
+    if(!ok){if(inp&&document.contains(inp))inp.value=(cur||d).date||'';return;}
+    if(!cur)return;
+    cur.date=date;
+    save();renderAll();
+    if(document.getElementById('day-modal-ov').style.display==='flex')renderDayList();
+    return;
   }
   d.date=date;
   save();renderAll();
@@ -8581,7 +8617,11 @@ async function delDay(id){
       actions:[{label:'Cancel',value:false,kind:'secondary'},{label,value:true,kind:'danger',submit:true}],cancelValue:false});
   }
   if(!ok)return;
-  const ids=shows.map(s=>s.id);
+  // G may have been replaced while the dialog was open (realtime update):
+  // decide on the project as it is now, by id.
+  if(!G.days.some(x=>x.id===id))return;
+  if(G.days.length<=1){await stDialog.alert('A project needs at least one day. Another device deleted the other days meanwhile, so this one stays.',{title:'Cannot delete the last day'});return;}
+  const ids=(G.shows||[]).filter(s=>s.day===id).map(s=>s.id);
   _markIntentionalRemoval(ids,{days:[id]}); // so the save merge does not bring them back
   G.shows=(G.shows||[]).filter(s=>s.day!==id);
   G.days=G.days.filter(x=>x.id!==id);
@@ -8952,7 +8992,8 @@ async function saveWorkspaceName(id){
     const n=await _restWrite('companies','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:newName});
     if(!n){const e=new Error('no rows');e.status=403;throw e;}
   }catch(e){_btnBusy('ws-settings-save',false);_wsStatus('ws-settings-status','err',_friendlyError(e,'Saving the workspace name'));return;}
-  co.name=newName;saveAPP();
+  // By id: APP.companies may have been reloaded during the request.
+  const cur=APP.companies.find(c=>c.id===id);if(cur)cur.name=newName;saveAPP();
   _updateWsSidebar();renderSettingsPage();
   _wsStatus('ws-settings-status','ok','Saved.');
 }
@@ -9221,13 +9262,14 @@ async function renameProject(id){
         const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:v.name});
         if(!n){const e=new Error('no rows');e.status=403;throw e;}
       }catch(e){throw new Error(_friendlyError(e,'Renaming the project'));}
-      proj.name=v.name;saveAPP();
+      // By id: APP.projects may have been rebuilt while the dialog was open.
+      const cur=APP.projects.find(p=>p.id===id);if(cur)cur.name=v.name;saveAPP();
       return undefined;
     },
   });
   if(!res)return;
   const lnEl=document.getElementById('logo-name');
-  if(APP.activeProjectId===id&&lnEl)lnEl.textContent=proj.name;
+  if(APP.activeProjectId===id&&lnEl)lnEl.textContent=res.name;
   renderDash();
 }
 
@@ -9871,7 +9913,8 @@ async function editCompany(id){
       if(v.name===c.name)return undefined;
       const{error}=await supa.from('companies').update({name:v.name}).eq('id',id);
       if(error)throw new Error(_friendlyError(error,'Renaming the workspace'));
-      c.name=v.name;saveAPP();
+      // By id: a realtime/company reload may have replaced the object.
+      const cur=APP.companies.find(x=>x.id===id);if(cur)cur.name=v.name;saveAPP();
       return undefined;
     },
   });
@@ -9893,7 +9936,7 @@ async function setStageOverride(id,rawValue){
   }
   const{error}=await supa.from('companies').update({live_stages_override:newVal}).eq('id',id);
   if(error){await stDialog.alert(_friendlyError(error,'Saving the override'),{title:'Override not saved'});renderAdmin();return;}
-  c.liveStagesOverride=newVal;
+  const cur=APP.companies.find(x=>x.id===id);if(cur)cur.liveStagesOverride=newVal;   // by id: APP.companies may be new
   saveAPP();renderAdmin();
 }
 window.setStageOverride=setStageOverride;
@@ -9995,9 +10038,10 @@ async function changeUserRole(id,newRole){
     }else error=e;
   }
   if(error){await stDialog.alert(error.status?_friendlyError(error,'Changing the role'):'The role could not be changed: '+(error.message||error),{title:'Role not changed'});renderAdmin();return;}
-  u.role=newRole;
+  // By id: APP.users may have been reloaded while the dialog / request was out.
+  const cur=APP.users.find(x=>x.id===id);if(cur)cur.role=newRole;
   saveAPP();
-  if(u.id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
+  if(id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
   renderAdmin();
 }
 async function delUser(id){
@@ -11652,7 +11696,7 @@ async function _authProbe(access_token){
     });
     clearTimeout(tmo);
     if(res.ok)return await res.json();
-    if(res.status>=500)_authNetFail=true;
+    if(_authUnreachable(res.status))_authNetFail=true;
     return null;
   }catch(e){clearTimeout(tmo);_authNetFail=true;console.warn('[auth] session probe failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
@@ -11668,15 +11712,56 @@ async function _authRefresh(refresh_token){
     });
     clearTimeout(tmo);
     if(res.ok)return await res.json();
-    if(res.status>=500)_authNetFail=true;
+    if(_authUnreachable(res.status))_authNetFail=true;
     return null;
   }catch(e){clearTimeout(tmo);_authNetFail=true;console.warn('[auth] token refresh failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
+// Answers that say nothing about the token: server trouble (5xx), rate limit
+// (429: every screen of a venue booting at once after a power cut) and
+// request timeout (408). Treated like no network, so they never log out.
+const _authUnreachable=st=>st>=500||st===429||st===408;
 // Set by _authProbe/_authRefresh when the auth server could not be reached
-// (network error, timeout, 5xx) - as opposed to an answer saying the token is
+// (network error, timeout, 5xx, 429, 408) - as opposed to an answer saying the token is
 // invalid. Boot must never throw a stored login away just because the venue
 // wifi is down: that locks the operator out exactly when they need the app.
 let _authNetFail=false;
+// After an offline boot: get a real session back as soon as the auth server
+// answers. `online` alone is not enough: behind a captive portal or during a
+// Supabase 5xx navigator.onLine stays true, the event never fires, and
+// realtime stayed on the anon key until a reload. So also try when the tab
+// becomes visible and on a backoff timer (15s, 30s, then every 60s). Runs
+// once after the first success.
+function _reauthUntilOnline(){
+  const DELAYS=[15000,30000,60000];
+  let done=false,busy=false,t=null,step=0;
+  const onVis=()=>{if(document.visibilityState==='visible')attempt();};
+  const stop=()=>{done=true;clearTimeout(t);window.removeEventListener('online',attempt);document.removeEventListener('visibilitychange',onVis);};
+  const later=()=>{if(done)return;clearTimeout(t);t=setTimeout(attempt,DELAYS[Math.min(step++,DELAYS.length-1)]);};
+  async function attempt(){
+    if(done||busy)return;
+    busy=true;clearTimeout(t);
+    let ok=false;
+    try{ok=await _refreshAuthToken();}catch(e){console.warn('[init] re-auth failed:',e);}
+    busy=false;
+    if(!ok||done){later();return;}
+    stop();
+    const st=_storedAuth();
+    if(st?.access_token){
+      try{await _withTimeout(supa.auth.setSession({access_token:st.access_token,refresh_token:st.refresh_token}),6000);}
+      catch(e){console.warn('[init] setSession after reconnect:',e?.message||e);}
+    }
+    try{await loadAPPRemote();loadG();renderAll();}catch(e){console.warn('[init] reload after reconnect failed:',e);}
+    // The channel was joined with the anon key at boot; setupRealtime() keeps
+    // an existing channel for the same project, so drop it to rejoin as the user.
+    try{
+      if(_rt.chan){try{supa.removeChannel(_rt.chan);}catch(e){console.warn('[realtime] removeChannel:',e);}_rt.chan=null;}
+      setupRealtime();
+    }catch(e){console.warn('[init] realtime restart after reconnect failed:',e);}
+  }
+  window.addEventListener('online',attempt);
+  document.addEventListener('visibilitychange',onVis);
+  later();
+}
 function _jwtClaims(t){
   try{return JSON.parse(atob(String(t).split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch(_){return null;}
 }
@@ -11782,16 +11867,7 @@ async function _handleAuthLink(){
     const c=_jwtClaims(access_token)||{};
     user={id:c.sub||null,email:c.email||'',offline:true};
     console.warn('[init] auth server unreachable - starting offline from cache, keeping the stored login');
-    window.addEventListener('online',async function _reauth(){
-      window.removeEventListener('online',_reauth);
-      try{
-        if(typeof _refreshAuthToken==='function'&&await _refreshAuthToken()){
-          const st=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
-          if(st?.access_token)supa.auth.setSession({access_token:st.access_token,refresh_token:st.refresh_token}).catch(e=>console.warn('[init] setSession after reconnect:',e));
-          try{await loadAPPRemote();loadG();renderAll();setupRealtime();}catch(e){console.warn('[init] reload after reconnect failed:',e);}
-        }
-      }catch(e){console.warn('[init] re-auth after reconnect failed:',e);}
-    });
+    _reauthUntilOnline();
   }
   if(!user){
     // Token rejected by the auth server. Wipe it and bounce to login.

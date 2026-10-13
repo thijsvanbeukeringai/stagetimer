@@ -157,6 +157,8 @@ Er moet een app-versie live staan met:
 - In `PUBLIC_MODE` doet `save()`/`_pushProject` niets, behalve de check-in-RPC.
 - Publieke weergaven roepen `get_shared_project` aan met `{p_id, p_mode: PUBLIC_MODE}`. Dat geldt voor de early fetch in `<head>`, voor `loadPublicView` en voor de zeven polls.
 
+> **NIET GEDAAN in de app (stand 13 oktober 2026).** `app.html` roept `get_shared_project` overal nog aan met alleen `{p_id}` (de legacy-variant met één argument). `p_mode` is bewust níet aangesloten: met gestripte data kan wat de Stage View toont veranderen (bijvoorbeeld foto's), en de Stage View is bevroren. Stap 10 hangt hier niet van af; **stap 11 (PHASE B) wel**, zie daar.
+
 Zie "App-wijzigingen" hieronder.
 
 ### Stap 10: `rls_enable` (app: stap 9)
@@ -173,6 +175,7 @@ Zie "App-wijzigingen" hieronder.
 
 ### Stap 11: `share_link_rpcs` PHASE B (een paar dagen na stap 9)
 
+- **NIET UITVOEREN** zolang de app `get_shared_project` alleen met `{p_id}` aanroept (zo is het nu). PHASE B stript dan foto's uit elke deellink, ook de Stage View. Pas uitvoeren als (1) een toekomstige app-release `p_mode` meestuurt met een terugvalketen 2 argumenten → 1 argument → tabel (`404`/`PGRST202` → volgende), (2) de booth-suite (`npm run test:booth`) bewijst dat de Stage View met gestripte data pixel-identiek is, en (3) die release een paar dagen live staat zodat gecachte tabbladen herladen zijn.
 - Voer het commentaarblok onderaan `20261013100000_share_link_rpcs.sql` uit. De legacy-aanroep met één argument geeft dan geen foto's, `memberIds`, logo of `company_id` meer terug.
 - **Rollback:** voer de LEGACY-definitie uit hetzelfde bestand opnieuw uit.
 
@@ -229,7 +232,7 @@ Zie `supabase/functions/README.md`:
 | Alleen `UPDATE(name)` op app_users | **gedaan:** `changeUserRole` → `_rpc('admin_set_user_role',{p_user_id:id,p_role:newRole})`; alleen als de RPC nog niet bestaat (404/PGRST202) de oude directe update. Een company_admin mag, net als nu in de app, binnen de eigen workspace rollen wisselen tussen operator en company_admin (afgedwongen door de guard-trigger); admin/super_admin blijven voorbehouden aan admins | stap 10 |
 | Detach via een RPC | **gedaan:** `delCompany` → `_rpc('admin_delete_company',{p_company_id:id})`, met dezelfde terugval; de RPC is alleen voor super_admin, net als de bestaande delete-policy | stap 10 |
 | Companies hernoemen alleen door company_admin en admins | **gedaan:** operators zien het naamveld in de workspace-instellingen alleen-lezen, zonder opslaan-knop | stap 10 |
-| Gestripte deellinkdata | `save()` en `_pushProject` doen niets in `PUBLIC_MODE`; daarna `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de 7 polls | stap 11 |
+| Gestripte deellinkdata | **deels gedaan:** `save()` en `_pushProject` doen niets in `PUBLIC_MODE`. **Niet gedaan:** `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de 7 polls (met terugval 2 → 1 argument → tabel, en een booth-suite die bewijst dat de Stage View gelijk blijft). Tot dan geen stap 11 | stap 11 |
 | Abonnement in trial | `_effectiveStageLimit`: `trialing` gelijk aan `active` (B2); eventueel in `canCreateProject` ook pass en `past_due` gelijktrekken met de server | stap 12 |
 | Plan-limiet van de server | **gedaan:** HTTP 402 (of 400) met `PT402`: bij `stage_limit_exceeded` haalt de app de nieuwste stage(s) die de server nog niet had lokaal weg (tot het aantal past), markeert ze als bewust verwijderd, toont `message` aan de operator en slaat direct opnieuw op. Bij `subscription_required` op een nieuw project legt het limietvenster uit dat het project niet is aangemaakt | stap 12 |
 | Conflictdetectie | `save_project` en `patch_show` (zie de kop van het versioning-bestand); echo's met `version <=` de eigen versie negeren | stap 13 |
