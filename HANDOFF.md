@@ -15,7 +15,7 @@ Achtergrond: zie `BOUWPLAN.md` (plan), `docs/MIGRATIES.md` (draaiboek), `CLAUDE.
 ## Volgorde voor Thijs
 
 1. **Vandaag nog:**
-   - ~~`supabase/migrations/20261013080000_urgent_anon_write_lockdown.sql` uitvoeren~~ **Gedaan op 13-10.** De tabelrechten staan dicht en de kolomcheck gaf 0 rijen. Alleen de rooktest in de live-app staat nog open.
+   - ~~`supabase/migrations/20261013080000_urgent_anon_write_lockdown.sql` uitvoeren~~ **Gedaan op 13-10.** De tabelrechten staan dicht en de kolomcheck gaf 0 rijen. Rooktest gedaan: inloggen en een project aanmaken werken.
    - De OneSignal REST-key roteren.
 2. De checks uit BOUWPLAN §S.1 uitvoeren. Daarna `supabase db pull` en `supabase functions download`, en dat committen.
 3. `docs/MIGRATIES.md` stap voor stap volgen. Belangrijk:
