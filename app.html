@@ -2492,23 +2492,27 @@ function loadAPPCache(){
 // signInWithPassword / upsert). PostgREST returns the same shape: data[] or
 // error string. We mimic { data, error } so callers don't change.
 async function _restGet(table,cols){
-  const ctrl=new AbortController();
-  const tmo=setTimeout(()=>ctrl.abort(),10000);
-  let jwt=SUPA_KEY;
-  try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
-  try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}`,{
-      signal:ctrl.signal,
-      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'},
-    });
-    clearTimeout(tmo);
-    if(!res.ok){const txt=await res.text().catch(()=>'');return{data:null,error:{message:'HTTP '+res.status+(txt?' '+txt:'')}};}
-    const data=await res.json().catch(()=>null);
-    return{data,error:null};
-  }catch(e){
-    clearTimeout(tmo);
-    return{data:null,error:{message:e?.name==='AbortError'?'timeout':(e?.message||String(e))}};
-  }
+  const once=async()=>{
+    const ctrl=new AbortController();
+    const tmo=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}`,{
+        signal:ctrl.signal,
+        headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'},
+      });
+      clearTimeout(tmo);
+      if(!res.ok){const txt=await res.text().catch(()=>'');return{data:null,error:{status:res.status,message:'HTTP '+res.status+(txt?' '+txt:'')}};}
+      const data=await res.json().catch(()=>null);
+      return{data,error:null};
+    }catch(e){
+      clearTimeout(tmo);
+      return{data:null,error:{name:e?.name,message:e?.name==='AbortError'?'timeout':(e?.message||String(e))}};
+    }
+  };
+  let r=await once();
+  // Expired user token (st_auth_v1 lags supa's refresh): refresh once, retry.
+  if(r.error&&r.error.status===401&&_jwt()!==SUPA_KEY&&typeof _refreshAuthToken==='function'&&await _refreshAuthToken())r=await once();
+  return r;
 }
 
 // ── Companies: never read setup_token ─────────────────────────────────────
@@ -2580,7 +2584,7 @@ async function loadAPPRemote(){
     if(projsRes.error){
       console.warn('[load] projects fetch failed, keeping cached projects:',projsRes.error);
       setSyncDot('err');
-      const d=document.getElementById('sync-dot');if(d)d.title='Could not load the latest data. '+humanError(projsRes.error);
+      const d=document.getElementById('sync-dot');if(d)d.title=humanError(projsRes.error,'Loading the latest data');
     }else{
       const prev=new Map(APP.projects.map(p=>[p.id,p]));
       APP.projects=(projsRes.data||[]).map(p=>{
@@ -2710,21 +2714,13 @@ async function _pushMeta(){
 // The sync dot shows one of: saved | saving | unsaved(reason). It is never
 // green while a save failed or the wipe guard had to step in.
 
-// Readable text for network / HTTP / storage failures (save and load paths).
+// Readable text for save / load failures: _friendlyError (shared helper) plus
+// the two cases only the sync path has - a full device storage and offline.
 function _errStatus(e){if(!e)return 0;if(e.status)return +e.status;const m=/HTTP (\d{3})/.exec(String(e.message||e));return m?+m[1]:0;}
-function humanError(e){
-  const st=_errStatus(e),m=String((e&&(e.message||e.name))||e||'');
-  if(_isQuota(e)||/quota/i.test(m))return'This device ran out of storage space. Changes still go to the server, but the offline copy on this device is incomplete.';
+function humanError(e,action){
+  if(_isQuota(e)||/quota/i.test(String((e&&e.message)||'')))return'This device ran out of storage space. Changes still go to the server, but the offline copy on this device is incomplete.';
   if(typeof navigator!=='undefined'&&navigator.onLine===false)return'You are offline. Changes stay on this device and are saved when the connection is back.';
-  if((e&&e.name==='AbortError')||/timeout|timed out/i.test(m))return'The server took too long to answer.';
-  if(st===401||/jwt expired|invalid jwt/i.test(m))return'Your login session has expired. Log in again to save your changes.';
-  if(st===403||/42501|permission denied|row-level security/i.test(m))return'You do not have permission to change this project.';
-  if(st===404)return'This project was not found on the server. It may have been deleted, or you no longer have access to it.';
-  if(st===409)return'This project was changed somewhere else at the same moment.';
-  if(st===413||/payload too large|entity too large/i.test(m))return'This project is too large to save, usually because of large photos. Remove or replace some photos.';
-  if(st>=500)return'The server had a problem (error '+st+').';
-  if(/failed to fetch|networkerror|load failed|network request failed|network error/i.test(m))return'No connection to the server.';
-  return'Something went wrong'+(st?' (error '+st+')':'')+(m?': '+m.slice(0,160):'.');
+  return _friendlyError(e,action||'Saving');
 }
 
 let _saveState={state:'saved',detail:''};
@@ -2949,16 +2945,20 @@ async function _patchProjectData(id,data,anon){
   const rows=await _sbFetch(`projects?id=eq.${encodeURIComponent(id)}&select=id`,{
     method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data}),
   },15000,anon);
-  if(!Array.isArray(rows)||!rows.length){const e=new Error('No project row was updated');e.status=404;throw e;}
+  // On the anon key (signed out) RLS hides the row: report it as a session problem.
+  if(!Array.isArray(rows)||!rows.length){const e=new Error('No project row was updated');e.status=(!anon&&_jwt()===SUPA_KEY)?401:404;throw e;}
 }
 
 function save(opts){
+  // Share-link screens never write: their blob may be stripped per mode (no
+  // photos / notes / crew), saving it would wipe those. Check-in has its own path.
+  if(window.PUBLIC_MODE)return;
   const id=APP.activeProjectId;
   const proj=APP.projects.find(p=>p.id===id);
   if(proj)proj.data=G;
   _saveSel(id);
   _cacheAPP();                          // never throws: the push below must happen even with a full cache
-  if(!proj||window.PUBLIC_MODE)return;  // share-link screens never write the blob (check-in has its own RPC)
+  if(!proj)return;
   _editSeq[id]=(_editSeq[id]||0)+1;
   _pendingPush[id]=true;
   _refreshSaveState();
@@ -2979,7 +2979,7 @@ function _pushProject(id){
   _pushOnce(id).then(()=>{st.err='';st.attempt=0;},e=>{
     st.attempt++;
     const wait=_BACKOFF[Math.min(st.attempt,_BACKOFF.length)-1];
-    st.err='Not saved: '+humanError(e)+' Changes are kept on this device; retrying in '+Math.round(wait/1000)+'s.';
+    st.err=humanError(e,'Saving')+' Your changes are kept on this device and retried automatically (next try in '+Math.round(wait/1000)+'s).';
     console.error('[_pushProject] failed (attempt '+st.attempt+'):',e);
     st.retryT=setTimeout(()=>_pushProject(id),wait);
   }).finally(()=>{
@@ -3100,7 +3100,7 @@ async function _refetchProject(id){
     if(!row){console.warn('[sync] project not visible on the server (deleted / no access):',id);return;}
     if(!_validData(row.data)){console.warn('[sync] server row has no valid data, ignored:',id);return;}
     _adoptServer(id,row.data,row.name);
-  }catch(e){console.warn('[sync] refetch failed:',humanError(e),e);}
+  }catch(e){console.warn('[sync] refetch failed:',humanError(e,'Loading the latest data'),e);}
   finally{st.fetching=false;}
 }
 // Catch up after a gap (offline, sleep, realtime down): push what is pending
@@ -6600,10 +6600,12 @@ function _watchImportSave(projId,addedIds,setStatus,summary){
     const proj=(APP.projects||[]).find(p=>p.id===projId);
     const ids=new Set(((proj&&proj.data&&proj.data.shows)||[]).map(s=>s.id));
     const kept=addedIds.every(id=>ids.has(id));
-    const dot=document.getElementById('sync-dot');
-    const failed=!!(dot&&/\berr\b/.test(dot.className));
+    // A failed save keeps _pendingPush true and retries by itself
+    // (getSaveState: 'unsaved' + reason), so report it and keep watching.
+    const ss=typeof getSaveState==='function'?getSaveState():null;
+    const failed=ss?(pending&&ss.state==='unsaved'):/\berr\b/.test(document.getElementById('sync-dot')?.className||'');
     if(!kept){setStatus('The import was not saved: the server has a different version of this project. Reload the page and import again.','#fca5a5');return;}
-    if(!pending&&failed){setStatus(summary+', but saving failed. Keep this tab open and check your connection; the sync indicator shows when it is saved.','#fca5a5');return;}
+    if(failed){setStatus(summary+', but saving failed: '+(ss&&ss.detail||'check your connection')+' Keep this tab open.','#fca5a5');if(Date.now()-t0<120000)setTimeout(tick,1000);return;}
     if(!pending){setStatus(summary+'. Saved.','#86efac');return;}
     if(Date.now()-t0>20000){setStatus(summary+'. Still saving… keep this tab open until the sync indicator turns green.','#fbbf24');return;}
     setTimeout(tick,300);
@@ -8452,11 +8454,12 @@ async function loadCurrentUser(session){
   // Direct REST instead of supa.from() - same hang-protection as everywhere
   const ctrl=new AbortController();
   const tmo=setTimeout(()=>ctrl.abort(),8000);
-  let jwt=SUPA_KEY;
-  try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
   try{
     const url=`${SUPA_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&select=*&limit=1`;
-    const res=await fetch(url,{signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'}});
+    const get=()=>fetch(url,{signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'}});
+    let res=await get();
+    // Stale st_auth_v1 token: refresh once and retry (same rule as _restGet).
+    if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await get();
     clearTimeout(tmo);
     if(!res.ok){console.warn('[loadCurrentUser] HTTP',res.status);return;}
     const rows=await res.json();
@@ -8706,6 +8709,7 @@ const _ciBusy=new Set();
 // Until the rls_prep migration is applied, set_show_arrived does not exist.
 // (PostgREST: 404 + PGRST202. A plain 404 can also be the RPC's own "show not found".)
 function _isMissingRpc(e){return /PGRST202|could not find the function/i.test(String((e&&e.message)||e||''));}
+let _ciRpcMissing=false;   // remembered for this session once the RPC proved missing
 // Pre-migration fallback: read the freshest row, flip only this show's
 // arrived fields, write it back. Never writes the (possibly stale) blob this
 // screen holds. A write landing between the read and the write can still be
@@ -8754,16 +8758,19 @@ async function ciToggleArrived(showId){
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
   try{
-    let fresh;
-    try{
-      fresh=await _rpc('set_show_arrived',{
-        p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
-      });
-    }catch(e){
-      if(!_isMissingRpc(e))throw e;
-      console.warn('[ciToggleArrived] set_show_arrived not available yet, using read-merge-write fallback');
-      fresh=await _ciPatchFallback(showId,newArrived,newArrivedAt);
+    let fresh=null;
+    if(!_ciRpcMissing){
+      try{
+        fresh=await _rpc('set_show_arrived',{
+          p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
+        });
+      }catch(e){
+        if(!_isMissingRpc(e))throw e;
+        console.warn('[ciToggleArrived] set_show_arrived not available yet, using read-merge-write fallback');
+        _ciRpcMissing=true;
+      }
     }
+    if(_ciRpcMissing)fresh=await _ciPatchFallback(showId,newArrived,newArrivedAt);
     if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
     // Adopt the returned snapshot locally so any operator edits that landed in
     // the meantime are visible immediately.
@@ -8778,7 +8785,7 @@ async function ciToggleArrived(showId){
     if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
     renderCI();
     console.error('[ciToggleArrived]',e);
-    alert('Check-in was not saved. '+humanError(e));
+    alert(humanError(e,'Saving the check-in'));
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
     _ciBusy.delete(showId);
