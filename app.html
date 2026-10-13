@@ -4605,6 +4605,10 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Import lineup
         </button>
+        <button class="dd-item" onclick="closeAllDD();exportProjectJSON(APP.activeProjectId)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export project (JSON)
+        </button>
         <!-- Mobile only: the header has no room for these. -->
         <div class="dd-sep mob-only"></div>
         <div class="dd-head mob-only">Views</div>
@@ -8566,6 +8570,22 @@ function importLineup(data){
   if(!plan.shows.length)return{error:'None of the rows are valid. Nothing was changed.',invalid:plan.invalid};
   const r=_applyLineupImport(plan);
   return{imported:r.added,stages:r.newStages,days:r.newDays,replaced:r.removed,invalid:plan.invalid};
+}
+
+// ══ PROJECT EXPORT
+// Data portability (GDPR art. 20) and a customer-side backup. Only the project
+// row's id/name/data, never company or billing fields; photos stay as stored
+// (base64 in the blob). This is NOT the lineup import format: import cannot read it.
+function exportProjectJSON(pid){
+  const proj=(APP.projects||[]).find(p=>p.id===pid);
+  if(!proj){stDialog.alert('Open a project first.',{title:'Export failed'});return;}
+  try{
+    const out={exportedAt:new Date(nowMs()).toISOString(),app:'Stagetimer',schemaVersion:1,project:{id:proj.id,name:proj.name,data:proj.data}};
+    const base=String(proj.name||'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,'-').trim().slice(0,80)||'project';
+    const url=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download=`${base}-${amsDateStr(nowMs())}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }catch(e){console.warn('[export] project JSON failed:',e);stDialog.alert(_friendlyError(e,'Export'),{title:'Export failed'});}
 }
 
 // ══ DAY MANAGEMENT
