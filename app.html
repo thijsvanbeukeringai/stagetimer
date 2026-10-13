@@ -2302,24 +2302,137 @@ function _jwt(){
 }
 // POST to a Postgres function. Public share views use these instead of table
 // reads: anonymous visitors have no table access once RLS is on.
+// Public share views ALWAYS go out on the anon key: a kiosk that was once
+// logged in still has an (expired) user token in st_auth_v1, and sending that
+// along made PostgREST answer 401 and froze the public screen. Logged-in
+// callers get one refresh-and-retry on a 401.
+function _isPublicShareView(){
+  try{return!!(window.PUBLIC_MODE&&new URLSearchParams(location.search).get('pid'));}catch(_){return false;}
+}
 async function _rpc(fn,args,timeoutMs){
-  const ctrl=new AbortController();
-  const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
-  try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{
-      method:'POST',signal:ctrl.signal,
-      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`},
-      body:JSON.stringify(args||{}),
-    });
-    clearTimeout(tmo);
-    if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+(t?' - '+t:''));}
-    return await res.json().catch(()=>null);
-  }catch(e){clearTimeout(tmo);throw e;}
+  const pub=_isPublicShareView();
+  const call=async bearer=>{
+    const ctrl=new AbortController();
+    const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
+    try{
+      const res=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{
+        method:'POST',signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${bearer}`},
+        body:JSON.stringify(args||{}),
+      });
+      clearTimeout(tmo);
+      return res;
+    }catch(e){clearTimeout(tmo);throw e;}
+  };
+  let res=await call(pub?SUPA_KEY:_jwt());
+  if(res.status===401&&!pub&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await call(_jwt());
+  if(!res.ok){
+    const t=await res.text().catch(()=>'');
+    const err=new Error('HTTP '+res.status+(t?' - '+t:''));err.status=res.status;throw err;
+  }
+  return await res.json().catch(()=>null);
 }
 function saveAuthSession(sess){
   if(sess)localStorage.setItem(ST_AUTH,JSON.stringify({access_token:sess.access_token,refresh_token:sess.refresh_token}));
   else localStorage.removeItem(ST_AUTH);
 }
+function _storedAuth(){try{return JSON.parse(localStorage.getItem(ST_AUTH)||'null');}catch(_){return null;}}
+// `exp` claim of an access token (seconds), 0 when unreadable.
+function _jwtExp(t){
+  try{const p=String(t).split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(atob(p+'==='.slice((p.length+3)%4))).exp||0;}
+  catch(_){return 0;}
+}
+// Resolve with `p`, or reject after `ms`. supa.auth.* calls have hung in
+// production (navigator-lock deadlocks), so nothing may wait on them unbounded.
+function _withTimeout(p,ms){
+  let t;
+  return Promise.race([Promise.resolve(p),new Promise((_,rej)=>{t=setTimeout(()=>{const e=new Error('timed out');e.name='TimeoutError';rej(e);},ms);})])
+    .finally(()=>clearTimeout(t));
+}
+// ── Keep st_auth_v1 in step with supabase-js.
+// _jwt() reads st_auth_v1, but supabase-js refreshes ITS OWN copy of the
+// session about every hour. Without this, every REST call 401s an hour after
+// login. Deliberately NOT the pre-v2 listener: it only copies tokens, never
+// touches the UI, never awaits anything (supa holds its auth lock while it
+// calls us, so calling supa.auth.* from here would deadlock), and it only
+// moves st_auth_v1 FORWARD - a SIGNED_IN replayed from supa's own, older
+// storage (e.g. on tab focus) cannot overwrite a fresher token that auth
+// init v2 fetched over REST.
+let _supaLastRT=null;   // refresh token supa last reported as its own
+let _authLoggingOut=false;
+try{
+  supa.auth.onAuthStateChange((event,sess)=>{
+    try{
+      if(sess?.refresh_token)_supaLastRT=sess.refresh_token;
+      if(event==='TOKEN_REFRESHED'||event==='SIGNED_IN'||event==='USER_UPDATED'){
+        if(!sess?.access_token||!sess?.refresh_token)return;
+        const st=_storedAuth();
+        if(st?.access_token===sess.access_token&&st?.refresh_token===sess.refresh_token)return;
+        if(!st?.access_token||_jwtExp(sess.access_token)>=_jwtExp(st.access_token))saveAuthSession(sess);
+      }else if(event==='SIGNED_OUT'){
+        // Only drop our copy when it IS the session supa just ended. supa can
+        // emit SIGNED_OUT for its own stale storage while st_auth_v1 holds a
+        // newer, valid session - wiping that was the old logout race.
+        const st=_storedAuth();
+        if(st&&(_authLoggingOut||(_supaLastRT&&st.refresh_token===_supaLastRT)))saveAuthSession(null);
+      }
+    }catch(e){console.warn('[auth] token sync failed:',e);}
+  });
+}catch(e){console.warn('[auth] onAuthStateChange unavailable:',e);}
+// Refresh the user session once, store it in st_auth_v1, report success.
+// Callers use this after a 401: `if(await _refreshAuthToken()) retry()`.
+// Concurrent callers share one refresh (refresh tokens are single-use).
+let _refreshInFlight=null;
+async function _refreshAuthToken(){
+  if(_refreshInFlight)return _refreshInFlight;
+  _refreshInFlight=(async()=>{
+    const before=_storedAuth();
+    const rt=before?.refresh_token;
+    if(!rt)return false;
+    // 1. Through supa, so its own session and Realtime move along. Bounded.
+    try{
+      const{data,error}=await _withTimeout(supa.auth.refreshSession({refresh_token:rt}),6000);
+      if(data?.session?.access_token){saveAuthSession(data.session);return true;}
+      if(error)console.warn('[auth] refreshSession:',error.message);
+    }catch(e){console.warn('[auth] refreshSession failed:',e?.message||e);}
+    // supa may have refreshed in the background meanwhile (listener above).
+    const now=_storedAuth();
+    if(now?.access_token&&now.access_token!==before.access_token)return true;
+    // 2. Direct REST (auth init v2 helper) when supa hung or threw.
+    const s=await _authRefresh(rt);
+    if(s?.access_token){
+      saveAuthSession(s);
+      try{supa.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}).catch(()=>{});}catch(_){}
+      return true;
+    }
+    return false;
+  })().finally(()=>{_refreshInFlight=null;});
+  return _refreshInFlight;
+}
+// One place that turns a failed request into a sentence an operator can act
+// on, instead of "HTTP 400 - {...}". `action` reads like "Saving", "Rename".
+function _friendlyError(e,action){
+  const msg=String((e&&e.message)||e||'');
+  const st=(e&&e.status)||Number((msg.match(/HTTP (\d{3})/)||[])[1])||0;
+  const what=action||'This action';
+  if(e&&(e.name==='AbortError'||e.name==='TimeoutError')||/timed out/i.test(msg))return`${what} timed out. Check your internet connection and try again.`;
+  if(/Failed to fetch|NetworkError|Load failed/i.test(msg))return`${what} failed: no connection to the server. Check your internet connection and try again.`;
+  if(st===401)return`${what} failed: your session has expired. Log out and log in again.`;
+  if(st===403)return`${what} failed: you don't have permission for this.`;
+  if(st===404)return`${what} failed: it no longer exists. Reload the page and try again.`;
+  if(st===409)return`${what} failed: it conflicts with a change made elsewhere. Reload the page and try again.`;
+  if(st===413)return`${what} failed: the data is too large. Try smaller photos.`;
+  if(st===429)return'Too many attempts. Wait a minute and try again.';
+  if(st>=500)return`${what} failed: the server had a problem. Try again in a moment.`;
+  if(st>=400)return`${what} failed: the server did not accept the request. Reload the page and try again.`;
+  return`${what} failed${msg?': '+msg.replace(/^Error:\s*/,''):''}.`;
+}
+// A value as a JS string literal that is safe inside a double-quoted inline
+// handler: onclick="fn(${_jsArg(x)})". JSON covers quotes and backslashes for
+// JS, escH keeps the HTML parser from ending the attribute. '${escH(x)}' is
+// not enough: the parser decodes &#39; back to ' before the handler compiles,
+// so O'Neil still broke it.
+function _jsArg(v){return escH(JSON.stringify(String(v??'')));}
 async function restoreAuthSession(){
   try{
     const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
@@ -3361,7 +3474,7 @@ function renderTbar(){
       <div id="login-logo-sub" id="set-pw-sub">Set your password</div>
     </div>
     <div id="set-pw-err" style="display:none;padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
-    <input class="fi" id="new-pw" type="password" placeholder="New password (min. 6 characters)" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <input class="fi" id="new-pw" type="password" placeholder="New password (min. 8 characters)" onkeydown="if(event.key==='Enter')setNewPassword()">
     <input class="fi" id="new-pw2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter')setNewPassword()">
     <button class="btn-p" id="set-pw-btn" onclick="setNewPassword()">Set password</button>
   </div>
@@ -3419,11 +3532,12 @@ function renderTbar(){
     </div>
     <div style="font-size:11px;color:var(--sub);line-height:1.6;">Expected format - each day as a key with <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
     <code style="font-size:10px;color:var(--sub);">{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code></div>
-    <textarea id="json-input-area" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artist name"}]}]}}'></textarea>
+    <textarea id="json-input-area" oninput="if(_importPending)_resetImportPreview()" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artist name"}]}]}}'></textarea>
     <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
+    <div id="json-import-preview" style="display:none;max-height:220px;overflow-y:auto;padding:8px 10px;background:var(--s3);border:1px solid var(--border2);border-radius:7px;font-size:12px;color:var(--sub);line-height:1.5;"></div>
     <div style="display:flex;gap:8px;">
-      <button class="btn-g" onclick="closeJSONModal()" style="flex:1;">Cancel</button>
-      <button class="btn-p" onclick="doJSONImport()" style="flex:1;">Import</button>
+      <button class="btn-g" id="json-import-cancel" onclick="closeJSONModal()" style="flex:1;">Cancel</button>
+      <button class="btn-p" id="json-import-btn" onclick="doJSONImport()" style="flex:1;">Import</button>
     </div>
   </div>
 </div>
@@ -5105,7 +5219,7 @@ function openDrawer(id,booth=null){
       document.getElementById('f-type').value=s.type||'';
       document.getElementById('f-n').value=s.note||'';
       selBooth(s.booth||'');
-      _photoB64=s.photo||'';
+      _photoB64=s.photo||'';_photoRemoved=false;
       _drFlags.cancelled=!!s.cancelled;
       _drFlags.priority=!!s.priority;
       _drFlags.hidden=!!s.hidden;
@@ -5129,7 +5243,7 @@ function openDrawer(id,booth=null){
     }
   }else{
     document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-type').value='';
-    clearPhoto();selBooth(booth||'');
+    clearPhoto();_photoRemoved=false;selBooth(booth||'');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
     let startDt;
@@ -5217,9 +5331,13 @@ function updDur(){
 }
 // ── Photo
 let _photoB64='';
-// Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG.
+// Set when the operator clicks ✕ on the photo. saveShow must then store ''
+// instead of falling back to the photo the show had when the drawer opened.
+let _photoRemoved=false;
+// Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG
+// (or PNG when asked, to keep a logo's transparency).
 // Keeps photos small enough to fit alongside other show data in Supabase's JSON column.
-function _compressImage(dataUrl,maxDim=900,quality=.82){
+function _compressImage(dataUrl,maxDim=900,quality=.82,mime='image/jpeg'){
   return new Promise((resolve,reject)=>{
     const img=new Image();
     img.onload=()=>{
@@ -5230,7 +5348,7 @@ function _compressImage(dataUrl,maxDim=900,quality=.82){
       }
       const c=document.createElement('canvas');c.width=w;c.height=h;
       const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
-      try{resolve(c.toDataURL('image/jpeg',quality));}catch(e){reject(e);}
+      try{resolve(c.toDataURL(mime,quality));}catch(e){reject(e);}
     };
     img.onerror=()=>reject(new Error('image load failed'));
     img.src=dataUrl;
@@ -5249,7 +5367,7 @@ async function previewPhoto(inp){
     const raw=await new Promise((resolve,reject)=>{
       const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>reject(new Error('read failed'));r.readAsDataURL(f);
     });
-    _photoB64=await _compressImage(raw);
+    _photoB64=await _compressImage(raw);_photoRemoved=false;
     preview.src=_photoB64;preview.style.opacity='1';
     clearBtn.style.display='';
   }catch(e){
@@ -5258,7 +5376,7 @@ async function previewPhoto(inp){
     _photoB64='';wrap.style.display='none';preview.style.opacity='1';inp.value='';
   }
 }
-function clearPhoto(){_photoB64='';document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
+function clearPhoto(){_photoB64='';_photoRemoved=true;document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
 function setTPPhoto(src){
   const wrap=document.getElementById('tp-photo-wrap'),img=document.getElementById('tp-photo'),inner=document.getElementById('tinner');
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
@@ -5268,7 +5386,9 @@ function saveShow(){
   const artist=document.getElementById('f-a').value.trim();if(!artist){document.getElementById('f-a').focus();return;}
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew=existing?.crew||{};
-  const photo=_photoB64||(existing?.photo||'');
+  // The old photo is only a fallback while a new upload is still compressing;
+  // after an explicit ✕ the removal must stick.
+  const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
   // Source of truth: split start (date+time) and end (date+time) inputs.
   // Each time input has step=1 so seconds are captured.
   const sd=_readStartDate(),ed=_readEndDate();
@@ -6299,7 +6419,7 @@ function renderStageList(){
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(s.name)}</div>
         <div style="font-size:10px;color:var(--sub);margin-top:1px;">${n} show${n===1?'':'s'}</div>
       </div>
-      <button class="btn-del" onclick="delStage('${s.id}')" title="Delete this stage">
+      <button class="btn-del" onclick="delStage(${_jsArg(s.id)})" title="Delete this stage">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         Delete
       </button>
@@ -6329,9 +6449,12 @@ function _effectiveStageLimit(co){
   if(co.liveStagesOverride!=null)return co.liveStagesOverride;
   // 3. Active event pass: unlimited for its duration.
   if(_passActive(co))return null;
-  // 4. Active or past-due subscription: use the limit denormalised by the webhook.
-  //    `null` here means unlimited (festival / pro-legacy / business-legacy).
-  const subActive=co.subscriptionStatus==='active'||co.subscriptionStatus==='past_due';
+  // 4. Active, trialing or past-due subscription: use the limit denormalised
+  //    by the webhook. `null` here means unlimited (festival / pro-legacy /
+  //    business-legacy). Trialing counts as active (owner decision B2): it
+  //    used to fall through to 0, so trial customers could not add a stage.
+  //    Same set of statuses canCreateProject() lets through, plus past_due.
+  const subActive=['active','trialing','past_due'].includes(co.subscriptionStatus);
   if(subActive&&co.planSlug){
     return (co.liveStagesLimit===null||co.liveStagesLimit===undefined)?null:co.liveStagesLimit;
   }
@@ -6384,26 +6507,108 @@ function delStage(id){
 }
 
 // ══ JSON IMPORT
+// Two steps: Import validates the whole paste against the current project
+// and shows what will happen (nothing changes yet); Confirm applies it.
+let _importPending=null; // {raw,data} validated and waiting for Confirm
+let _importWatch=0;      // bumps on reset so an old save watcher goes quiet
+function _resetImportPreview(){
+  _importPending=null;_importWatch++;
+  const pv=document.getElementById('json-import-preview');
+  if(pv){pv.style.display='none';pv.innerHTML='';}
+  const btn=document.getElementById('json-import-btn');
+  if(btn){btn.textContent='Import';btn.disabled=false;btn.style.display='';}
+  const cancel=document.getElementById('json-import-cancel');
+  if(cancel)cancel.textContent='Cancel';
+}
 function openJSONModal(){
   document.getElementById('json-modal-ov').style.display='flex';
   document.getElementById('json-import-err').style.display='none';
   document.getElementById('json-input-area').value='';
+  _resetImportPreview();
   setTimeout(()=>document.getElementById('json-input-area').focus(),50);
 }
-function closeJSONModal(){document.getElementById('json-modal-ov').style.display='none';}
+function closeJSONModal(){document.getElementById('json-modal-ov').style.display='none';_resetImportPreview();}
 
 function doJSONImport(){
   const raw=document.getElementById('json-input-area').value.trim();
   const errEl=document.getElementById('json-import-err');
   errEl.style.display='none';
+  // Second click on an unchanged paste = Confirm.
+  if(_importPending&&_importPending.raw===raw){_confirmJSONImport();return;}
+  _resetImportPreview();
   if(!raw){errEl.textContent='Please paste JSON into the field first.';errEl.style.display='block';return;}
   let data;
   try{data=JSON.parse(raw);}
   catch(e){errEl.textContent='Invalid JSON: '+e.message;errEl.style.display='block';return;}
-  const result=importLineup(data);
-  if(result.error){errEl.textContent=result.error;errEl.style.display='block';return;}
-  closeJSONModal();
-  alert(`Import successful! ${result.imported} acts added across ${result.stages} stages and ${result.days} day(s).`);
+  const plan=_planLineupImport(data);
+  if(plan.error){errEl.textContent=plan.error;errEl.style.display='block';return;}
+  _renderImportPreview(plan);
+  if(!plan.shows.length){
+    errEl.textContent='Nothing to import: none of the rows are valid. Nothing was changed.';
+    errEl.style.display='block';return;
+  }
+  _importPending={raw,data};
+  const btn=document.getElementById('json-import-btn');
+  if(btn)btn.textContent=`Confirm import (${plan.shows.length})`;
+}
+function _renderImportPreview(plan){
+  const pv=document.getElementById('json-import-preview');if(!pv)return;
+  const li=t=>`<div style="padding:2px 0;">${t}</div>`;
+  const groups=plan.groups.map(g=>li(`<strong>${escH(g.dayLabel)}</strong> · ${escH(g.stageName)}: add ${g.add} show${g.add===1?'':'s'}${g.replace?` <span style="color:#fbbf24;">(replaces ${g.replace} existing)</span>`:''}`)).join('');
+  const inv=plan.invalid.slice(0,25).map(r=>li(`<span style="color:#fca5a5;">${escH(r.label)}</span>: ${escH(r.reason)}`)).join('')
+    +(plan.invalid.length>25?li(`…and ${plan.invalid.length-25} more`):'');
+  const replaced=plan.groups.reduce((n,g)=>n+g.replace,0);
+  pv.innerHTML=`
+    <div style="font-weight:800;color:var(--text);margin-bottom:4px;">Check before importing</div>
+    ${li(`${plan.shows.length} show${plan.shows.length===1?'':'s'} will be added${replaced?`, ${replaced} existing show${replaced===1?'':'s'} replaced`:''}. Other stages and days are not touched.`)}
+    ${groups}
+    ${plan.newStages.length?li(`New stages: ${plan.newStages.map(escH).join(', ')}`):''}
+    ${plan.newDays.length?li(`New days: ${plan.newDays.map(escH).join(', ')}`):''}
+    ${plan.earlyMorning?li('Times before 07:00 count as part of the previous night (the festival day runs 07:00 to 07:00).'):''}
+    ${plan.invalid.length?`<div style="font-weight:700;color:#fca5a5;margin-top:6px;">${plan.invalid.length} row${plan.invalid.length===1?'':'s'} will be skipped:</div>${inv}`:''}`;
+  pv.style.display='block';
+}
+function _confirmJSONImport(){
+  const errEl=document.getElementById('json-import-err');
+  const pend=_importPending;if(!pend)return;
+  // Re-plan against the project as it is NOW (a peer may have edited it
+  // since the preview); applying never trusts a stale plan.
+  const plan=_planLineupImport(pend.data);
+  if(plan.error||!plan.shows.length){
+    errEl.textContent=plan.error||'Nothing to import any more. Nothing was changed.';errEl.style.display='block';
+    _resetImportPreview();return;
+  }
+  const res=_applyLineupImport(plan);
+  _importPending=null;
+  const btn=document.getElementById('json-import-btn');
+  if(btn)btn.style.display='none';
+  const cancel=document.getElementById('json-import-cancel');
+  if(cancel)cancel.textContent='Close';
+  const pv=document.getElementById('json-import-preview');
+  const setStatus=(msg,col)=>{if(pv){pv.style.display='block';pv.innerHTML=`<div style="font-weight:700;color:${col};">${escH(msg)}</div>`;}};
+  const summary=`${res.added} show${res.added===1?'':'s'} imported`+(res.removed?`, ${res.removed} replaced`:'')+(res.newStages?`, ${res.newStages} new stage${res.newStages===1?'':'s'}`:'')+(res.newDays?`, ${res.newDays} new day${res.newDays===1?'':'s'}`:'');
+  setStatus(summary+'. Saving…','var(--sub)');
+  _watchImportSave(res.projectId,res.addedIds,setStatus,summary);
+}
+// "Saved" only once the save path reports done AND the shows are still in
+// the project (the anti-wipe guard may have swapped in the server copy).
+function _watchImportSave(projId,addedIds,setStatus,summary){
+  const t0=Date.now(),me=_importWatch;
+  const tick=()=>{
+    if(me!==_importWatch)return;
+    const pending=(typeof _pendingPush!=='undefined')&&_pendingPush[projId];
+    const proj=(APP.projects||[]).find(p=>p.id===projId);
+    const ids=new Set(((proj&&proj.data&&proj.data.shows)||[]).map(s=>s.id));
+    const kept=addedIds.every(id=>ids.has(id));
+    const dot=document.getElementById('sync-dot');
+    const failed=!!(dot&&/\berr\b/.test(dot.className));
+    if(!kept){setStatus('The import was not saved: the server has a different version of this project. Reload the page and import again.','#fca5a5');return;}
+    if(!pending&&failed){setStatus(summary+', but saving failed. Keep this tab open and check your connection; the sync indicator shows when it is saved.','#fca5a5');return;}
+    if(!pending){setStatus(summary+'. Saved.','#86efac');return;}
+    if(Date.now()-t0>20000){setStatus(summary+'. Still saving… keep this tab open until the sync indicator turns green.','#fbbf24');return;}
+    setTimeout(tick,300);
+  };
+  setTimeout(tick,300);
 }
 
 const _maanden=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -6424,92 +6629,180 @@ function fmtDateNLFull(dateStr){
   }catch{return dateStr;}
 }
 
-function importLineup(data){
+// ── Import: validate everything first, mutate nothing.
+// Accepts "H:MM", "HH:MM" and "HH:MM:SS" and always returns "HH:MM:SS"
+// (it used to append ':00' blindly, so 20:00:30 became 20:00:30:00).
+function _normImportTime(t){
+  const m=String(t??'').trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(!m)return null;
+  const h=+m[1],mi=+m[2],se=+(m[3]||0);
+  if(h>23||mi>59||se>59)return null;
+  return`${String(h).padStart(2,'0')}:${m[2]}:${String(se).padStart(2,'0')}`;
+}
+function _validImportDate(d){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(d||'')))return false;
+  const[y,m,dd]=d.split('-').map(Number);const dt=new Date(y,m-1,dd);
+  return dt.getFullYear()===y&&dt.getMonth()===m-1&&dt.getDate()===dd;
+}
+// "2026-04-03T16:00" / "2026-04-03 16:00:30" → {date,time}; anything else null.
+// A time zone suffix is refused rather than silently read as local time.
+function _splitImportDateTime(v){
+  const m=String(v??'').trim().match(/^(\d{4}-\d{2}-\d{2})[T ](\d{1,2}:\d{2}(?::\d{2})?)(?:\.\d+)?$/);
+  if(!m||!_validImportDate(m[1]))return null;
+  const time=_normImportTime(m[2]);
+  return time?{date:m[1],time}:null;
+}
+// Build a show the way saveShow does: calendar date of the start, HH:MM:SS
+// times, ISO startsAt/endsAt and an explicit endsNextDay. Without a known
+// date (a dateless day) it stays a legacy start/end show.
+function _importShowTimes(startDate,startTime,endDate,endTime){
+  if(!startDate){
+    return{start:startTime,end:endTime,endsNextDay:t2s(endTime)<=t2s(startTime)};
+  }
+  if(!endDate)endDate=t2s(endTime)<=t2s(startTime)?_addDaysISO(startDate,1):startDate;
+  return{
+    date:startDate,start:startTime,end:endTime,
+    startsAt:`${startDate}T${startTime}`,endsAt:`${endDate}T${endTime}`,
+    endsNextDay:startDate!==endDate,
+  };
+}
+// Returns {error} for an unusable paste, otherwise a plan:
+//   {shows:[{dayRef,stageRef,show}], newDays, newStages, groups, invalid}
+// dayRef/stageRef point at existing ids or at entries in plan.dayObjs /
+// plan.stageObjs that only get created on apply.
+function _planLineupImport(data){
+  const days=G.days||[],stages=G.stages||[],shows=G.shows||[];
+  if(data===null||typeof data!=='object')return{error:'Expected a list of shows or an object with days. Nothing was changed.'};
+  const plan={shows:[],invalid:[],dayObjs:[],stageObjs:[],newDays:[],newStages:[],groups:[],earlyMorning:false};
+  // Stage limit: how many NEW stages the plan still allows.
+  const limit=_effectiveStageLimit(_myCompanyRow());
+  let stageRoom=limit===null?Infinity:Math.max(0,limit-stages.length);
+  const stageByName=new Map(stages.map(s=>[String(s.name||'').trim().toLowerCase(),s]));
+  const refusedStages=new Set();
+  const stageFor=name=>{
+    const k=name.toLowerCase();
+    if(stageByName.has(k))return{stage:stageByName.get(k)};
+    if(refusedStages.has(k)||stageRoom<=0){
+      refusedStages.add(k);
+      return{error:`stage "${name}" would go over your plan's ${limit} live stage${limit===1?'':'s'}`};
+    }
+    const st={id:uid(),name,emoji:'🎵'};
+    stageRoom--;stageByName.set(k,st);plan.stageObjs.push(st);plan.newStages.push(name);
+    return{stage:st};
+  };
+  const dayFor=(date,label)=>{
+    let d=days.find(x=>(date&&x.date===date)||String(x.name||'').toLowerCase()===label.toLowerCase())
+      ||plan.dayObjs.find(x=>(date&&x.date===date)||x.name.toLowerCase()===label.toLowerCase());
+    if(!d){d={id:uid(),name:label,...(date?{date}:{})};plan.dayObjs.push(d);plan.newDays.push(label);}
+    return d;
+  };
+  const add=(day,stage,artist,t)=>{
+    plan.shows.push({dayId:day.id,stageId:stage.id,show:{
+      id:uid(),stage:stage.id,day:day.id,artist,...t,
+      genre:'',booth:'',type:'',note:'',crew:{},photo:'',cancelled:false,priority:false,hidden:false,
+    }});
+  };
+  const bad=(label,reason)=>plan.invalid.push({label,reason});
+
+  if(Array.isArray(data)){
+    // ── Flat format: [{stage, artist, start:"2026-04-03T16:00", end:"…"}]
+    if(!data.length)return{error:'The list is empty. Nothing was changed.'};
+    data.forEach((row,i)=>{
+      const label=`Row ${i+1}`+(row&&row.artist?` (${row.artist})`:'');
+      if(!row||typeof row!=='object'){bad(label,'not an object');return;}
+      const stageName=String(row.stage??'').trim();
+      const artist=String(row.artist??'').trim();
+      if(!stageName){bad(label,'missing stage');return;}
+      if(!artist){bad(label,'missing artist');return;}
+      if(row.start==null||row.start===''){bad(label,'missing start');return;}
+      if(row.end==null||row.end===''){bad(label,'missing end');return;}
+      const s=_splitImportDateTime(row.start);
+      if(!s){bad(label,`start "${row.start}" is not a date and time like 2026-04-03T16:00`);return;}
+      let e=_splitImportDateTime(row.end),endDate=null,endTime=null;
+      if(e){endDate=e.date;endTime=e.time;}
+      else{endTime=_normImportTime(row.end);if(!endTime){bad(label,`end "${row.end}" is not a time like 17:30 or 2026-04-03T17:30`);return;}}
+      const t=_importShowTimes(s.date,s.time,endDate,endTime);
+      const ms=new Date(t.endsAt)-new Date(t.startsAt);
+      if(!(ms>0)){bad(label,'end is not after start');return;}
+      if(ms>86400000){bad(label,'show is longer than 24 hours, check the end date');return;}
+      // Same 07:00 festival-day rule as the rest of the app: a 01:00 start
+      // belongs to the night that began the day before.
+      const festDate=t2s(s.time)<NIGHT_END_MIN*60?_addDaysISO(s.date,-1):s.date;
+      if(festDate!==s.date)plan.earlyMorning=true;
+      const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
+      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t);
+    });
+  }else{
+    // ── Nested format: {"friday":{"date":"2025-06-20","stages":[{stage,acts:[{time:"16:45-17:30",artist}]}]}}
+    const dayKeys=Object.keys(data);
+    if(!dayKeys.length)return{error:'No days found in the JSON. Nothing was changed.'};
+    for(const dayKey of dayKeys){
+      const dayData=data[dayKey];
+      if(!dayData||typeof dayData!=='object'){bad(dayKey,'expected {"date":…, "stages":[…]}');continue;}
+      const stageList=Array.isArray(dayData)?dayData:dayData.stages;
+      if(!Array.isArray(stageList)){bad(dayKey,'"stages" is missing or not a list');continue;}
+      const dateStr=(!Array.isArray(dayData)&&dayData.date)||null;
+      if(dateStr&&!_validImportDate(dateStr)){bad(dayKey,`date "${dateStr}" is not a date like 2025-06-20`);continue;}
+      const dayLabel=dateStr?fmtDateNLFull(dateStr):dayKey.charAt(0).toUpperCase()+dayKey.slice(1);
+      let day=null;
+      const dayDate=()=>{day=day||dayFor(dateStr,dayLabel);return day.date||dateStr||null;};
+      stageList.forEach((block,bi)=>{
+        const stageName=String(block?.stage??'').trim();
+        const acts=block?.acts;
+        if(!stageName){bad(`${dayKey} / stage ${bi+1}`,'missing stage name');return;}
+        if(!Array.isArray(acts)){bad(`${dayKey} / ${stageName}`,'"acts" is missing or not a list');return;}
+        acts.forEach((act,ai)=>{
+          const label=`${dayKey} / ${stageName} / act ${ai+1}`+(act&&act.artist?` (${act.artist})`:'');
+          const artist=String(act?.artist??'').trim();
+          if(!artist){bad(label,'missing artist');return;}
+          const tm=String(act.time??'').match(/^\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–—]\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
+          if(!tm){bad(label,act.time?`time "${act.time}" is not like 16:45-17:30`:'missing time');return;}
+          const start=_normImportTime(tm[1]),end=_normImportTime(tm[2]);
+          if(!start||!end){bad(label,`time "${act.time}" is not a valid time range`);return;}
+          if(start===end){bad(label,'end is not after start');return;}
+          const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
+          const base=dayDate();
+          // Before 07:00 = the night after this day (festival day rule).
+          const early=t2s(start)<NIGHT_END_MIN*60;
+          if(early)plan.earlyMorning=true;
+          const sd=base?(early?_addDaysISO(base,1):base):null;
+          add(day,st.stage,artist,_importShowTimes(sd,start,null,end));
+        });
+      });
+    }
+  }
+  // Summary per (day, stage): what gets added and what it replaces. Only
+  // those pairs are replaced - other stages on the same day stay.
+  const byPair=new Map();
+  for(const r of plan.shows){
+    const k=r.dayId+'|'+r.stageId;
+    if(!byPair.has(k)){
+      const d=days.find(x=>x.id===r.dayId)||plan.dayObjs.find(x=>x.id===r.dayId);
+      const s=stages.find(x=>x.id===r.stageId)||plan.stageObjs.find(x=>x.id===r.stageId);
+      byPair.set(k,{dayId:r.dayId,stageId:r.stageId,dayLabel:d?.name||'',stageName:s?.name||'',add:0,
+        replace:shows.filter(x=>x.day===r.dayId&&x.stage===r.stageId).length});
+    }
+    byPair.get(k).add++;
+  }
+  plan.groups=[...byPair.values()];
+  // Only keep new days/stages that end up with at least one show.
+  const usedDays=new Set(plan.shows.map(r=>r.dayId)),usedStages=new Set(plan.shows.map(r=>r.stageId));
+  plan.dayObjs=plan.dayObjs.filter(d=>usedDays.has(d.id));plan.newDays=plan.dayObjs.map(d=>d.name);
+  plan.stageObjs=plan.stageObjs.filter(s=>usedStages.has(s.id));plan.newStages=plan.stageObjs.map(s=>s.name);
+  return plan;
+}
+function _applyLineupImport(plan){
   if(!G.stages)G.stages=[];
   if(!G.shows)G.shows=[];
   if(!G.days)G.days=[];
-
-  let imported=0,newStages=0,newDays=0;
-
-  // ── Flat array format: [{stage, artist, start:"2026-04-03T16:00", end:...}]
-  if(Array.isArray(data)){
-    // Group by start-date
-    const byDate={};
-    for(const row of data){
-      if(!row.start)continue;
-      const dateStr=row.start.slice(0,10); // "2026-04-03"
-      if(!byDate[dateStr])byDate[dateStr]=[];
-      byDate[dateStr].push(row);
-    }
-    if(!Object.keys(byDate).length)return{error:'No valid entries found.'};
-
-    for(const dateStr of Object.keys(byDate).sort()){
-      const dayLabel=fmtDateNLFull(dateStr);
-      let day=G.days.find(d=>d.date===dateStr||d.name===dayLabel);
-      if(!day){
-        day={id:uid(),name:dayLabel,date:dateStr};
-        G.days.push(day);newDays++;
-      } else {
-        G.shows=G.shows.filter(s=>s.day!==day.id);
-      }
-
-      for(const row of byDate[dateStr]){
-        const stageName=(row.stage||'').trim();if(!stageName)continue;
-        let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
-        if(!stage){
-          const lim=checkStageLimit();
-          if(!lim.allowed){alert(lim.reason+' Skipping new stage "'+stageName+'".');continue;}
-          stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;
-        }
-        // Extract HH:MM:SS from ISO datetime
-        const start=(row.start.includes('T')?row.start.split('T')[1]:'00:00')+':00';
-        const end=(row.end.includes('T')?row.end.split('T')[1]:'00:00')+':00';
-        G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:row.artist||'?',start,end,genre:'',booth:'',note:'',crew:[]});
-        imported++;
-      }
-    }
-
-  // ── Nested object format: {"dayName":{"date":"...","stages":[...]}}
-  } else {
-    const dayKeys=Object.keys(data);
-    if(!dayKeys.length)return{error:'No days found in the JSON.'};
-
-    for(const dayKey of dayKeys){
-      const dayData=data[dayKey];
-      const stageList=Array.isArray(dayData)?dayData:(dayData.stages||[]);
-      const dateStr=(!Array.isArray(dayData)&&dayData.date)||null;
-      let dayLabel=dayKey.charAt(0).toUpperCase()+dayKey.slice(1);
-      if(dateStr)dayLabel=fmtDateNLFull(dateStr);
-
-      let day=G.days.find(d=>d.name.toLowerCase()===dayLabel.toLowerCase()||(dateStr&&d.date===dateStr));
-      if(!day){
-        day={id:uid(),name:dayLabel,...(dateStr?{date:dateStr}:{})};
-        G.days.push(day);newDays++;
-      } else {
-        G.shows=G.shows.filter(s=>s.day!==day.id);
-      }
-
-      for(const stageBlock of stageList){
-        const stageName=(stageBlock.stage||'').trim();if(!stageName)continue;
-        let stage=G.stages.find(s=>s.name.toLowerCase()===stageName.toLowerCase());
-        if(!stage){
-          const lim=checkStageLimit();
-          if(!lim.allowed){alert(lim.reason+' Skipping new stage "'+stageName+'".');continue;}
-          stage={id:uid(),name:stageName,emoji:'🎵'};G.stages.push(stage);newStages++;
-        }
-        for(const act of (stageBlock.acts||[])){
-          if(!act.artist||!act.time)continue;
-          const dashIdx=act.time.lastIndexOf('-');if(dashIdx<1)continue;
-          const rawStart=act.time.slice(0,dashIdx).trim();
-          const rawEnd=act.time.slice(dashIdx+1).trim();
-          const start=rawStart.length===5?rawStart+':00':rawStart;
-          const end=rawEnd.length===5?rawEnd+':00':rawEnd;
-          G.shows.push({id:uid(),stage:stage.id,day:day.id,artist:act.artist,start,end,genre:'',booth:'',note:'',crew:[]});
-          imported++;
-        }
-      }
-    }
-  }
+  G.days.push(...plan.dayObjs);
+  G.stages.push(...plan.stageObjs);
+  const pairs=new Set(plan.groups.map(g=>g.dayId+'|'+g.stageId));
+  const removedIds=G.shows.filter(s=>pairs.has(s.day+'|'+s.stage)).map(s=>s.id);
+  const gone=new Set(removedIds);
+  G.shows=G.shows.filter(s=>!gone.has(s.id));
+  const added=plan.shows.map(r=>r.show);
+  G.shows.push(...added);
 
   // Dedup stages by name (case-insensitive) - merge duplicates created by repeated imports
   const _stageMap=new Map(),_stageRemap=new Map();
@@ -6526,10 +6819,23 @@ function importLineup(data){
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.activeStage&&G.stages.length)G.activeStage=G.stages[0].id;
 
+  // Tell the anti-wipe guard these removals are intended, so it does not
+  // restore the server copy over a confirmed import.
+  if(typeof _markIntentionalRemoval==='function')_markIntentionalRemoval(removedIds);
+  const projectId=APP.activeProjectId;
   save();renderAll();
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
   if(document.getElementById('bs').classList.contains('open'))renderBS();
-  return{imported,stages:newStages,days:newDays};
+  return{projectId,added:added.length,addedIds:added.map(s=>s.id),removed:removedIds.length,
+    newStages:plan.stageObjs.length,newDays:plan.dayObjs.length};
+}
+// Kept for any caller that imports in one go: validate, then apply.
+function importLineup(data){
+  const plan=_planLineupImport(data);
+  if(plan.error)return{error:plan.error};
+  if(!plan.shows.length)return{error:'None of the rows are valid. Nothing was changed.',invalid:plan.invalid};
+  const r=_applyLineupImport(plan);
+  return{imported:r.added,stages:r.newStages,days:r.newDays,replaced:r.removed,invalid:plan.invalid};
 }
 
 // ══ DAY MANAGEMENT
@@ -6543,9 +6849,9 @@ function closeDayModal(){document.getElementById('day-modal-ov').style.display='
 function renderDayList(){
   document.getElementById('day-list').innerHTML=(G.days||[]).map((d,i)=>`
     <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--s3);border-radius:8px;">
-      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay('${d.id}',this.value)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
-      <input class="fi" type="date" value="${d.date||''}" onchange="setDayDate('${d.id}',this.value)" title="Calendar date for this day" style="width:130px;font-size:11px;padding:4px 6px;">
-      ${(G.days.length>1)?`<button onclick="delDay('${d.id}')" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Delete">×</button>`:''}
+      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay(${_jsArg(d.id)},this.value)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
+      <input class="fi" type="date" value="${escH(d.date||'')}" onchange="setDayDate(${_jsArg(d.id)},this.value)" title="Calendar date for this day" style="width:130px;font-size:11px;padding:4px 6px;">
+      ${(G.days.length>1)?`<button onclick="delDay(${_jsArg(d.id)})" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Delete">×</button>`:''}
     </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">No days created yet.</div>`;
 }
 function renameDay(id,name){
@@ -6649,24 +6955,24 @@ function renderDash(){
       const co=APP.companies.find(c=>c.id===p.companyId);
       const showCount=(p.data?.shows||[]).length;
       const stageCount=(p.data?.stages||[]).length;
-      return`<tr data-proj-id="${p.id}" onclick="openProjectOnce('${p.id}')">
+      return`<tr data-proj-id="${escH(p.id)}" onclick="openProjectOnce(${_jsArg(p.id)})">
         <td class="col-name" data-label="Project">${escH(p.name)}</td>
         <td data-label="Workspace">${co?`<span class="ws-row-badge">${escH(co.name)}</span>`:`<span style="color:#A8A29E;">-</span>`}</td>
         <td class="col-num" style="text-align:right;" data-label="Shows">${showCount}</td>
         <td class="col-num" style="text-align:right;" data-label="Stages">${stageCount}</td>
         <td class="col-actions" data-label="Actions" onclick="event.stopPropagation()">
-          <button class="ws-table-open-btn" onclick="event.stopPropagation();openProjectOnce('${p.id}')" title="Open project">
+          <button class="ws-table-open-btn" onclick="event.stopPropagation();openProjectOnce(${_jsArg(p.id)})" title="Open project">
             Open
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
           </button>
           <span class="ws-actions-icons">
-            <button class="ws-icon-btn" onclick="event.stopPropagation();openShareModal('${p.id}')" title="Share links">
+            <button class="ws-icon-btn" onclick="event.stopPropagation();openShareModal(${_jsArg(p.id)})" title="Share links">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             </button>
-            <button class="ws-icon-btn" onclick="event.stopPropagation();renameProject('${p.id}')" title="Rename">
+            <button class="ws-icon-btn" onclick="event.stopPropagation();renameProject(${_jsArg(p.id)})" title="Rename">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button class="ws-icon-btn danger" onclick="event.stopPropagation();deleteProject('${p.id}')" title="Delete">
+            <button class="ws-icon-btn danger" onclick="event.stopPropagation();deleteProject(${_jsArg(p.id)})" title="Delete">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
             </button>
           </span>
@@ -6685,7 +6991,7 @@ function _updateWsSidebar(){
   if(wsMeta){
     if(!co){wsMeta.textContent=isAdmin()?'Platform admin':'-';}
     else{
-      const tier=co.subscriptionTier?co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1):'Free';
+      const tier=_planLabel(co);
       const seats=co.extraSeats||0;
       const seatText=seats>0?` · ${seats} paid seat${seats===1?'':'s'}`:'';
       wsMeta.textContent=`${tier}${seatText}`;
@@ -6703,7 +7009,7 @@ function _updateWsSidebar(){
   if(mobWsMeta){
     if(!co){mobWsMeta.textContent=isAdmin()?'Platform admin':'';}
     else{
-      const tier=co.subscriptionTier?co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1):'Free';
+      const tier=_planLabel(co);
       const seats=co.extraSeats||0;
       const seatText=seats>0?` · ${seats} paid seat${seats===1?'':'s'}`:'';
       mobWsMeta.textContent=`${tier}${seatText}`;
@@ -6729,6 +7035,57 @@ function showWsSection(name){
 }
 window.showWsSection=showWsSection;
 
+// ── Billing: one reading of the plan, its cycle and any event pass.
+// The admin code said 'yearly'/'monthly' and this page compared against
+// 'year', so every yearly customer was shown as monthly. Everything now asks
+// _billingCycle(), which answers 'year' | 'month' | null.
+// List prices mirror the published pricing (index.html TIERS); seat prices
+// are the existing ones. Unknown / legacy plans keep the Stagetimer Pro price.
+const _PLAN_CATALOG={
+  freelancer:{name:'Stagetimer Freelancer',month:12.95,year:129.50},
+  team:      {name:'Stagetimer Team',      month:29.95,year:299.50},
+  festival:  {name:'Stagetimer Festival',  month:39.95,year:399.50},
+};
+const _LEGACY_PLAN={name:'Stagetimer Pro',month:12.95,year:129.50};
+const _PASS_NAMES={'pass-single':'Single Event Pass','pass-weekend':'Weekend Festival Pass','pass-monthly':'Monthly Festival Pass'};
+function _billingCycle(co){
+  if(!co)return null;
+  // An explicit cycle in the plan slug / tier wins (e.g. "team-yearly").
+  const tag=[co.planSlug,co.subscriptionTier].filter(x=>x&&!/^pass/i.test(x)).join(' ').toLowerCase();
+  if(/year|annual/.test(tag))return'year';
+  if(/month/.test(tag))return'month';
+  // Otherwise: length of the paid period.
+  if(co.lastPaidAt&&co.currentPeriodEnd){
+    const days=(new Date(co.currentPeriodEnd)-new Date(co.lastPaidAt))/86400000;
+    if(!isNaN(days)&&days>0)return days>180?'year':'month';
+  }
+  // No payment date yet (e.g. trial): a period ending > 45 days out is yearly.
+  if(co.currentPeriodEnd){
+    const left=(new Date(co.currentPeriodEnd)-Date.now())/86400000;
+    if(!isNaN(left)&&left>45)return'year';
+  }
+  return null;
+}
+function _planInfo(co){
+  const slug=String(co?.planSlug||'').toLowerCase().replace(/[-_](monthly|yearly|annual|month|year)$/,'');
+  const plan=_PLAN_CATALOG[slug]||_LEGACY_PLAN;
+  const passOn=!!(co?.passSlug&&_passActive(co));
+  return{
+    name:plan.name,known:!!_PLAN_CATALOG[slug],
+    cycle:_billingCycle(co),
+    price:plan,
+    pass:passOn?{name:_PASS_NAMES[co.passSlug]||'Event pass',expiresAt:co.passExpiresAt}:null,
+  };
+}
+function _planLabel(co){
+  if(!co)return'Free';
+  const pi=_planInfo(co);
+  if(co.planSlug)return pi.name.replace(/^Stagetimer /,'');
+  if(co.subscriptionTier)return co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1);
+  if(pi.pass)return pi.pass.name;
+  return'Free';
+}
+
 function renderSubscriptionPage(){
   const body=document.getElementById('ws-subscription-body');
   if(!body)return;
@@ -6736,39 +7093,48 @@ function renderSubscriptionPage(){
   const co=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
   if(!co){body.innerHTML='<div class="ws-card"><div class="ws-card-meta">You are not linked to a workspace. Contact support.</div></div>';return;}
   const status=co.subscriptionStatus||'inactive';
-  const cycle=_detectCycle(co);
+  const pi=_planInfo(co);
+  const cycle=pi.cycle;
   const seats=co.extraSeats||0;
   const seatPrice=cycle==='year'?119.40:9.95;
-  const basePrice=cycle==='year'?129.50:12.95;
+  const basePrice=cycle==='year'?pi.price.year:pi.price.month;
   const cycleLabel=cycle==='year'?'year':'month';
   const cycleShort=cycle==='year'?'yr':'mo';
-  const statusColor=status==='active'?'#15803D':status==='past_due'?'#B45309':'#B91C1C';
+  const statusColor=(status==='active'||status==='trialing')?'#15803D':status==='past_due'?'#B45309':'#B91C1C';
   const statusLabel={active:'Active',trialing:'Trial',past_due:'Past due',canceled:'Cancelled',inactive:'Inactive',incomplete:'Incomplete'}[status]||status;
   const baseAnnualized=cycle==='year'?basePrice:basePrice*12;
   const seatsAnnualized=cycle==='year'?seatPrice*seats:seatPrice*12*seats;
   const totalAnnualized=baseAnnualized+seatsAnnualized;
   const totalMonthly=totalAnnualized/12;
+  // Event pass without a subscription: show the pass, not a recurring price.
+  const passOnly=!!pi.pass&&!['active','trialing','past_due'].includes(status);
 
   body.innerHTML=`
     <div class="ws-cards">
       <div class="ws-card">
         <div class="ws-card-title">Current plan</div>
-        <div class="ws-card-value">Stagetimer Pro</div>
+        <div class="ws-card-value">${escH(passOnly?pi.pass.name:pi.name)}</div>
         <div class="ws-card-meta">
-          <span style="color:${statusColor};font-weight:600;">${statusLabel}</span>
+          ${passOnly
+            ?`<span style="color:#15803D;font-weight:600;">Active</span> · until ${_fmtDate(pi.pass.expiresAt)}`
+            :`<span style="color:${statusColor};font-weight:600;">${escH(statusLabel)}</span>
           ${cycle?` · ${cycle==='year'?'Yearly':'Monthly'} billing`:''}
+          ${pi.pass?`<br>${escH(pi.pass.name)} · active until ${_fmtDate(pi.pass.expiresAt)}`:''}`}
         </div>
       </div>
       <div class="ws-card">
         <div class="ws-card-title">Monthly cost (effective)</div>
-        <div class="ws-card-value">€${totalMonthly.toFixed(2).replace('.',',')}</div>
-        <div class="ws-card-meta">Total annualized: €${totalAnnualized.toFixed(2).replace('.',',')}</div>
+        ${passOnly
+          ?`<div class="ws-card-value">One-time pass</div>
+        <div class="ws-card-meta">No recurring charge</div>`
+          :`<div class="ws-card-value">€${totalMonthly.toFixed(2).replace('.',',')}</div>
+        <div class="ws-card-meta">Total annualized: €${totalAnnualized.toFixed(2).replace('.',',')}</div>`}
       </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Plan breakdown</div>
       <div class="ws-divrow">
-        <div class="ws-divrow-label">Stagetimer Pro · base seat</div>
+        <div class="ws-divrow-label">${escH(pi.name)} · base seat</div>
         <div class="ws-divrow-value">€${basePrice.toFixed(2).replace('.',',')} / ${cycleLabel}</div>
       </div>
       <div class="ws-divrow">
@@ -6779,7 +7145,7 @@ function renderSubscriptionPage(){
         <div class="ws-divrow-label" style="font-weight:600;color:#0A0A0B;">Total</div>
         <div class="ws-divrow-value" style="font-size:14px;">€${(basePrice+seats*seatPrice).toFixed(2).replace('.',',')} / ${cycleLabel}</div>
       </div>
-      ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">Next renewal</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
+      ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">${status==='trialing'?'Trial ends':status==='canceled'?'Access until':'Next renewal'}</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
       ${co.lastPaidAt?`<div class="ws-divrow"><div class="ws-divrow-label">Last payment</div><div class="ws-divrow-value">${_fmtDate(co.lastPaidAt)}</div></div>`:''}
     </div>
     <div class="ws-card" style="margin-top:18px;">
@@ -6790,7 +7156,7 @@ function renderSubscriptionPage(){
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Invite member · €${seatPrice.toFixed(2).replace('.',',')}/${cycleShort}
         </button>
-        <button class="ws-btn-secondary" onclick="manageSubscription('${co.id}')">
+        <button class="ws-btn-secondary" onclick="manageSubscription(${_jsArg(co.id)})">
           Manage billing in Stripe
         </button>
       </div>
@@ -6808,12 +7174,12 @@ function renderSubscriptionPage(){
       const isOwner=u.role==='company_admin'||u.role==='admin'||u.role==='super_admin';
       const roleLabel=isOwner?'Admin':'Operator';
       return`<div class="ws-seat-row">
-        <div class="ws-seat-avatar">${initials}</div>
+        <div class="ws-seat-avatar">${escH(initials)}</div>
         <div class="ws-seat-info">
           <div class="ws-seat-name">${escH(u.name||u.email)}${pending}${isMe?' <span style="font-size:10px;color:#78716C;">(you)</span>':''}</div>
           <div class="ws-seat-email">${escH(u.email||'')} · ${roleLabel}</div>
         </div>
-        ${isMe?'':`<button class="ws-icon-btn danger" onclick="removeMember('${escH(u.id)}')" title="Remove member">
+        ${isMe?'':`<button class="ws-icon-btn danger" onclick="removeMember(${_jsArg(u.id)})" title="Remove member">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
         </button>`}
       </div>`;
@@ -6836,7 +7202,7 @@ function renderSettingsPage(){
         <div class="ws-field-help">The name your team and customers see across Stagetimer.</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="ws-btn-primary" onclick="saveWorkspaceName('${co.id}')">Save changes</button>
+        <button class="ws-btn-primary" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
       </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
@@ -6853,8 +7219,12 @@ async function saveWorkspaceName(id){
   if(!newName)return alert('Name cannot be empty.');
   const co=APP.companies.find(c=>c.id===id);
   if(!co||newName===co.name)return;
-  const{error}=await supa.from('companies').update({name:newName}).eq('id',id);
-  if(error)return alert('Save failed: '+error.message);
+  // Direct REST (bounded, refreshes an expired session) instead of
+  // supa.from(), which can hang on a stale auth refresh.
+  try{
+    const n=await _restWrite('companies','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:newName});
+    if(!n){const e=new Error('no rows');e.status=403;throw e;}
+  }catch(e){return alert(_friendlyError(e,'Saving the workspace name'));}
   co.name=newName;saveAPP();
   _updateWsSidebar();renderSettingsPage();
 }
@@ -6912,8 +7282,10 @@ async function saveProfileName(){
   const newName=(input?.value||'').trim();
   if(!newName)return alert('Name cannot be empty.');
   if(newName===CURRENT_USER.name)return;
-  const{error}=await supa.from('app_users').update({name:newName}).eq('id',CURRENT_USER.id);
-  if(error)return alert('Save failed: '+error.message);
+  try{
+    const n=await _restWrite('app_users','PATCH',`id=eq.${encodeURIComponent(CURRENT_USER.id)}`,{name:newName});
+    if(!n){const e=new Error('no rows');e.status=403;throw e;}
+  }catch(e){return alert(_friendlyError(e,'Saving your name'));}
   CURRENT_USER.name=newName;
   localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
   _updateWsSidebar();
@@ -6924,10 +7296,10 @@ window.saveProfileName=saveProfileName;
 async function saveProfilePassword(){
   const pw=document.getElementById('ws-profile-pw')?.value||'';
   const pw2=document.getElementById('ws-profile-pw2')?.value||'';
-  if(pw.length<8)return alert('Password must be at least 8 characters.');
+  if(pw.length<PW_MIN)return alert(`Password must be at least ${PW_MIN} characters.`);
   if(pw!==pw2)return alert('Passwords do not match.');
-  const{error}=await supa.auth.updateUser({password:pw});
-  if(error)return alert('Password update failed: '+error.message);
+  try{await _authUpdateUser({password:pw});}
+  catch(e){return alert(_authErrorText(e,'Updating the password'));}
   document.getElementById('ws-profile-pw').value='';
   document.getElementById('ws-profile-pw2').value='';
   alert('Password updated.');
@@ -6959,28 +7331,36 @@ async function removeMember(userId){
   if(!u){alert('User not found.');return;}
   if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
   try{
-    const{data:{session}}=await supa.auth.getSession();
-    if(!session?.access_token)throw new Error('Not authenticated.');
-    const res=await fetch(`${SUPA_URL}/functions/v1/remove-member`,{
+    // st_auth_v1 token (kept fresh) instead of supa.auth.getSession(), which
+    // has hung; one refresh-and-retry on 401.
+    if(_jwt()===SUPA_KEY){const e=new Error('not signed in');e.status=401;throw e;}
+    const post=()=>fetch(`${SUPA_URL}/functions/v1/remove-member`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${_jwt()}`,'apikey':SUPA_KEY},
       body:JSON.stringify({userId})
     });
-    const data=await res.json().catch(()=>({error:'Invalid response.'}));
-    if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
-    // Refresh
-    const[uRes,cRes]=await Promise.all([
-      supa.from('app_users').select('*'),
-      _supaCompanies(),
-    ]);
-    if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
+    let res=await post();
+    if(res.status===401&&await _refreshAuthToken())res=await post();
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||`HTTP ${res.status}`);e.status=res.status;throw e;}
+    // Refresh (bounded: the member is already removed, a slow reload must
+    // not hide that).
+    try{
+      const[uRes,cRes]=await _withTimeout(Promise.all([
+        supa.from('app_users').select('*'),
+        _supaCompanies(),
+      ]),10000);
+      if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
+      if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
+    }catch(e){console.warn('[removeMember] refresh failed:',e?.message||e);}
     saveAPP();
     renderSubscriptionPage();
     renderAdmin?.();
     alert(data.seatDecremented?'Member removed. Seat released.':'Member removed.');
   }catch(e){
-    alert('Failed to remove: '+(e.message||e));
+    // The edge function's own `error` text is written for people; HTTP
+    // codes and network failures get the generic wording.
+    alert(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not remove the member: '+e.message:_friendlyError(e,'Removing the member'));
   }
 }
 window.removeMember=removeMember;
@@ -6996,14 +7376,22 @@ function openProject(id){
 // Direct REST on the user's token + row-count check. Under RLS a request
 // that matches no rows returns 200 with an empty body, so "did nothing" and
 // "succeeded" look identical unless we ask for the representation back.
+// 10s ceiling and one refresh-and-retry on 401 (expired session).
 async function _restWrite(table,method,filter,body){
-  const res=await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`,{
-    method,
-    headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Prefer':'return=representation'},
-    ...(body?{body:JSON.stringify(body)}:{}),
-  });
+  const go=async()=>{
+    const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      return await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`,{
+        method,signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Prefer':'return=representation'},
+        ...(body?{body:JSON.stringify(body)}:{}),
+      });
+    }finally{clearTimeout(tmo);}
+  };
+  let res=await go();
+  if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await go();
   const txt=await res.text().catch(()=>'');
-  if(!res.ok)throw new Error('HTTP '+res.status+(txt?' - '+txt:''));
+  if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt:''));e.status=res.status;throw e;}
   let rows=[];try{rows=JSON.parse(txt||'[]');}catch(_){}
   return Array.isArray(rows)?rows.length:0;
 }
@@ -7012,7 +7400,7 @@ async function deleteProject(id){
   try{
     const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
     if(!n){alert('Nothing was deleted - you may not have permission for this project.');return;}
-  }catch(e){alert('Error deleting: '+(e.message||e));return;}
+  }catch(e){alert(_friendlyError(e,'Deleting the project'));return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
   saveAPP();renderDash();
@@ -7020,11 +7408,18 @@ async function deleteProject(id){
 async function renameProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   const newName=prompt('Rename project:',proj.name);
-  if(!newName||newName.trim()===proj.name)return;
+  if(!newName||!newName.trim()||newName.trim()===proj.name)return;
+  const oldName=proj.name;
   proj.name=newName.trim();
   saveAPP();
-  try{await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});}
-  catch(e){alert('Rename failed: '+(e.message||e));}
+  try{
+    const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});
+    if(!n){const e=new Error('no rows');e.status=403;throw e;}
+  }catch(e){
+    // Put the old name back - it used to stay renamed locally only.
+    proj.name=oldName;saveAPP();
+    alert(_friendlyError(e,'Renaming the project'));
+  }
   const lnEl=document.getElementById('logo-name');
   if(APP.activeProjectId===id&&lnEl)lnEl.textContent=proj.name;
   renderDash();
@@ -7047,7 +7442,7 @@ function renderSubscriptionBanner(){
   if(status==='past_due'){
     bg='rgba(249,115,22,.08)';col='#f97316';
     msg=`Payment for "${co.name}" failed. Update your payment method to keep working.`;
-    btn=`<button class="btn-p" onclick="manageSubscription('${co.id}')" style="padding:8px 14px;font-size:12px;">Open payment method</button>`;
+    btn=`<button class="btn-p" onclick="manageSubscription(${_jsArg(co.id)})" style="padding:8px 14px;font-size:12px;">Open payment method</button>`;
   }else if(status==='canceled'||status==='inactive'||status==='incomplete'){
     bg='rgba(99,102,241,.08)';col='#a5b4fc';
     msg=`"${co.name}" does not have an active subscription. Start a Stagetimer subscription to create projects.`;
@@ -7088,7 +7483,7 @@ function openProjModal(){
   }
   const sel=document.getElementById('pm-co');
   const companies=CURRENT_USER?.role==='super_admin'?APP.companies:APP.companies.filter(c=>c.id===coId);
-  sel.innerHTML=companies.map(c=>`<option value="${c.id}"${c.id===coId?' selected':''}>${escH(c.name)}</option>`).join('');
+  sel.innerHTML=companies.map(c=>`<option value="${escH(c.id)}"${c.id===coId?' selected':''}>${escH(c.name)}</option>`).join('');
   sel.style.display=companies.length<=1?'none':'block';
   document.getElementById('pm-name').value='';
   document.getElementById('proj-modal-ov').classList.add('open');
@@ -7148,35 +7543,38 @@ async function createProject(){
     // source: it can stall on a stale refresh token even though the fetch
     // below is already protected by AbortController). AbortController
     // gives us a hard 8s ceiling no matter what happens internally.
-    const ctrl=new AbortController();
-    const tmo=setTimeout(()=>ctrl.abort(),8000);
+    const insert=async()=>{
+      const ctrl=new AbortController();
+      const tmo=setTimeout(()=>ctrl.abort(),8000);
+      try{
+        return await fetch(`${SUPA_URL}/rest/v1/projects`,{
+          method:'POST',
+          signal:ctrl.signal,
+          headers:{
+            'Content-Type':'application/json',
+            'apikey':SUPA_KEY,
+            'Authorization':`Bearer ${_jwt()}`,
+            'Prefer':'return=minimal',
+          },
+          body:JSON.stringify(row),
+        });
+      }finally{clearTimeout(tmo);}
+    };
     let res;
     try{
-      res=await fetch(`${SUPA_URL}/rest/v1/projects`,{
-        method:'POST',
-        signal:ctrl.signal,
-        headers:{
-          'Content-Type':'application/json',
-          'apikey':SUPA_KEY,
-          'Authorization':`Bearer ${_jwt()}`,
-          'Prefer':'return=minimal',
-        },
-        body:JSON.stringify(row),
-      });
+      res=await insert();
+      // Expired session: refresh once and retry (same row id, so no duplicate).
+      if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await insert();
     }catch(e){
-      clearTimeout(tmo);
-      if(e?.name==='AbortError'){
-        console.error('[createProject] timed out after 8s');
-        alert('Project creation timed out. Check your internet connection and try again.');
-        return;
-      }
-      throw e;
+      if(e?.name==='AbortError')console.error('[createProject] timed out after 8s');
+      alert(_friendlyError(e,'Creating the project'));
+      return;
     }
-    clearTimeout(tmo);
     if(!res.ok){
       const body=await res.text().catch(()=>'');
       console.error('[createProject] HTTP',res.status,body);
-      alert('Failed to create project: HTTP '+res.status+(body?' - '+body:''));
+      const e=new Error('HTTP '+res.status);e.status=res.status;
+      alert(_friendlyError(e,'Creating the project'));
       return;
     }
     APP.projects.push(proj);
@@ -7184,7 +7582,7 @@ async function createProject(){
     closeProjModal();renderDash();
   }catch(e){
     console.error('[createProject] threw',e);
-    alert('Failed to create project: '+(e?.message||String(e)));
+    alert(_friendlyError(e,'Creating the project'));
   }finally{
     if(btn){btn.disabled=false;btn.textContent='Create';}
   }
@@ -7388,11 +7786,10 @@ function _fmtDate(iso){if(!iso)return'-';const d=new Date(iso);if(isNaN(d))retur
 function _projectsFor(coId){return APP.projects.filter(p=>p.companyId===coId);}
 // Pro subscription prices (live in Stripe)
 const PRO_MONTHLY=12.95, PRO_YEARLY=129.50;
+// Admin wording of _billingCycle() (shared helper, one source of truth).
 function _detectCycle(c){
-  if(!c.lastPaidAt||!c.currentPeriodEnd)return null;
-  const days=(new Date(c.currentPeriodEnd)-new Date(c.lastPaidAt))/86400000;
-  if(isNaN(days))return null;
-  return days>180?'yearly':'monthly';
+  const cy=_billingCycle(c);
+  return cy==='year'?'yearly':cy==='month'?'monthly':null;
 }
 function _mrrFor(c){
   if(c.subscriptionStatus!=='active')return 0;
@@ -8111,8 +8508,8 @@ function renderCrewList(){
   list.innerHTML=users.map(u=>{
     const checked=memberIds.includes(u.id);
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:${checked?'var(--s3)':'transparent'};">
-      <input type="checkbox" ${checked?'checked':''} onchange="toggleCrewMember('${u.id}',this.checked)" style="cursor:pointer;width:16px;height:16px;">
-      <span style="font-size:13px;">${u.name||u.email}</span>
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleCrewMember(${_jsArg(u.id)},this.checked)" style="cursor:pointer;width:16px;height:16px;">
+      <span style="font-size:13px;">${escH(u.name||u.email||'')}</span>
     </label>`;
   }).join('');
 }
@@ -8120,7 +8517,8 @@ function toggleCrewMember(userId,add){
   if(!G.memberIds)G.memberIds=[];
   if(add){if(!G.memberIds.includes(userId))G.memberIds.push(userId);}
   else{G.memberIds=G.memberIds.filter(id=>id!==userId);}
-  saveProj();renderCrewList();
+  // Was saveProj() - which does not exist, so the toggle threw before saving.
+  save();renderCrewList();
 }
 
 // ══ ONESIGNAL
@@ -8413,7 +8811,7 @@ async function completeSignup(){
   const err=document.getElementById('su-fin-err');
   const btn=document.getElementById('su-fin-btn');
   err.style.display='none';
-  if(!pw1||pw1.length<8){err.textContent='Password must be at least 8 characters.';err.style.display='block';return;}
+  if(!pw1||pw1.length<PW_MIN){err.textContent=`Password must be at least ${PW_MIN} characters.`;err.style.display='block';return;}
   if(pw1!==pw2){err.textContent='Passwords do not match.';err.style.display='block';return;}
   btn.disabled=true;btn.textContent='Working…';
   try{
@@ -8423,11 +8821,25 @@ async function completeSignup(){
       body:JSON.stringify({companyId:SIGNUP_CID,token:SIGNUP_TOKEN,password:pw1}),
     });
     const data=await res.json().catch(()=>({}));
-    if(!res.ok||data.error){throw new Error(data.error||('HTTP '+res.status));}
+    if(!res.ok||data.error){const e=new Error(data.error||('HTTP '+res.status));e.status=res.status;e.serverMsg=data.error||'';throw e;}
     if(data.session?.access_token&&data.session?.refresh_token){
-      await supa.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+      // Same path as a normal login: store the session, hand it to supa in
+      // the background, start the app. This used to await supa.setSession
+      // (which can hang) and then never started the app - the auth listener
+      // that once did was removed in auth init v2 - leaving a blank screen.
       history.replaceState({},'',location.pathname);
       document.getElementById('signup-setup').style.display='none';
+      const sess={access_token:data.session.access_token,refresh_token:data.session.refresh_token};
+      try{supa.auth.setSession(sess).catch(e=>console.warn('[signup] setSession bg warn:',e));}catch(e){}
+      const user=data.session.user||await _authProbe(sess.access_token);
+      if(_appStarted)return;
+      _appStarted=true;
+      saveAuthSession(sess);
+      document.documentElement.classList.remove('no-session');
+      document.getElementById('loader').style.display='flex';
+      _showLogoutBtn(true);
+      try{await _startApp({...sess,user});}
+      catch(e){console.error('[signup] _startApp failed:',e);_hideLoader();}
     }else if(data.requireVerification){
       // Show "check your email" message inside the same overlay
       history.replaceState({},'',location.pathname);
@@ -8447,7 +8859,7 @@ async function completeSignup(){
       alert('Account created. Please log in now with your new password.');
     }
   }catch(e){
-    err.textContent=(e.message||String(e));err.style.display='block';
+    err.textContent=e?.serverMsg||_friendlyError(e,'Creating your account');err.style.display='block';
     btn.disabled=false;btn.textContent='Create account & log in';
   }
 }
@@ -8665,20 +9077,35 @@ function triggerLogoUpload(projId){
   document.getElementById('logo-file-input').click();
 }
 
+// The logo lives as a data URL inside projects.data (and the local cache),
+// so it gets the same treatment as artist photos: max 600px, JPEG .85 -
+// or PNG for formats that may be transparent - keeping the smaller of the
+// result and the original.
+async function _compressLogo(dataUrl,type){
+  const alpha=/png|gif|webp|svg/i.test(type||'');
+  const out=await _compressImage(dataUrl,600,.85,alpha?'image/png':'image/jpeg');
+  const small=await new Promise(r=>{const i=new Image();i.onload=()=>r(i.width<=600&&i.height<=600);i.onerror=()=>r(false);i.src=dataUrl;});
+  return(small&&dataUrl.length<=out.length)?dataUrl:out;
+}
 function handleLogoUpload(event){
   const file=event.target.files[0];
   if(!file)return;
+  if(!file.type.startsWith('image/')){alert('This file is not an image.');event.target.value='';return;}
+  if(file.size>25*1024*1024){alert('Image is too large (>25MB). Please choose a smaller file.');event.target.value='';return;}
+  const tgt=_logoProjectTarget;
   const reader=new FileReader();
-  reader.onload=e=>{
-    const proj=APP.projects.find(p=>p.id===_logoProjectTarget);
+  reader.onload=async e=>{
+    let logo;
+    try{logo=await _compressLogo(e.target.result,file.type);}
+    catch(err){console.error('logo compress failed:',err);alert('The logo could not be processed. Try a PNG or JPEG file.');return;}
+    const proj=APP.projects.find(p=>p.id===tgt);
     if(!proj)return;
     if(!proj.data)proj.data={};
-    proj.data.logo=e.target.result;
+    proj.data.logo=logo;
     // If this is the active project, update G too
-    if(_logoProjectTarget===APP.activeProjectId)G.logo=e.target.result;
+    if(tgt===APP.activeProjectId)G.logo=logo;
     // Persist + push THE SPECIFIC project (not just the active one)
     localStorage.setItem(AKEY,JSON.stringify(APP));
-    const tgt=_logoProjectTarget;
     _pendingPush[tgt]=true;
     clearTimeout(_projSync[tgt]);
     _projSync[tgt]=setTimeout(()=>_pushProject(tgt),300);
@@ -8872,8 +9299,11 @@ async function doLogin(){
     clearTimeout(tmo);
     if(!res.ok){
       const body=await res.json().catch(()=>({}));
-      const msg=body.error_description||body.msg||body.error||('HTTP '+res.status);
-      errEl.textContent='Login failed: '+msg;
+      const msg=body.error_description||body.msg||body.error||'';
+      // Auth's own 4xx sentences ("Invalid login credentials") are fine to
+      // show; a bare status or a server error gets the readable wording.
+      errEl.textContent=(res.status<500&&msg&&res.status!==429)?'Login failed: '+msg
+        :_friendlyError(Object.assign(new Error('HTTP '+res.status),{status:res.status}),'Login');
       errEl.style.display='block';
       btn.textContent='Log in';btn.disabled=false;
       return;
@@ -8910,20 +9340,43 @@ async function doLogin(){
     if(e?.name==='AbortError'){
       errEl.textContent='Login timed out after 10s. Check your connection and try again.';
     }else{
-      errEl.textContent='Login failed: '+(e?.message||String(e));
+      errEl.textContent=_friendlyError(e,'Login');
     }
     errEl.style.display='block';
     btn.textContent='Log in';btn.disabled=false;
   }
 }
-function doLogout(){
+// Sign out on the server FIRST (bounded), then forget the tokens. The old
+// fire-and-forget signOut() was cut off by the redirect, so the refresh
+// token often stayed valid. scope=local ends only THIS device's session:
+// booth screens that share the account stay logged in.
+async function _serverSignOut(){
+  const post=async tok=>{
+    const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),4000);
+    try{return await fetch(`${SUPA_URL}/auth/v1/logout?scope=local`,{method:'POST',signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${tok}`}});}
+    finally{clearTimeout(tmo);}
+  };
+  const st=_storedAuth();
+  if(st?.access_token){
+    try{
+      let res=await post(st.access_token);
+      if(res.status===401&&await _refreshAuthToken())res=await post(_jwt());
+      if(!res.ok&&res.status!==401&&res.status!==403&&res.status!==404)console.warn('[logout] server sign-out HTTP',res.status);
+    }catch(e){console.warn('[logout] server sign-out failed:',e?.message||e);}
+  }
+  // Let supa drop its own copy too (it makes the same call with its token).
+  try{await _withTimeout(supa.auth.signOut({scope:'local'}),3000);}catch(e){console.warn('[logout] supa signOut:',e?.message||e);}
+}
+async function doLogout(){
+  if(_authLoggingOut)return;
+  _authLoggingOut=true;
+  await _serverSignOut();
   saveAuthSession(null);
   localStorage.removeItem('st_active_proj');
   localStorage.removeItem('st_current_user');
   // Wipe Supabase session keys from localStorage directly so reload sees no session
   Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k);});
   try{if(window._OS?.logout)window._OS.logout();}catch(e){}
-  try{supa.auth.signOut();}catch(e){}
   location.href='/';
 }
 function _showLogoutBtn(session){
@@ -8959,14 +9412,75 @@ function showLoginForm(){
   document.getElementById('login-form').style.display='block';
   document.getElementById('reset-ok').style.display='none';
 }
+// Auth endpoints answer with {msg|error_description|message|error}; keep the
+// server's sentence when it is meant for people (422 "password too weak"),
+// otherwise fall back to _friendlyError.
+async function _authError(res){
+  const j=await res.json().catch(()=>({}));
+  const m=j.msg||j.error_description||j.message||j.error||'';
+  const e=new Error(m||('HTTP '+res.status));e.status=res.status;e.serverMsg=(res.status===400||res.status===422)?m:'';
+  return e;
+}
+function _authErrorText(e,action){
+  if(e?.status===429)return'Too many attempts. Wait a minute and try again.';
+  if(e?.serverMsg)return e.serverMsg.replace(/\.?$/,'.');
+  return _friendlyError(e,action);
+}
+const PW_MIN=8; // one rule everywhere: signup, set-password, profile
 async function sendReset(){
   const email=document.getElementById('li-reset-email').value.trim();
   const btn=document.getElementById('reset-btn');
-  if(!email)return;
+  const ok=document.getElementById('reset-ok');
+  const errEl=document.getElementById('login-err');
+  ok.style.display='none';errEl.style.display='none';
+  if(!email){errEl.textContent='Please enter your email address.';errEl.style.display='block';return;}
   btn.textContent='Working…';btn.disabled=true;
-  await supa.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
-  document.getElementById('reset-ok').style.display='block';
-  btn.textContent='Send reset link';btn.disabled=false;
+  // Direct REST with a ceiling, like doLogin. The old call ignored the
+  // result and always said "Email sent!", also when the request failed.
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),10000);
+  try{
+    const res=await fetch(`${SUPA_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(location.origin+location.pathname)}`,{
+      method:'POST',signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
+      body:JSON.stringify({email}),
+    });
+    if(!res.ok)throw await _authError(res);
+    ok.style.display='block';
+  }catch(e){
+    errEl.textContent=_authErrorText(e,'Sending the reset link');errEl.style.display='block';
+  }finally{
+    clearTimeout(tmo);
+    btn.textContent='Send reset link';btn.disabled=false;
+  }
+}
+// PUT /auth/v1/user on the stored session (supa.auth.updateUser has hung).
+async function _authUpdateUser(body){
+  const put=async tok=>{
+    const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      return await fetch(`${SUPA_URL}/auth/v1/user`,{
+        method:'PUT',signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${tok}`},
+        body:JSON.stringify(body),
+      });
+    }finally{clearTimeout(tmo);}
+  };
+  const tok=_jwt();
+  if(tok===SUPA_KEY){const e=new Error('not signed in');e.status=401;throw e;}
+  let res=await put(tok);
+  if(res.status===401&&await _refreshAuthToken())res=await put(_jwt());
+  if(!res.ok)throw await _authError(res);
+  return await res.json().catch(()=>null);
+}
+// Opened by a recovery or invite link (see _handleAuthLink).
+function _openSetPw(){
+  _hideLoader();
+  document.documentElement.classList.remove('no-session');
+  document.getElementById('login').classList.remove('open');
+  document.getElementById('set-pw-err').style.display='none';
+  document.getElementById('set-pw').classList.add('open');
+  setTimeout(()=>document.getElementById('new-pw')?.focus(),120);
 }
 async function setNewPassword(){
   const pw=document.getElementById('new-pw').value;
@@ -8974,24 +9488,29 @@ async function setNewPassword(){
   const errEl=document.getElementById('set-pw-err');
   const btn=document.getElementById('set-pw-btn');
   errEl.style.display='none';
-  if(pw.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
+  if(pw.length<PW_MIN){errEl.textContent=`Password must be at least ${PW_MIN} characters.`;errEl.style.display='block';return;}
   if(pw!==pw2){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
   btn.textContent='Working…';btn.disabled=true;
-  const{error}=await supa.auth.updateUser({password:pw,data:{invited:false}});
-  if(error){
-    errEl.textContent='Error: '+error.message;errEl.style.display='block';
+  let user;
+  try{user=await _authUpdateUser({password:pw,data:{invited:false}});}
+  catch(e){
+    errEl.textContent=e?.status===401
+      ?'This link has expired. Go back to the login screen and request a new reset link.'
+      :_authErrorText(e,'Setting the password');
+    errEl.style.display='block';
     btn.textContent='Set password';btn.disabled=false;
     return;
   }
   document.getElementById('set-pw').classList.remove('open');
   document.getElementById('loader').style.display='flex';
-  // Force a token refresh so the cached JWT picks up invited:false; otherwise the
-  // next page reload re-triggers the set-password modal (cached JWT still says invited:true)
-  try{await supa.auth.refreshSession();}catch(e){console.warn('refreshSession after updateUser:',e);}
-  const{data:{session}}=await supa.auth.getSession();
-  if(session)saveAuthSession(session);
+  // Refresh so the stored JWT carries invited:false (bounded).
+  await _refreshAuthToken().catch(()=>false);
+  const st=_storedAuth()||{};
+  if(!user?.email)user=await _authProbe(st.access_token);
+  _appStarted=true;
   _showLogoutBtn(true);
-  await _startApp(session);
+  try{await _startApp({access_token:st.access_token,refresh_token:st.refresh_token,user});}
+  catch(e){console.error('[set-pw] _startApp failed:',e);_hideLoader();}
 }
 
 // ══ INIT
@@ -9085,6 +9604,53 @@ async function _authRefresh(refresh_token){
     return null;
   }catch(e){clearTimeout(tmo);return null;}
 }
+// ── Links from the auth emails (reset password, invite, confirm signup).
+// The templates link to {{ .ConfirmationURL }}: Supabase verifies the token
+// and redirects here with the session in the hash (implicit flow, which is
+// what this client and the edge functions use):
+//   #access_token=…&refresh_token=…&expires_in=…&token_type=bearer&type=recovery|invite|signup|magiclink
+// or, for a used/expired link:  #error=access_denied&error_code=otp_expired&error_description=…
+// supa runs with detectSessionInUrl:false, so nothing read these before and
+// reset / invite links just showed the login form. Returns true when it took
+// over the start-up.
+function _loginMessage(msg){
+  _hideLoader();_showLogin();
+  const el=document.getElementById('login-err');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+async function _handleAuthLink(){
+  const raw=(location.hash||'').replace(/^#/,'');
+  if(!raw)return false;
+  const h=new URLSearchParams(raw);
+  const access_token=h.get('access_token'),refresh_token=h.get('refresh_token');
+  const errCode=h.get('error_code')||h.get('error');
+  if(!access_token&&!errCode)return false;
+  // Tokens out of the address bar and history straight away.
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}
+  if(errCode){
+    _loginMessage(errCode==='otp_expired'
+      ?'This link has expired or was already used. Use "Forgot password?" to get a new one.'
+      :'This link could not be used'+(h.get('error_description')?': '+h.get('error_description'):'')+'. Request a new one, or log in.');
+    return true;
+  }
+  if(!refresh_token){_loginMessage('This link is incomplete. Request a new one, or log in.');return true;}
+  document.documentElement.classList.remove('no-session');
+  document.getElementById('login').classList.remove('open');
+  document.getElementById('loader').style.display='flex';
+  const user=await _authProbe(access_token);
+  if(!user){_loginMessage('This link has expired or was already used. Use "Forgot password?" to get a new one.');return true;}
+  saveAuthSession({access_token,refresh_token});
+  try{supa.auth.setSession({access_token,refresh_token}).catch(e=>console.warn('[auth-link] setSession bg warn:',e));}
+  catch(e){console.warn('[auth-link] setSession threw:',e);}
+  const type=h.get('type')||'';
+  if(type==='recovery'||type==='invite'){_openSetPw();return true;}
+  // signup confirmation / magic link: they are simply logged in now.
+  _appStarted=true;
+  _showLogoutBtn(true);
+  try{await _startApp({access_token,refresh_token,user});}
+  catch(e){console.error('[auth-link] _startApp failed:',e);_hideLoader();_appStarted=false;_showLogin();}
+  return true;
+}
 
 (async()=>{
   try{loadAPPCache();}catch(e){}
@@ -9104,6 +9670,8 @@ async function _authRefresh(refresh_token){
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
+  // Reset / invite / confirm links carry their own session in the hash.
+  if(await _handleAuthLink())return;
   // No stored session -> straight to login. Fast path for incognito.
   let stored=null;
   try{stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');}catch(_){}
