@@ -50,8 +50,8 @@
         const rows=l.ok?await l.json():null;
         return Array.isArray(rows)?rows[0]||null:null;
       })
-      .then(row=>row||null).catch(()=>null);
-  }catch(e){}
+      .then(row=>row||null).catch(e=>{console.warn('[public] early fetch failed, loadPublicView retries:',e&&e.message||e);return null;});
+  }catch(e){console.warn('[public] early fetch not started:',e&&e.message||e);}
 })();
 // EARLY NO-SESSION DETECTION (CSS-driven, no DOM, no network).
 // Inline + synchronous, placed BEFORE any blocking external script so the
@@ -2333,6 +2333,14 @@ async function _rpc(fn,args,timeoutMs){
   }
   return await res.json().catch(()=>null);
 }
+// Did _rpc fail because the function does not exist (migration not applied
+// yet)? PostgREST answers 404 + PGRST202; a bare 404 without a body is
+// treated the same. A function that exists and refuses (403, its own
+// errors) is NOT missing: callers must not fall back to a direct write then.
+function _rpcFnMissing(e){
+  const m=String((e&&e.message)||e||'');
+  return /PGRST202|could not find the function/i.test(m)||((e&&e.status)===404&&/^HTTP 404$/.test(m.trim()));
+}
 function saveAuthSession(sess){
   if(sess)localStorage.setItem(ST_AUTH,JSON.stringify({access_token:sess.access_token,refresh_token:sess.refresh_token}));
   else localStorage.removeItem(ST_AUTH);
@@ -2403,7 +2411,7 @@ async function _refreshAuthToken(){
     const s=await _authRefresh(rt);
     if(s?.access_token){
       saveAuthSession(s);
-      try{supa.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}).catch(()=>{});}catch(_){}
+      try{supa.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}).catch(e=>console.warn('[auth] setSession after refresh (realtime only):',e?.message||e));}catch(e){console.warn('[auth] setSession threw:',e);}
       return true;
     }
     return false;
@@ -2453,6 +2461,46 @@ async function restoreAuthSession(){
 
 function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.className=s;}
 
+// Small non-blocking notice for operators, bottom centre. Control screens
+// only: never on share links (PUBLIC_MODE) and hidden while the operator has
+// Stage View or a one-off timer full screen. One per key; a newer notice with
+// the same key replaces the old one.
+// opts: {key, actionLabel, onAction, sticky (no auto-hide), ms}
+function _opNotice(msg,opts){
+  if(window.PUBLIC_MODE)return null;
+  opts=opts||{};
+  try{
+    let wrap=document.getElementById('op-notices');
+    if(!wrap){
+      const css=document.createElement('style');
+      css.textContent='#op-notices{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:10050;display:flex;flex-direction:column;gap:8px;width:min(560px,calc(100vw - 32px));pointer-events:none;}'
+        +'@media (max-width:768px){#op-notices{bottom:calc(84px + env(safe-area-inset-bottom));}}'
+        +'body:has(#sv.open) #op-notices,body:has(#otv.open) #op-notices{display:none;}'
+        +'.op-notice{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:10px;background:#1d1d23;color:#eeeef8;border:1px solid rgba(255,255,255,.13);box-shadow:0 8px 28px rgba(0,0,0,.45);font:500 13px/1.4 var(--ff,system-ui,sans-serif);}'
+        +'.op-notice>span{flex:1;min-width:0;}'
+        +'.op-notice>button{flex-shrink:0;font:600 12px var(--ff,system-ui,sans-serif);border-radius:7px;padding:6px 10px;cursor:pointer;border:1px solid rgba(255,255,255,.13);background:transparent;color:inherit;}'
+        +'.op-notice>button.op-act{background:#eeeef8;color:#0b0b0e;border-color:#eeeef8;}';
+      document.head.appendChild(css);
+      wrap=document.createElement('div');wrap.id='op-notices';
+      wrap.setAttribute('role','status');wrap.setAttribute('aria-live','polite');
+      document.body.appendChild(wrap);
+    }
+    const key=opts.key||msg;
+    for(const c of [...wrap.children])if(c.dataset.key===key)c.remove();
+    const el=document.createElement('div');el.className='op-notice';el.dataset.key=key;
+    const txt=document.createElement('span');txt.textContent=msg;el.appendChild(txt);
+    if(opts.actionLabel&&typeof opts.onAction==='function'){
+      const b=document.createElement('button');b.type='button';b.className='op-act';b.textContent=opts.actionLabel;
+      b.onclick=()=>{el.remove();opts.onAction();};el.appendChild(b);
+    }
+    const x=document.createElement('button');x.type='button';x.textContent='✕';x.setAttribute('aria-label','Dismiss');
+    x.onclick=()=>el.remove();el.appendChild(x);
+    wrap.appendChild(el);
+    if(!opts.sticky)setTimeout(()=>el.remove(),opts.ms||15000);
+    return el;
+  }catch(e){console.warn('[notice] could not show:',msg,e);return null;}
+}
+
 // ══ APP STATE (multi-project)
 const AKEY='st_app_v1';
 let APP,G;
@@ -2484,7 +2532,7 @@ function loadAPPCache(){
   if(!APP.users)APP.users=[];
   if(!APP.timers)APP.timers=[];
   // Restore current user from cache so renderDash filters correctly on first render
-  try{const cu=localStorage.getItem('st_current_user');if(cu)CURRENT_USER=JSON.parse(cu);}catch(e){}
+  try{const cu=localStorage.getItem('st_current_user');if(cu)CURRENT_USER=JSON.parse(cu);}catch(e){console.warn('[cache] st_current_user unreadable, waiting for the server:',e);}
 }
 
 // Load from Supabase (async, merges into APP)
@@ -2523,7 +2571,8 @@ async function _restGet(table,cols){
 // the derived boolean setup_pending ("awaiting activation").
 // Until the hotfix migration adds setup_pending (and while a column in this list
 // is missing on the server), PostgREST answers 42703 / "column ... does not
-// exist"; we then fall back to select=* so the app keeps loading either way.
+// exist"; we then read the list without that column (_companiesWithout) so the
+// app keeps loading either way.
 const COMPANY_COLS='id,name,stripe_customer_id,stripe_subscription_id,subscription_status,subscription_tier,project_limit,current_period_end,trial_ends_at,last_paid_at,pending_name,pending_email,setup_pending,extra_seats,seat_subscription_item_id,plan_slug,live_stages_limit,live_stages_override,pass_slug,pass_expires_at';
 function _isMissingColumn(err){
   const m=((err&&(err.message||err.details||err.hint))||'')+' '+((err&&err.code)||'');
@@ -2554,16 +2603,24 @@ function _mapCompany(c){
     passExpiresAt:c.pass_expires_at||null,
   };
 }
-async function _restGetCompanies(){
-  const r=await _restGet('companies',COMPANY_COLS);
-  if(r.error&&_isMissingColumn(r.error))return _restGet('companies');
-  return r;
+// Missing column: retry without exactly that column (never select=*, which
+// would read setup_token again). Before the hotfix migration's step 1 that is
+// setup_pending, and the "Awaiting activation" badge then stays off.
+async function _companiesWithout(get){
+  let cols=COMPANY_COLS.split(',');
+  for(let i=0;i<4;i++){
+    const r=await get(cols.join(','));
+    if(!(r.error&&_isMissingColumn(r.error)))return r;
+    const txt=String(r.error.message||'')+' '+String(r.error.details||'');
+    const bad=(/column\s+"?(?:companies\.)?([a-z_]+)"?\s+does not exist/i.exec(txt)||[])[1]||(cols.includes('setup_pending')?'setup_pending':'');
+    if(!bad||bad==='id'||!cols.includes(bad))return r;
+    console.warn('[companies] column missing on the server, reading without it:',bad);
+    cols=cols.filter(c=>c!==bad);
+  }
+  return get(cols.join(','));
 }
-async function _supaCompanies(){
-  const r=await supa.from('companies').select(COMPANY_COLS);
-  if(r.error&&_isMissingColumn(r.error))return supa.from('companies').select('*');
-  return r;
-}
+async function _restGetCompanies(){return _companiesWithout(cols=>_restGet('companies',cols));}
+async function _supaCompanies(){return _companiesWithout(cols=>supa.from('companies').select(cols));}
 
 async function loadAPPRemote(){
   setSyncDot('ing');
@@ -2661,7 +2718,7 @@ function _saveSel(pid){
 }
 function _applySel(pid){
   if(!pid)return;
-  let s=null;try{s=JSON.parse(localStorage.getItem(_SEL_KEY(pid))||'null');}catch(_){}
+  let s=null;try{s=JSON.parse(localStorage.getItem(_SEL_KEY(pid))||'null');}catch(e){console.warn('[sel] stored selection unreadable, using the project\'s:',e);}
   if(!s)return; // first visit on this device: start from the blob's values
   if(s.activeStage&&(G.stages||[]).some(x=>x.id===s.activeStage))G.activeStage=s.activeStage;
   if(s.activeDay&&(G.days||[]).some(d=>d.id===s.activeDay))G.activeDay=s.activeDay;
@@ -2721,6 +2778,8 @@ function _errStatus(e){if(!e)return 0;if(e.status)return +e.status;const m=/HTTP
 function humanError(e,action){
   if(_isQuota(e)||/quota/i.test(String((e&&e.message)||'')))return'This device ran out of storage space. Changes still go to the server, but the offline copy on this device is incomplete.';
   if(typeof navigator!=='undefined'&&navigator.onLine===false)return'You are offline. Changes stay on this device and are saved when the connection is back.';
+  const pe=_planError(e);
+  if(pe)return pe.message||(pe.kind==='subscription_required'?'This workspace has no active subscription or event pass.':'Your plan does not include more live stages.');
   return _friendlyError(e,action||'Saving');
 }
 
@@ -2918,7 +2977,11 @@ async function _sbFetch(path,init,ms,anon){
     const res=await fetch(`${SUPA_URL}/rest/v1/${path}`,{...(init||{}),signal:ctrl.signal,
       headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${anon?SUPA_KEY:_jwt()}`,'Accept':'application/json',...((init&&init.headers)||{})}});
     const txt=await res.text().catch(()=>'');
-    if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt.slice(0,300):''));e.status=res.status;throw e;}
+    if(!res.ok){
+      const e=new Error('HTTP '+res.status+(txt?' - '+txt.slice(0,300):''));e.status=res.status;
+      try{e.body=txt?JSON.parse(txt):null;}catch(_){e.body=null;}   // PostgREST error: {code,message,details,hint}
+      throw e;
+    }
     try{return txt?JSON.parse(txt):null;}catch(_){return null;}
   }catch(e){
     if(e&&e.name==='AbortError'){const t=new Error('timeout');t.name='AbortError';throw t;}
@@ -2950,6 +3013,54 @@ async function _patchProjectData(id,data,anon){
   if(!Array.isArray(rows)||!rows.length){const e=new Error('No project row was updated');e.status=(!anon&&_jwt()===SUPA_KEY)?401:404;throw e;}
 }
 
+// ── Server plan enforcement (migration 20261013130000, 'enforce' mode).
+// A write that adds stages beyond the workspace's plan, or a project insert
+// without an active subscription / pass, is refused with SQLSTATE PT402:
+// HTTP 402 (HTTP 400 on a PostgREST without PT support) and the body
+// {code:'PT402', message, details:'stage_limit_exceeded'|'subscription_required',
+//  hint:'{"limit":2,"stages_before":2,"stages_after":3,...}'}.
+// Returns {kind, message, limit} or null for any other error.
+function _planError(e){
+  const b=e&&e.body;
+  if(!_isObj(b)||(b.code!=='PT402'&&_errStatus(e)!==402))return null;
+  const kind=b.details;
+  if(kind!=='stage_limit_exceeded'&&kind!=='subscription_required')return null;
+  let hint=null;try{hint=typeof b.hint==='string'?JSON.parse(b.hint):b.hint;}catch(_){}
+  const lim=hint&&hint.limit!=null?Number(hint.limit):NaN;
+  return{kind,message:typeof b.message==='string'?b.message:'',limit:Number.isFinite(lim)?lim:null};
+}
+// The server refused `out` because it has more stages than the plan allows.
+// It only checks growth: a save may keep the stage count the server already
+// has (S) or stay within the limit. Remove the newest stages that are not on
+// the server until the count fits, from the local copy (shows stay, exactly
+// like delStage), register them as intentional removals so the merge cannot
+// bring them back, and tell the operator. Returns false when there is
+// nothing of ours to remove (then the error stands).
+function _dropRefusedStages(id,S,out,pe){
+  const proj=APP.projects.find(p=>p.id===id);
+  if(!proj||!_isObj(proj.data)||!Array.isArray(proj.data.stages))return false;
+  const onServer=new Set((Array.isArray(S.stages)?S.stages:[]).map(x=>x&&x.id));
+  const sent=Array.isArray(out.stages)?out.stages:[];
+  const added=sent.filter(x=>x&&!onServer.has(x.id));
+  const allowed=pe.limit==null?onServer.size:Math.max(onServer.size,pe.limit);
+  const drop=added.slice(Math.max(0,added.length-Math.max(0,sent.length-allowed)));
+  if(!drop.length)return false;
+  const ids=new Set(drop.map(x=>x.id));
+  _markIntentionalRemoval([],{stages:[...ids]});
+  proj.data.stages=proj.data.stages.filter(x=>!(x&&ids.has(x.id)));
+  if(ids.has(proj.data.activeStage))proj.data.activeStage=proj.data.stages[0]?.id||null;
+  _editSeq[id]=(_editSeq[id]||0)+1;
+  _pendingPush[id]=true;
+  _cacheAPP();
+  if(id===APP.activeProjectId){loadG();_rerenderActive();}
+  const names=drop.map(x=>'"'+(x.name||'Stage')+'"').join(', ');
+  const msg=(pe.message||'Your plan does not include more live stages.')
+    +` ${drop.length===1?'Stage':'Stages'} ${names} ${drop.length===1?'was':'were'} removed again so your other changes can be saved. Upgrade the plan to add ${drop.length===1?'it':'them'}.`;
+  console.warn('[_pushProject] plan limit: removed stages the server refused:',[...ids],pe);
+  if(typeof _opNotice==='function')_opNotice(msg,{key:'plan-stage-limit',sticky:true});
+  return true;
+}
+
 function save(opts){
   // Share-link screens never write: their blob may be stripped per mode (no
   // photos / notes / crew), saving it would wipe those. Check-in has its own path.
@@ -2968,7 +3079,21 @@ function save(opts){
   _projSync[id]=setTimeout(()=>_pushProject(id),300);
 }
 
-// Queue entry point (also called directly by the logo upload code).
+// save() for any project, also one that is not open (logo upload / removal
+// from the dashboard): same cache, same queue, same bookkeeping.
+function _saveProjectById(id){
+  if(window.PUBLIC_MODE||!id)return;
+  if(id===APP.activeProjectId)return save();
+  _cacheAPP();
+  if(!APP.projects.some(p=>p.id===id))return;
+  _editSeq[id]=(_editSeq[id]||0)+1;
+  _pendingPush[id]=true;
+  _refreshSaveState();
+  clearTimeout(_projSync[id]);
+  _projSync[id]=setTimeout(()=>_pushProject(id),300);
+}
+
+// Queue entry point.
 function _pushProject(id){
   if(!id||window.PUBLIC_MODE)return;
   const st=_syncSt(id);
@@ -3031,7 +3156,15 @@ async function _pushOnce(id){
   }else{
     out._rev=_newRev();
     _sentRevs.add(out._rev);if(_sentRevs.size>50)_sentRevs.delete(_sentRevs.values().next().value);
-    await _withAuthRetry(()=>_patchProjectData(id,out));
+    try{await _withAuthRetry(()=>_patchProjectData(id,out));}
+    catch(e){
+      // Plan limit: drop the stage(s) the server refused and return without
+      // an ack. _pendingPush stays set, so _pushProject saves again at once
+      // (merged as usual) - the tab never gets stuck on the refused stage.
+      const pe=_planError(e);
+      if(pe&&pe.kind==='stage_limit_exceeded'&&_dropRefusedStages(id,S,out,pe))return;
+      throw e;
+    }
     st.ackRev=out._rev;
   }
   st.ackSeq++;
@@ -5526,18 +5659,10 @@ function openDrawer(id,booth=null){
       // Split date + time inputs (iOS Safari shows seconds on type="time"
       // with step="1" but not on datetime-local). Source of truth still the
       // canonical startsAt / endsAt.
+      // Festival (Amsterdam) wall time, whatever zone this device is in.
       const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      const _d2=n=>String(n).padStart(2,'0');
-      if(sa){
-        document.getElementById('f-start-date').value=`${sa.getFullYear()}-${_d2(sa.getMonth()+1)}-${_d2(sa.getDate())}`;
-        document.getElementById('f-start-time').value=`${_d2(sa.getHours())}:${_d2(sa.getMinutes())}`;
-        document.getElementById('f-start-sec').value=_d2(sa.getSeconds());
-      }
-      if(ea){
-        document.getElementById('f-end-date').value=`${ea.getFullYear()}-${_d2(ea.getMonth()+1)}-${_d2(ea.getDate())}`;
-        document.getElementById('f-end-time').value=`${_d2(ea.getHours())}:${_d2(ea.getMinutes())}`;
-        document.getElementById('f-end-sec').value=_d2(ea.getSeconds());
-      }
+      if(sa)_drSetDT('start',sa.getTime());
+      if(ea)_drSetDT('end',ea.getTime());
       if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}
       else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}
     }
@@ -5546,23 +5671,17 @@ function openDrawer(id,booth=null){
     clearPhoto();_photoRemoved=false;selBooth(booth||'');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
-    let startDt;
+    let startMs;
     if(shows.length){
       const last=shows[shows.length-1];
       const lastEnd=_showEndsAt(last);
-      startDt=lastEnd||new Date();
+      startMs=lastEnd?lastEnd.getTime():nowMs();
     }else{
-      // Today at the next round hour
-      const d=new Date();d.setHours(d.getHours(),0,0,0);startDt=d;
+      // Now, rounded down to the whole hour (festival time)
+      const n=nowMs();startMs=n-(amsSecOfDay(n)%3600)*1000-(n%1000);
     }
-    const endDt=new Date(startDt.getTime()+90*60*1000);
-    const _d2=n=>String(n).padStart(2,'0');
-    document.getElementById('f-start-date').value=`${startDt.getFullYear()}-${_d2(startDt.getMonth()+1)}-${_d2(startDt.getDate())}`;
-    document.getElementById('f-start-time').value=`${_d2(startDt.getHours())}:${_d2(startDt.getMinutes())}`;
-    document.getElementById('f-start-sec').value=_d2(startDt.getSeconds());
-    document.getElementById('f-end-date').value=`${endDt.getFullYear()}-${_d2(endDt.getMonth()+1)}-${_d2(endDt.getDate())}`;
-    document.getElementById('f-end-time').value=`${_d2(endDt.getHours())}:${_d2(endDt.getMinutes())}`;
-    document.getElementById('f-end-sec').value=_d2(endDt.getSeconds());
+    _drSetDT('start',startMs);
+    _drSetDT('end',startMs+90*60*1000);
   }
   _updateDrFlagBtns();
   updDur();
@@ -5574,28 +5693,29 @@ function openDrawer(id,booth=null){
 function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
 let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
-// Combine the six split inputs (start date+time+sec, end date+time+sec) into Date objects.
-function _readStartDate(){
-  const d=document.getElementById('f-start-date').value;
-  const t=document.getElementById('f-start-time').value;
-  const secRaw=(document.getElementById('f-start-sec').value||'0').trim();
+// The drawer's six split inputs (start/end date + time + sec) hold FESTIVAL
+// wall time (Europe/Amsterdam, see the time module), never the device's zone:
+// a laptop set to New York must read and write the same 22:00 as a Dutch one.
+// Write: an instant (ms) into the 'start' / 'end' inputs.
+function _drSetDT(which,ms){
+  document.getElementById(`f-${which}-date`).value=amsDateStr(ms);
+  document.getElementById(`f-${which}-time`).value=amsTimeStr(ms);
+  document.getElementById(`f-${which}-sec`).value=_p2(amsParts(ms).s);
+}
+// Read: the inputs as a Date (festival wall time → instant), or null.
+function _drReadDT(which){
+  const d=document.getElementById(`f-${which}-date`).value;
+  const t=document.getElementById(`f-${which}-time`).value;
+  const secRaw=(document.getElementById(`f-${which}-sec`).value||'0').trim();
   if(!d||!t)return null;
   const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
   // t is HH:MM (native time picker drops seconds on iOS); some browsers return HH:MM:SS - both fine
   const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
-  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
-  return isNaN(dt)?null:dt;
+  const ms=parseFestivalISO(`${d}T${hm}:${_p2(ss)}`);
+  return isNaN(ms)?null:new Date(ms);
 }
-function _readEndDate(){
-  const d=document.getElementById('f-end-date').value;
-  const t=document.getElementById('f-end-time').value;
-  const secRaw=(document.getElementById('f-end-sec').value||'0').trim();
-  if(!d||!t)return null;
-  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
-  const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
-  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
-  return isNaN(dt)?null:dt;
-}
+function _readStartDate(){return _drReadDT('start');}
+function _readEndDate(){return _drReadDT('end');}
 ['f-start-date','f-start-time','f-start-sec','f-end-date','f-end-time','f-end-sec'].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener('input',updDur);
@@ -5608,11 +5728,7 @@ function _maybeBumpEnd(){
   const sd=_readStartDate(),ed=_readEndDate();
   if(!sd||!ed)return;
   if(ed<=sd){
-    const ne=new Date(sd.getTime()+90*60*1000);
-    const _d2=n=>String(n).padStart(2,'0');
-    document.getElementById('f-end-date').value=`${ne.getFullYear()}-${_d2(ne.getMonth()+1)}-${_d2(ne.getDate())}`;
-    document.getElementById('f-end-time').value=`${_d2(ne.getHours())}:${_d2(ne.getMinutes())}`;
-    document.getElementById('f-end-sec').value=_d2(ne.getSeconds());
+    _drSetDT('end',sd.getTime()+90*60*1000);
     updDur();
   }
 }
@@ -5677,7 +5793,14 @@ async function previewPhoto(inp){
   }
 }
 function clearPhoto(){_photoB64='';_photoRemoved=true;document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
+// Called from the 250ms tick: only touch the DOM when the photo changes.
+// Re-assigning the same base64 src four times a second made the browser
+// re-decode it every time.
+var _tpPhotoSrc=null;
 function setTPPhoto(src){
+  src=src||'';
+  if(src===_tpPhotoSrc)return;
+  _tpPhotoSrc=src;
   const wrap=document.getElementById('tp-photo-wrap'),img=document.getElementById('tp-photo'),inner=document.getElementById('tinner');
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
   else{img.src='';wrap.classList.remove('has-photo');inner.classList.remove('has-photo');}
@@ -5701,11 +5824,9 @@ function saveShow(){
     alert('End must be after start. To run past midnight, pick tomorrow\'s date in the End field.');
     return;
   }
-  const _d2=n=>String(n).padStart(2,'0');
-  const startDate=`${sd.getFullYear()}-${_d2(sd.getMonth()+1)}-${_d2(sd.getDate())}`;
-  const startTime=`${_d2(sd.getHours())}:${_d2(sd.getMinutes())}:${_d2(sd.getSeconds())}`;
-  const endDate=`${ed.getFullYear()}-${_d2(ed.getMonth()+1)}-${_d2(ed.getDate())}`;
-  const endTime=`${_d2(ed.getHours())}:${_d2(ed.getMinutes())}:${_d2(ed.getSeconds())}`;
+  // Festival wall time (see _drSetDT), not the device's zone.
+  const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
+  const endDate=amsDateStr(ed.getTime()),endTime=amsTimeStr(ed.getTime(),true);
   const startsAt=`${startDate}T${startTime}`;
   const endsAt=`${endDate}T${endTime}`;
   const endsNextDay=startDate!==endDate;
@@ -6042,7 +6163,14 @@ function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').
 function _wvDayLabel(d){
   if(!d)return '';
   if(d.name&&d.date){
-    try{const dt=new Date(d.date);const day=dt.getDate();const mo=dt.toLocaleString('nl-NL',{month:'long'});return `Geplande tijden ${d.name.toLowerCase()} — ${day} ${mo}`;}catch(_){return `Geplande tijden ${d.name.toLowerCase()}`;}
+    // A festival calendar date: noon festival time, read back in festival
+    // time. new Date('YYYY-MM-DD') is UTC midnight, which is the previous
+    // day on any device west of Greenwich.
+    try{
+      const ms=parseFestivalISO(`${d.date}T12:00:00`);if(isNaN(ms))throw new Error('bad day date '+d.date);
+      const mo=new Date(ms).toLocaleString('nl-NL',{month:'long',timeZone:festivalTZ()});
+      return `Geplande tijden ${d.name.toLowerCase()} — ${amsParts(ms).Da} ${mo}`;
+    }catch(e){console.warn('[wall] day label without date:',e?.message||e);return `Geplande tijden ${d.name.toLowerCase()}`;}
   }
   return d.name?`Geplande tijden ${d.name.toLowerCase()}`:'';
 }
@@ -7448,17 +7576,20 @@ function renderSettingsPage(){
   _updateWsSidebar();
   const co=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
   if(!co){body.innerHTML='<div class="ws-card"><div class="ws-card-meta">You are not linked to a workspace.</div></div>';return;}
+  // Renaming is for the workspace admin and platform admins (same rule as
+  // the companies_update policy); operators see the name read-only.
+  const canRename=isCompanyAdmin();
   body.innerHTML=`
     <div class="ws-card">
       <div class="ws-card-title">Workspace</div>
       <div class="ws-field">
         <label class="ws-field-label">Name</label>
-        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}">
-        <div class="ws-field-help">The name your team and customers see across Stagetimer.</div>
+        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}"${canRename?'':' disabled style="background:#F5F5F4;color:#78716C;"'}>
+        <div class="ws-field-help">${canRename?'The name your team and customers see across Stagetimer.':'Only a workspace admin can change the name.'}</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      ${canRename?`<div style="display:flex;gap:8px;">
         <button class="ws-btn-primary" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
-      </div>
+      </div>`:''}
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Workspace ID</div>
@@ -7469,6 +7600,7 @@ function renderSettingsPage(){
 }
 
 async function saveWorkspaceName(id){
+  if(!isCompanyAdmin())return alert('Only a workspace admin can change the workspace name.');
   const input=document.getElementById('ws-settings-name');
   const newName=(input?.value||'').trim();
   if(!newName)return alert('Name cannot be empty.');
@@ -7647,7 +7779,7 @@ async function _restWrite(table,method,filter,body){
   if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await go();
   const txt=await res.text().catch(()=>'');
   if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt:''));e.status=res.status;throw e;}
-  let rows=[];try{rows=JSON.parse(txt||'[]');}catch(_){}
+  let rows=[];try{rows=JSON.parse(txt||'[]');}catch(e){console.warn('[rest] '+method+' '+table+': unreadable response, counted as 0 rows:',txt.slice(0,200));}
   return Array.isArray(rows)?rows.length:0;
 }
 async function deleteProject(id){
@@ -7829,6 +7961,15 @@ async function createProject(){
       const body=await res.text().catch(()=>'');
       console.error('[createProject] HTTP',res.status,body);
       const e=new Error('HTTP '+res.status);e.status=res.status;
+      try{e.body=JSON.parse(body);}catch(_){e.body=null;}
+      // Server plan check (PT402): the workspace cannot create projects.
+      const pe=_planError(e);
+      if(pe&&pe.kind==='subscription_required'){
+        closeProjModal();
+        showLimitModal({ok:false,action:'subscribe',company:APP.companies.find(c=>c.id===companyId)||null,
+          reason:(pe.message||'This workspace has no active subscription or event pass.')+' The project was not created.'});
+        return;
+      }
       alert(_friendlyError(e,'Creating the project'));
       return;
     }
@@ -8340,15 +8481,24 @@ async function delCompany(id){
   let msg=`Delete "${c.name}"?`;
   if(userCount||projCount){msg+=`\n\n${userCount} user(s) and ${projCount} project(s) will also be detached.`;}
   if(!confirm(msg))return;
-  // Cascade: detach users and projects (set company_id = '')
+  // Cascade: detach users and projects (set company_id = '') and delete, in
+  // one atomic server call (rls_prep). Until that migration is applied the
+  // RPC does not exist and the three direct requests below do the same.
   try{
-    await Promise.all([
-      _restWrite('app_users','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
-      _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
-    ]);
-    const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
-    if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
-  }catch(e){alert('Delete failed: '+(e.message||e));return;}
+    let r=null,viaRpc=true;
+    try{r=await _rpc('admin_delete_company',{p_company_id:id});}
+    catch(e){if(!_rpcFnMissing(e))throw e;viaRpc=false;console.warn('[delCompany] admin_delete_company not available yet, using direct writes:',e.message);}
+    if(viaRpc){
+      if(!r||!r.ok){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+    }else{
+      await Promise.all([
+        _restWrite('app_users','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
+        _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
+      ]);
+      const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
+      if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+    }
+  }catch(e){alert(_friendlyError(e,'Deleting the workspace'));return;}
   APP.users.forEach(u=>{if(u.companyId===id)u.companyId='';});
   APP.projects.forEach(p=>{if(p.companyId===id)p.companyId='';});
   APP.companies=APP.companies.filter(c=>c.id!==id);
@@ -8419,8 +8569,18 @@ async function changeUserRole(id,newRole){
   if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){alert('Only Super Admin may grant Super Admin.');renderAdmin();return;}
   if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){alert('No permission.');renderAdmin();return;}
   if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!confirm('Lowering your role may prevent you from accessing Admin. Continue?')){renderAdmin();return;}}
-  const{error}=await supa.from('app_users').update({role:newRole}).eq('id',id);
-  if(error){alert('Failed to change role: '+error.message);renderAdmin();return;}
+  // Server-side role change (rls_prep): once RLS is on, clients may only
+  // update their own name on app_users. The direct write is the fallback
+  // for as long as the RPC does not exist yet - never for a refusal.
+  let error=null;
+  try{await _rpc('admin_set_user_role',{p_user_id:id,p_role:newRole});}
+  catch(e){
+    if(_rpcFnMissing(e)){
+      console.warn('[changeUserRole] admin_set_user_role not available yet, using a direct update:',e.message);
+      try{({error}=await supa.from('app_users').update({role:newRole}).eq('id',id));}catch(e2){error=e2;}
+    }else error=e;
+  }
+  if(error){alert(error.status?_friendlyError(error,'Changing the role'):'Failed to change role: '+(error.message||error));renderAdmin();return;}
   u.role=newRole;
   saveAPP();
   if(u.id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
@@ -8779,8 +8939,9 @@ function toggleCrewMember(userId,add){
 }
 
 // ══ ONESIGNAL
-const OS_APP_ID='5778eb83-1c2c-4ffd-b085-4236b5bd0188';
-const OS_REST_KEY='os_v2_app_k54oxay4frh73mefii3llpibrbfc3y7kg4uuhff6anaeirn24ba23shg725lertwkymwyyiy7vsazqadx4ylnc73mvufwl4a2oofrji';
+// The browser only registers devices (OneSignal SDK, public app id).
+// Sending goes through the send-push edge function, which holds the REST
+// key server side (supabase/functions/send-push, docs/MIGRATIES.md step 15).
 
 async function initOneSignalUser(userId){
   if(!userId)return;
@@ -8808,33 +8969,63 @@ async function requestPushPermission(){
   }catch(e){console.warn('OneSignal permission:',e);}
 }
 
-async function scheduleProjectPushes(){
-  if(!G||!APP||!CURRENT_USER)return;
-  const memberIds=G.memberIds||[];
-  if(!memberIds.length)return;
-  const today=G.activeDay;
-  const shows=(G.shows||[]).filter(s=>s.day===today&&s.endTime);
-  const nowMs=Date.now();
-  const midnight=new Date();midnight.setHours(0,0,0,0);
-  for(const show of shows){
-    const endSec=t2s(show.endTime);
-    const notifMs=midnight.getTime()+(endSec-600)*1000;
-    if(notifMs<=nowMs)continue;
-    const stageName=(G.stages||[]).find(st=>st.id===show.stageId)?.name||'Stage';
-    const payload={
-      app_id:OS_APP_ID,
-      include_external_user_ids:memberIds,
-      channel_for_external_user_ids:'push',
-      headings:{en:`${show.artist||'Show'} almost finished`,nl:`${show.artist||'Show'} almost finished`},
-      contents:{en:`${show.artist||'Show'} on ${stageName} ends at ${show.endTime} - about 10 min left.`,nl:`${show.artist||'Show'} on ${stageName} ends at ${show.endTime} - about 10 min left.`},
-      send_after:new Date(notifMs).toISOString()
-    };
-    fetch('https://onesignal.com/api/v1/notifications',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Basic '+OS_REST_KEY},
-      body:JSON.stringify(payload)
-    }).catch(e=>console.warn('scheduleNotif:',e));
+// "About 10 minutes left" pushes for the crew (G.memberIds), one per show of
+// the selected day, sent when the project is opened. Shows are read the way
+// every screen reads them: real end instant (_showEndsAt: endsAt, or date +
+// end, overnight-aware, festival time) on the stage `show.stage`. Cancelled
+// shows get none. send-push accepts send_after up to 48h ahead and drops
+// repeats itself (idempotency key per project/show/time/recipients/text), so
+// re-opening a project does not notify twice.
+const PUSH_LEAD_MS=10*60*1000,PUSH_MAX_AHEAD_MS=47*3600*1000;
+// Pure: the requests scheduleProjectPushes would send for project data g.
+function pushJobsFor(g,projectId,now){
+  const memberIds=[...new Set((g&&g.memberIds)||[])];
+  if(!g||!projectId||!memberIds.length)return[];
+  const jobs=[];
+  for(const show of g.shows||[]){
+    if(show.day!==g.activeDay||!showAllowed(show,'live',false))continue;
+    const end=_showEndsAt(show);if(!end)continue;
+    const at=end.getTime()-PUSH_LEAD_MS;
+    if(at<=now||at>now+PUSH_MAX_AHEAD_MS)continue;
+    const artist=show.artist||'Show';
+    const stageName=(g.stages||[]).find(st=>st.id===show.stage)?.name||'Stage';
+    const text=`${artist} on ${stageName} ends at ${amsTimeStr(end.getTime())} - about 10 min left.`;
+    jobs.push({project_id:projectId,show_id:show.id,include_external_user_ids:memberIds,
+      headings:{en:`${artist} almost finished`,nl:`${artist} almost finished`},
+      contents:{en:text,nl:text},send_after:new Date(at).toISOString()});
   }
+  return jobs;
+}
+let _pushState={busy:false,missing:false};
+async function scheduleProjectPushes(){
+  if(window.PUBLIC_MODE||!G||!APP||!CURRENT_USER||_pushState.busy||_pushState.missing)return;
+  if(_jwt()===SUPA_KEY)return;   // signed out: send-push only accepts a user session
+  const jobs=pushJobsFor(G,APP.activeProjectId,nowMs());
+  if(!jobs.length)return;
+  _pushState.busy=true;
+  try{
+    for(const job of jobs){
+      const post=()=>_withTimeout(fetch(`${SUPA_URL}/functions/v1/send-push`,{method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`},
+        body:JSON.stringify(job)}),10000);
+      let res;
+      try{
+        res=await post();
+        if(res.status===401&&await _refreshAuthToken())res=await post();
+      }catch(e){console.warn('[push] send-push unreachable, crew pushes not scheduled:',e?.message||e);return;}
+      if(res.ok)continue;
+      const body=await res.json().catch(()=>null);
+      if(res.status===404){
+        // Function not deployed (yet). Say so once instead of failing silently.
+        _pushState.missing=true;
+        console.warn('[push] send-push edge function not found (404): push sending is not configured');
+        _opNotice('Push is not configured yet: crew notifications for this project were not scheduled.',{key:'push-missing'});
+        return;
+      }
+      console.warn('[push] send-push refused show',job.show_id,'HTTP',res.status,body?.error||'');
+      if(res.status===401||res.status===403||res.status===429||res.status>=500)return;  // same answer for the rest
+    }
+  }finally{_pushState.busy=false;}
 }
 
 // ══ SHARE LINKS
@@ -8989,7 +9180,7 @@ async function ciToggleArrived(showId){
   // operator mode update the schedule + overview if open + checkin view if open.
   if(PUBLIC_MODE==='checkin')renderCI();
   else{
-    try{renderSched();}catch(e){}
+    try{renderSched();}catch(e){console.warn('[checkin] schedule repaint failed:',e);}
     if(document.getElementById('stov')?.classList.contains('open'))renderOV();
     if(document.getElementById('ci')?.classList.contains('open'))renderCI();
   }
@@ -9284,6 +9475,30 @@ function _pvStartPolling(render,skip){
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')poll();});
 }
 
+// First load of a share link. Resolves with the project, or null when the
+// server says it does not exist (then: "Project not found."). Transient
+// failures - no status (network, timeout), 5xx, 408, 429 - retry after
+// 1s, 2s, 4s ... 30s, and at once when the device comes back online.
+const _PV_RETRY_MAX_MS=30000;
+function _pvTransient(e){const s=_errStatus(e);return!s||s>=500||s===408||s===429;}
+async function _pvLoadWithRetry(){
+  let wait=1000,attempt=0;
+  for(;;){
+    try{return await _fetchSharedProject(PUBLIC_PID);}
+    catch(e){
+      attempt++;
+      if(!_pvTransient(e)){console.warn('[public] load failed:',e?.message||e);return null;}
+      console.warn('[public] load failed (attempt '+attempt+'), retrying in '+Math.round(wait/1000)+'s:',e?.message||e);
+      const msg=document.querySelector('#loader > div:last-child');
+      if(msg)msg.textContent='Connecting…';
+      await new Promise(r=>{
+        const done=()=>{clearTimeout(t);window.removeEventListener('online',done);r();};
+        const t=setTimeout(done,wait);window.addEventListener('online',done);
+      });
+      wait=Math.min(wait*2,_PV_RETRY_MAX_MS);
+    }
+  }
+}
 async function loadPublicView(){
   // Use the early fetch started in <head> if available - saves ~1-3s on mobile
   let proj=null;
@@ -9292,7 +9507,11 @@ async function loadPublicView(){
   }
   if(!proj){
     // RPC, not a table read: anonymous viewers have no access to `projects`.
-    proj=await _fetchSharedProject(PUBLIC_PID).catch(e=>{console.warn('[public] load failed:',e?.message||e);return null;});
+    // "Not found" only when the server answered and there is no such project.
+    // A server error, timeout or no network (a booth screen that boots before
+    // the venue Wi-Fi is up) is retried with backoff while the existing
+    // loader says "Connecting…", instead of "Project not found." forever.
+    proj=await _pvLoadWithRetry();
   }
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project not found.</div>';return;}
   _pvSyncOk();
@@ -9476,11 +9695,10 @@ function handleLogoUpload(event){
     proj.data.logo=logo;
     // If this is the active project, update G too
     if(tgt===APP.activeProjectId)G.logo=logo;
-    // Persist + push THE SPECIFIC project (not just the active one)
-    localStorage.setItem(AKEY,JSON.stringify(APP));
-    _pendingPush[tgt]=true;
-    clearTimeout(_projSync[tgt]);
-    _projSync[tgt]=setTimeout(()=>_pushProject(tgt),300);
+    // Persist + push THE SPECIFIC project (not just the active one), through
+    // the save queue: quota-safe cache, and an edit sequence so a push that
+    // is already out cannot mark the logo as saved.
+    _saveProjectById(tgt);
     refreshLogo();
     renderDash();
   };
@@ -9494,10 +9712,7 @@ function removeProjectLogo(projId){
   if(proj.data)proj.data.logo=null;
   if(projId===APP.activeProjectId)G.logo=null;
   // Persist + push THE SPECIFIC project (not just the active one)
-  localStorage.setItem(AKEY,JSON.stringify(APP));
-  _pendingPush[projId]=true;
-  clearTimeout(_projSync[projId]);
-  _projSync[projId]=setTimeout(()=>_pushProject(projId),300);
+  _saveProjectById(projId);
   refreshLogo();
   renderDash();
 }
@@ -9507,7 +9722,7 @@ let OT=[];
 function loadOT(){
   if(!APP)return; // APP not initialized yet
   // migrate from legacy key if present
-  try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch{}
+  try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch(e){console.warn('[timers] legacy st_timers_v1 not migrated:',e);}
   const uid=CURRENT_USER?.id||'';
   const now=nowMs();
   // Remove expired timers
@@ -9965,7 +10180,7 @@ async function _authProbe(access_token){
     clearTimeout(tmo);
     if(res.ok)return await res.json();
     return null;
-  }catch(e){clearTimeout(tmo);return null;}
+  }catch(e){clearTimeout(tmo);console.warn('[auth] session probe failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
 async function _authRefresh(refresh_token){
   const ctrl=new AbortController();
@@ -9980,7 +10195,7 @@ async function _authRefresh(refresh_token){
     clearTimeout(tmo);
     if(res.ok)return await res.json();
     return null;
-  }catch(e){clearTimeout(tmo);return null;}
+  }catch(e){clearTimeout(tmo);console.warn('[auth] token refresh failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
 // ── Links from the auth emails (reset password, invite, confirm signup).
 // The templates link to {{ .ConfirmationURL }}: Supabase verifies the token
@@ -10031,7 +10246,7 @@ async function _handleAuthLink(){
 }
 
 (async()=>{
-  try{loadAPPCache();}catch(e){}
+  try{loadAPPCache();}catch(e){console.warn('[cache] local copy could not be loaded:',e);}
   loadOT();
   // Post-payment signup completion
   if(SIGNUP_SUCCESS){
@@ -10112,6 +10327,16 @@ setInterval(syncServerTime,60000);
 //  - Public screens (?mode=…, incl. Stage View): no event, no UI. The update
 //    is applied only while the tab is hidden, so a live screen never reloads
 //    in view (same rule as before).
+// Control screens: offer the waiting update as a small notice; Reload calls
+// apply(), which activates the new worker and reloads (see below). Never on
+// share links; hidden while Stage View is full screen (_opNotice).
+function _offerSwUpdate(d){
+  if(window.PUBLIC_MODE||!d||typeof d.apply!=='function')return;
+  _opNotice('New version available',{key:'sw-update',sticky:true,actionLabel:'Reload',
+    onAction:()=>{if(!d.apply())location.reload();}});
+}
+window.addEventListener('st:sw-update',e=>_offerSwUpdate(e.detail));
+if(window._stSwUpdate)_offerSwUpdate(window._stSwUpdate);
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>{
     setTimeout(async()=>{
