@@ -20,9 +20,9 @@ Legenda testbestanden:
 | Wachtwoord vergeten / reset-link | `showForgotPw` 8461, `sendReset` 8470 | auth: *forgot password sends a recover request* (falen-pad: gat, zie BOUWPLAN 1.5) |
 | Nieuw wachtwoord instellen (`#set-pw`, invite) | `setNewPassword` 8479 | gat (modal wordt nooit geopend, BOUWPLAN 1.5) |
 | Signup na betaling (`?signup=success&cid&t`) | `completeSignup` 7918 → edge `finalize-signup` | gat (mock aanwezig: `backend.setFunction('finalize-signup', …)`) |
-| Profiel: naam, wachtwoord | `renderProfilePage` 6404, `saveProfileName` 6451, `saveProfilePassword` 6465 | operator: *workspace sections* (alleen openen) |
-| Workspace-instellingen, naam | `renderSettingsPage` 6365, `saveWorkspaceName` 6391 | operator: *workspace sections* (alleen openen) |
-| Leden uitnodigen / verwijderen | `openInviteMemberPrompt` 6478, `removeMember` 6498 → edge `invite-member`/`remove-member` | gat (edge functions gemockt, geen echte invites) |
+| Profiel: naam, wachtwoord | `renderProfilePage` 6404, `saveProfileName` 6451, `saveProfilePassword` 6465 | operator: *workspace sections*; regression dialogs-forms: *password rule is shown and checked next to the field* |
+| Workspace-instellingen, naam | `renderSettingsPage` 6365, `saveWorkspaceName` 6391 | operator: *workspace sections*; regression dialogs-forms: *as operator › member management…* (alleen-lezen) |
+| Leden uitnodigen / verwijderen | `openInviteMemberPrompt` 6478, `removeMember` 6498 → edge `invite-member`/`remove-member` | regression dialogs-forms: *invite: one form, inline checks, mocked invite-member…*; smoke dialogs: *remove member calls the mocked remove-member* |
 | Abonnement: pagina, banner, portal | `renderSubscriptionPage` 6273, `renderSubscriptionBanner` 6575, `manageSubscription` 7344 → edge `portal-link` | operator: *workspace sections*; periode-weergave jaar/maand: gat (BOUWPLAN 1.5) |
 | Planlimiet live stages | `_effectiveStageLimit` 5866, `checkStageLimit` 5889, `canCreateProject` 6605 | gat (trialing = 0 stages, besluitpunt B2) |
 
@@ -34,7 +34,7 @@ Legenda testbestanden:
 | Lokale cache `st_app_v1` | `loadAPPCache` 2347, `saveAPP` 2488 | indirect |
 | Dashboard / projectlijst | `renderDash` 6159, `showWsSection` 6255 | operator: *dashboard lists the workspace projects* |
 | Project openen | `openProject` 6529, `openProjectOnce` 6137, `loadG` 2466 | operator: *open project shows the schedule…* |
-| Project aanmaken / hernoemen / verwijderen | `createProject` 6662, `renameProject` 6561, `deleteProject` 6551, `_restWrite` 6540 | gat |
+| Project aanmaken / hernoemen / verwijderen | `createProject` 6662, `renameProject` 6561, `deleteProject` 6551, `_restWrite` 6540 | regression dialogs-forms: *rename project is a form dialog…*; smoke dialogs: *delete project from the dashboard*; aanmaken: gat |
 | Opslaan (debounce, wipe-guard, PATCH) | `save` 2501, `_pushProject` 2512, `setSyncDot` 2340 | operator (alle save-tests), harness: *injected 500 on save…* |
 | Realtime (postgres_changes projects + companies) | `setupRealtime` 2600 | operator: *realtime update from another device…* |
 
@@ -42,9 +42,9 @@ Legenda testbestanden:
 
 | Functie | Code | Test |
 |---|---|---|
-| Dagen beheren (naam, datum, toevoegen, verwijderen) | `openDayModal` 6078, `renderDayList` 6085, `renameDay` 6093, `setDayDate` 6098, `addDay` 6113, `delDay` 6126 | operator: *crew, stage and day management dialogs open* |
+| Dagen beheren (naam, datum, toevoegen, verwijderen) | `openDayModal` 6078, `renderDayList` 6085, `renameDay` 6093, `setDayDate` 6098, `addDay` 6113, `delDay` 6126 | operator: *…management dialogs open*; regression dialogs-forms: *day management* (datumwijziging met effect, dag + shows verwijderen, lege naam); smoke dialogs: *delete day takes its shows* |
 | Dag kiezen (gedeeld veld `activeDay`) | `setDay` 4211, `_dayPickerHTML` 4220, `_pickDay*` 4213-4216 | indirect |
-| Podia beheren | `openStageModal` 5827, `renderStageList` 5835, `addStage` 5902, `delStage` 5916 | operator: *…management dialogs open* |
+| Podia beheren | `openStageModal` 5827, `renderStageList` 5835, `addStage` 5902, `delStage` 5916 | operator: *…management dialogs open*; smoke dialogs: *…delete stage keeps behaviour* |
 | Podium kiezen (header) | `renderHeader` 4157 | indirect |
 
 ## 4. Planning en showeditor
@@ -52,8 +52,8 @@ Legenda testbestanden:
 | Functie | Code | Test |
 |---|---|---|
 | Planningslijst (kaarten) | `renderSched` 4023, `tickSched` 4098 | operator: *open project shows the schedule* |
-| Showeditor openen / opslaan / nieuw | `openDrawer` 4637, `saveShow` 4809, `_readStartDate`/`_readEndDate` 4706/4717, `updDur` 4747 | operator: *show editor opens, edits and saves*, *new show via the editor* |
-| Show verwijderen | `delShow` 4852 | gat |
+| Showeditor openen / opslaan / nieuw | `openDrawer` 4637, `saveShow` 4809, `_readStartDate`/`_readEndDate` 4706/4717, `updDur` 4747 | operator: *show editor opens, edits and saves*, *new show via the editor*; regression dialogs-forms: *show editor* (veldfouten, seconden, automatische eindtijd, overlap, niet-opgeslagen wijzigingen) |
+| Show verwijderen | `delShow` 4852 | regression dialogs-forms: *delete show names the show…*; smoke dialogs: *delete show* |
 | Vlaggen geannuleerd / prioriteit / verborgen | `toggleDrFlag` 4625 | seed bevat alle drie; booth: *hidden-skipped* |
 | Tijdmodel (ISO `startsAt`/`endsAt` + legacy), middernacht, 07:00-grens | `_showStartsAt` 2701, `_showEndsAt` 2709, `_showDurationSec` 2748, `getShows` (~2660), `adjM` | unit: *overnight show: ISO model and legacy model agree*, booth: *overnight* |
 | Huidige / volgende show | `curShow` 2819, `nxtShow` 2834, `nextUpcomingAnyDay` 2848 | unit: *curShow / nxtShow*, booth: *next-day*, *idle* |
@@ -64,9 +64,9 @@ Legenda testbestanden:
 | Functie | Code | Test |
 |---|---|---|
 | Timerpaneel live | `renderTP` 3946, `renderTPLive` 3950, `setCD` 4009, `setNxt` 4017 | operator: *open project…* (artiest in `#tpanel`) |
-| Handmatige timer (start/pauze/reset/vorige/volgende/nudge) | `M`, `mReset` 2872, `mPP` 2873, `mStop` 2874, `mPrev`/`mNext` 2875/2876, `nudge` 2877, `renderTPManual` 3986, `renderTbar` 2878 | operator: *manual timer mode toggles*; correcties tijdens pauze: gat (BOUWPLAN 1.4) |
+| Handmatige timer (start/pauze/reset/vorige/volgende/nudge) | `M`, `mReset` 2872, `mPP` 2873, `mStop` 2874, `mPrev`/`mNext` 2875/2876, `nudge` 2877, `renderTPManual` 3986, `renderTbar` 2878 | operator: *manual timer mode toggles*; regression dialogs-forms: *manual mode: cards never reset…*; correcties tijdens pauze: gat (BOUWPLAN 1.4) |
 | Modus live/handmatig | `setMode` 4855 | operator: *manual timer mode toggles* |
-| Snelle correctie ±1/±5 min | `adjustLiveShow` 5606, `_writeShowTimes` 5590, `renderQuickAdjust` 5676 | operator: *cues, blackout and quick adjust…* (+5 min) |
+| Snelle correctie ±1/±5 min | `adjustLiveShow` 5606, `_writeShowTimes` 5590, `renderQuickAdjust` 5676 | operator: *cues, blackout and quick adjust…* (+5 min); regression dialogs-forms: *time correction* (annuleren, beide keuzes, voorvertoning) |
 
 ## 6. Schermen
 
@@ -88,7 +88,7 @@ Legenda testbestanden:
 
 | Functie | Code | Test |
 |---|---|---|
-| Cue sturen / custom / wissen, status | `sendCue` 5741, `sendCustomCue` 5750, `clearCue` 5756, `_cueActive` 5761, `renderCueStatus` 5767 | operator: *cues, blackout…* |
+| Cue sturen / custom / wissen, status | `sendCue` 5741, `sendCustomCue` 5750, `clearCue` 5756, `_cueActive` 5761, `renderCueStatus` 5767 | operator: *cues, blackout…*; regression dialogs-forms: *target stage, active cue, duration and blackout are visible* |
 | Cue-overlay op viewers | `_renderCueOverlay` 5786 | booth: *cue-wrapup*, public: *…1 s poll* |
 | Blackout | `toggleBlackout` 5710, `renderBlackout` 5716 | operator: *cues, blackout…*, booth: *blackout* |
 | Hoofdtick (250 ms) | `tick` 5808 | alle booth-tests (deterministisch via `page.clock`) |
@@ -129,11 +129,11 @@ Legenda testbestanden:
 | Functie | Code | Test |
 |---|---|---|
 | Adminpagina, KPI's, companies, users | `openAdmin` 6735, `renderAdmin` 7043, `_renderKpis` 6946, `_subBadge` 6920 | admin: *admin page lists companies, users and vouchers* (incl. badge "Awaiting activation", geen setup_token) |
-| Company toevoegen / bewerken / stage-override / verwijderen | `addCompany` 7182, `editCompany` 7192, `setStageOverride` 7205, `delCompany` 7221 | gat |
-| User toevoegen / rol / verwijderen | `addUser` 7246, `changeUserRole` 7305, `delUser` 7318 | gat |
+| Company toevoegen / bewerken / stage-override / verwijderen | `addCompany` 7182, `editCompany` 7192, `setStageOverride` 7205, `delCompany` 7221 | smoke dialogs: *platform admin: rename workspace…* (toevoegen / verwijderen: gat) |
+| User toevoegen / rol / verwijderen | `addUser` 7246, `changeUserRole` 7305, `delUser` 7318 | smoke dialogs: *platform admin: …change role, remove user*; uitnodigen: regression dialogs-forms *invite* |
 | Vouchers (Stripe promotiecodes via edge `manage-voucher`) | `loadVouchers` 6768, `createVoucher` 6871, `archiveVoucher` 6897, `activateVoucher` 6906 | admin (lijst via gemockte functie) |
 
 ## Bekende gaten in het vangnet
-- Geen tests voor verwijderen (show, dag, podium, project) en company/user-beheer: allemaal via `confirm()`/`prompt()`. Voeg `page.on('dialog', d => d.accept())` toe in de spec.
+- `confirm()`/`prompt()`/`alert()` zijn vervangen door de stDialog-component (`form.st-dlg[role=dialog]`); tests klikken op de knoppen in de dialoog. Een native dialoog laat smoke *dialogs* en regression *dialogs-forms* falen. Nog zonder eigen test: company toevoegen/verwijderen, vouchers archiveren/activeren, project aanmaken-fouten.
 - Echte Safari/iOS, pushmeldingen, e-mail, Stripe en de productiedatabase worden niet getest (BOUWPLAN "Expliciet niet getest").
 - Realtime-stub: alleen `postgres_changes` (join/heartbeat/leave/push). Broadcast/presence worden niet gebruikt door de app en niet nagebootst.

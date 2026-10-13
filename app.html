@@ -4192,7 +4192,7 @@ function renderTbar(){
 
 <!-- DRAWER -->
 <div id="dov" onclick="closeDrawer()"></div>
-<div id="drawer" role="dialog" aria-modal="true" aria-labelledby="drtitle">
+<div id="drawer" role="dialog" aria-modal="true" aria-labelledby="drtitle" aria-hidden="true" inert>
   <div id="drhdr"><h2 id="drtitle">New show</h2><button id="drclose" onclick="closeDrawer()" aria-label="Close show editor">×</button></div>
   <div id="drbody">
     <div class="fg"><label class="fl" for="f-a">Name / Artist</label><input class="fi" id="f-a" type="text" placeholder="e.g. Martin Garrix" aria-describedby="f-a-err" required><div class="st-fld-err" id="f-a-err" hidden></div></div>
@@ -5950,7 +5950,9 @@ function openDrawer(id,booth=null){
   updDur();
   _drSnap=_drState();
   document.getElementById('dov').classList.add('open');
-  document.getElementById('drawer').classList.add('open');
+  const dr=document.getElementById('drawer');
+  dr.removeAttribute('inert');dr.removeAttribute('aria-hidden');
+  dr.classList.add('open');
   document.body.classList.add('drawer-open');
   setTimeout(()=>document.getElementById('f-a').focus(),240);
 }
@@ -5974,7 +5976,11 @@ async function closeDrawer(force){
       {title:'Discard changes?',okLabel:'Discard changes',cancelLabel:'Keep editing',danger:true});
     if(!ok)return false;
   }
-  document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');
+  const dr=document.getElementById('drawer');
+  document.getElementById('dov').classList.remove('open');dr.classList.remove('open');document.body.classList.remove('drawer-open');
+  // Off-screen (translated), not display:none: keep it out of Tab order and
+  // the accessibility tree while closed.
+  dr.setAttribute('inert','');dr.setAttribute('aria-hidden','true');
   const t=_drTrigger;_drTrigger=null;
   if(t&&t!==document.body&&document.contains(t)&&typeof t.focus==='function'){try{t.focus({preventScroll:true});}catch(_){}}
   return true;
