@@ -109,6 +109,8 @@ Legenda testbestanden:
 |---|---|---|
 | JSON-import dialoog | `openJSONModal` 5929, `doJSONImport` 5937 | operator: *import dialog opens* |
 | Lineup importeren | `importLineup` 5969 | gat (BOUWPLAN 1.3: seconden, ontbrekende `end`, andere podia) |
+| Project exporteren (JSON, AVG art. 20) | `exportProjectJSON` (Project settings) | regression/export.spec.js: admin en operator, geen bedrijfs-/factuurvelden |
+| Juridische concepten | `privacy.html`, `voorwaarden.html`, footer `index.html` | smoke/legal-pages.spec.js: 390 en 1440 px, offline, geen consolefouten |
 
 ## 11. Deellinks en losse timers
 
