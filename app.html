@@ -29,10 +29,14 @@
     const p=new URLSearchParams(location.search);
     const mode=p.get('mode'),pid=p.get('pid');
     if(!mode||!pid)return;
-    const url='https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/projects?select=*&id=eq.'+encodeURIComponent(pid);
+    const url='https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/rpc/get_shared_project';
     const key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbWpwc3F1aGR6eHZzeW1sZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTQ2ODUsImV4cCI6MjA5MDUzMDY4NX0.657ty4HprURSCfdwfORQejBjXCcj6nK81rN9WoOOwiQ';
-    window._earlyPublicFetch=fetch(url,{headers:{apikey:key,Authorization:'Bearer '+key}})
-      .then(r=>r.ok?r.json():null).then(arr=>(arr&&arr[0])||null).catch(()=>null);
+    window._earlyPublicFetch=fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json',apikey:key,Authorization:'Bearer '+key},
+        body:JSON.stringify({p_id:pid}),
+      })
+      .then(r=>r.ok?r.json():null).then(row=>row||null).catch(()=>null);
   }catch(e){}
 })();
 // EARLY NO-SESSION DETECTION (CSS-driven, no DOM, no network).
@@ -69,7 +73,14 @@
 html.no-session #loader{display:none !important;}
 html.no-session #login{display:flex !important;}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Pinned + SRI. The floating "@2" URL let jsDelivr ship any future 2.x
+     straight into every operator session. Bump deliberately: fetch the new
+     file, recompute with `openssl dgst -sha384 -binary f | openssl base64 -A`.
+     Note: use the /dist/umd/ path - the bare @2.112.3 URL is generated on the
+     fly by jsDelivr and is explicitly not SRI-safe. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+        integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
+        crossorigin="anonymous"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -406,6 +417,15 @@ button,a{touch-action:manipulation;}
 #new-show-btn.pulse{animation:pulse-btn 1.4s ease-in-out infinite;}
 .btn-g{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:7px;font-family:var(--ff);font-size:11px;font-weight:600;background:var(--s2);border:1px solid var(--border2);color:var(--sub);cursor:pointer;transition:all .15s;}
 .btn-g:hover{background:var(--s3);color:var(--text);}
+/* Destructive action inside a list row (Manage stages / Manage days).
+   Always-visible label + icon: the old bare "x" glyph was invisible to
+   operators who went looking for a way to remove a stage. */
+.btn-del{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;
+  font-family:var(--ff);font-size:11px;font-weight:700;background:rgba(239,68,68,.08);
+  border:1px solid rgba(239,68,68,.28);color:#f87171;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-del:hover{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#fca5a5;}
+.btn-del:active{transform:scale(.96);}
+.btn-del svg{flex-shrink:0;}
 
 /* ── DRAWER ── */
 #dov{position:fixed;inset:0;z-index:160;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:none;}
@@ -1296,6 +1316,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 
   /* Stage/Day modals */
   #stage-modal-ov > div, #day-modal-ov > div{width:92vw;padding:18px;}
+  .btn-del{padding:8px 12px;font-size:12px;}
 
   #slist{padding-bottom:70px;}
   /* spanel scrolls via slist on mobile */
@@ -2237,7 +2258,11 @@ const fmtDur=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;if
 const todayStr=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 // Festival day runs 07:00–07:00: before 07:00 we're still in the previous calendar day
 const festivalDayStr=()=>{const d=new Date();if(d.getHours()<7)d.setDate(d.getDate()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+// Colour values coming from stored project data land inside style="" attributes.
+// Allow only literal hex / plain keywords so a crafted value cannot close the
+// attribute or smuggle extra declarations.
+const safeColor=(c,fb)=>(/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/.test(String(c||''))?String(c):fb);
 function fmtDateLabel(d){try{const dt=new Date(d+'T12:00:00');return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]+' '+dt.getDate()+'/'+String(dt.getMonth()+1);}catch{return d;}}
 
 // tColor: green > 10min, orange 5-10min, red < 5min
@@ -2259,6 +2284,30 @@ const supa=supabase.createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:true,au
 
 // ── Own session backup (works even if Supabase internal storage fails)
 const ST_AUTH='st_auth_v1';
+// Every authenticated REST call must travel on the USER's token, not the anon
+// key. With RLS on, the anon key sees nothing - and before RLS it saw
+// everything, which is exactly what we are closing. Falls back to the anon key
+// so unauthenticated paths (auth endpoints, health ping) keep working.
+function _jwt(){
+  try{const st=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(st?.access_token)return st.access_token;}catch(_){}
+  return SUPA_KEY;
+}
+// POST to a Postgres function. Public share views use these instead of table
+// reads: anonymous visitors have no table access once RLS is on.
+async function _rpc(fn,args,timeoutMs){
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{
+      method:'POST',signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`},
+      body:JSON.stringify(args||{}),
+    });
+    clearTimeout(tmo);
+    if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+(t?' - '+t:''));}
+    return await res.json().catch(()=>null);
+  }catch(e){clearTimeout(tmo);throw e;}
+}
 function saveAuthSession(sess){
   if(sess)localStorage.setItem(ST_AUTH,JSON.stringify({access_token:sess.access_token,refresh_token:sess.refresh_token}));
   else localStorage.removeItem(ST_AUTH);
@@ -2441,7 +2490,7 @@ async function _pushProject(id){
   if(localStages.length>0){
     try{
       const peekRes=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(proj.id)}&select=data`,{
-        headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Accept':'application/json'},
+        headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'},
       });
       if(peekRes.ok){
         const arr=await peekRes.json();
@@ -2468,7 +2517,7 @@ async function _pushProject(id){
   // Direct REST PATCH bypasses supa.from() - that client can deadlock on
   // stale auth refresh and silently swallow the upsert, which left
   // operators thinking shows were saved while the DB stayed empty (the
-  // lineup wipe bug). RLS is OFF on projects so anon key is enough.
+  // lineup wipe bug). Sent on the user's token so RLS can scope the write.
   // AbortController gives us a hard 10s ceiling.
   const row={
     id:proj.id,
@@ -2487,7 +2536,7 @@ async function _pushProject(id){
       headers:{
         'Content-Type':'application/json',
         'apikey':SUPA_KEY,
-        'Authorization':`Bearer ${SUPA_KEY}`,
+        'Authorization':`Bearer ${_jwt()}`,
         'Prefer':'return=minimal',
       },
       body:JSON.stringify(row),
@@ -3983,8 +4032,8 @@ function renderSched(){
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     // FOH notes
     const notes=G.fohNotes[s.id]||[];
-    const notesHTML=notes.map(nt=>`<div class="foh-note-item" style="border-left-color:${nt.color||'#ffe600'}">
-      ${nt.time?`<span class="foh-note-time" style="color:${nt.color||'#ffe600'}">${nt.time}</span>`:''}
+    const notesHTML=notes.map(nt=>`<div class="foh-note-item" style="border-left-color:${safeColor(nt.color,'#ffe600')}">
+      ${nt.time?`<span class="foh-note-time" style="color:${safeColor(nt.color,'#ffe600')}">${escH(nt.time)}</span>`:''}
       <span class="foh-note-txt">${escH(nt.text)}</span>
       <button class="foh-note-del" onclick="delFohnNote('${s.id}','${nt.id}');event.stopPropagation()">×</button>
     </div>`).join('');
@@ -3999,7 +4048,7 @@ function renderSched(){
         ${arrivedDot}
         <span class="scard-name">${escH(s.artist)}</span>
         ${itemTypeBadge(s)}
-        ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${s.booth}</span>`:''}
+        ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${escH(s.booth)}</span>`:''}
         <span class="scard-act">
           <button class="rb" onclick="openDrawer('${s.id}');event.stopPropagation()">✏️</button>
           <button class="rb d" onclick="delShow('${s.id}',event)">🗑</button>
@@ -4010,7 +4059,7 @@ function renderSched(){
       ${hasCrew?`<div class="scard-crew">${fohCrewHTML(s)}</div>`:''}
       ${notes.length?`<div class="scard-fnotes">${notesHTML}</div>`:''}
       <div class="scard-ft">
-        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${escH(s.id)}');event.stopPropagation()">+ Note</button>
         ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
         ${_showIsFuture(s)&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
@@ -4081,7 +4130,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllDD();});
 
 function renderHeader(){
   const sel=document.getElementById('stage-sel');
-  sel.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  sel.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
   sel.value=G.activeStage;sel.onchange=()=>{G.activeStage=sel.value;M.idx=0;mReset();save();renderAll();};
 
   // Day dropdown (desktop button-menu)
@@ -4109,14 +4158,14 @@ function renderHeader(){
 
   // FOH selects
   const fs=document.getElementById('foh-ssel');
-  fs.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  fs.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
   fs.value=G.activeStage;fs.onchange=()=>{G.activeStage=fs.value;save();renderFOH();renderAll();};
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   document.getElementById('foh-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayFOH');
 
   // Backstage selects
   const bs=document.getElementById('bs-ssel');
-  bs.innerHTML=G.stages.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  bs.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
   bs.value=G.activeStage;bs.onchange=()=>{G.activeStage=bs.value;save();renderBS();renderAll();};
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   document.getElementById('bs-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayBS','bshbtn');
@@ -4176,7 +4225,7 @@ function fohBoothBadge(booth){
   if(!booth)return'';
   const bg=booth==='A'?'rgba(99,102,241,.18)':'rgba(34,197,94,.14)';
   const col=booth==='A'?'#a5b4fc':'#86efac';
-  return`<span class="foh-booth-badge" style="background:${bg};color:${col};">Booth ${booth}</span>`;
+  return`<span class="foh-booth-badge" style="background:${bg};color:${col};">Booth ${escH(booth)}</span>`;
 }
 function fohNotesHTML(showId){
   const notes=(G.fohNotes[showId]||[]);
@@ -4207,7 +4256,7 @@ function renderFOH(){
       ${fohCrewHTML(cur.s)}
       ${fohNotesHTML(cur.s.id)}
       <div style="display:flex;gap:6px;margin-top:8px;">
-        <button class="foh-add-note" onclick="openFohnModal('${cur.s.id}','${escH(cur.s.artist)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" onclick="openFohnModal('${escH(cur.s.id)}');event.stopPropagation()">+ Note</button>
       </div>
     </div>`;
   }else{
@@ -4229,7 +4278,7 @@ function renderFOH(){
         </div>
         ${fohCrewHTML(s)}
         ${fohNotesHTML(s.id)}
-        <button class="foh-add-note" onclick="openFohnModal('${s.id}','${escH(s.artist)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" onclick="openFohnModal('${escH(s.id)}');event.stopPropagation()">+ Note</button>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
         <div class="foh-sr-act">
@@ -4248,9 +4297,12 @@ function renderFOH(){
 // ══ FOH NOTES
 const FOHN_COLORS=['#ffe600','#ff4d4d','#4dff91','#4db8ff','#ff944d','#c44dff','#ffffff'];
 let _fohnTarget=null,_fohnColor=FOHN_COLORS[0];
-function openFohnModal(showId,name){
+function openFohnModal(showId){
   _fohnTarget=showId;_fohnColor=FOHN_COLORS[0];
-  document.getElementById('fohn-modal-sub').textContent=name;
+  // Resolve the artist name here instead of taking it as an inline-handler
+  // argument - see the note on on*="" decoding above.
+  const _sh=(G.shows||[]).find(x=>x.id===showId);
+  document.getElementById('fohn-modal-sub').textContent=_sh?_sh.artist:'';
   document.getElementById('fohn-text').value='';
   document.getElementById('fohn-time').value='';
   document.getElementById('fohn-colors').innerHTML=FOHN_COLORS.map(c=>`<div class="fohn-color-swatch${c===_fohnColor?' active':''}" style="background:${c};" onclick="pickFohnColor('${c}',this)"></div>`).join('');
@@ -4321,7 +4373,7 @@ function renderBS(){
             <div class="bs-badge" style="color:${col};">
               <span class="bs-badge-dot lp" style="background:${col};"></span>LIVE
               ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
-              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${s.booth}</span>`:''}
+              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
             </div>
             <div class="bs-artist">${escH(s.artist)}</div>
           </div>
@@ -4344,7 +4396,7 @@ function renderBS(){
           <div class="bs-row-left">
             <div class="bs-badge" style="color:rgba(255,255,255,.3);">
               SCHEDULED
-              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${s.booth}</span>`:''}
+              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
             </div>
             <div class="bs-artist" style="color:rgba(255,255,255,.7);">${escH(s.artist)}</div>
           </div>
@@ -4373,7 +4425,7 @@ function renderBS(){
             <div class="bs-badge" style="color:rgba(255,255,255,.3);">
               NEXT ${rank>0?rank:''}
               ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
-              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${s.booth}</span>`:''}
+              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
             </div>
             <div class="bs-artist" style="color:rgba(255,255,255,.75);">${escH(s.artist)}</div>
           </div>
@@ -5753,12 +5805,21 @@ function openStageModal(){
   document.getElementById('sm-name').value='';
 }
 function closeStageModal(){document.getElementById('stage-modal-ov').style.display='none';}
+function _stageShowCount(id){return (G.shows||[]).filter(sh=>sh.stage===id).length;}
 function renderStageList(){
-  document.getElementById('stage-list').innerHTML=(G.stages||[]).map(s=>`
+  document.getElementById('stage-list').innerHTML=(G.stages||[]).map(s=>{
+    const n=_stageShowCount(s.id);
+    return `
     <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--s3);border-radius:7px;">
-      <span style="flex:1;font-size:13px;font-weight:600;">${escH(s.name)}</span>
-      <button onclick="delStage('${s.id}')" style="background:none;border:none;color:var(--sub);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:all .12s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--sub)'">×</button>
-    </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">No stages created yet.</div>`;
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(s.name)}</div>
+        <div style="font-size:10px;color:var(--sub);margin-top:1px;">${n} show${n===1?'':'s'}</div>
+      </div>
+      <button class="btn-del" onclick="delStage('${s.id}')" title="Delete this stage">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        Delete
+      </button>
+    </div>`;}).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">No stages created yet.</div>`;
 }
 // ═════════════════════════════════════════════════════════════════════════
 // STAGE LIMIT - pricing-plan enforcement (2026-05-26)
@@ -5827,7 +5888,12 @@ function addStage(){
   document.getElementById('sm-name').focus();
 }
 function delStage(id){
-  if(!confirm('Delete this stage? Shows on this stage will be kept.'))return;
+  const st=(G.stages||[]).find(s=>s.id===id);if(!st)return;
+  const n=_stageShowCount(id);
+  const msg=n
+    ? `Delete stage "${st.name}"?\n\nIts ${n} show${n===1?'':'s'} stay in the project but will no longer be visible until you assign them to another stage.`
+    : `Delete stage "${st.name}"?`;
+  if(!confirm(msg))return;
   G.stages=G.stages.filter(s=>s.id!==id);
   if(G.activeStage===id)G.activeStage=G.stages[0]?.id||null;
   save();renderAll();renderStageList();
@@ -6262,7 +6328,7 @@ function renderSubscriptionPage(){
           <div class="ws-seat-name">${escH(u.name||u.email)}${pending}${isMe?' <span style="font-size:10px;color:#78716C;">(you)</span>':''}</div>
           <div class="ws-seat-email">${escH(u.email||'')} · ${roleLabel}</div>
         </div>
-        ${isMe?'':`<button class="ws-icon-btn danger" onclick="removeMember('${u.id}','${escH(u.name||u.email).replace(/'/g,"&#39;")}')" title="Remove member">
+        ${isMe?'':`<button class="ws-icon-btn danger" onclick="removeMember('${escH(u.id)}')" title="Remove member">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
         </button>`}
       </div>`;
@@ -6403,10 +6469,10 @@ function openInviteMemberPrompt(){
 }
 window.openInviteMemberPrompt=openInviteMemberPrompt;
 
-async function removeMember(userId,displayName){
+async function removeMember(userId){
   const u=APP.users.find(x=>x.id===userId);
   if(!u){alert('User not found.');return;}
-  if(!confirm(`Remove ${displayName||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
+  if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
   try{
     const{data:{session}}=await supa.auth.getSession();
     if(!session?.access_token)throw new Error('Not authenticated.');
@@ -6442,10 +6508,26 @@ function openProject(id){
   setTimeout(scheduleProjectPushes,500);
 }
 
+// Direct REST on the user's token + row-count check. Under RLS a request
+// that matches no rows returns 200 with an empty body, so "did nothing" and
+// "succeeded" look identical unless we ask for the representation back.
+async function _restWrite(table,method,filter,body){
+  const res=await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`,{
+    method,
+    headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Prefer':'return=representation'},
+    ...(body?{body:JSON.stringify(body)}:{}),
+  });
+  const txt=await res.text().catch(()=>'');
+  if(!res.ok)throw new Error('HTTP '+res.status+(txt?' - '+txt:''));
+  let rows=[];try{rows=JSON.parse(txt||'[]');}catch(_){}
+  return Array.isArray(rows)?rows.length:0;
+}
 async function deleteProject(id){
   if(!confirm('Delete this project?'))return;
-  const{error}=await supa.from('projects').delete().eq('id',id);
-  if(error){alert('Error deleting: '+error.message);return;}
+  try{
+    const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
+    if(!n){alert('Nothing was deleted - you may not have permission for this project.');return;}
+  }catch(e){alert('Error deleting: '+(e.message||e));return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
   saveAPP();renderDash();
@@ -6456,7 +6538,8 @@ async function renameProject(id){
   if(!newName||newName.trim()===proj.name)return;
   proj.name=newName.trim();
   saveAPP();
-  await supa.from('projects').update({name:proj.name}).eq('id',id);
+  try{await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});}
+  catch(e){alert('Rename failed: '+(e.message||e));}
   const lnEl=document.getElementById('logo-name');
   if(APP.activeProjectId===id&&lnEl)lnEl.textContent=proj.name;
   renderDash();
@@ -6574,8 +6657,8 @@ async function createProject(){
     console.log('[createProject] inserting',row);
     // Direct fetch instead of supa.from().insert(). The supa client was
     // hanging - probably an auth-refresh deadlock when the access token is
-    // stale. RLS is disabled on `projects` so the anon key is enough to
-    // write a row, and we already have created_by from CURRENT_USER - so
+    // stale. We send the user's own token (RLS checks it against their
+    // workspace), and we already have created_by from CURRENT_USER - so
     // we skip supa.auth.getSession() entirely (that call was the new hang
     // source: it can stall on a stale refresh token even though the fetch
     // below is already protected by AbortController). AbortController
@@ -6590,7 +6673,7 @@ async function createProject(){
         headers:{
           'Content-Type':'application/json',
           'apikey':SUPA_KEY,
-          'Authorization':`Bearer ${SUPA_KEY}`,
+          'Authorization':`Bearer ${_jwt()}`,
           'Prefer':'return=minimal',
         },
         body:JSON.stringify(row),
@@ -6709,10 +6792,10 @@ function renderVouchers(){
         </div>
       </div>
       <div style="display:flex;gap:4px;align-items:flex-start;">
-        <button class="admin-item-del" onclick="copyVoucherCode('${escH(v.code).replace(/'/g,"&#39;")}',this)" title="Copy code">
+        <button class="admin-item-del" onclick="copyVoucherCode('${escH(v.id)}',this)" title="Copy code">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
-        ${v.active?`<button class="admin-item-del" onclick="archiveVoucher('${v.id}','${escH(v.code).replace(/'/g,"&#39;")}')" title="Archive">
+        ${v.active?`<button class="admin-item-del" onclick="archiveVoucher('${escH(v.id)}')" title="Archive">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
         </button>`:`<button class="admin-item-del" onclick="activateVoucher('${v.id}')" title="Re-activate" style="color:#15803D;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -6721,8 +6804,9 @@ function renderVouchers(){
     </div>`;
   }).join('');
 }
-function copyVoucherCode(code,btn){
-  navigator.clipboard.writeText(code).then(()=>{
+function copyVoucherCode(promoId,btn){
+  const v=_vouchers.find(x=>x.id===promoId);if(!v)return;
+  navigator.clipboard.writeText(v.code).then(()=>{
     if(btn){btn.style.color='#15803D';setTimeout(()=>{btn.style.color='';},1500);}
   });
 }
@@ -6784,8 +6868,9 @@ async function createVoucher(){
   btn.disabled=false;btn.textContent='Create voucher';
 }
 window.createVoucher=createVoucher;
-async function archiveVoucher(promoId,code){
-  if(!confirm(`Archive voucher ${code}?\n\nThe code stops working immediately. Existing subscriptions that already redeemed it keep their discount.`))return;
+async function archiveVoucher(promoId){
+  const _v=_vouchers.find(x=>x.id===promoId);
+  if(!confirm(`Archive voucher ${_v?_v.code:''}?\n\nThe code stops working immediately. Existing subscriptions that already redeemed it keep their discount.`))return;
   try{
     await _callVoucher({action:'archive',promoId});
     await loadVouchers();
@@ -7119,12 +7204,14 @@ async function delCompany(id){
   if(userCount||projCount){msg+=`\n\n${userCount} user(s) and ${projCount} project(s) will also be detached.`;}
   if(!confirm(msg))return;
   // Cascade: detach users and projects (set company_id = '')
-  await Promise.all([
-    supa.from('app_users').update({company_id:''}).eq('company_id',id),
-    supa.from('projects').update({company_id:''}).eq('company_id',id),
-  ]);
-  const{error}=await supa.from('companies').delete().eq('id',id);
-  if(error){alert('Delete failed: '+error.message);return;}
+  try{
+    await Promise.all([
+      _restWrite('app_users','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
+      _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
+    ]);
+    const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
+    if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+  }catch(e){alert('Delete failed: '+(e.message||e));return;}
   APP.users.forEach(u=>{if(u.companyId===id)u.companyId='';});
   APP.projects.forEach(p=>{if(p.companyId===id)p.companyId='';});
   APP.companies=APP.companies.filter(c=>c.id!==id);
@@ -7311,7 +7398,7 @@ function renderTL(){
       const bCol=isNow?'#fbbf24':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
       const bbCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':null;
       const bbBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.16)':null;
-      const boothBadge=s.booth?`<div style="font-size:9px;font-weight:800;color:${bbCol};background:${bbBg};padding:2px 7px;border-radius:99px;flex-shrink:0;letter-spacing:.04em;">${s.booth}</div>`:'';
+      const boothBadge=s.booth?`<div style="font-size:9px;font-weight:800;color:${bbCol};background:${bbBg};padding:2px 7px;border-radius:99px;flex-shrink:0;letter-spacing:.04em;">${escH(s.booth)}</div>`:'';
       // Arrival indicator: small green check when the artist is checked in via
       // the share-link Check-in viewer. Same state surfaces on the operator
       // schedule, overview, and now timeline so every screen agrees.
@@ -7406,13 +7493,13 @@ function renderTL(){
       const cancelLine=isCancelled?'text-decoration:line-through;opacity:.5;':'';
       const boothBadgeCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':null;
       const boothBadgeBg=s.booth==='A'?'rgba(99,102,241,.3)':s.booth==='B'?'rgba(34,197,94,.28)':null;
-      const boothBadge=(s.booth&&!isCancelled&&w>50)?`<div style="position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;color:${boothBadgeCol};background:${boothBadgeBg};padding:1px 6px;border-radius:99px;line-height:1.4;letter-spacing:.04em;">${s.booth}</div>`:'';
+      const boothBadge=(s.booth&&!isCancelled&&w>50)?`<div style="position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;color:${boothBadgeCol};background:${boothBadgeBg};padding:1px 6px;border-radius:99px;line-height:1.4;letter-spacing:.04em;">${escH(s.booth)}</div>`:'';
       // Arrival marker (set via the check-in share-link). Always visible
       // regardless of block width - a 12px green dot fits even on the
       // tiniest sliver, so a control room can scan check-in status across
       // the whole timeline at a glance.
       const arrivedDot=s.arrived?`<div title="Checked in" style="position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:#22c55e;display:inline-flex;align-items:center;justify-content:center;color:#04130a;box-shadow:0 0 0 1.5px rgba(0,0,0,.4);"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`:'';
-      return`<div onclick="openDrawer('${s.id}')" title="${escH(s.artist)} · ${s.start.slice(0,5)}–${s.end.slice(0,5)}${s.booth?' · Booth '+s.booth:''}${isCancelled?' [CANCELLED]':''}${isPriority?' [PRIORITY]':''}${s.arrived?' [CHECKED IN]':''}"
+      return`<div onclick="openDrawer('${s.id}')" title="${escH(s.artist)} · ${s.start.slice(0,5)}–${s.end.slice(0,5)}${s.booth?' · Booth '+escH(s.booth):''}${isCancelled?' [CANCELLED]':''}${isPriority?' [PRIORITY]':''}${s.arrived?' [CHECKED IN]':''}"
         style="position:absolute;left:${x}px;width:${w}px;top:8px;bottom:8px;
           background:${bBg};border:1px solid ${border};border-radius:7px;
           cursor:pointer;overflow:hidden;opacity:${isCancelled?.4:isPast?.28:1};
@@ -7749,42 +7836,26 @@ async function ciToggleArrived(showId){
   // Persist - in operator mode, go through the regular save() so the
   // syncDot, localStorage mirror and Realtime fanout all happen as usual.
   if(!PUBLIC_MODE){save({immediate:true});return;}
-  // Public checkin mode: READ-MODIFY-WRITE. The previous version PATCHed the
-  // entire `data` JSONB with whatever the checkin tab had in memory - if that
-  // snapshot was stale (operator just added a show), the PATCH clobbered the
-  // new show and Realtime echoed the wipe back to the operator's view. NEW
-  // FLOW: fetch the freshest data, mutate ONLY the arrived bit of the
-  // matching show by id, then PATCH back. The lineup is now untouchable.
+  // Public checkin mode: one RPC. This used to be a client-side
+  // read-modify-write of the entire `data` JSONB, which could clobber an
+  // operator edit that landed between the read and the write. set_show_arrived
+  // does the same mutation inside the database, under a row lock, and it is
+  // the ONLY write an anonymous visitor is granted - the lineup is not just
+  // untouched by convention any more, it is out of reach.
   _ciWriteInFlight++;
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
   try{
-    const readRes=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(PUBLIC_PID)}&select=data`,{
-      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Accept':'application/json'},
+    const fresh=await _rpc('set_show_arrived',{
+      p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
     });
-    if(!readRes.ok)throw new Error('Read failed: HTTP '+readRes.status);
-    const rows=await readRes.json();
-    const fresh=rows?.[0]?.data;
     if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
-    const idx=fresh.shows.findIndex(x=>x.id===showId);
-    if(idx<0)throw new Error('Show not found in latest data');
-    fresh.shows[idx].arrived=newArrived;
-    fresh.shows[idx].arrivedAt=newArrivedAt;
-    // Adopt fresh snapshot locally so any pending operator edits are
-    // visible immediately and we never write stale state next round.
+    // Adopt the returned snapshot locally so any operator edits that landed in
+    // the meantime are visible immediately.
     const proj=APP.projects.find(p=>p.id===PUBLIC_PID);if(proj)proj.data=fresh;
     const keepDay=G.activeDay;
     G=fresh;
     if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-    const res=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(PUBLIC_PID)}`,{
-      method:'PATCH',
-      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Prefer':'return=minimal'},
-      body:JSON.stringify({data:fresh}),
-    });
-    if(!res.ok){
-      const body=await res.text().catch(()=>'');
-      throw new Error('Write failed: HTTP '+res.status+(body?' - '+body:''));
-    }
     renderCI(); // repaint - may now also show other operator edits
   }catch(e){
     // Revert optimistic UI on failure
@@ -7871,8 +7942,8 @@ async function loadPublicView(){
     try{proj=await window._earlyPublicFetch;}catch(e){}
   }
   if(!proj){
-    const r=await supa.from('projects').select('*').eq('id',PUBLIC_PID).maybeSingle();
-    proj=r.data;
+    // RPC, not a table read: anonymous viewers have no access to `projects`.
+    proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID}).catch(()=>null);
   }
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project not found.</div>';return;}
   APP={companies:[],users:[],projects:[{id:proj.id,name:proj.name,companyId:proj.company_id,data:proj.data||{}}],activeProjectId:proj.id};
@@ -7895,11 +7966,13 @@ async function loadPublicView(){
     if(svExit)svExit.style.display='none';
     openSV();
     // Floor cues, blackout, mode toggles - any operator-side change must
-    // reach this Stage View in under a second. Realtime is the primary
-    // signal; the 1-second polling is a belt-and-braces fallback that
-    // also drives overlay/blackout repaint in the same cycle.
+    // reach this Stage View in under a second. Once RLS is on, anon has no
+    // table access, so Realtime delivers nothing to a public share view and
+    // this 1-second poll is the ONLY sync signal (it also drives the
+    // overlay/blackout repaint). setupRealtime() below stays wired up: it is
+    // a no-op for anon and still works when an operator opens this view.
     setInterval(async()=>{
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderSV();_renderCueOverlay();renderBlackout();}}catch(e){}
     },1000);
     setupRealtime();
@@ -7928,7 +8001,7 @@ async function loadPublicView(){
     renderTLDtabsPublic();
     openTL();
     setInterval(async()=>{
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
         const keepDay=G.activeDay;
         loadG();
@@ -7947,7 +8020,7 @@ async function loadPublicView(){
     if(dtabs)dtabs.style.display='none';
     openOV();
     setInterval(async()=>{
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderOV();_renderCueOverlay();renderBlackout();}}catch(e){}
     },1000);
     setupRealtime();
@@ -7967,7 +8040,7 @@ async function loadPublicView(){
     openBS();
     // Realtime updates
     setInterval(async()=>{
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderBS();_renderCueOverlay();renderBlackout();}}catch(e){}
     },1000);
     setupRealtime();
@@ -7988,7 +8061,7 @@ async function loadPublicView(){
     openFOH();
     // Realtime updates
     setInterval(async()=>{
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();_renderCueOverlay();renderBlackout();}}catch(e){}
     },1000);
     setupRealtime();
@@ -8007,7 +8080,7 @@ async function loadPublicView(){
     openWV();
     setInterval(tickWV,250);
     setInterval(async()=>{
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
         const keepDay=G.activeDay;loadG();
         if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
@@ -8037,7 +8110,7 @@ async function loadPublicView(){
     // prior value for a beat before the PATCH lands.
     setInterval(async()=>{
       if(_ciWriteInFlight>0)return;
-      try{const{data:proj}=await supa.from('projects').select('data').eq('id',PUBLIC_PID).maybeSingle();
+      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
       if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
         const keepDay=G.activeDay;loadG();
         if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
