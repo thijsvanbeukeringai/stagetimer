@@ -302,6 +302,88 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
   .ci-artist{font-size:14px;}
 }
 
+/* ══ VIEWS: FOH / Backstage / Timeline / Overview / Wall / Check-in / Share
+   dialog (view polish, BOUWPLAN 3.5). View-specific only: never Stage View
+   (#sv), never the operator control screen. Classes are prefixed vw-. ══ */
+/* Status chip - one vocabulary everywhere: Live / Next / Done / Cancelled /
+   Hidden / Scheduled / Overtime. Text, never colour alone. */
+.vw-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--ffm);font-size:10px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;padding:2px 7px;border-radius:99px;line-height:1.4;flex-shrink:0;white-space:nowrap;vertical-align:middle;
+  border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);background:rgba(255,255,255,.06);}
+.vw-chip.vw-live{color:#04130a;background:#fbbf24;border-color:#fbbf24;}
+.vw-chip.vw-overtime{color:#fff;background:#ef4444;border-color:#ef4444;}
+.vw-chip.vw-next{color:#86efac;border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.1);}
+.vw-chip.vw-done{color:rgba(255,255,255,.62);}
+.vw-chip.vw-cancelled{color:#fca5a5;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.12);}
+.vw-chip.vw-hidden{color:#c4b5fd;border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.1);border-style:dashed;}
+.vw-chip.vw-scheduled{color:#a5b4fc;border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.1);}
+/* Empty states: no shows planned / programme finished / other day / load error. */
+.vw-empty{max-width:520px;margin:32px auto;padding:22px 24px;border:1px dashed rgba(255,255,255,.18);border-radius:12px;
+  text-align:center;color:rgba(255,255,255,.82);background:rgba(255,255,255,.025);}
+.vw-empty-title{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.1px;}
+.vw-empty-sub{font-size:13px;line-height:1.5;color:rgba(255,255,255,.66);margin-top:6px;}
+.vw-empty.vw-error{border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.06);}
+.vw-empty.vw-error .vw-empty-title{color:#fca5a5;}
+.vw-empty.vw-inline{margin:14px 16px;padding:14px 16px;max-width:none;text-align:left;}
+/* "Last sync 23s ago": only when the share-link feed is stale (>10 s). */
+.vw-sync{display:inline-flex;align-items:center;gap:6px;font-family:var(--ffm);font-size:11px;font-weight:700;letter-spacing:.02em;
+  padding:4px 9px;border-radius:99px;color:#fcd34d;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);
+  white-space:nowrap;flex-shrink:0;}
+.vw-sync::before{content:'';width:6px;height:6px;border-radius:50%;background:#f59e0b;}
+.vw-sync[hidden]{display:none;}
+#foh-hdr .vw-sync,#bs-hdr .vw-sync,#tl-hdr .vw-sync,#stov-hdr .vw-sync,#ci-hdr .vw-sync{margin-left:auto;}
+.vw-sync:not([hidden]) + [id$="-clock"]{margin-left:0 !important;}
+#wv .vw-sync{color:var(--wv-text);margin-top:2px;}
+#wv .vw-empty,#wv .vw-empty-title{color:var(--wv-text);}
+#wv .vw-empty-sub{color:var(--wv-text-mute);}
+/* Day label next to a stage when Overview stages show different days */
+#stov .stov-stage-name:has(.stov-day){flex-wrap:wrap;row-gap:4px;}
+.stov-day{display:inline-block;margin-left:0;font-family:var(--ffm);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:none;
+  padding:1px 7px;border-radius:99px;color:#c7d2fe;background:rgba(99,102,241,.16);border:1px solid rgba(99,102,241,.4);vertical-align:middle;}
+#stov-daylbl{font-family:var(--ffm);font-size:12px;font-weight:700;color:rgba(255,255,255,.75);white-space:nowrap;}
+#stov-daylbl.mixed{color:#c7d2fe;}
+/* FOH crew status: visible words next to the icon buttons */
+.foh-crew-stl{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.5);white-space:nowrap;}
+.foh-crew-stl.present{color:#86efac;}.foh-crew-stl.otw{color:#fcd34d;}.foh-crew-stl.unknown{color:#fca5a5;}
+.foh-nolive{padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;color:rgba(255,255,255,.78);}
+.foh-nolive strong{color:#fff;}
+/* Timeline */
+.tl-lane-ov{position:absolute;right:4px;bottom:3px;font-family:var(--ffm);font-size:9px;font-weight:700;color:rgba(255,255,255,.5);}
+.tl-m-stage{position:sticky;top:0;z-index:2;background:#101018;}
+/* Check-in */
+.ci-legend{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:12px;color:rgba(255,255,255,.72);
+  padding:10px 14px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);}
+.ci-legend b{color:#fff;}
+.ci-legend .ci-lg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1.5px solid rgba(255,255,255,.4);}
+.ci-legend .ci-lg-dot.on{background:#22c55e;border-color:#22c55e;}
+.ci-toggle[disabled]{cursor:progress;opacity:.75;}
+.ci-toggle.busy{border-style:dashed;}
+.ci-err{grid-column:1/-1;font-size:12px;font-weight:600;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);
+  border-radius:8px;padding:8px 10px;}
+/* Share dialog */
+.share-intro{font-size:12px;line-height:1.5;color:var(--sub);}
+.share-link-row{flex-wrap:wrap;}
+.share-link-head{display:flex;align-items:center;gap:8px;width:100%;}
+.share-link-head .share-link-label{width:auto;}
+.share-access{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;border:1px solid var(--border2);color:var(--sub);}
+.share-access.rw{color:#fcd34d;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.1);}
+.share-link-row .share-link-url{user-select:all;-webkit-user-select:all;}
+.share-copy-btn{min-height:32px;}
+.share-copy-msg{width:100%;font-size:11px;line-height:1.4;color:var(--sub);}
+.share-copy-msg:empty{display:none;}
+.share-copy-msg.err{color:#fca5a5;}
+.share-copy-btn.failed{border-color:rgba(239,68,68,.5);color:#fca5a5;}
+@media (max-width:700px){
+  #share-modal{max-height:calc(100dvh - 24px);}
+  .share-link-row{gap:6px;margin-bottom:12px;}
+  .share-link-row .share-link-url{flex:1 1 100%;order:3;white-space:normal;word-break:break-all;font-size:11px;padding:8px;}
+  .share-copy-btn{min-height:44px;min-width:88px;font-size:13px;margin-left:auto;}
+  .share-link-head{width:auto;flex:1 1 0;min-width:0;flex-wrap:wrap;row-gap:4px;}
+  .share-copy-msg{order:4;}
+  #foh-hdr .vw-sync, #bs-hdr .vw-sync, #tl-hdr .vw-sync{grid-column:1/-1;grid-row:3;justify-self:start;margin-left:0;}
+  .vw-empty{margin:20px 12px;}
+}
+
 /* Operator overview "Arrived" pill - shows on the live/up-next card. */
 .stov-arrived{display:inline-flex;align-items:center;gap:4px;font-family:var(--ffm);font-size:9px;font-weight:800;
   letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-left:8px;vertical-align:middle;
@@ -3747,7 +3829,7 @@ function renderTbar(){
       <div style="font-size:14px;font-weight:800;" id="share-modal-title">Shareable links</div>
       <button onclick="closeShareModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;">×</button>
     </div>
-    <div style="font-size:11px;color:var(--sub);">These links open the view directly without logging in.</div>
+    <div class="share-intro">Anyone with a link opens that view without logging in. <strong>Read-only</strong> links can only look at the programme. The <strong>Artist check-in</strong> link can also mark artists as arrived - share it only with the check-in desk.</div>
     <div id="share-stage-list"></div>
   </div>
 </div>
@@ -9027,61 +9109,49 @@ async function scheduleProjectPushes(){
 
 // ══ SHARE LINKS
 const _shareBase=()=>location.origin+location.pathname;
+// What a share link lets its holder do. Every link is view-only, except
+// Check-in, which can save arrivals (and nothing else).
+const _SHARE_RW={checkin:true};
+function _shareRowHTML(label,mode,url){
+  const rw=!!_SHARE_RW[mode];
+  const tip=rw?'Anyone with this link can mark artists as arrived. It cannot change anything else.':'Anyone with this link can only look. Nothing can be changed through it.';
+  return`<div class="share-link-row" data-mode="${escH(mode)}">
+      <div class="share-link-head">
+        <span class="share-link-label">${escH(label)}</span>
+        <span class="share-access${rw?' rw':''}" title="${escH(tip)}">${rw?'Can change check-in':'Read-only'}</span>
+      </div>
+      <span class="share-link-url" title="${escH(url)}">${escH(url)}</span>
+      <button class="share-copy-btn" type="button" aria-label="Copy ${escH(label)} link" onclick="copyLink(this,${_jsArg(url)})">Copy</button>
+      <div class="share-copy-msg" role="status" aria-live="polite"></div>
+    </div>`;
+}
 function openShareModal(projId){
   const proj=APP.projects.find(p=>p.id===projId);if(!proj)return;
   const stages=proj.data?.stages||[];
   const base=_shareBase();
-  document.getElementById('share-modal-title').textContent='🔗 Links - '+escH(proj.name);
+  // textContent: the name must not be escaped twice ("Test &amp; Fest").
+  document.getElementById('share-modal-title').textContent='🔗 Links - '+proj.name;
+  const pid=encodeURIComponent(projId);
   // Timeline link (whole project, no stage)
-  const tlUrl=`${base}?mode=timeline&pid=${projId}`;
-  const ovUrl=`${base}?mode=overview&pid=${projId}`;
-  const ciUrl=`${base}?mode=checkin&pid=${projId}`;
-  const wvUrl=`${base}?mode=wall&pid=${projId}`;
+  const tlUrl=`${base}?mode=timeline&pid=${pid}`;
+  const ovUrl=`${base}?mode=overview&pid=${pid}`;
+  const ciUrl=`${base}?mode=checkin&pid=${pid}`;
+  const wvUrl=`${base}?mode=wall&pid=${pid}`;
   const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
-    <div class="share-stage-name">▦ Timeline, Overview, Check-in &amp; Wall</div>
-    <div class="share-link-row">
-      <span class="share-link-label">Timeline</span>
-      <span class="share-link-url" title="${tlUrl}">${tlUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${tlUrl}')">Copy</button>
-    </div>
-    <div class="share-link-row">
-      <span class="share-link-label">Overview</span>
-      <span class="share-link-url" title="${ovUrl}">${ovUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${ovUrl}')">Copy</button>
-    </div>
-    <div class="share-link-row">
-      <span class="share-link-label">Check-in</span>
-      <span class="share-link-url" title="${ciUrl}">${ciUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${ciUrl}')">Copy</button>
-    </div>
-    <div class="share-link-row">
-      <span class="share-link-label">Control Wall</span>
-      <span class="share-link-url" title="${wvUrl}">${wvUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${wvUrl}')">Copy</button>
-    </div>
+    <div class="share-stage-name">Whole project</div>
+    ${_shareRowHTML('Timeline','timeline',tlUrl)}
+    ${_shareRowHTML('Overview','overview',ovUrl)}
+    ${_shareRowHTML('Artist check-in','checkin',ciUrl)}
+    ${_shareRowHTML('Control Wall','wall',wvUrl)}
   </div>`;
   // Per-stage links
   const stageBlocks=stages.length?stages.map(st=>{
-    const stageUrl=`${base}?mode=stage&pid=${projId}&sid=${st.id}`;
-    const bsUrl=`${base}?mode=backstage&pid=${projId}&sid=${st.id}`;
-    const fohUrl=`${base}?mode=foh&pid=${projId}&sid=${st.id}`;
+    const sid=encodeURIComponent(st.id);
     return`<div class="share-stage-block">
       <div class="share-stage-name">${escH(st.name)}</div>
-      <div class="share-link-row">
-        <span class="share-link-label">Stage View</span>
-        <span class="share-link-url" title="${stageUrl}">${stageUrl}</span>
-        <button class="share-copy-btn" onclick="copyLink(this,'${stageUrl}')">Copy</button>
-      </div>
-      <div class="share-link-row">
-        <span class="share-link-label">Backstage</span>
-        <span class="share-link-url" title="${bsUrl}">${bsUrl}</span>
-        <button class="share-copy-btn" onclick="copyLink(this,'${bsUrl}')">Copy</button>
-      </div>
-      <div class="share-link-row">
-        <span class="share-link-label">FOH</span>
-        <span class="share-link-url" title="${fohUrl}">${fohUrl}</span>
-        <button class="share-copy-btn" onclick="copyLink(this,'${fohUrl}')">Copy</button>
-      </div>
+      ${_shareRowHTML('Stage View','stage',`${base}?mode=stage&pid=${pid}&sid=${sid}`)}
+      ${_shareRowHTML('Backstage','backstage',`${base}?mode=backstage&pid=${pid}&sid=${sid}`)}
+      ${_shareRowHTML('FOH','foh',`${base}?mode=foh&pid=${pid}&sid=${sid}`)}
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">No stages created in this project.</div>`;
   document.getElementById('share-stage-list').innerHTML=tlBlock+stageBlocks;
@@ -9120,12 +9190,15 @@ function renderCI(){
       if(isArr){arrived++;stageArr++;}
       const past=_showIsPast(s);
       const arrTime=s.arrivedAt?_fmtArrivedTime(s.arrivedAt):'';
+      // While this show's write is out the button is disabled and says so:
+      // repeat taps are ignored (_ciBusy) and now visibly so.
+      const busy=_ciBusy.has(s.id),err=_ciErr.get(s.id);
+      const label=busy?'Saving…':isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived';
       return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}">
         <div class="ci-time">${escH((s.start||'').slice(0,5))}</div>
-        <div class="ci-artist">${escH(s.artist||'(no name)')}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${arrTime}</span>`:''}</div>
-        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived(${escH(JSON.stringify(String(s.id)))})">
-          ${isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived'}
-        </button>
+        <div class="ci-artist">${escH(s.artist||'(no name)')}${s.hidden?' '+vwChip('hidden'):''}${past?' '+vwChip('done'):''}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${escH(arrTime)}</span>`:''}${!isArr&&!busy?`<span class="ci-arrived-meta" style="color:rgba(255,255,255,.5);">Not arrived yet</span>`:''}</div>
+        <button class="ci-toggle ${isArr?'on':''}${busy?' busy':''}"${busy?' disabled aria-busy="true"':''} aria-pressed="${isArr}" onclick="ciToggleArrived(${_jsArg(s.id)})">${label}</button>
+        ${err?`<div class="ci-err" role="alert">${escH(err)}</div>`:''}
       </div>`;
     }).join('');
     return`<div class="ci-stage">
@@ -9152,6 +9225,16 @@ let _ciWriteInFlight=0;
 // Shows whose check-in write is still out: repeat taps are ignored meanwhile
 // (a double tap used to send two opposite writes racing each other).
 const _ciBusy=new Set();
+// Last failed check-in write per show, shown in that row (renderCI) until the
+// next tap. Replaces a blocking alert() on an unattended check-in tablet.
+const _ciErr=new Map();
+// Repaint whatever shows check-in state after a change.
+function _ciRepaint(){
+  if(PUBLIC_MODE==='checkin'){renderCI();return;}
+  try{renderSched();}catch(e){}
+  if(document.getElementById('stov')?.classList.contains('open'))renderOV();
+  if(document.getElementById('ci')?.classList.contains('open'))renderCI();
+}
 // Until the rls_prep migration is applied, set_show_arrived does not exist.
 // (PostgREST: 404 + PGRST202. A plain 404 can also be the RPC's own "show not found".)
 function _isMissingRpc(e){return /PGRST202|could not find the function/i.test(String((e&&e.message)||e||''));}
@@ -9177,14 +9260,13 @@ async function ciToggleArrived(showId){
   const wasArrived=!!s.arrived,prevAt=s.arrivedAt;
   s.arrived=!wasArrived;
   s.arrivedAt=s.arrived?Date.now():null;
+  _ciErr.delete(showId);
+  // Busy before the repaint, so the row shows "Saving…" (button disabled)
+  // for as long as repeat taps are ignored.
+  _ciBusy.add(showId);
   // Immediate UI repaint - in checkin mode just repaint the list; in
   // operator mode update the schedule + overview if open + checkin view if open.
-  if(PUBLIC_MODE==='checkin')renderCI();
-  else{
-    try{renderSched();}catch(e){}
-    if(document.getElementById('stov')?.classList.contains('open'))renderOV();
-    if(document.getElementById('ci')?.classList.contains('open'))renderCI();
-  }
+  _ciRepaint();
   // Operator mode: the regular save queue. Its push merges per show and per
   // field onto a fresh server copy, so only arrived/arrivedAt of this show is
   // written over what other devices did; failures stay visible on the sync
@@ -9192,14 +9274,12 @@ async function ciToggleArrived(showId){
   if(!PUBLIC_MODE){
     const pid=APP.activeProjectId;
     save({immediate:true});
-    _ciBusy.add(showId);
-    _whenSaved(pid).then(()=>_ciBusy.delete(showId));
+    _whenSaved(pid).then(()=>{_ciBusy.delete(showId);_ciRepaint();});
     return;
   }
   // Public checkin mode: one RPC. set_show_arrived does the mutation inside
   // the database, under a row lock, and it is the ONLY write an anonymous
   // visitor is granted once RLS is on.
-  _ciBusy.add(showId);
   _ciWriteInFlight++;
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
@@ -9229,20 +9309,44 @@ async function ciToggleArrived(showId){
     // Revert optimistic UI on failure
     const s2=(G.shows||[]).find(x=>x.id===showId);
     if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
-    renderCI();
+    // Say it in the row (no blocking alert on an unattended tablet).
+    _ciErr.set(showId,humanError(e,'Saving the check-in')+' Nothing was changed - tap the button to try again.');
     console.error('[ciToggleArrived]',e);
-    alert(humanError(e,'Saving the check-in'));
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
     _ciBusy.delete(showId);
+    renderCI(); // busy state off; success or the error message
   }
 }
 
 function copyLink(btn,url){
-  navigator.clipboard.writeText(url).then(()=>{
-    btn.textContent='✓ Copied';btn.classList.add('copied');
-    setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);
-  });
+  // Clipboard API first; when it is missing or refused (http, iframe, old
+  // Safari, permissions) select the link text and try execCommand; if that
+  // fails too the link stays selected and the row says how to copy it.
+  const row=btn&&btn.closest?btn.closest('.share-link-row'):null;
+  const msg=row&&row.querySelector('.share-copy-msg');
+  const urlEl=row&&row.querySelector('.share-link-url');
+  const show=ok=>{
+    clearTimeout(btn._copyT);
+    btn.classList.toggle('copied',ok);btn.classList.toggle('failed',!ok);
+    btn.textContent=ok?'✓ Copied':'Copy';
+    if(msg){msg.textContent=ok?'Link copied.':'Could not copy automatically. The link is selected - press Ctrl+C (⌘C on Mac) to copy it.';msg.classList.toggle('err',!ok);}
+    if(ok)btn._copyT=setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');if(msg)msg.textContent='';},2000);
+  };
+  const select=()=>{
+    if(!urlEl)return false;
+    try{const r=document.createRange();r.selectNodeContents(urlEl);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);return true;}catch(e){return false;}
+  };
+  const fallback=()=>{
+    let ok=false;
+    if(select()){try{ok=!!(document.execCommand&&document.execCommand('copy'));}catch(e){ok=false;}}
+    if(!ok)select(); // keep (or put back) the selection for a manual copy
+    show(ok);
+  };
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(()=>show(true),fallback);return;}
+  }catch(e){}
+  fallback();
 }
 
 // ══ PUBLIC VIEW MODE (no login needed)
