@@ -37,7 +37,8 @@ function projectRow(data) {
 
 // Opens app.html as a logged-in operator with project P1 open.
 // opts.handle(route, req, url, st) may answer a request first (return true).
-async function openOperator(browser, { at, data, role = 'operator', timezoneId = 'Europe/Amsterdam', company, handle, users } = {}) {
+// opts.query: open a share link (e.g. '?mode=stage&pid=P1&sid=s1') instead of the operator app.
+async function openOperator(browser, { at, data, role = 'operator', timezoneId = 'Europe/Amsterdam', company, handle, users, query } = {}) {
   const context = await browser.newContext({ serviceWorkers: 'block', timezoneId, viewport: { width: 1280, height: 800 } });
   if (context.routeWebSocket) await context.routeWebSocket(/.*/, ws => ws.close());
   const page = await context.newPage();
@@ -75,8 +76,9 @@ async function openOperator(browser, { at, data, role = 'operator', timezoneId =
     sessionStorage.setItem('__seeded', '1');
     localStorage.setItem('st_auth_v1', JSON.stringify({ access_token: 'user.jwt', refresh_token: 'r1' }));
   });
-  await page.goto(`${ORIGIN}/app.html`);
+  await page.goto(`${ORIGIN}/app.html${query || ''}`);
   await page.clock.runFor(1500);
+  if (query) return { page, context, st };
   await page.evaluate(() => openProject('P1'));
   await page.clock.runFor(1000);
   return { page, context, st };
@@ -255,6 +257,39 @@ test.describe('admin writes before RLS (rls_prep RPCs)', () => {
       await context.close();
     });
   }
+});
+
+test.describe('service worker update notice', () => {
+  const fire = page => page.evaluate(() => {
+    window.__applied = 0;
+    window.dispatchEvent(new CustomEvent('st:sw-update', { detail: { apply() { window.__applied++; return true; } } }));
+  });
+  test('control screen: non-blocking notice, Reload applies the update', async ({ browser }) => {
+    const { page, context } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00' });
+    await fire(page);
+    const n = page.locator('#op-notices .op-notice');
+    await expect(n).toHaveCount(1);
+    await expect(n).toContainText('New version available');
+    await fire(page); // announced again: still one notice
+    await expect(n).toHaveCount(1);
+    // Hidden while the operator has Stage View full screen.
+    await page.evaluate(() => openSV());
+    await expect(page.locator('#op-notices')).toBeHidden();
+    await page.evaluate(() => closeSV());
+    await expect(page.locator('#op-notices')).toBeVisible();
+    await n.getByRole('button', { name: 'Reload' }).click();
+    expect(await page.evaluate(() => window.__applied)).toBe(1);
+    await expect(n).toHaveCount(0);
+    await context.close();
+  });
+  test('share link (Stage View): no notice at all', async ({ browser }) => {
+    const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', query: '?mode=stage&pid=P1&sid=s1' });
+    expect(await page.evaluate(() => PUBLIC_MODE)).toBe('stage');
+    await fire(page);
+    expect(await page.evaluate(() => [!!document.getElementById('op-notices'), window.__applied])).toEqual([false, 0]);
+    expect(st.errors).toEqual([]);
+    await context.close();
+  });
 });
 
 test.describe('crew pushes via send-push', () => {

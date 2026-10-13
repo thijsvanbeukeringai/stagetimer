@@ -10290,6 +10290,16 @@ setInterval(syncServerTime,60000);
 //  - Public screens (?mode=…, incl. Stage View): no event, no UI. The update
 //    is applied only while the tab is hidden, so a live screen never reloads
 //    in view (same rule as before).
+// Control screens: offer the waiting update as a small notice; Reload calls
+// apply(), which activates the new worker and reloads (see below). Never on
+// share links; hidden while Stage View is full screen (_opNotice).
+function _offerSwUpdate(d){
+  if(window.PUBLIC_MODE||!d||typeof d.apply!=='function')return;
+  _opNotice('New version available',{key:'sw-update',sticky:true,actionLabel:'Reload',
+    onAction:()=>{if(!d.apply())location.reload();}});
+}
+window.addEventListener('st:sw-update',e=>_offerSwUpdate(e.detail));
+if(window._stSwUpdate)_offerSwUpdate(window._stSwUpdate);
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>{
     setTimeout(async()=>{
