@@ -4936,6 +4936,13 @@ function renderTbar(){
 // Inside `html`, a <button data-st-value="x"> closes the dialog with "x".
 // Texts (message, labels) are plain text and always escaped; `html` is for
 // callers that build their own escaped markup (previews, lists).
+// Move focus one step inside a list of focusable elements, wrapping.
+function _stTabStep(list,back,fallback){
+  if(!list.length){fallback&&fallback.focus();return;}
+  const i=list.indexOf(document.activeElement);
+  const n=i<0?(back?list.length-1:0):(i+(back?-1:1)+list.length)%list.length;
+  list[n].focus();
+}
 const stDialog=(()=>{
   const stack=[];let seq=0;
   const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -4969,11 +4976,10 @@ const stDialog=(()=>{
       return;
     }
     if(e.key==='Tab'){
-      const f=focusables(d);if(!f.length){e.preventDefault();d.panel.focus();return;}
-      const first=f[0],last=f[f.length-1],a=document.activeElement;
-      if(e.shiftKey&&(a===first||!d.panel.contains(a))){e.preventDefault();last.focus();}
-      else if(!e.shiftKey&&(a===last||!d.panel.contains(a))){e.preventDefault();first.focus();}
-      e.stopPropagation();
+      // Moved here, not by the browser: the order wraps, and buttons are
+      // reachable even where the platform skips them on Tab (Safari).
+      e.preventDefault();e.stopPropagation();
+      _stTabStep(focusables(d),e.shiftKey,d.panel);
       return;
     }
     // Keys typed inside the dialog belong to the dialog only.
@@ -5151,9 +5157,7 @@ function _fmtDay(ymd){
     if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();t.close();return;}
     const f=[...t.ov.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled])')].filter(el=>el.getClientRects().length);
     if(!f.length)return;
-    const first=f[0],last=f[f.length-1],act=document.activeElement;
-    if(e.shiftKey&&(act===first||!t.ov.contains(act))){e.preventDefault();last.focus();}
-    else if(!e.shiftKey&&(act===last||!t.ov.contains(act))){e.preventDefault();first.focus();}
+    e.preventDefault();_stTabStep(f,e.shiftKey);
   },true);
 })();
 // For the few code paths that may run before / without the dialog (node test
@@ -5997,9 +6001,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Tab'){
     const f=[...dr.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled])')].filter(el=>el.offsetWidth||el.offsetHeight);
     if(!f.length)return;
-    const first=f[0],last=f[f.length-1],act=document.activeElement;
-    if(e.shiftKey&&(act===first||!dr.contains(act))){e.preventDefault();last.focus();}
-    else if(!e.shiftKey&&(act===last||!dr.contains(act))){e.preventDefault();first.focus();}
+    e.preventDefault();_stTabStep(f,e.shiftKey);
   }
 });
 let curBooth='A';

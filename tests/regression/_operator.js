@@ -26,7 +26,16 @@ const test = base.extend({
   stAuth: ['admin', { option: true }],
   stSeed: [{ mutate(seed) { seed.projects[0].data = projectData(); return seed; } }, { option: true }],
   // Page errors and native dialogs (alert/confirm/prompt must be gone) fail the test.
+  // The app asks for fullscreen on the first click on desktop browsers; in
+  // fullscreen the browser itself consumes Escape (WebKit does, like Safari)
+  // to leave fullscreen, so an Escape test would test the browser. Fullscreen
+  // is a no-op here.
   pageProblems: [async ({ page }, use) => {
+    await page.addInitScript(() => {
+      const noop = function () { return Promise.resolve(); };
+      Element.prototype.requestFullscreen = noop;
+      Element.prototype.webkitRequestFullscreen = noop;
+    });
     const problems = [];
     page.on('pageerror', (e) => problems.push(e.message));
     page.on('dialog', (d) => { problems.push('native dialog: ' + d.message()); d.dismiss().catch(() => {}); });

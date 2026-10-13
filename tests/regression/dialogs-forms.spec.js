@@ -73,7 +73,8 @@ test.describe('existing modals', () => {
   test('dialog role, Escape closes only the modal, focus returns', async ({ page, st }) => {
     await openOperator({ page, st }, { open: false });
     const btn = page.getByRole('button', { name: 'New project' });
-    await btn.click();
+    await btn.focus();                 // keyboard user (Safari does not focus clicked buttons)
+    await page.keyboard.press('Enter');
     const modal = page.getByRole('dialog', { name: 'New project' });
     await expect(modal).toBeVisible();
     await page.keyboard.press('Escape');
@@ -396,15 +397,15 @@ test.describe('account and workspace', () => {
     await openOperator({ page, st }, { open: false });
     await page.getByRole('button', { name: 'Account settings' }).first().click();
     await expect(page.locator('#ws-profile-pw-rule')).toHaveText('Use at least 8 characters.');
-    await page.getByLabel('New password').fill('short');
-    await page.getByLabel('Repeat password').fill('short');
+    await page.locator('#ws-profile').getByLabel('New password').fill('short');
+    await page.locator('#ws-profile').getByLabel('Repeat password').fill('short');
     await page.getByRole('button', { name: 'Update password' }).click();
     await expect(page.locator('#ws-profile-pw-err')).toHaveText('Password must be at least 8 characters.');
-    await expect(page.getByLabel('New password')).toBeFocused();
-    await page.getByLabel('New password').fill('long-enough-1');
+    await expect(page.locator('#ws-profile-pw')).toBeFocused();
+    await page.locator('#ws-profile-pw').fill('long-enough-1');
     await page.getByRole('button', { name: 'Update password' }).click();
     await expect(page.locator('#ws-profile-pw2-err')).toHaveText('Passwords do not match.');
-    await page.getByLabel('Repeat password').fill('long-enough-1');
+    await page.locator('#ws-profile-pw2').fill('long-enough-1');
     await page.getByRole('button', { name: 'Update password' }).click();
     await expect(page.locator('#ws-profile-pw-status')).toHaveText('Password updated.');
   });
