@@ -72,7 +72,7 @@ test.describe('stripped payload', () => {
       expect.soft(has('photo'), 'photo').toBe(false);
       expect.soft(has('crew'), 'crew').toBe(mode === 'foh');
       expect.soft(has('note'), 'note').toBe(mode === 'backstage');
-      expect.soft(Object.keys(row.data.fohNotes).length > 0, 'fohNotes').toBe(mode === 'foh' || mode === 'backstage');
+      expect.soft(Object.keys(row.data.fohNotes).length > 0, 'fohNotes').toBe(mode === 'foh');   // timed cues: FOH only
       if (mode !== 'foh') expect(text).not.toContain('Bram');            // crew name
       if (mode !== 'backstage') expect(text).not.toContain('USB backup'); // show note
       // What every mode needs for the clock and overlays is still there.
@@ -103,7 +103,7 @@ test.describe('every view renders the same on the stripped feed', () => {
   test('the data itself is on screen', async ({ page, st }) => {
     await open(st, 'backstage');
     await expect(page.locator('#bs-body')).toContainText("Bring O'Neil's USB backup");
-    await expect(page.locator('#bs-body')).toContainText("Extra monitor for DJ O'Neil");
+    await expect(page.locator('#bs-body')).not.toContainText("Extra monitor for DJ O'Neil");   // FOH cue, not on Backstage
     await open(st, 'foh');
     await expect(page.locator('.foh-crew-row', { hasText: 'Bram' })).toContainText('On the way');
     await expect(page.locator('#foh-col-body')).toContainText("Extra monitor for DJ O'Neil");

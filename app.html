@@ -6936,8 +6936,7 @@ function renderBS(){
   // every poll used to rebuild the list and reset its scroll position);
   // tickBS keeps the countdowns and bars moving.
   const sig=JSON.stringify([G.activeStage,G.activeDay,activeStageObj().name,
-    shows.map(s=>[s.id,s.artist,s.start,s.end,s.booth,s.type,s.note,s.hidden,vwStatusKey(s,now)]),
-    shows.map(s=>(G.fohNotes||{})[s.id]||0)]);
+    shows.map(s=>[s.id,s.artist,s.start,s.end,s.booth,s.type,s.note,s.hidden,vwStatusKey(s,now)])]);
   if(vwSame(body,sig))return;
 
   if(!shows.length||shows.every(s=>_showIsPast(s,now))){
@@ -6945,19 +6944,14 @@ function renderBS(){
     return;
   }
 
+  // Backstage shows the show's own note only. Timed FOH notes are cues for
+  // front of house (they count down and alert in the FOH view) and stay off
+  // the backstage screen on purpose.
   const notesBlock=s=>{
-    const foh=(G.fohNotes&&G.fohNotes[s.id])||[];
     const showNote=(s.note||'').trim();
-    if(!foh.length&&!showNote)return'';
+    if(!showNote)return'';
     const items=[];
-    if(showNote)items.push(`<div style="font-size:12px;color:rgba(255,255,255,.55);padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.18);line-height:1.4;margin-top:6px;">${escH(showNote)}</div>`);
-    foh.forEach(n=>{
-      const col=vwColor(n.color,'#ffe600');
-      items.push(`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid ${col};line-height:1.4;margin-top:6px;">
-        ${n.time?`<span style="font-family:var(--ffm);font-size:11px;font-weight:700;color:${col};flex-shrink:0;">${escH(n.time)}</span>`:''}
-        <span style="font-size:12px;color:rgba(255,255,255,.78);">${escH(n.text)}</span>
-      </div>`);
-    });
+    items.push(`<div style="font-size:12px;color:rgba(255,255,255,.55);padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.18);line-height:1.4;margin-top:6px;">${escH(showNote)}</div>`);
     return`<div class="bs-notes" style="margin-top:8px;">${items.join('')}</div>`;
   };
   body.innerHTML=shows.map((s,i)=>{

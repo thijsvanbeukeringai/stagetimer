@@ -16,7 +16,7 @@ const SHARE_MODES = ['stage', 'backstage', 'foh', 'timeline', 'overview', 'wall'
 // field -> the modes that keep it. 'legacy' is the PHASE B narrowing of the
 // 1-arg call (union of what any mode renders); unknown modes get none.
 const SHARE_FIELD_MATRIX = {
-  fohNotes: ['backstage', 'foh', 'legacy'],     // renderBS notesBlock, renderFOH fohNotesHTML
+  fohNotes: ['foh', 'legacy'],                  // renderFOH fohNotesHTML (timed cues are FOH-only, not on Backstage)
   'shows[].note': ['backstage', 'legacy'],      // renderBS notesBlock
   'shows[].crew': ['foh', 'legacy'],            // renderFOH fohCrewHTML (names + status)
   'shows[].photo': [],                          // operator timer panel / editor drawer only

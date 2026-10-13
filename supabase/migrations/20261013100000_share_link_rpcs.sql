@@ -18,7 +18,7 @@
 --                                     renders (company_id is always null):
 --
 --     field (in data)      stage backstage foh timeline overview wall checkin
---     fohNotes               -      yes     yes    -        -      -     -
+--     fohNotes               -      -       yes    -        -      -     -
 --     shows[].note           -      yes      -     -        -      -     -
 --     shows[].crew           -       -      yes    -        -      -     -
 --     shows[].photo          -       -       -     -        -      -     -
@@ -51,8 +51,8 @@
 --                                  backstage, foh (where the customer logo
 --                                  shows); three booleans, harmless elsewhere
 --   Verified against app.html on 2026-10-13 by reading renderSV (+ _svMode,
---   _renderCueOverlay, renderBlackout), renderBS (notesBlock: fohNotes +
---   note, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
+--   _renderCueOverlay, renderBlackout), renderBS (notesBlock: show note only -
+--   timed FOH cues stay off Backstage, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
 --   renderTL, renderOV, renderWV / tickWV and renderCI: none of the last
 --   four reads note, crew or fohNotes; Stage View reads none of the six.
 --   Photos are only used by the operator timer panel and editor drawer,
@@ -166,7 +166,7 @@ language plpgsql
 immutable
 as $$
 declare
-  keep_foh   boolean := p_mode in ('backstage', 'foh', 'legacy');
+  keep_foh   boolean := p_mode in ('foh', 'legacy');
   keep_note  boolean := p_mode in ('backstage', 'legacy');
   keep_crew  boolean := p_mode in ('foh', 'legacy');
   keep_logo  boolean := p_mode in ('backstage', 'foh', 'legacy');

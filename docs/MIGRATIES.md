@@ -118,7 +118,7 @@ Dit document zet alles in één volgorde.
 
 | Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin |
 |---|---|---|---|---|---|---|---|
-| `fohNotes` | - | ja | ja | - | - | - | - |
+| `fohNotes` | - | - | ja | - | - | - | - |
 | `shows[].note` | - | ja | - | - | - | - | - |
 | `shows[].crew` | - | - | ja | - | - | - | - |
 | `shows[].photo` | - | - | - | - | - | - | - |
