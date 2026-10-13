@@ -80,6 +80,8 @@ function festivalData() {
     }),
     show('m2', S.main, D.d1, T.d1, '15:30', '16:30', "DJ O'Neil", {
       genre: 'House', booth: 'B', note: "Bring O'Neil's USB backup", photo: PHOTO_PNG,
+      // Rider (show.rider): free text with line breaks, shown on Check-in and Stage manager.
+      rider: { drinks: '2x Club-Mate\nStill water, room temperature', tech: '2x CDJ-3000 + DJM-V10\nBooth monitor on the left' },
       crew: {
         vj: { name: 'Anna', status: 'present' },
         light: { name: 'Bram', status: 'otw' },
@@ -87,9 +89,13 @@ function festivalData() {
       },
     }),
     show('m3', S.main, D.d1, T.d1, '17:00', '18:15', 'The <b>html</b> & "Quotes" Band', { genre: 'Rock', booth: 'A' }),
-    show('m4', S.main, D.d1, T.d1, '19:00', '20:30', 'Headliner Priority', { genre: 'Pop', booth: 'A', priority: true, type: 'live' }),
+    show('m4', S.main, D.d1, T.d1, '19:00', '20:30', 'Headliner Priority', {
+      genre: 'Pop', booth: 'A', priority: true, type: 'live',
+      // Markup in a rider must stay text everywhere.
+      rider: { drinks: 'Champagne <b>Brut</b> & "ice"\n<img src=x onerror="window.__xss=1">', tech: 'In-ear monitoring (4 mixes)\n<script>window.__xss=1</script>' },
+    }),
     show('m5', S.main, D.d1, T.d1, '21:00', '22:30', 'Cancelled Act', { cancelled: true }),
-    show('m6', S.main, D.d1, T.d1, '23:00', '01:30', 'Night Owl', { genre: 'Techno', booth: 'B' }),
+    show('m6', S.main, D.d1, T.d1, '23:00', '01:30', 'Night Owl', { genre: 'Techno', booth: 'B', rider: { drinks: 'Espresso', tech: '' } }),
     // ── The Tent, Friday
     show('t1', S.tent, D.d1, T.d1, '15:00', '16:00', 'Hidden Guest', { hidden: true }),
     show('t2', S.tent, D.d1, T.d1, '16:00', '17:30', 'Tent Band (legacy)', { legacy: true, booth: 'A' }),
