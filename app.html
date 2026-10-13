@@ -1410,7 +1410,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #tp-grp-timer{background:var(--s1)!important;}
 #modetog{margin:0;}
 .mdb{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:var(--btn-h-sm);font-size:var(--fs-2xs);letter-spacing:.06em;}
-.mdb.on{color:var(--text);}
+.mdb.on{background:var(--accent);color:#fff;box-shadow:none;}
+/* One selected style on the control screen: accent fill + white text
+   (mode toggle, display mode, day menu). */
+#hdr .dd-item.on,#hdr .dd-item.on:hover{background:var(--accent);color:#fff;}
 #tbar{padding:10px 0 0;border-top:none;}
 .tb{height:var(--btn-h);font-size:var(--fs-sm);}
 #t-inf{font-size:var(--fs-2xs);}
@@ -5140,7 +5143,18 @@ function renderTbar(){
 
 <script>
 // ══ RENDER TIMER PANEL
+// Mode toggle + transport follow G.timerMode also when it was restored from
+// this device's saved selection (setMode is only called on a click).
+function _syncModeToggle(){
+  const m=G.timerMode==='manual'?'manual':'live',l=document.getElementById('mb-live'),b=document.getElementById('mb-man');
+  if(!l||!b||l.dataset.m===m)return;
+  l.dataset.m=m;
+  l.className='mdb'+(m==='live'?' on':'');b.className='mdb'+(m==='manual'?' on':'');
+  l.setAttribute('aria-pressed',m==='live');b.setAttribute('aria-pressed',m==='manual');
+  const tb=document.getElementById('tbar');if(tb)tb.className=m==='manual'?'vis':'';
+}
 function renderTP(){
+  _syncModeToggle();
   if(G.timerMode==='manual'){renderTPManual();renderTbar();return;}
   renderTPLive();
 }
@@ -6106,7 +6120,7 @@ function saveShow(){
 function delShow(id,e){e.stopPropagation();if(!confirm('Delete this show?'))return;_markIntentionalRemoval([id]);G.shows=G.shows.filter(s=>s.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
 
 // ══ MODE
-function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
+function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('mb-live').setAttribute('aria-pressed',m==='live');document.getElementById('mb-man').setAttribute('aria-pressed',m==='manual');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
 
 // ══ OPEN/CLOSE screens
 function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));_svZoomLock(false);}
