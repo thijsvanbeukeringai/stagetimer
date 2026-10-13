@@ -48,6 +48,8 @@ Daarnaast stuurt de functie een vaste `idempotency_key` mee. Opnieuw inplannen b
 
 ### App-wijziging (voor de app-agent)
 
+**Gedaan** (branch `fix/logic-batch-2026-10-13`), zonder vlag: de app stuurt alleen nog via `send-push` en `OS_REST_KEY` is weg. Een 404 (functie niet gedeployed) geeft de operator de melding "Push is not configured yet". Hieronder de oorspronkelijke opdracht, ter referentie.
+
 In `scheduleProjectPushes()`:
 
 - vervang de `fetch('https://onesignal.com/api/v1/notifications', …)` achter een vlag (bijvoorbeeld `const PUSH_VIA_EDGE=true`) door:

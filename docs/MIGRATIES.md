@@ -208,7 +208,12 @@ Zie `supabase/functions/README.md`:
 2. Zet de secrets.
 3. Deploy de functie.
 4. Test.
-5. Zet de app-vlag om en haal `OS_REST_KEY` uit `app.html`.
+
+**De app is al omgezet** (branch `fix/logic-batch-2026-10-13`): `OS_REST_KEY` staat niet meer in `app.html` en `scheduleProjectPushes` stuurt alleen nog via `functions/v1/send-push`, met het JWT van de gebruiker. Er is geen vlag meer. Gevolg:
+
+- **Tot `send-push` gedeployed is en de key geroteerd is, worden er geen crew-pushmeldingen verstuurd.** De functie antwoordt dan 404. De operator ziet één keer de melding "Push is not configured yet" en de app probeert het die sessie niet opnieuw.
+- Zodra stap 1 tot en met 4 gedaan zijn, werkt het versturen weer, zonder nieuwe app-release.
+- Tegelijk is de oude bug gerepareerd: de app las `s.endTime` en `show.stageId` (bestaan niet) en rekende vanaf middernacht van het toestel. Nu gebruikt hij het echte eindtijdstip van de show (`endsAt`, of datum + `end`, ook over middernacht) in festivaltijd, en `show.stage`. Afgelaste shows krijgen geen melding.
 
 ## App-wijzigingen die bij deze migraties horen
 
@@ -224,7 +229,7 @@ Zie `supabase/functions/README.md`:
 | Conflictdetectie | `save_project` en `patch_show` (zie de kop van het versioning-bestand); echo's met `version <=` de eigen versie negeren | stap 13 |
 | Soft delete | `soft_delete_project`; filter `&deleted_at=is.null` in `_restGet('projects')` en de peek; in realtime een UPDATE met `deleted_at` behandelen als DELETE | stap 13 |
 | Goedkoop pollen (§4.3) | publieke views pollen `get_shared_project_version` en halen het project alleen op als de versie verandert | optioneel |
-| Push | `send-push` achter een vlag; `OS_REST_KEY` verwijderen; de `endTime`/`stageId`-bug in `scheduleProjectPushes` repareren | stap 15 |
+| Push | **gedaan:** alleen nog `send-push`; `OS_REST_KEY` verwijderd; de `endTime`/`stageId`-bug in `scheduleProjectPushes` gerepareerd. Pushen werkt weer zodra stap 15 gedaan is | stap 15 |
 
 ## Niet verifieerbaar zonder het echte schema
 

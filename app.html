@@ -2453,6 +2453,46 @@ async function restoreAuthSession(){
 
 function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.className=s;}
 
+// Small non-blocking notice for operators, bottom centre. Control screens
+// only: never on share links (PUBLIC_MODE) and hidden while the operator has
+// Stage View or a one-off timer full screen. One per key; a newer notice with
+// the same key replaces the old one.
+// opts: {key, actionLabel, onAction, sticky (no auto-hide), ms}
+function _opNotice(msg,opts){
+  if(window.PUBLIC_MODE)return null;
+  opts=opts||{};
+  try{
+    let wrap=document.getElementById('op-notices');
+    if(!wrap){
+      const css=document.createElement('style');
+      css.textContent='#op-notices{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:10050;display:flex;flex-direction:column;gap:8px;width:min(560px,calc(100vw - 32px));pointer-events:none;}'
+        +'@media (max-width:768px){#op-notices{bottom:calc(84px + env(safe-area-inset-bottom));}}'
+        +'body:has(#sv.open) #op-notices,body:has(#otv.open) #op-notices{display:none;}'
+        +'.op-notice{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:10px;background:#1d1d23;color:#eeeef8;border:1px solid rgba(255,255,255,.13);box-shadow:0 8px 28px rgba(0,0,0,.45);font:500 13px/1.4 var(--ff,system-ui,sans-serif);}'
+        +'.op-notice>span{flex:1;min-width:0;}'
+        +'.op-notice>button{flex-shrink:0;font:600 12px var(--ff,system-ui,sans-serif);border-radius:7px;padding:6px 10px;cursor:pointer;border:1px solid rgba(255,255,255,.13);background:transparent;color:inherit;}'
+        +'.op-notice>button.op-act{background:#eeeef8;color:#0b0b0e;border-color:#eeeef8;}';
+      document.head.appendChild(css);
+      wrap=document.createElement('div');wrap.id='op-notices';
+      wrap.setAttribute('role','status');wrap.setAttribute('aria-live','polite');
+      document.body.appendChild(wrap);
+    }
+    const key=opts.key||msg;
+    for(const c of [...wrap.children])if(c.dataset.key===key)c.remove();
+    const el=document.createElement('div');el.className='op-notice';el.dataset.key=key;
+    const txt=document.createElement('span');txt.textContent=msg;el.appendChild(txt);
+    if(opts.actionLabel&&typeof opts.onAction==='function'){
+      const b=document.createElement('button');b.type='button';b.className='op-act';b.textContent=opts.actionLabel;
+      b.onclick=()=>{el.remove();opts.onAction();};el.appendChild(b);
+    }
+    const x=document.createElement('button');x.type='button';x.textContent='✕';x.setAttribute('aria-label','Dismiss');
+    x.onclick=()=>el.remove();el.appendChild(x);
+    wrap.appendChild(el);
+    if(!opts.sticky)setTimeout(()=>el.remove(),opts.ms||15000);
+    return el;
+  }catch(e){console.warn('[notice] could not show:',msg,e);return null;}
+}
+
 // ══ APP STATE (multi-project)
 const AKEY='st_app_v1';
 let APP,G;
@@ -8760,8 +8800,9 @@ function toggleCrewMember(userId,add){
 }
 
 // ══ ONESIGNAL
-const OS_APP_ID='5778eb83-1c2c-4ffd-b085-4236b5bd0188';
-const OS_REST_KEY='os_v2_app_k54oxay4frh73mefii3llpibrbfc3y7kg4uuhff6anaeirn24ba23shg725lertwkymwyyiy7vsazqadx4ylnc73mvufwl4a2oofrji';
+// The browser only registers devices (OneSignal SDK, public app id).
+// Sending goes through the send-push edge function, which holds the REST
+// key server side (supabase/functions/send-push, docs/MIGRATIES.md step 15).
 
 async function initOneSignalUser(userId){
   if(!userId)return;
@@ -8789,33 +8830,63 @@ async function requestPushPermission(){
   }catch(e){console.warn('OneSignal permission:',e);}
 }
 
-async function scheduleProjectPushes(){
-  if(!G||!APP||!CURRENT_USER)return;
-  const memberIds=G.memberIds||[];
-  if(!memberIds.length)return;
-  const today=G.activeDay;
-  const shows=(G.shows||[]).filter(s=>s.day===today&&s.endTime);
-  const nowMs=Date.now();
-  const midnight=new Date();midnight.setHours(0,0,0,0);
-  for(const show of shows){
-    const endSec=t2s(show.endTime);
-    const notifMs=midnight.getTime()+(endSec-600)*1000;
-    if(notifMs<=nowMs)continue;
-    const stageName=(G.stages||[]).find(st=>st.id===show.stageId)?.name||'Stage';
-    const payload={
-      app_id:OS_APP_ID,
-      include_external_user_ids:memberIds,
-      channel_for_external_user_ids:'push',
-      headings:{en:`${show.artist||'Show'} almost finished`,nl:`${show.artist||'Show'} almost finished`},
-      contents:{en:`${show.artist||'Show'} on ${stageName} ends at ${show.endTime} - about 10 min left.`,nl:`${show.artist||'Show'} on ${stageName} ends at ${show.endTime} - about 10 min left.`},
-      send_after:new Date(notifMs).toISOString()
-    };
-    fetch('https://onesignal.com/api/v1/notifications',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Basic '+OS_REST_KEY},
-      body:JSON.stringify(payload)
-    }).catch(e=>console.warn('scheduleNotif:',e));
+// "About 10 minutes left" pushes for the crew (G.memberIds), one per show of
+// the selected day, sent when the project is opened. Shows are read the way
+// every screen reads them: real end instant (_showEndsAt: endsAt, or date +
+// end, overnight-aware, festival time) on the stage `show.stage`. Cancelled
+// shows get none. send-push accepts send_after up to 48h ahead and drops
+// repeats itself (idempotency key per project/show/time/recipients/text), so
+// re-opening a project does not notify twice.
+const PUSH_LEAD_MS=10*60*1000,PUSH_MAX_AHEAD_MS=47*3600*1000;
+// Pure: the requests scheduleProjectPushes would send for project data g.
+function pushJobsFor(g,projectId,now){
+  const memberIds=[...new Set((g&&g.memberIds)||[])];
+  if(!g||!projectId||!memberIds.length)return[];
+  const jobs=[];
+  for(const show of g.shows||[]){
+    if(show.day!==g.activeDay||!showAllowed(show,'live',false))continue;
+    const end=_showEndsAt(show);if(!end)continue;
+    const at=end.getTime()-PUSH_LEAD_MS;
+    if(at<=now||at>now+PUSH_MAX_AHEAD_MS)continue;
+    const artist=show.artist||'Show';
+    const stageName=(g.stages||[]).find(st=>st.id===show.stage)?.name||'Stage';
+    const text=`${artist} on ${stageName} ends at ${amsTimeStr(end.getTime())} - about 10 min left.`;
+    jobs.push({project_id:projectId,show_id:show.id,include_external_user_ids:memberIds,
+      headings:{en:`${artist} almost finished`,nl:`${artist} almost finished`},
+      contents:{en:text,nl:text},send_after:new Date(at).toISOString()});
   }
+  return jobs;
+}
+let _pushState={busy:false,missing:false};
+async function scheduleProjectPushes(){
+  if(window.PUBLIC_MODE||!G||!APP||!CURRENT_USER||_pushState.busy||_pushState.missing)return;
+  if(_jwt()===SUPA_KEY)return;   // signed out: send-push only accepts a user session
+  const jobs=pushJobsFor(G,APP.activeProjectId,nowMs());
+  if(!jobs.length)return;
+  _pushState.busy=true;
+  try{
+    for(const job of jobs){
+      const post=()=>_withTimeout(fetch(`${SUPA_URL}/functions/v1/send-push`,{method:'POST',
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`},
+        body:JSON.stringify(job)}),10000);
+      let res;
+      try{
+        res=await post();
+        if(res.status===401&&await _refreshAuthToken())res=await post();
+      }catch(e){console.warn('[push] send-push unreachable, crew pushes not scheduled:',e?.message||e);return;}
+      if(res.ok)continue;
+      const body=await res.json().catch(()=>null);
+      if(res.status===404){
+        // Function not deployed (yet). Say so once instead of failing silently.
+        _pushState.missing=true;
+        console.warn('[push] send-push edge function not found (404): push sending is not configured');
+        _opNotice('Push is not configured yet: crew notifications for this project were not scheduled.',{key:'push-missing'});
+        return;
+      }
+      console.warn('[push] send-push refused show',job.show_id,'HTTP',res.status,body?.error||'');
+      if(res.status===401||res.status===403||res.status===429||res.status>=500)return;  // same answer for the rest
+    }
+  }finally{_pushState.busy=false;}
 }
 
 // ══ SHARE LINKS

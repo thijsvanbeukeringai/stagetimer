@@ -125,3 +125,64 @@ test.describe('show editor uses festival time', () => {
     await context.close();
   });
 });
+
+test.describe('crew pushes via send-push', () => {
+  const data = {
+    memberIds: ['u1', 'u2'],
+    stages: [{ id: 's1', name: 'Main' }, { id: 's2', name: 'Club' }],
+    days: [{ id: 'd1', name: 'Friday', date: '2026-06-19' }, { id: 'd2', name: 'Saturday', date: '2026-06-20' }],
+    shows: [
+      { id: 'past', stage: 's1', day: 'd1', artist: 'Past', date: '2026-06-19', start: '18:00:00', end: '19:00:00' },
+      { id: 'a', stage: 's1', day: 'd1', artist: 'Alpha', date: '2026-06-19', start: '22:00:00', end: '23:00:00', startsAt: '2026-06-19T22:00:00', endsAt: '2026-06-19T23:00:00' },
+      { id: 'late', stage: 's2', day: 'd1', artist: 'Late', date: '2026-06-19', start: '23:30:00', end: '01:30:00' },
+      { id: 'x', stage: 's2', day: 'd1', artist: 'Off', date: '2026-06-19', start: '21:00:00', end: '22:00:00', cancelled: true },
+      { id: 'other', stage: 's1', day: 'd2', artist: 'Other day', date: '2026-06-20', start: '21:00:00', end: '22:00:00' },
+    ],
+  };
+  const sendPush = (onCall) => async (route, req, u, st, json) => {
+    if (!u.includes('/functions/v1/send-push')) return false;
+    await onCall(route, req, json);
+    return true;
+  };
+  test('schedules from end / endsAt / stage in festival time, user token, no OneSignal', async ({ browser }) => {
+    const sent = [];
+    const { page, context, st } = await openOperator(browser, {
+      at: '2026-06-19T20:00:00+02:00', timezoneId: 'America/New_York', data,
+      handle: sendPush(async (route, req, json) => {
+        sent.push({ auth: req.headers()['authorization'], body: JSON.parse(req.postData()) });
+        await json(route, 200, { ok: true, id: 'n' + sent.length, recipients: 2 });
+      }),
+    });
+    expect(sent.map(s => s.body.show_id)).toEqual(['a', 'late']);
+    expect(sent[0].auth).toBe('Bearer user.jwt');
+    expect(sent[0].body).toEqual({
+      project_id: 'P1', show_id: 'a', include_external_user_ids: ['u1', 'u2'],
+      headings: { en: 'Alpha almost finished', nl: 'Alpha almost finished' },
+      contents: { en: 'Alpha on Main ends at 23:00 - about 10 min left.', nl: 'Alpha on Main ends at 23:00 - about 10 min left.' },
+      send_after: '2026-06-19T20:50:00.000Z',
+    });
+    expect(sent[1].body.send_after).toBe('2026-06-19T23:20:00.000Z'); // 01:30 next night = 01:20 CEST push
+    expect(sent[1].body.contents.en).toBe('Late on Club ends at 01:30 - about 10 min left.');
+    expect(st.requests.some(r => /onesignal/i.test(r))).toBe(false);
+    expect(st.unexpected).toEqual([]);
+    expect(await page.evaluate(() => typeof OS_REST_KEY)).toBe('undefined');
+    await context.close();
+  });
+  test('missing function (404): one clear operator notice, no retries', async ({ browser }) => {
+    let calls = 0;
+    const { page, context, st } = await openOperator(browser, {
+      at: '2026-06-19T20:00:00+02:00', data,
+      handle: sendPush(async (route, req, json) => {
+        calls++;
+        await json(route, 404, { code: 'NOT_FOUND', message: 'Requested function was not found' });
+      }),
+    });
+    expect(calls).toBe(1);
+    await expect(page.locator('#op-notices')).toContainText('Push is not configured yet');
+    await page.evaluate(() => openProject('P1'));
+    await page.clock.runFor(1000);
+    expect(calls).toBe(1);
+    expect(st.errors).toEqual([]);
+    await context.close();
+  });
+});
