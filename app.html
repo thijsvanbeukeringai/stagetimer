@@ -15,11 +15,12 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <title>Stage Timer</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://bamjpsquhdzxvsymldpq.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="https://bamjpsquhdzxvsymldpq.supabase.co">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Geist:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Self-hosted copy of the Google Fonts css2 request (Inter 300-900, JetBrains Mono
+     400-700, Geist 400-900, display=swap): same files and unicode-ranges, served
+     from /fonts so no request goes to Google (AVG) and the SW can cache them. -->
+<link href="/fonts/fonts.css" rel="stylesheet">
 <script>
 // EARLY PUBLIC FETCH - kick off the Supabase request immediately, in parallel with the
 // supabase-js download and the rest of the page parsing. By the time loadPublicView()
@@ -73,14 +74,15 @@
 html.no-session #loader{display:none !important;}
 html.no-session #login{display:flex !important;}
 </style>
-<!-- Pinned + SRI. The floating "@2" URL let jsDelivr ship any future 2.x
-     straight into every operator session. Bump deliberately: fetch the new
-     file, recompute with `openssl dgst -sha384 -binary f | openssl base64 -A`.
-     Note: use the /dist/umd/ path - the bare @2.112.3 URL is generated on the
-     fly by jsDelivr and is explicitly not SRI-safe. -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
-        integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
-        crossorigin="anonymous"></script>
+<!-- Vendored @supabase/supabase-js 2.112.3 (dist/umd/supabase.js from the npm
+     tarball, byte-identical to the jsDelivr file, same SRI hash). Served locally
+     so the app shell boots offline from the service-worker cache (sw.js precaches
+     it). Bump deliberately: `npm pack @supabase/supabase-js@X.Y.Z`, copy
+     package/dist/umd/supabase.js to /vendor/supabase.js, recompute the hash with
+     `openssl dgst -sha384 -binary vendor/supabase.js | openssl base64 -A`, and
+     bump SW_VERSION in sw.js. -->
+<script src="/vendor/supabase.js"
+        integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -2225,7 +2227,13 @@ window._OS_ENABLED=!_isPublic&&location.hostname==='stagetimer.nl';
 if(window._OS_ENABLED){
   OneSignalDeferred.push(async function(OneSignal){
     try{
-      await OneSignal.init({appId:'5778eb83-1c2c-4ffd-b085-4236b5bd0188',serviceWorkerPath:'/OneSignalSDKWorker.js'});
+      // One service worker per scope: OneSignal's SW SDK is imported into
+      // /sw.js (importScripts, production only), so point OneSignal at that
+      // file instead of registering /OneSignalSDKWorker.js over it at '/'.
+      // serviceWorkerOverrideForTypical makes these options win over the
+      // dashboard's "Typical Site" worker settings.
+      await OneSignal.init({appId:'5778eb83-1c2c-4ffd-b085-4236b5bd0188',
+        path:'/',serviceWorkerPath:'sw.js',serviceWorkerParam:{scope:'/'},serviceWorkerOverrideForTypical:true});
       window._OS=OneSignal;
       console.log('OneSignal ready, permission:',OneSignal.Notifications.permission);
     }catch(e){console.warn('OneSignal init failed:',e);}
@@ -8653,19 +8661,52 @@ setInterval(tick,250);
 // Deferred until after the initial paint so it never blocks active users.
 // Safe: network-first strategy means fresh app.html is always preferred;
 // the cache only kicks in when the network actually fails.
-if('serviceWorker' in navigator&&location.protocol==='https:'){
+// Update flow (a new sw.js = SW_VERSION bumped, see sw.js): the new worker
+// waits; nothing changes on screen by itself.
+//  - Control screens: we dispatch `st:sw-update` on window, detail {apply}.
+//    The UI may show "Nieuwe versie beschikbaar – herladen"; calling
+//    e.detail.apply() activates the new worker and reloads the page.
+//    window._stSwUpdate holds the same {apply} for UI that attaches later.
+//  - Public screens (?mode=…, incl. Stage View): no event, no UI. The update
+//    is applied only while the tab is hidden, so a live screen never reloads
+//    in view (same rule as before).
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>{
-    setTimeout(()=>{
-      navigator.serviceWorker.register('/sw.js').then(reg=>{
-        // When a new SW takes over, refresh the page on the next idle moment
-        // - but never mid-action: we wait until the current tab is hidden
-        // (user switched away) so a live show isn't interrupted.
-        let refreshing=false;
+    setTimeout(async()=>{
+      try{
+        // OneSignal registers this same file as /sw.js?appId=…&sdkVersion=…;
+        // re-registering the bare URL would swap script URLs and reinstall the
+        // worker on every load, so reuse any existing /sw.js registration.
+        let reg=await navigator.serviceWorker.getRegistration('/');
+        const w=reg&&(reg.active||reg.waiting||reg.installing);
+        if(!w||new URL(w.scriptURL).pathname!=='/sw.js')reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+        else reg.update().catch(()=>{});
+        const isPublic=!!new URLSearchParams(location.search).get('mode');
+        let applying=false,refreshing=false,announced=null;
+        const apply=()=>{if(!reg.waiting)return false;applying=true;reg.waiting.postMessage('SKIP_WAITING');return true;};
+        const check=()=>{
+          // Only an UPDATE (an old worker controls this page) - not the first install.
+          if(!reg.waiting||!navigator.serviceWorker.controller)return;
+          if(isPublic){if(document.visibilityState==='hidden')apply();return;}
+          if(announced===reg.waiting)return;
+          announced=reg.waiting;
+          window._stSwUpdate={apply};
+          window.dispatchEvent(new CustomEvent('st:sw-update',{detail:{apply}}));
+        };
+        reg.addEventListener('updatefound',()=>{
+          const nw=reg.installing;
+          if(nw)nw.addEventListener('statechange',()=>{if(nw.state==='installed')check();});
+        });
+        document.addEventListener('visibilitychange',check);
+        check();
+        // Long-running screens never navigate, so ask for updates hourly.
+        setInterval(()=>reg.update().catch(()=>{}),60*60*1000);
         navigator.serviceWorker.addEventListener('controllerchange',()=>{
           if(refreshing)return;
-          if(document.visibilityState==='hidden'){refreshing=true;location.reload();}
+          // Reload when the user asked for it, or when nobody is looking.
+          if(applying||document.visibilityState==='hidden'){refreshing=true;location.reload();}
         });
-      }).catch(e=>console.warn('[sw] register failed:',e?.message||e));
+      }catch(e){console.warn('[sw] register failed:',e?.message||e);}
     },2500);
   });
 }
