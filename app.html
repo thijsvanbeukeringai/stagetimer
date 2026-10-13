@@ -8111,7 +8111,7 @@ async function ciToggleArrived(showId){
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
   try{
-    const fresh=await _rpc('set_show_arrived',{
+    const fresh=await _rpcPublic('set_show_arrived',{ // anon key: see _rpcPublic
       p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
     });
     if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
@@ -8200,21 +8200,148 @@ async function completeSignup(){
 }
 window.completeSignup=completeSignup;
 
+// ══ PUBLIC VIEWS (share links): data feed ══════════════════════════════════
+// Every share-link screen polls get_shared_project once a second: once RLS
+// is on, Realtime delivers nothing to an anonymous viewer, so this poll is
+// the only sync signal. The feed:
+//  * _rpcPublic always travels on the anon key. A user JWT left behind by an
+//    earlier login on the same device expires after an hour and used to
+//    freeze the screen.
+//  * One request at a time (makePollGate); an answer older than one already
+//    applied is dropped.
+//  * Failures are not swallowed: window.__stLastSyncOk holds the time
+//    (Date.now) of the last good poll for control screens, and each failure
+//    streak logs one console.warn. Stage View gets no new element.
+//  * The view is only rebuilt when the project data or its time-derived state
+//    (live / past per show, festival day, chosen day + stage, 30s step)
+//    changed - not every second. The global 250ms tick keeps the countdowns
+//    moving.
+//  * The screen picks its own day (today's festival day) and stage (sid),
+//    never the operator's G.activeDay / G.activeStage from the project.
+async function _rpcPublicRaw(fn,args,timeoutMs){
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{
+      method:'POST',signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
+      body:JSON.stringify(args||{}),
+    });
+    const text=await res.text();
+    if(!res.ok)throw new Error('HTTP '+res.status+(text?' - '+text.slice(0,200):''));
+    return text;
+  }finally{clearTimeout(tmo);}
+}
+async function _rpcPublic(fn,args,timeoutMs){
+  const text=await _rpcPublicRaw(fn,args,timeoutMs);
+  return text?JSON.parse(text):null;
+}
+window._rpcPublic=_rpcPublic;
+
+window.__stLastSyncOk=null;
+let _pvFailStreak=0;
+function _pvSyncOk(){
+  window.__stLastSyncOk=Date.now();
+  if(_pvFailStreak)console.info('[public] sync restored after',_pvFailStreak,'failed polls');
+  _pvFailStreak=0;
+}
+function _pvSyncFail(e){
+  if(!_pvFailStreak)console.warn('[public] sync failed - keeping the last data:',e?.message||e);
+  _pvFailStreak++;
+}
+
+// ── Day + stage for this screen
+let _pvDayPinned=null; // a day the viewer picked (public timeline day tabs)
+// Today's festival day: the day dated today; failing that, the day of the
+// show live right now (explicit timestamps survive a changed day date), else
+// the day of the next show. null when the project has no dates at all.
+function _pvTodayDayId(){
+  const days=G.days||[];
+  const n=nowMs();
+  const today=days.find(d=>d.date===festivalDayOf(n));
+  if(today)return today.id;
+  if(!_projectHasDates())return null;
+  const pool=(G.shows||[]).filter(s=>showAllowed(s,'live',true)&&(!PUBLIC_SID||s.stage===PUBLIC_SID));
+  const hit=pickLiveShow(pool,_showIv,n)||pickNextShow(pool,_showIv,n);
+  return hit&&days.some(d=>d.id===hit.s.day)?hit.s.day:null;
+}
+function _pvApplySelection(){
+  if(!G)return;
+  if(PUBLIC_SID)G.activeStage=PUBLIC_SID;
+  const days=G.days||[];
+  if(_pvDayPinned&&days.some(d=>d.id===_pvDayPinned)){G.activeDay=_pvDayPinned;return;}
+  const id=_pvTodayDayId();
+  // A project without any dates can't say which day is today: there the
+  // project's own active day stays the only hint (legacy behaviour).
+  if(id)G.activeDay=id;
+}
+
+// ── Render only on change
+let _pvDataVer=0,_pvLastText=null,_pvLastSig=null;
+function _pvPhaseKey(){
+  const n=nowMs();
+  let k=festivalDayOf(n)+'|'+G.activeDay+'|'+G.activeStage+'|'+Math.floor(n/30000)+'|';
+  for(const s of (G.shows||[])){const iv=_showIv(s);k+=n<iv.startMs?'f':n<iv.endMs?'l':n>=iv.endMs?'p':'?';}
+  return k;
+}
+function _pvRefresh(render,force){
+  if(!G)return;
+  _pvApplySelection();
+  const sig=_pvDataVer+'#'+_pvPhaseKey();
+  if(!force&&sig===_pvLastSig)return;
+  _pvLastSig=sig;
+  render();_renderCueOverlay();renderBlackout();
+}
+// Adopt a poll answer. A row without data.stages is treated as a failure
+// (keep the last good lineup) instead of being loaded as an empty project.
+function _pvAdopt(text){
+  const proj=text?JSON.parse(text):null;
+  if(!proj||!proj.data||!Array.isArray(proj.data.stages))throw new Error('no project data in response');
+  const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
+  loadG();
+  _pvDataVer++;
+}
+// The one polling loop for every share-link mode. skip() lets check-in hold
+// the repaint while its own write is in flight.
+function _pvStartPolling(render,skip){
+  const gate=makePollGate();
+  async function poll(){
+    if(skip&&skip())return;
+    const n=gate.begin();if(!n)return;
+    try{
+      const text=await _rpcPublicRaw('get_shared_project',{p_id:PUBLIC_PID},5000);
+      if(!gate.accept(n))return;
+      if(skip&&skip())return;
+      if(text!==_pvLastText){_pvAdopt(text);_pvLastText=text;}
+      _pvSyncOk();
+      _pvRefresh(render,false);
+    }catch(e){_pvSyncFail(e);}
+    finally{gate.end();}
+  }
+  // Time-derived changes (a show going live, the 07:00 day change) also
+  // repaint while the network is down.
+  setInterval(()=>{poll();if(!(skip&&skip()))_pvRefresh(render,false);},1000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')poll();});
+}
+
 async function loadPublicView(){
   // Use the early fetch started in <head> if available - saves ~1-3s on mobile
   let proj=null;
   if(window._earlyPublicFetch){
-    try{proj=await window._earlyPublicFetch;}catch(e){}
+    try{proj=await window._earlyPublicFetch;}catch(e){console.warn('[public] early fetch failed:',e?.message||e);}
   }
   if(!proj){
     // RPC, not a table read: anonymous viewers have no access to `projects`.
-    proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID}).catch(()=>null);
+    proj=await _rpcPublic('get_shared_project',{p_id:PUBLIC_PID}).catch(e=>{console.warn('[public] load failed:',e?.message||e);return null;});
   }
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project not found.</div>';return;}
+  _pvSyncOk();
   APP={companies:[],users:[],projects:[{id:proj.id,name:proj.name,companyId:proj.company_id,data:proj.data||{}}],activeProjectId:proj.id};
+  // Every loadG() - ours, and the one setupRealtime() does before it
+  // re-renders - re-applies this screen's own day and stage.
+  if(!loadG.__pv){const _loadGBase=loadG;loadG=function(){_loadGBase.apply(this,arguments);_pvApplySelection();};loadG.__pv=true;}
   loadG();
   refreshLogo();
-  if(PUBLIC_SID)G.activeStage=PUBLIC_SID;
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='none';
   // Mark the page as a public viewer route so CSS hides operator controls
@@ -8236,21 +8363,16 @@ async function loadPublicView(){
     // this 1-second poll is the ONLY sync signal (it also drives the
     // overlay/blackout repaint). setupRealtime() below stays wired up: it is
     // a no-op for anon and still works when an operator opens this view.
-    setInterval(async()=>{
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderSV();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(renderSV);
     setupRealtime();
   } else if(PUBLIC_MODE==='timeline'){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('tl-close-btn');
     if(closeBtn)closeBtn.style.display='none';
-    // Auto-select today's day (fallback: first day)
-    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
-    if(todayDay)G.activeDay=todayDay.id;
-    else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
+    // Day: today's festival day (_pvApplySelection). A day the viewer picks
+    // in the tabs below sticks for this screen.
     // Render day-selector tabs (read-only, no save())
-    window._publicSetDay=function(id){G.activeDay=id;renderTLDtabsPublic(true);renderTL();};
+    window._publicSetDay=function(id){_pvDayPinned=id;G.activeDay=id;renderTLDtabsPublic(true);renderTL();};
     // Cache the signature of (days list + activeDay) so the 1s polling
     // doesn't blow away an open <select> picker on iOS Safari every
     // second. Only rebuild when something visible actually changed, or
@@ -8265,29 +8387,17 @@ async function loadPublicView(){
     };
     renderTLDtabsPublic();
     openTL();
-    setInterval(async()=>{
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
-        const keepDay=G.activeDay;
-        loadG();
-        if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-        renderTLDtabsPublic();renderTL();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(()=>{renderTLDtabsPublic();renderTL();});
     setupRealtime();
   } else if(PUBLIC_MODE==='overview'){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('stov').querySelector('button');
     if(closeBtn)closeBtn.style.display='none';
-    // Auto-select today's day, hide day switcher
-    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
-    if(todayDay)G.activeDay=todayDay.id;
+    // Day: today's festival day (per-stage best day inside renderOV); hide day switcher
     const dtabs=document.getElementById('stov-dtabs');
     if(dtabs)dtabs.style.display='none';
     openOV();
-    setInterval(async()=>{
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();renderOV();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(renderOV);
     setupRealtime();
   } else if(PUBLIC_MODE==='backstage'){
     // Standalone backstage: hide main app, hide controls
@@ -8299,15 +8409,9 @@ async function loadPublicView(){
     if(bsSel)bsSel.style.display='none';
     const bsDtabs=document.getElementById('bs-dtabs');
     if(bsDtabs)bsDtabs.style.display='none';
-    // Auto-select today
-    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
-    if(todayDay)G.activeDay=todayDay.id;
+    // Day: today's festival day (_pvApplySelection)
     openBS();
-    // Realtime updates
-    setInterval(async()=>{
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderBS();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(renderBS);
     setupRealtime();
   } else if(PUBLIC_MODE==='foh'){
     // Standalone FOH: read-only programme list for a specific stage.
@@ -8320,37 +8424,19 @@ async function loadPublicView(){
     if(fohSel)fohSel.style.display='none';
     const fohDtabs=document.getElementById('foh-dtabs');
     if(fohDtabs)fohDtabs.style.display='none';
-    // Auto-select today
-    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
-    if(todayDay)G.activeDay=todayDay.id;
+    // Day: today's festival day (_pvApplySelection)
     openFOH();
-    // Realtime updates
-    setInterval(async()=>{
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;loadG();if(PUBLIC_SID)G.activeStage=PUBLIC_SID;renderFOH();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(renderFOH);
     setupRealtime();
   } else if(PUBLIC_MODE==='wall'){
     // Control room wall display. No login, no chrome to escape into the
     // operator dashboard. 1s polling + Realtime for instant sync; tickWV
-    // every 250ms drives the countdown.
+    // every 250ms drives the countdown. Server time sync now runs for every
+    // route (bottom of the script).
     document.getElementById('app').style.display='none';
-    // Sync time with the server immediately + every 60s, so a drifting
-    // or wrong-set system clock on a corp control-room PC never matters.
-    wvSyncTime();
-    setInterval(wvSyncTime,60000);
-    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
-    if(todayDay)G.activeDay=todayDay.id;
-    else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
     openWV();
     setInterval(tickWV,250);
-    setInterval(async()=>{
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
-        const keepDay=G.activeDay;loadG();
-        if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-        renderWV();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(renderWV);
     setupRealtime();
   } else if(PUBLIC_MODE==='checkin'){
     // Artist check-in. WRITE-capable share-link: anyone with the URL can
@@ -8360,9 +8446,6 @@ async function loadPublicView(){
     document.getElementById('app').style.display='none';
     const closeBtn=document.getElementById('ci-close-btn');
     if(closeBtn)closeBtn.style.display='none';
-    const todayDay=(G.days||[]).find(d=>d.date===festivalDayStr());
-    if(todayDay)G.activeDay=todayDay.id;
-    else if(G.days&&G.days.length&&!G.activeDay)G.activeDay=G.days[0].id;
     openCI();
     // Clock
     setInterval(()=>{
@@ -8373,17 +8456,11 @@ async function loadPublicView(){
     // Skip the polling repaint if the user is mid-toggle (request in flight) -
     // the optimistic local state would otherwise flicker back to the server's
     // prior value for a beat before the PATCH lands.
-    setInterval(async()=>{
-      if(_ciWriteInFlight>0)return;
-      try{const proj=await _rpc('get_shared_project',{p_id:PUBLIC_PID},5000);
-      if(proj){const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
-        const keepDay=G.activeDay;loadG();
-        if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-        renderCI();_renderCueOverlay();renderBlackout();}}catch(e){}
-    },1000);
+    _pvStartPolling(renderCI,()=>_ciWriteInFlight>0);
     setupRealtime();
   }
-  setInterval(tick,250);
+  // No setInterval(tick) here: the global one at the bottom of the script
+  // already runs on every route (it used to run twice on share links).
 }
 
 // ══ MOBILE TIMER SHEET
@@ -8900,6 +8977,7 @@ async function _authRefresh(refresh_token){
   catch(e){console.error('[init] _startApp failed:',e);_hideLoader();_appStarted=false;_showLogin();}
 })();
 updateClock();
+// The one 250ms tick, for every route (share links included).
 setInterval(tick,250);
 // Server clock for nowMs(): every route, on start and every minute.
 syncServerTime();
@@ -8960,6 +9038,9 @@ if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostnam
 }
 setInterval(()=>{
   if(!G)return;
+  // Share links repaint through their own change-detecting loop
+  // (_pvStartPolling), not by rebuilding every 8 seconds.
+  if(PUBLIC_MODE)return;
   if(G.timerMode==='live')renderSched();
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
   if(document.getElementById('bs').classList.contains('open'))renderBS();
