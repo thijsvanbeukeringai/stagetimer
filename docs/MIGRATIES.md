@@ -116,26 +116,28 @@ Dit document zet alles in één volgorde.
 
 **Veldmatrix van `get_shared_project(p_id, p_mode)`.** Gecontroleerd tegen elke publieke renderer in `app.html`: `renderSV` (met `_svMode`, cue en blackout), `renderBS`, `renderFOH`, `renderTL`, `renderOV`, `renderWV`/`tickWV` en `renderCI`. Elke modus houdt wat hij toont. De migratie hoefde niet te veranderen.
 
-| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin |
-|---|---|---|---|---|---|---|---|
-| `fohNotes` | - | - | ja | - | - | - | - |
-| `shows[].note` | - | ja | - | - | - | - | - |
-| `shows[].crew` | - | - | ja | - | - | - | - |
-| `shows[].photo` | - | - | - | - | - | - | - |
-| `memberIds` | - | - | - | - | - | - | - |
-| `logo` | - | ja | ja | - | - | - | - |
+| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin | stagemanager |
+|---|---|---|---|---|---|---|---|---|
+| `fohNotes` | - | - | ja | - | - | - | - | - |
+| `shows[].note` | - | ja | - | - | - | - | - | - |
+| `shows[].crew` | - | - | ja | - | - | - | - | - |
+| `shows[].photo` | - | - | - | - | - | - | - | - |
+| `memberIds` | - | - | - | - | - | - | - | - |
+| `logo` | - | ja | ja | - | - | - | - | - |
+| `shows[].rider` | - | - | - | - | - | - | ja | ja |
 
 - `-` betekent gestript: `fohNotes` wordt `{}`, `memberIds` wordt `[]` en de rest verdwijnt. `company_id` is altijd `null`.
 - Alles anders blijft in elke modus staan. Het gaat om stages, days, de tijden en vlaggen van shows, `genre`, `booth`, `type`, `priority`, `arrived`, `activeStage`/`activeDay`, `timerMode`, `svModes`, `cue`, `blackout` en `branding` (drie booleans: waar het klantlogo staat). Het tijdmodel, de overlays en de schermen hebben die nodig, en er zit niets persoonlijks of groots in.
-- De Stage View leest geen van de zes gestripte velden. Foto's gebruikt alleen het operatorpaneel, `memberIds` alleen de crewkiezer en push. `logo` toont alleen Backstage en FOH (klantlogo linksboven, branch `feature/project-logo`, 13-10-2026); daarom houden `backstage` en `foh` (en de legacy/PHASE B-variant) het veld, alle andere modi niet. Wordt deze stap uitgevoerd met een oudere versie van het bestand (logo overal gestript), dan tonen de deellinks gewoon geen logo; er breekt niets. Een base64-logo (zolang stap 16 niet is uitgevoerd) reist mee in elke backstage/foh-poll; na stap 16 is het een URL van ~120 bytes.
+- `shows[].rider` (`{drinks, tech}`, vrije tekst, max. 2000 tekens per veld) is de rider van de artiest: drank/hospitality en technische eisen. Alleen de check-in-balie (`checkin`) en de stagemanager (`stagemanager`, nieuwe modus: `?mode=stagemanager&pid=..&sid=..`) krijgen hem; elke andere modus niet, ook stage, foh en backstage niet. `set_show_arrived` geeft de checkin-weergave terug en houdt de rider dus ook. Een onbekende modus valt op de strengste set (zonder rider). Let op: een database met een oudere versie van dit bestand kent `rider` niet en stript het dus nergens, dan krijgt elke modus de rider mee. Is stap 3 al eerder uitgevoerd, voer hem dan opnieuw uit voordat de rider-feature live gaat (feature/rider-data, 13-10-2026); het is alleen `CREATE OR REPLACE`, dus veilig, ook tijdens een show.
+- De Stage View leest geen van de zeven gestripte velden. Foto's gebruikt alleen het operatorpaneel, `memberIds` alleen de crewkiezer en push. `logo` toont alleen Backstage en FOH (klantlogo linksboven, branch `feature/project-logo`, 13-10-2026); daarom houden `backstage` en `foh` (en de legacy/PHASE B-variant) het veld, alle andere modi niet. Wordt deze stap uitgevoerd met een oudere versie van het bestand (logo overal gestript), dan tonen de deellinks gewoon geen logo; er breekt niets. Een base64-logo (zolang stap 16 niet is uitgevoerd) reist mee in elke backstage/foh-poll; na stap 16 is het een URL van ~120 bytes.
 - De matrix staat in de kop van het SQL-bestand. De JS-tweeling `tests/support/share-modes.js` voedt de mock-backend. `share-mode.spec.js` controleert dat de twee gelijk zijn.
-- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip. Na de logo-wijziging (`keep_logo`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle negen modi (inclusief `strict` en `legacy`) gelijk aan de JS-strip, `logo` alleen in backstage, foh en legacy.
+- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip. Na de logo-wijziging (`keep_logo`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle negen modi (inclusief `strict` en `legacy`) gelijk aan de JS-strip, `logo` alleen in backstage, foh en legacy. Na de rider-wijziging (`keep_rider`, modus `stagemanager`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle acht modi plus `strict`, `legacy`, twee onbekende modi, de 1-argumentvariant en het antwoord van `set_show_arrived` gelijk aan de JS-strip; `rider` alleen in checkin, stagemanager, legacy en het `set_show_arrived`-antwoord; de controlequery uit de kop geeft `f, t, t`.
 
 ### Stap 4: app deployen (improve/2026-10-13)
 
 - **Vereist:** stap 1 tot en met 3.
 - Test daarna:
-  - elke deellinkmodus (stage, backstage, foh, timeline, overview, wall, checkin);
+  - elke deellinkmodus (stage, backstage, foh, timeline, overview, wall, checkin, stagemanager);
   - check-in aan en uit;
   - inloggen;
   - opslaan;
@@ -242,7 +244,7 @@ Zie "App-wijzigingen" hieronder.
   1. die release staat live;
   2. hij staat er een paar dagen, zodat gecachte tabbladen herladen zijn;
   3. **de blokkade bovenaan is opgeheven.** De iPad-app **Stagetimer Booth** (`nl.stagetimer.booth`) haalt projectdata op een nog onbekende manier op. Roept hij `get_shared_project(p_id)` aan en heeft hij foto's of `memberIds` nodig, dan breekt PHASE B elk iPad-boothscherm. Leest hij `projects` direct, dan breekt `rls_enable` hem. Stel eerst vast welke endpoints en velden hij gebruikt (broncode of netwerk-trace).
-- Voer het commentaarblok onderaan `20261013100000_share_link_rpcs.sql` uit. De legacy-aanroep met één argument geeft dan geen foto's, `memberIds` of `company_id` meer terug (het logo wel: Backstage en FOH tonen het).
+- Voer het commentaarblok onderaan `20261013100000_share_link_rpcs.sql` uit. De legacy-aanroep met één argument geeft dan geen foto's, `memberIds` of `company_id` meer terug (het logo en de rider wel: Backstage en FOH tonen het logo, check-in en stagemanager de rider).
 - **Rollback:** voer de LEGACY-definitie uit hetzelfde bestand opnieuw uit.
 
 ### Stap 12: `plan_enforcement` naar `enforce`

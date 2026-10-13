@@ -11,7 +11,9 @@
 // arrived, activeStage/activeDay, timerMode, svModes, cue, blackout, branding) reaches
 // every mode: the shared time model, the cue/blackout overlays and the
 // Stage View need it, and none of it is personal or large.
-const SHARE_MODES = ['stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin'];
+// 'stagemanager' (?mode=stagemanager&pid=..&sid=..): the stage manager's
+// screen - running order, arrivals and riders for one stage.
+const SHARE_MODES = ['stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin', 'stagemanager'];
 
 // field -> the modes that keep it. 'legacy' is the PHASE B narrowing of the
 // 1-arg call (union of what any mode renders); unknown modes get none.
@@ -22,6 +24,7 @@ const SHARE_FIELD_MATRIX = {
   'shows[].photo': [],                          // operator timer panel / editor drawer only
   memberIds: [],                                // operator crew picker / push only
   logo: ['backstage', 'foh', 'legacy'],         // refreshLogo: customer logo top-left (data.branding toggles)
+  'shows[].rider': ['checkin', 'stagemanager', 'legacy'],   // {drinks, tech}: artist hospitality + tech rider
 };
 
 const keeps = (field, mode) => SHARE_FIELD_MATRIX[field].includes(mode);
@@ -38,6 +41,7 @@ function stripProjectData(data, mode) {
   const drop = ['photo'];
   if (!keeps('shows[].note', mode)) drop.push('note');
   if (!keeps('shows[].crew', mode)) drop.push('crew');
+  if (!keeps('shows[].rider', mode)) drop.push('rider');
   if (Array.isArray(out.shows)) {
     out.shows = out.shows.map((s) => {
       if (!isObj(s)) return s;
