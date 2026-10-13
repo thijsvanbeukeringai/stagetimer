@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0b0b0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1490,9 +1490,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .scard-cd{font-size:var(--fs-xs);}
 
 /* ── Buttons: primary / secondary / danger read the same everywhere ── */
-.btn-p{min-height:var(--btn-h-sm);font-size:var(--fs-xs);}
-.btn-g{min-height:var(--btn-h-sm);font-size:var(--fs-xs);color:var(--text);}
-#new-show-btn{min-height:var(--btn-h-sm);}
+/* (the <=768px block keeps its larger 48px / 14px sizes) */
+@media (min-width:769px){
+  .btn-p,.btn-g{min-height:var(--btn-h-sm);font-size:var(--fs-xs);}
+}
+.btn-g{color:var(--text);}
 
 /* ── One-off timer cards (dashboard): actions in the flow, never on top of
    the status / name, and visible without hover. ── */
@@ -1506,7 +1508,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .scard-act{opacity:1;}
 }
 @media (pointer:coarse){
-  #app .hbtn,.save-status,#app .hsel{min-height:var(--touch);}
+  #app .hbtn,.save-status,#app .hsel,.btn-p,.btn-g{min-height:var(--touch);}
   .mdb,.tb,.dm-btn,.qa-btn,#cue-presets .cue-btn,#cue-send,#cue-clear,#cue-input,.cue-blackout-btn{min-height:var(--touch);}
   .rb{width:var(--touch);height:var(--touch);}
   .sc-arrived,.scard .foh-add-note{min-height:var(--touch);}
@@ -6132,7 +6134,10 @@ function closeSV(){document.getElementById('sv').classList.remove('open');_svZoo
 // app had before while Stage View is open; see also the early script in <head>.
 function _svZoomLock(on){
   const m=document.querySelector('meta[name=viewport]');if(!m)return;
-  m.setAttribute('content','width=device-width, initial-scale=1.0'+(on?', maximum-scale=1.0, user-scalable=no':'')+', viewport-fit=cover');
+  // Unlocked: the on-screen keyboard shrinks the layout (Chrome/Android), so
+  // fixed footers with Save / Close stay above it.
+  m.setAttribute('content',on?'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+    :'width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content');
 }
 
 // ── Fullscreen API: when running in a browser (not installed as PWA),
