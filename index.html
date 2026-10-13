@@ -6,6 +6,20 @@
 <title>Stagetimer · The nerve centre for show day</title>
 <meta name="description" content="Realtime stage timing for festivals, conferences and church productions. From backstage to FOH, every screen on the same schedule. From €12,95/month.">
 <meta name="theme-color" content="#09090B">
+<link rel="canonical" href="https://stagetimer.nl/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stagetimer">
+<meta property="og:url" content="https://stagetimer.nl/">
+<meta property="og:title" content="Stagetimer · The nerve centre for show day">
+<meta property="og:description" content="Realtime stage timing for festivals, conferences and church productions. From backstage to FOH, every screen on the same schedule.">
+<meta property="og:image" content="https://stagetimer.nl/booth-clock.jpg">
+<meta property="og:image:width" content="1173">
+<meta property="og:image:height" content="643">
+<meta property="og:image:alt" content="Stagetimer stage display: artist name and a large green countdown">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Stagetimer · The nerve centre for show day">
+<meta name="twitter:description" content="Realtime stage timing for festivals, conferences and church productions. From backstage to FOH, every screen on the same schedule.">
+<meta name="twitter:image" content="https://stagetimer.nl/booth-clock.jpg">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stagetimer">
@@ -15,9 +29,8 @@
 <link rel="icon" type="image/svg+xml" href="/app-icon.svg">
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Self-hosted copy of Google Fonts Geist 400-900 + Geist Mono 400-700 (display=swap) -->
+<link href="/fonts/fonts.css" rel="stylesheet">
 <script>
 // If launched as installed PWA, jump straight into the app.
 (function(){
@@ -125,7 +138,8 @@ nav.scrolled .nav-logo{background:rgba(255,255,255,.06);}
 
 /* ── Hero ────────────────────────────────────────────────────────────── */
 .hero{position:relative;min-height:min(900px,100vh);display:flex;align-items:center;padding:140px 32px 100px;overflow:hidden;color:var(--on-dark);}
-.hero-bg{position:absolute;inset:0;background-image:url('crowd.jpg');background-size:cover;background-position:center 40%;z-index:0;
+.hero-bg{position:absolute;inset:0;background-image:url('crowd.jpg');
+  background-image:image-set(url('crowd.webp') type('image/webp'),url('crowd.jpg') type('image/jpeg'));background-size:cover;background-position:center 40%;z-index:0;
   transform:scale(1.05);filter:saturate(.6);}
 .hero-veil{position:absolute;inset:0;background:linear-gradient(110deg,rgba(9,9,11,.95) 0%,rgba(9,9,11,.85) 38%,rgba(9,9,11,.45) 70%,rgba(9,9,11,.6) 100%);z-index:1;}
 .hero-noise{position:absolute;inset:0;z-index:2;background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1px);background-size:3px 3px;opacity:.5;mix-blend-mode:overlay;pointer-events:none;}
@@ -418,7 +432,7 @@ section{position:relative;}
 .mobile-phones{position:relative;height:560px;}
 .mphone{position:absolute;top:50%;width:240px;border-radius:32px;background:#000;padding:6px;
   box-shadow:0 28px 60px -16px rgba(0,0,0,.28),0 4px 12px rgba(0,0,0,.1);transition:transform .35s;}
-.mphone img{width:100%;border-radius:26px;display:block;}
+.mphone img{width:100%;height:auto;border-radius:26px;display:block;}
 .mphone.left {left:calc(50% - 360px);transform:translate(0,-50%) rotate(-9deg);z-index:1;}
 .mphone.mid  {left:calc(50% - 120px);transform:translate(0,-50%);z-index:3;width:264px;}
 .mphone.right{left:calc(50% + 120px);transform:translate(0,-50%) rotate(9deg);z-index:2;}
@@ -899,7 +913,7 @@ footer{background:var(--bg-dark);color:var(--on-dark);padding:60px 32px 36px;bor
   </div>
   <div class="views-scroll">
     <div class="view-card">
-      <div class="view-img-wrap"><img src="booth-clock.jpg" alt="Stage display" loading="lazy"></div>
+      <div class="view-img-wrap"><img src="booth-clock.jpg" alt="Stage display" width="1173" height="643" loading="lazy" decoding="async"></div>
       <div class="view-body">
         <div class="view-tag">Stage view</div>
         <div class="view-title">The artist's clock</div>
@@ -907,7 +921,7 @@ footer{background:var(--bg-dark);color:var(--on-dark);padding:60px 32px 36px;bor
       </div>
     </div>
     <div class="view-card">
-      <div class="view-img-wrap"><img src="foh-view.jpg" alt="FOH view" loading="lazy"></div>
+      <div class="view-img-wrap"><img src="foh-view.jpg" alt="FOH view" width="1826" height="911" loading="lazy" decoding="async"></div>
       <div class="view-body">
         <div class="view-tag">FOH</div>
         <div class="view-title">Mix-position dashboard</div>
@@ -915,7 +929,7 @@ footer{background:var(--bg-dark);color:var(--on-dark);padding:60px 32px 36px;bor
       </div>
     </div>
     <div class="view-card">
-      <div class="view-img-wrap"><img src="backstage.jpg" alt="Backstage view" loading="lazy"></div>
+      <div class="view-img-wrap"><img src="backstage.jpg" alt="Backstage view" width="1819" height="909" loading="lazy" decoding="async"></div>
       <div class="view-body">
         <div class="view-tag">Backstage</div>
         <div class="view-title">Live overview for crew</div>
@@ -923,7 +937,7 @@ footer{background:var(--bg-dark);color:var(--on-dark);padding:60px 32px 36px;bor
       </div>
     </div>
     <div class="view-card">
-      <div class="view-img-wrap"><img src="tijdlijn.jpg" alt="Timeline" loading="lazy"></div>
+      <div class="view-img-wrap"><img src="tijdlijn.jpg" alt="Timeline" width="1811" height="908" loading="lazy" decoding="async"></div>
       <div class="view-body">
         <div class="view-tag">Timeline</div>
         <div class="view-title">Gantt-style day overview</div>
@@ -931,7 +945,7 @@ footer{background:var(--bg-dark);color:var(--on-dark);padding:60px 32px 36px;bor
       </div>
     </div>
     <div class="view-card">
-      <div class="view-img-wrap"><img src="event.jpg" alt="Overview" loading="lazy"></div>
+      <div class="view-img-wrap"><img src="crowd.jpg" srcset="crowd-1200.jpg 1200w, crowd.jpg 2400w" sizes="(max-width: 512px) 82vw, 420px" alt="Overview" width="2400" height="1596" loading="lazy" decoding="async"></div>
       <div class="view-body">
         <div class="view-tag">Overview</div>
         <div class="view-title">Stage-by-stage at a glance</div>
@@ -1120,9 +1134,9 @@ footer{background:var(--bg-dark);color:var(--on-dark);padding:60px 32px 36px;bor
       <p>Fully responsive. Open Stagetimer in any browser on iPhone, Android, tablet or laptop. No app store, no install.</p>
     </div>
     <div class="mobile-phones">
-      <div class="mphone left"><img src="mobile-app.png" alt="Programme overview"></div>
-      <div class="mphone mid"><img src="mobile-2.png" alt="Stage countdown"></div>
-      <div class="mphone right"><img src="mobile-3.png" alt="Timeline"></div>
+      <div class="mphone left"><img src="mobile-app.png" alt="Programme overview" width="1320" height="2868" loading="lazy" decoding="async"></div>
+      <div class="mphone mid"><img src="mobile-2.png" alt="Stage countdown" width="1320" height="2868" loading="lazy" decoding="async"></div>
+      <div class="mphone right"><img src="mobile-3.png" alt="Timeline" width="1320" height="2868" loading="lazy" decoding="async"></div>
     </div>
     <div class="mobile-foot">
       <div class="mobile-points">

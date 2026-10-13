@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Maskable variant of app-icon.svg: full-bleed square background (the OS
+       applies its own mask shape) and the mark scaled to 88% so everything sits
+       well inside the 80% safe-zone circle (r = 410). Source for icon-maskable-512.png. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2456D6"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <radialGradient id="topglow" cx="0.5" cy="0.05" r="0.85">
+      <stop offset="0" stop-color="#60A5FA" stop-opacity="0.45"/>
+      <stop offset="0.6" stop-color="#60A5FA" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#topglow)"/>
+  <g transform="translate(512 512) scale(0.88) translate(-512 -512)">
+    <circle cx="512" cy="512" r="324" fill="none" stroke="#FFFFFF" stroke-width="72" stroke-linecap="round"/>
+    <circle cx="512" cy="188" r="42" fill="#FBBF24" stroke="#1E3A8A" stroke-width="14"/>
+    <path d="M 442 392 L 442 632 L 650 512 Z" fill="#FFFFFF"/>
+  </g>
+</svg>
