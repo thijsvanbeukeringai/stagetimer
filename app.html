@@ -6074,8 +6074,8 @@ function _compressImage(dataUrl,maxDim=900,quality=.82,mime='image/jpeg'){
 }
 async function previewPhoto(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
-  if(!f.type.startsWith('image/')){alert('This file is not an image.');inp.value='';return;}
-  if(f.size>25*1024*1024){alert('Image is too large (>25MB). Please choose a smaller file.');inp.value='';return;}
+  if(!f.type.startsWith('image/')){inp.value='';stDialog.alert(`"${f.name}" is not an image. Choose a JPEG, PNG or WebP photo.`,{title:'Photo not added'});return;}
+  if(f.size>25*1024*1024){inp.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Photo not added'});return;}
   const wrap=document.getElementById('photo-preview-wrap');
   const preview=document.getElementById('photo-preview');
   const clearBtn=document.getElementById('f-photo-clear');
@@ -6090,7 +6090,7 @@ async function previewPhoto(inp){
     clearBtn.style.display='';
   }catch(e){
     console.error('photo upload failed:',e);
-    alert('Photo could not be processed: '+(e.message||e));
+    stDialog.alert('The photo could not be processed ('+(e.message||e)+'). Try a JPEG or PNG file.',{title:'Photo not added'});
     _photoB64='';wrap.style.display='none';preview.style.opacity='1';inp.value='';
   }
 }
@@ -7237,7 +7237,7 @@ function addStage(){
   const emoji=document.getElementById('sm-emoji').value.trim()||'🎵';
   // Enforce stage limit BEFORE pushing to local state (and certainly before save()).
   const limCheck=checkStageLimit();
-  if(!limCheck.allowed){alert(limCheck.reason);return;}
+  if(!limCheck.allowed){stDialog.alert(limCheck.reason,{title:'Stage limit reached'});return;}
   const id=uid();
   if(!G.stages)G.stages=[];
   G.stages.push({id,name,emoji});
@@ -7246,13 +7246,15 @@ function addStage(){
   document.getElementById('sm-name').value='';document.getElementById('sm-emoji').value='';
   document.getElementById('sm-name').focus();
 }
-function delStage(id){
+async function delStage(id){
   const st=(G.stages||[]).find(s=>s.id===id);if(!st)return;
   const n=_stageShowCount(id);
+  // Unchanged behaviour: the stage goes, its shows stay in the project data
+  // (they are no longer listed anywhere). The dialog says so plainly.
   const msg=n
-    ? `Delete stage "${st.name}"?\n\nIts ${n} show${n===1?'':'s'} stay in the project but will no longer be visible until you assign them to another stage.`
-    : `Delete stage "${st.name}"?`;
-  if(!confirm(msg))return;
+    ? `Stage "${st.name}" is deleted. Its ${n} show${n===1?'':'s'} stay${n===1?'s':''} in the project data but ${n===1?'is':'are'} no longer shown on any screen. Share links for this stage stop working.`
+    : `Stage "${st.name}" has no shows. Share links for this stage stop working.`;
+  if(!await stDialog.confirm(msg,{title:'Delete this stage?',okLabel:'Delete stage',danger:true}))return;
   G.stages=G.stages.filter(s=>s.id!==id);
   if(G.activeStage===id)G.activeStage=G.stages[0]?.id||null;
   save();renderAll();renderStageList();
@@ -8404,7 +8406,7 @@ function openProjModal(){
 }
 function showLimitModal(chk){
   const ov=document.getElementById('limit-modal-ov');
-  if(!ov)return alert(chk.reason);
+  if(!ov)return stDialog.alert(chk.reason,{title:'Limit reached'});
   document.getElementById('limit-modal-msg').textContent=chk.reason;
   const btn=document.getElementById('limit-modal-action');
   if(chk.action==='subscribe'){
@@ -8430,7 +8432,7 @@ async function createProject(){
   const btn=document.querySelector('#proj-modal .btn-p');
   try{
     const nameEl=document.getElementById('pm-name');
-    if(!nameEl){console.error('[createProject] #pm-name not found');alert('Project name field missing - please reload.');return;}
+    if(!nameEl){console.error('[createProject] #pm-name not found');await stDialog.alert('The project name field is missing. Reload the page and try again.',{title:'Project not created'});return;}
     const name=nameEl.value.trim();
     if(!name){nameEl.focus();return;}
     const coEl=document.getElementById('pm-co');
@@ -8480,14 +8482,14 @@ async function createProject(){
       if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await insert();
     }catch(e){
       if(e?.name==='AbortError')console.error('[createProject] timed out after 8s');
-      alert(_friendlyError(e,'Creating the project'));
+      await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
       return;
     }
     if(!res.ok){
       const body=await res.text().catch(()=>'');
       console.error('[createProject] HTTP',res.status,body);
       const e=new Error('HTTP '+res.status);e.status=res.status;
-      alert(_friendlyError(e,'Creating the project'));
+      await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
       return;
     }
     APP.projects.push(proj);
@@ -8495,7 +8497,7 @@ async function createProject(){
     closeProjModal();renderDash();
   }catch(e){
     console.error('[createProject] threw',e);
-    alert(_friendlyError(e,'Creating the project'));
+    await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
   }finally{
     if(btn){btn.disabled=false;btn.textContent='Create';}
   }
@@ -8503,7 +8505,7 @@ async function createProject(){
 
 // ── Admin
 async function openAdmin(){
-  if(!isAdmin()){alert('No permission.');return;}
+  if(!isAdmin()){await stDialog.alert('Platform admin is only available to Stagetimer admins.',{title:'No permission'});return;}
   document.getElementById('admin').classList.add('open');
   renderAdmin();
   // Re-fetch fresh data so we never show stale state
@@ -8666,18 +8668,18 @@ async function createVoucher(){
 window.createVoucher=createVoucher;
 async function archiveVoucher(promoId){
   const _v=_vouchers.find(x=>x.id===promoId);
-  if(!confirm(`Archive voucher ${_v?_v.code:''}?\n\nThe code stops working immediately. Existing subscriptions that already redeemed it keep their discount.`))return;
+  if(!await stDialog.confirm(`The code ${_v?_v.code:''} stops working immediately. Existing subscriptions that already redeemed it keep their discount.`,{title:`Archive voucher ${_v?_v.code:''}?`,okLabel:'Archive voucher',danger:true}))return;
   try{
     await _callVoucher({action:'archive',promoId});
     await loadVouchers();
-  }catch(e){alert('Archive failed: '+(e.message||e));}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Archiving the voucher'),{title:'Voucher not archived'});}
 }
 window.archiveVoucher=archiveVoucher;
 async function activateVoucher(promoId){
   try{
     await _callVoucher({action:'activate',promoId});
     await loadVouchers();
-  }catch(e){alert('Activate failed: '+(e.message||e));}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Activating the voucher'),{title:'Voucher not activated'});}
 }
 window.activateVoucher=activateVoucher;
 function closeAdmin(){document.getElementById('admin').classList.remove('open');}
@@ -9451,7 +9453,7 @@ async function initOneSignalUser(userId){
 }
 async function requestPushPermission(){
   if(!window._OS){
-    alert('Push notifications are still loading. Please try again in a few seconds.');
+    stDialog.alert('Push notifications are still loading. Try again in a few seconds.',{title:'Not ready yet'});
     return;
   }
   try{
@@ -9693,7 +9695,7 @@ async function ciToggleArrived(showId){
     if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
     renderCI();
     console.error('[ciToggleArrived]',e);
-    alert(humanError(e,'Saving the check-in'));
+    _stAlert(humanError(e,'Saving the check-in'),{title:'Check-in not saved'});
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
     _ciBusy.delete(showId);
@@ -9771,7 +9773,7 @@ async function completeSignup(){
       history.replaceState({},'',location.pathname);
       document.getElementById('signup-setup').style.display='none';
       _showLogin();
-      alert('Account created. Please log in now with your new password.');
+      stDialog.alert('Your account is ready. Log in with your email address and the password you just chose.',{title:'Account created'});
     }
   }catch(e){
     err.textContent=e?.serverMsg||_friendlyError(e,'Creating your account');err.style.display='block';
@@ -10116,14 +10118,14 @@ async function _compressLogo(dataUrl,type){
 function handleLogoUpload(event){
   const file=event.target.files[0];
   if(!file)return;
-  if(!file.type.startsWith('image/')){alert('This file is not an image.');event.target.value='';return;}
-  if(file.size>25*1024*1024){alert('Image is too large (>25MB). Please choose a smaller file.');event.target.value='';return;}
+  if(!file.type.startsWith('image/')){event.target.value='';stDialog.alert(`"${file.name}" is not an image. Choose a PNG or JPEG file.`,{title:'Logo not added'});return;}
+  if(file.size>25*1024*1024){event.target.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Logo not added'});return;}
   const tgt=_logoProjectTarget;
   const reader=new FileReader();
   reader.onload=async e=>{
     let logo;
     try{logo=await _compressLogo(e.target.result,file.type);}
-    catch(err){console.error('logo compress failed:',err);alert('The logo could not be processed. Try a PNG or JPEG file.');return;}
+    catch(err){console.error('logo compress failed:',err);stDialog.alert('The logo could not be processed. Try a PNG or JPEG file.',{title:'Logo not added'});return;}
     const proj=APP.projects.find(p=>p.id===tgt);
     if(!proj)return;
     if(!proj.data)proj.data={};
