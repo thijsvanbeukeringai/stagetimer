@@ -71,12 +71,14 @@ Alles van één project leeft in één rij in de tabel `projects`, als JSONB in 
   "svModes":   { "<stageId>": "countdown" | "clock" | "countup" | "blank" },
   "cue":       { "text", "color", "stageId", ... } | null,
   "blackout":  false,
+  "logo":      null,                                 // data: URL of Storage-URL (wordt niet getoond)
   "activeStage", "activeDay", "timerMode",          // legacy, zie hieronder
   "_rev":      "<client-rev>"                        // nieuw, zie Opslaan en sync
 }
 ```
 
 - Een show hoort via `day` bij een day-object. Het tijdstip volgt uit `startsAt`/`endsAt`, anders uit `date` (of de datum van de dag) plus `start`/`end`, anders (oude projecten zonder datums) uit de 07:00-regel. Een einde op of vóór de start valt op de volgende dag.
+- **Foto's (`show.photo`) en logo (`logo`)**: een `data:`-URL (base64, oud en terugval) **of** de publieke URL van een object in de Storage-bucket `project-media`: `https://<ref>.supabase.co/storage/v1/object/public/project-media/<pid>/<32 hex>.jpg`. Beide zijn gewoon een `<img src>`, dus elke weergave en elke oudere client werkt met allebei. Een nieuwe foto gaat na het verkleinen naar Storage (`_uploadMedia`, met het JWT van de gebruiker). Mislukt dat (bucket bestaat nog niet, offline, geen recht, deellink, uitgelogd), dan blijft de foto base64 in de blob, precies zoals vroeger. Bestaande base64-foto's van het open project verhuist de app op de achtergrond, drie per 20 s (`movePhotosToStorage`). Een vervangen of weggehaalde foto wordt na een geslaagde save uit de bucket verwijderd, behalve als een andere show hem nog gebruikt. Shows of projecten verwijderen laat de foto's staan, zodat herstellen uit de historie blijft werken. De bucket komt uit migratie `20261013150000_photo_storage.sql` (stap 16 in `docs/MIGRATIES.md`).
 - **`_rev`**: elke save zet een door de client gegenereerde revisie. Daarmee herkent een tabblad zijn eigen realtime-echo's. Oude clients nemen de sleutel gewoon mee.
 - **Selecties per apparaat**: `activeStage`, `activeDay` en `timerMode` staan per project in `localStorage` onder `st_sel_<pid>`. De velden in de blob blijven voor compatibiliteit. `activeDay` wordt alleen nog naar de blob geschreven als dat geen monitor van een live dag kan trekken (geen dag gedateerd op vandaag, of de operator kiest de dag van vandaag). `activeStage` en `timerMode` worden niet meer geschreven.
 - **Companies**: de client leest een expliciete kolomlijst (`COMPANY_COLS`), nooit `select=*` en nooit `setup_token`. "Awaiting activation" komt uit de afgeleide kolom `setup_pending`. Bestaat die kolom nog niet (migratie niet toegepast), dan leest de app zonder die kolom verder.
@@ -137,7 +139,7 @@ De code staat in de sectie `// ══ SAVE / SYNC` van `app.html`; het commentaa
 5. **Wipe guard**: een lege lokale lineup overschrijft nooit een gevulde server. Realtime-berichten zonder `data` worden genegeerd en het project wordt opnieuw opgehaald.
 6. **Fouten**: een mislukte save houdt `_pendingPush` vast (en de `beforeunload`-waarschuwing) en probeert opnieuw na 1, 2, 5, 10 en daarna elke 30 s, en meteen bij `online` of als het tabblad weer zichtbaar wordt. Bij een 401 wordt het token één keer ververst. Een weigering op de planlimiet (`PT402`) haalt de geweigerde stage(s) lokaal weg en slaat de rest alsnog op.
 7. **Opslagstatus**: `setSaveState('saved' | 'saving' | 'unsaved', detail)` stuurt het event `st:savestate`. Het bedieningsscherm toont dat op elk formaat als label *Saved / Saving… / Not saved* (tik voor de reden); de oude sync-stip zit daarin. De stip is nooit groen als een save mislukte of de wipe guard ingreep.
-8. **Cache**: `localStorage` vol (base64-foto's)? Dan wordt de offline kopie zonder foto's bewaard; de server-push hangt nooit van de cache af.
+8. **Cache**: `localStorage` vol (base64-foto's)? Dan wordt de offline kopie zonder foto's bewaard; de server-push hangt nooit van de cache af. Storage-URL's zijn kort en blijven altijd in de cache. De foto's zelf cachet alleen de browser (de service worker laat andere origins met rust): een toestel dat offline opstart zonder die cache, toont de timerfoto niet. Het fotovak klapt dan in. De Stage View toont geen foto's.
 9. **Na een onderbreking** (offline, slaapstand, realtime opnieuw verbonden): eerst openstaande wijzigingen pushen, anders het open project opnieuw ophalen. Zonder realtime pollt de app elke 30 s.
 
 ## Tijdmodel
@@ -197,7 +199,7 @@ Vercel deployt `main` automatisch. Er gaat niets rechtstreeks naar `main`: werk 
 
 ## Caveats
 
-- **Foto's staan in de JSONB-rij** als base64. Ze worden client-side verkleind (artiestfoto's naar max. 900 px, JPEG 82%; logo's naar max. 600 px), maar een project met veel foto's blijft een grote blob, en elke save en elke deellink-poll draagt die mee. Foto's naar Supabase Storage verhuizen staat als optie in BOUWPLAN §4.5.
+- **Foto's staan in de JSONB-rij** als base64 tot stap 16 van `docs/MIGRATIES.md` is uitgevoerd. Ze worden client-side verkleind (artiestfoto's naar max. 900 px, JPEG 82%; logo's naar max. 600 px), maar een project met veel foto's blijft een grote blob, en elke save en elke deellink-poll draagt die mee. Daarna komen ze in de publieke bucket `project-media`: wie een foto-URL heeft, kan die foto zonder inloggen openen (de URL is niet te raden en er is geen anonieme lijst). Zet daar dus niets vertrouwelijks in.
 - **Resterend race-venster**: lezen, samenvoegen en schrijven is niet atomair. Een schrijfactie van een ander apparaat die in de ~100 ms tussen onze GET en PATCH landt, wordt nog overschreven. Dat gaat pas dicht met de server-RPC `save_project` (migratie `project_versioning`, stap 13 in `docs/MIGRATIES.md`).
 - **Deellinks zijn bescherming-door-kennis van de `pid`**: wie de URL heeft, kan meekijken (en bij check-in aankomsten wijzigen). Er zijn nog geen intrekbare tokens per link. Gebruik ze niet voor echt vertrouwelijke projecten.
 - **RLS en kolomrechten** staan klaar in de migraties, maar zijn pas actief als Thijs ze uitvoert. Tot die tijd hangt de afscherming van de backend af van de huidige productie-instellingen.

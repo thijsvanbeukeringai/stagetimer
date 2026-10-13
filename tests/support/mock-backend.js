@@ -9,6 +9,10 @@
 //     /rest/v1/  (HEAD)     server clock for the Wall (date header)
 //     /auth/v1/*            password / refresh grant, user, logout, recover
 //     /functions/v1/*       edge functions: recorded, configurable, never real
+//     /storage/v1/object/[public/]project-media/*   Storage bucket (upload, delete,
+//                           public read) with the policies of the photo_storage
+//                           migration; backend.storage.bucketMissing = true answers
+//                           "Bucket not found" like production before that migration
 //     wss /realtime/v1/websocket   Phoenix stub, push postgres_changes at will
 //   cdn.jsdelivr.net        supabase-js UMD served from node_modules (same bytes, SRI ok)
 //   fonts.googleapis/gstatic   local copies in tests/support/fonts
@@ -249,6 +253,10 @@ class MockBackend {
     this.hiddenColumns = {};
     this.realtime = new RealtimeStub(this);
     this.onesignal = [];
+    // Storage bucket project-media (migration 20261013150000_photo_storage).
+    // objects: Map name -> { buf, type }. bucketMissing: every call answers
+    // like a Supabase project without the bucket.
+    this.storage = { bucketMissing: false, objects: new Map() };
   }
 
   // ── seeding & inspection ───────────────────────────────────────────────
@@ -331,6 +339,8 @@ class MockBackend {
       query: Object.fromEntries(url.searchParams), body, headers: await req.allHeaders().catch(() => req.headers()),
       at: Date.now(),
     };
+    // Binary uploads: postData() is lossy for non-UTF-8 bytes.
+    if (url.pathname.startsWith('/storage/')) rec.buffer = req.postDataBuffer();
     this.requests.push(rec);
 
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
@@ -427,9 +437,57 @@ class MockBackend {
       }
       return { json: { ok: true, mocked: name } };
     }
+    if (p.startsWith('/storage/v1/object/')) {
+      const r = this._storage(p.slice('/storage/v1/object/'.length), method, rec);
+      if (r) return r;
+    }
     if (p.startsWith('/storage/v1/')) return this._violation(`unmocked storage call ${method} ${url.href}`);
     return this._violation(`unmocked supabase path ${method} ${url.href}`);
   }
+
+  // ── Storage (bucket project-media only; anything else stays a violation) ─
+  // Error shapes as Supabase Storage sends them: HTTP 400 with the real code
+  // in body.statusCode.
+  _storage(sub, method, rec) {
+    const BUCKET = 'project-media';
+    const pub = sub.startsWith('public/');
+    const rest = pub ? sub.slice('public/'.length) : sub;
+    if (!rest.startsWith(BUCKET + '/')) return null;
+    const name = rest.slice(BUCKET.length + 1).split('/').map(decodeURIComponent).join('/');
+    const err = (code, error, message) => ({ status: 400, json: { statusCode: code, error, message } });
+    if (this.storage.bucketMissing) return err('404', 'Bucket not found', 'Bucket not found');
+    if (pub || method === 'GET') {
+      if (method !== 'GET' && method !== 'HEAD') return err('405', 'Method not allowed', 'Method not allowed');
+      const o = this.storage.objects.get(name);
+      if (!o) return err('404', 'not_found', 'Object not found');
+      return { status: 200, headers: { 'content-type': o.type, 'cache-control': o.cacheControl || 'max-age=3600' }, body: o.buf };
+    }
+    // Writes: the policies of the migration (same rule as saving the project).
+    const u = this._userFromBearer(rec);
+    const row = u && this.db.app_users.find((x) => String(x.email).toLowerCase() === String(u.email).toLowerCase());
+    if (!row) return err('403', 'Unauthorized', 'new row violates row-level security policy');
+    const pid = name.split('/')[0];
+    const proj = this.db.projects.find((x) => String(x.id) === pid);
+    const may = proj && (['admin', 'super_admin'].includes(row.role) || (row.company_id && proj.company_id === row.company_id));
+    if (method === 'POST') {
+      if (!may || !/^[^/]+\/[0-9a-f]{32}\.(jpg|png|webp)$/.test(name)) return err('403', 'Unauthorized', 'new row violates row-level security policy');
+      const type = String(rec.headers['content-type'] || '').split(';')[0];
+      if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) return err('415', 'invalid_mime_type', `mime type ${type} is not supported`);
+      const buf = rec.buffer || Buffer.alloc(0);
+      if (buf.length > 1048576) return err('413', 'Payload too large', 'The object exceeded the maximum allowed size');
+      if (this.storage.objects.has(name)) return err('409', 'Duplicate', 'The resource already exists');
+      this.storage.objects.set(name, { buf, type, cacheControl: rec.headers['cache-control'] || null, owner: row.id });
+      return { json: { Key: `${BUCKET}/${name}`, Id: `obj-${this.storage.objects.size}` } };
+    }
+    if (method === 'DELETE') {
+      if (!may || !this.storage.objects.has(name)) return err('404', 'not_found', 'Object not found');
+      this.storage.objects.delete(name);
+      return { json: { message: 'Successfully deleted' } };
+    }
+    return err('405', 'Method not allowed', `${method} not supported by mock`);
+  }
+  /** Public URL of an object, as app.html stores it in show.photo. */
+  storageUrl(name) { return `https://${SUPA_HOST}/storage/v1/object/public/project-media/${name}`; }
 
   // ── RPC ────────────────────────────────────────────────────────────────
   async _rpc(fn, body, rec) {

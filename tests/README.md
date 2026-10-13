@@ -20,7 +20,7 @@ If the shared browser cache is locked by another install, put browsers in `~/Lib
 
 | Folder | What goes there |
 |---|---|
-| `tests/support/` | `mock-backend.js` (fake Supabase + realtime stub), `seed.js` (festival data), `fixtures.js` (`test`, `expect`, `st` driver), `static-server.mjs`, local fonts, baseline script |
+| `tests/support/` | `mock-backend.js` (fake Supabase + realtime stub + Storage bucket `project-media`: `backend.storage.objects`, `backend.storage.bucketMissing`), `seed.js` (festival data), `fixtures.js` (`test`, `expect`, `st` driver), `static-server.mjs`, local fonts, baseline script |
 | `tests/booth/` | Stage View baseline. **Do not regenerate to make a failure go away.** A diff means the boothscreen changed, which BOUWPLAN forbids. |
 | `tests/smoke/` | One coarse test per screen/function. Should survive refactors. |
 | `tests/unit/` | Playwright picks up `*.spec.js` only; `*.test.js` are plain node scripts run by `npm run test:node`. Pure logic (time model, parsers). Today they run inside the page against app.html globals; once logic moves to `js/*.js` modules, plain node tests (`import` the module inside a Playwright test file) are fine too. |
