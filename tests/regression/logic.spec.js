@@ -188,6 +188,20 @@ test.describe('admin writes before RLS (rls_prep RPCs)', () => {
     expect(backend.calls({ method: 'PATCH', path: '/rest/v1/projects' }).length).toBeGreaterThanOrEqual(1);
   });
 });
+test.describe('companies before the setup_pending column exists', () => {
+  test.use({ stAuth: 'super' });
+  test('reads the list without that column, never select=*', async ({ page, st, backend }) => {
+    backend.schema.companies = backend.schema.companies.filter(c => c !== 'setup_pending');
+    await st.gotoApp();
+    await page.evaluate(() => openAdmin());
+    await expect.poll(() => backend.calls({ path: '/rest/v1/companies' }).filter(c => c.method === 'GET').length).toBeGreaterThanOrEqual(3);
+    for (const c of backend.calls({ path: '/rest/v1/companies' })) {
+      expect(c.query.select || '').not.toBe('*');
+      expect(c.query.select || '').not.toContain('setup_token');
+    }
+    expect(await page.evaluate(() => APP.companies.map(c => c.id).sort())).toEqual([FESTIVAL.companyId, FESTIVAL.otherCompanyId].sort());
+  });
+});
 for (const [role, editable] of [['operator', false], ['admin', true]]) {
   test.describe(`workspace settings as ${role}`, () => {
     test.use({ stAuth: role });

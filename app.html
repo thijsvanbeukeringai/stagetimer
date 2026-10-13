@@ -50,8 +50,8 @@
         const rows=l.ok?await l.json():null;
         return Array.isArray(rows)?rows[0]||null:null;
       })
-      .then(row=>row||null).catch(()=>null);
-  }catch(e){}
+      .then(row=>row||null).catch(e=>{console.warn('[public] early fetch failed, loadPublicView retries:',e&&e.message||e);return null;});
+  }catch(e){console.warn('[public] early fetch not started:',e&&e.message||e);}
 })();
 // EARLY NO-SESSION DETECTION (CSS-driven, no DOM, no network).
 // Inline + synchronous, placed BEFORE any blocking external script so the
@@ -2411,7 +2411,7 @@ async function _refreshAuthToken(){
     const s=await _authRefresh(rt);
     if(s?.access_token){
       saveAuthSession(s);
-      try{supa.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}).catch(()=>{});}catch(_){}
+      try{supa.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}).catch(e=>console.warn('[auth] setSession after refresh (realtime only):',e?.message||e));}catch(e){console.warn('[auth] setSession threw:',e);}
       return true;
     }
     return false;
@@ -2532,7 +2532,7 @@ function loadAPPCache(){
   if(!APP.users)APP.users=[];
   if(!APP.timers)APP.timers=[];
   // Restore current user from cache so renderDash filters correctly on first render
-  try{const cu=localStorage.getItem('st_current_user');if(cu)CURRENT_USER=JSON.parse(cu);}catch(e){}
+  try{const cu=localStorage.getItem('st_current_user');if(cu)CURRENT_USER=JSON.parse(cu);}catch(e){console.warn('[cache] st_current_user unreadable, waiting for the server:',e);}
 }
 
 // Load from Supabase (async, merges into APP)
@@ -2571,7 +2571,8 @@ async function _restGet(table,cols){
 // the derived boolean setup_pending ("awaiting activation").
 // Until the hotfix migration adds setup_pending (and while a column in this list
 // is missing on the server), PostgREST answers 42703 / "column ... does not
-// exist"; we then fall back to select=* so the app keeps loading either way.
+// exist"; we then read the list without that column (_companiesWithout) so the
+// app keeps loading either way.
 const COMPANY_COLS='id,name,stripe_customer_id,stripe_subscription_id,subscription_status,subscription_tier,project_limit,current_period_end,trial_ends_at,last_paid_at,pending_name,pending_email,setup_pending,extra_seats,seat_subscription_item_id,plan_slug,live_stages_limit,live_stages_override,pass_slug,pass_expires_at';
 function _isMissingColumn(err){
   const m=((err&&(err.message||err.details||err.hint))||'')+' '+((err&&err.code)||'');
@@ -2602,16 +2603,24 @@ function _mapCompany(c){
     passExpiresAt:c.pass_expires_at||null,
   };
 }
-async function _restGetCompanies(){
-  const r=await _restGet('companies',COMPANY_COLS);
-  if(r.error&&_isMissingColumn(r.error))return _restGet('companies');
-  return r;
+// Missing column: retry without exactly that column (never select=*, which
+// would read setup_token again). Before the hotfix migration's step 1 that is
+// setup_pending, and the "Awaiting activation" badge then stays off.
+async function _companiesWithout(get){
+  let cols=COMPANY_COLS.split(',');
+  for(let i=0;i<4;i++){
+    const r=await get(cols.join(','));
+    if(!(r.error&&_isMissingColumn(r.error)))return r;
+    const txt=String(r.error.message||'')+' '+String(r.error.details||'');
+    const bad=(/column\s+"?(?:companies\.)?([a-z_]+)"?\s+does not exist/i.exec(txt)||[])[1]||(cols.includes('setup_pending')?'setup_pending':'');
+    if(!bad||bad==='id'||!cols.includes(bad))return r;
+    console.warn('[companies] column missing on the server, reading without it:',bad);
+    cols=cols.filter(c=>c!==bad);
+  }
+  return get(cols.join(','));
 }
-async function _supaCompanies(){
-  const r=await supa.from('companies').select(COMPANY_COLS);
-  if(r.error&&_isMissingColumn(r.error))return supa.from('companies').select('*');
-  return r;
-}
+async function _restGetCompanies(){return _companiesWithout(cols=>_restGet('companies',cols));}
+async function _supaCompanies(){return _companiesWithout(cols=>supa.from('companies').select(cols));}
 
 async function loadAPPRemote(){
   setSyncDot('ing');
@@ -2709,7 +2718,7 @@ function _saveSel(pid){
 }
 function _applySel(pid){
   if(!pid)return;
-  let s=null;try{s=JSON.parse(localStorage.getItem(_SEL_KEY(pid))||'null');}catch(_){}
+  let s=null;try{s=JSON.parse(localStorage.getItem(_SEL_KEY(pid))||'null');}catch(e){console.warn('[sel] stored selection unreadable, using the project\'s:',e);}
   if(!s)return; // first visit on this device: start from the blob's values
   if(s.activeStage&&(G.stages||[]).some(x=>x.id===s.activeStage))G.activeStage=s.activeStage;
   if(s.activeDay&&(G.days||[]).some(d=>d.id===s.activeDay))G.activeDay=s.activeDay;
@@ -7770,7 +7779,7 @@ async function _restWrite(table,method,filter,body){
   if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await go();
   const txt=await res.text().catch(()=>'');
   if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt:''));e.status=res.status;throw e;}
-  let rows=[];try{rows=JSON.parse(txt||'[]');}catch(_){}
+  let rows=[];try{rows=JSON.parse(txt||'[]');}catch(e){console.warn('[rest] '+method+' '+table+': unreadable response, counted as 0 rows:',txt.slice(0,200));}
   return Array.isArray(rows)?rows.length:0;
 }
 async function deleteProject(id){
@@ -9171,7 +9180,7 @@ async function ciToggleArrived(showId){
   // operator mode update the schedule + overview if open + checkin view if open.
   if(PUBLIC_MODE==='checkin')renderCI();
   else{
-    try{renderSched();}catch(e){}
+    try{renderSched();}catch(e){console.warn('[checkin] schedule repaint failed:',e);}
     if(document.getElementById('stov')?.classList.contains('open'))renderOV();
     if(document.getElementById('ci')?.classList.contains('open'))renderCI();
   }
@@ -9713,7 +9722,7 @@ let OT=[];
 function loadOT(){
   if(!APP)return; // APP not initialized yet
   // migrate from legacy key if present
-  try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch{}
+  try{const leg=localStorage.getItem('st_timers_v1');if(leg){const arr=JSON.parse(leg);if(arr&&arr.length){APP.timers=(APP.timers||[]).concat(arr);localStorage.removeItem('st_timers_v1');}}}catch(e){console.warn('[timers] legacy st_timers_v1 not migrated:',e);}
   const uid=CURRENT_USER?.id||'';
   const now=nowMs();
   // Remove expired timers
@@ -10171,7 +10180,7 @@ async function _authProbe(access_token){
     clearTimeout(tmo);
     if(res.ok)return await res.json();
     return null;
-  }catch(e){clearTimeout(tmo);return null;}
+  }catch(e){clearTimeout(tmo);console.warn('[auth] session probe failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
 async function _authRefresh(refresh_token){
   const ctrl=new AbortController();
@@ -10186,7 +10195,7 @@ async function _authRefresh(refresh_token){
     clearTimeout(tmo);
     if(res.ok)return await res.json();
     return null;
-  }catch(e){clearTimeout(tmo);return null;}
+  }catch(e){clearTimeout(tmo);console.warn('[auth] token refresh failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
 // ── Links from the auth emails (reset password, invite, confirm signup).
 // The templates link to {{ .ConfirmationURL }}: Supabase verifies the token
@@ -10237,7 +10246,7 @@ async function _handleAuthLink(){
 }
 
 (async()=>{
-  try{loadAPPCache();}catch(e){}
+  try{loadAPPCache();}catch(e){console.warn('[cache] local copy could not be loaded:',e);}
   loadOT();
   // Post-payment signup completion
   if(SIGNUP_SUCCESS){

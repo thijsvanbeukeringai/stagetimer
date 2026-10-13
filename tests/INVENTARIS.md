@@ -21,7 +21,7 @@ Legenda testbestanden:
 | Nieuw wachtwoord instellen (`#set-pw`, invite) | `setNewPassword` 8479 | gat (modal wordt nooit geopend, BOUWPLAN 1.5) |
 | Signup na betaling (`?signup=success&cid&t`) | `completeSignup` 7918 → edge `finalize-signup` | gat (mock aanwezig: `backend.setFunction('finalize-signup', …)`) |
 | Profiel: naam, wachtwoord | `renderProfilePage` 6404, `saveProfileName` 6451, `saveProfilePassword` 6465 | operator: *workspace sections* (alleen openen) |
-| Workspace-instellingen, naam | `renderSettingsPage` 6365, `saveWorkspaceName` 6391 | operator: *workspace sections* (alleen openen) |
+| Workspace-instellingen, naam | `renderSettingsPage` 6365, `saveWorkspaceName` 6391 | operator: *workspace sections* (alleen openen); regression/logic: *workspace name read-only / editable* per rol |
 | Leden uitnodigen / verwijderen | `openInviteMemberPrompt` 6478, `removeMember` 6498 → edge `invite-member`/`remove-member` | gat (edge functions gemockt, geen echte invites) |
 | Abonnement: pagina, banner, portal | `renderSubscriptionPage` 6273, `renderSubscriptionBanner` 6575, `manageSubscription` 7344 → edge `portal-link` | operator: *workspace sections*; periode-weergave jaar/maand: gat (BOUWPLAN 1.5) |
 | Planlimiet live stages | `_effectiveStageLimit` 5866, `checkStageLimit` 5889, `canCreateProject` 6605 | gat (trialing = 0 stages, besluitpunt B2) |
