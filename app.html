@@ -2310,6 +2310,18 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #dur-prev .st-auto{color:#fbbf24;}
 button.booth-opt{font-family:inherit;min-width:32px;}
 #drawer :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
+/* Cue panel / manual timer (operator side only, never Stage View) */
+#cue-hdr #cue-status{order:3;flex:1 1 100%;text-align:left;line-height:1.45;}
+.st-cue-target{font-size:11px;color:var(--sub);margin:-2px 0 8px;line-height:1.4;}
+.st-cue-target strong{color:var(--text);}
+.st-bo-status{font-size:11.5px;font-weight:700;line-height:1.4;margin:0 0 8px;padding:7px 10px;border-radius:7px;
+  background:rgba(220,38,38,.14);border:1px solid rgba(220,38,38,.45);color:#fca5a5;}
+.cue-btn.st-cue-on{box-shadow:0 0 0 2px #fff inset;filter:brightness(1.35);}
+.cue-btn.st-cue-on::before{content:"● ";}
+#cue-clear:disabled{opacity:.45;cursor:default;}
+.st-thelp{font-size:10.5px;color:var(--sub);line-height:1.4;margin-top:6px;padding:0 2px;}
+.st-cued{font-size:10px;font-weight:800;color:#86efac;letter-spacing:.04em;}
+#cue-panel :focus-visible,#tbar :focus-visible,.scard :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
 /* ═══ end DIALOGS ═══ */
 </style>
 <script>
@@ -4087,12 +4099,13 @@ function renderTbar(){
       </div>
       <div id="tbar">
         <div id="trow">
-          <button class="tb" onclick="mPrev()">⏮</button>
-          <button class="tb stp" onclick="mStop()">⏹</button>
+          <button class="tb" onclick="mPrevUI()" aria-label="Cue the previous show (resets the timer)" title="Cue the previous show (resets the timer)">⏮</button>
+          <button class="tb stp" onclick="mStopUI()" aria-label="Reset the timer to the full show length" title="Reset the timer to the full show length">⏹</button>
           <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
-          <button class="tb" onclick="mNext()">⏭</button>
+          <button class="tb" onclick="mNextUI()" aria-label="Cue the next show (resets the timer)" title="Cue the next show (resets the timer)">⏭</button>
         </div>
         <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
+        <div class="st-thelp" id="t-help">⏮ ⏭ cue another show · ⏹ resets the timer · use "Cue" on a show to select it. Cards never reset the timer.</div>
       </div>
       <!-- Display mode toggle: what the Stage View for the active stage shows.
            Per-stage so the operator can put one stage on "Blank" (between sets)
@@ -4130,21 +4143,23 @@ function renderTbar(){
           <div class="cue-status" id="cue-status">No active cue</div>
           <!-- Blackout: kills all viewer screens instantly. Used between
                segments / for go-to-break / emergency wipe. -->
-          <button id="blackout-btn" class="cue-blackout-btn" onclick="toggleBlackout()" title="Hide all viewer displays">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 0 1-5.2-9l8.2 8.2A6 6 0 0 1 12 18zm5.2-3L9 6.8A6 6 0 0 1 17.2 15z"/></svg>
+          <button id="blackout-btn" class="cue-blackout-btn" onclick="toggleBlackout()" title="Hide all viewer displays" aria-pressed="false" aria-describedby="blackout-status">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 0 1-5.2-9l8.2 8.2A6 6 0 0 1 12 18zm5.2-3L9 6.8A6 6 0 0 1 17.2 15z"/></svg>
             <span id="blackout-btn-label">Blackout</span>
           </button>
         </div>
+        <div class="st-cue-target" id="cue-target"></div>
+        <div class="st-bo-status" id="blackout-status" hidden>Blackout is ON: every viewer screen of this project (Stage View, Backstage, FOH, all stages) is black.</div>
         <div id="cue-presets">
-          <button class="cue-btn cue-green"  onclick="sendCue('READY','green')">READY</button>
-          <button class="cue-btn cue-amber"  onclick="sendCue('5 MIN','amber')">5 MIN</button>
-          <button class="cue-btn cue-amber"  onclick="sendCue('1 MIN','amber')">1 MIN</button>
-          <button class="cue-btn cue-red"    onclick="sendCue('WRAP UP','red')">WRAP UP</button>
-          <button class="cue-btn cue-blue"   onclick="sendCue('STAND BY','blue')">STAND BY</button>
-          <button class="cue-btn cue-purple" onclick="sendCue('GO TO BREAK','purple')">GO TO BREAK</button>
+          <button class="cue-btn cue-green"  onclick="sendCue('READY','green')" data-cue="READY" aria-pressed="false">READY</button>
+          <button class="cue-btn cue-amber"  onclick="sendCue('5 MIN','amber')" data-cue="5 MIN" aria-pressed="false">5 MIN</button>
+          <button class="cue-btn cue-amber"  onclick="sendCue('1 MIN','amber')" data-cue="1 MIN" aria-pressed="false">1 MIN</button>
+          <button class="cue-btn cue-red"    onclick="sendCue('WRAP UP','red')" data-cue="WRAP UP" aria-pressed="false">WRAP UP</button>
+          <button class="cue-btn cue-blue"   onclick="sendCue('STAND BY','blue')" data-cue="STAND BY" aria-pressed="false">STAND BY</button>
+          <button class="cue-btn cue-purple" onclick="sendCue('GO TO BREAK','purple')" data-cue="GO TO BREAK" aria-pressed="false">GO TO BREAK</button>
         </div>
         <div id="cue-custom">
-          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" onkeydown="if(event.key==='Enter')sendCustomCue()">
+          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" aria-label="Custom cue text" onkeydown="if(event.key==='Enter')sendCustomCue()">
           <button id="cue-send" onclick="sendCustomCue()">Send</button>
           <button id="cue-clear" onclick="clearCue()" title="Clear active cue">Clear</button>
         </div>
@@ -5203,8 +5218,7 @@ function renderSched(){
     const hasCrew=CREW_ROLES.some(r=>s.crew?.[r.id]?.name);
     const hasContent=s.note||hasCrew||notes.length;
     const arrivedDot=`<button class="sc-arrived ${s.arrived?'on':''}" title="${s.arrived?'Checked in':'Not checked in - click to mark arrived'}" onclick="ciToggleArrived('${s.id}');event.stopPropagation()">${s.arrived?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}</button>`;
-    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}"
-      onclick="${G.timerMode==='manual'?`selMCue(${i})`:''}">
+    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}">
       ${(isNow||isSel)?`<div class="spr" style="width:${pct.toFixed(1)}%;"></div>`:''}
       <div class="scard-top">
         <span class="scard-time">${s.start.slice(0,5)}<span style="color:var(--dim)"> – </span>${s.end.slice(0,5)}</span>
@@ -5213,8 +5227,8 @@ function renderSched(){
         ${itemTypeBadge(s)}
         ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${escH(s.booth)}</span>`:''}
         <span class="scard-act">
-          <button class="rb" onclick="openDrawer('${s.id}');event.stopPropagation()">✏️</button>
-          <button class="rb d" onclick="delShow('${s.id}',event)">🗑</button>
+          <button class="rb" onclick="openDrawer(${_jsArg(s.id)});event.stopPropagation()" aria-label="Edit ${escH(s.artist)}" title="Edit show">✏️</button>
+          <button class="rb d" onclick="delShow(${_jsArg(s.id)},event)" aria-label="Delete ${escH(s.artist)}" title="Delete show">🗑</button>
         </span>
       </div>
       ${hasContent?`<div class="scard-sep"></div>`:''}
@@ -5222,7 +5236,10 @@ function renderSched(){
       ${hasCrew?`<div class="scard-crew">${fohCrewHTML(s)}</div>`:''}
       ${notes.length?`<div class="scard-fnotes">${notesHTML}</div>`:''}
       <div class="scard-ft">
-        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${escH(s.id)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal(${_jsArg(s.id)});event.stopPropagation()">+ Note</button>
+        ${G.timerMode==='manual'&&!s.cancelled?(isSel
+          ?`<span class="st-cued" aria-label="This show is cued on the timer">● Cued</span>`
+          :`<button class="foh-add-note st-cue-show" style="font-size:10px;padding:3px 8px;" onclick="selMCueUI(${i});event.stopPropagation()" aria-label="Cue ${escH(s.artist)} on the timer">▶ Cue</button>`):''}
         ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
         ${_showIsFuture(s)&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
@@ -5230,6 +5247,23 @@ function renderSched(){
   }).join('');
 }
 function selMCue(i){_mCue(getShows(G.activeStage,G.activeDay)[i]);renderTP();renderTbar();renderSched();}
+// Manual mode, operator side: picking another show or resetting throws away
+// a running / paused countdown, so that asks first. Idle timers just move.
+async function _mConfirmReset(action,okLabel){
+  if(M.state==='idle')return true;
+  const cur=_mShow();
+  const left=s2cdH(Math.round(mRem()/1000));
+  return stDialog.confirm(`The timer for "${cur?.artist||'this show'}" is ${M.state==='running'?'running':'paused'} with ${left} left. ${action} resets it to the full length of the show.`,
+    {title:'Reset the running timer?',okLabel,cancelLabel:'Keep the timer',danger:true});
+}
+async function selMCueUI(i){
+  const s=getShows(G.activeStage,G.activeDay)[i];if(!s||s.id===M.showId)return;
+  if(!await _mConfirmReset(`Cueing "${s.artist}"`,'Cue and reset'))return;
+  selMCue(i);
+}
+async function mPrevUI(){if(await _mConfirmReset('Cueing the previous show','Cue previous show'))mPrev();}
+async function mNextUI(){if(await _mConfirmReset('Cueing the next show','Cue next show'))mNext();}
+async function mStopUI(){if(await _mConfirmReset('Resetting','Reset timer'))mStop();}
 
 // Fast tick for schedule countdowns
 function tickSched(){
@@ -6978,7 +7012,10 @@ function renderBlackout(){
     btn.className='cue-blackout-btn'+(on?' on':'');
     if(lbl)lbl.textContent=on?'Blackout ON':'Blackout';
     btn.title=on?'Click to lift blackout':'Hide all viewer displays';
+    btn.setAttribute('aria-pressed',on?'true':'false');
   }
+  const bs=document.getElementById('blackout-status');
+  if(bs&&bs.hidden===on)bs.hidden=!on;
 }
 
 // Cues are persistent by default: they stay visible on the Stage View
@@ -7012,16 +7049,39 @@ function _cueActive(c){
   const expiresAt=(c.sentAt||0)+c.durationMs;
   return nowMs()<expiresAt;
 }
+// Operator side of cues. Stage View rendering is unchanged (_renderCueOverlay):
+// this only says where a cue goes, which one is on air, for how long, and
+// whether blackout is on.
+let _cueUiKey='';
 function renderCueStatus(){
   const el=document.getElementById('cue-status');if(!el)return;
   const c=G&&G.cue;
-  if(!_cueActive(c)){el.textContent='No active cue';return;}
+  const stName=id=>(G.stages||[]).find(x=>x.id===id)?.name||'(deleted stage)';
+  const here=activeStageObj()?.name||'this stage';
+  const active=_cueActive(c);
+  const forHere=active&&(!c.stageId||c.stageId===G.activeStage);
+  const where=!active?'':!c.stageId?'every stage':stName(c.stageId);
+  // Target line + active preset + Clear: only touched when something changed.
+  const key=[G.activeStage,here,active?c.text+'|'+c.stageId+'|'+c.sentAt:''].join('§');
+  if(key!==_cueUiKey){
+    _cueUiKey=key;
+    const tg=document.getElementById('cue-target');
+    if(tg)tg.innerHTML=`Cues go to the <strong>${escH(here)}</strong> screens (Stage View, Backstage, FOH).`;
+    document.querySelectorAll('#cue-presets .cue-btn').forEach(b=>{
+      const on=forHere&&b.dataset.cue===c.text;
+      b.classList.toggle('st-cue-on',on);b.setAttribute('aria-pressed',on?'true':'false');
+    });
+    const clr=document.getElementById('cue-clear');
+    if(clr){clr.disabled=!active;clr.title=active?`Clear "${c.text}" from ${where}`:'No active cue to clear';}
+  }
+  if(!active){el.textContent='No active cue';return;}
   const ageSec=Math.max(0,Math.round((nowMs()-c.sentAt)/1000));
+  const onWhere=forHere?'':` on <strong>${escH(where)}</strong> (not this stage)`;
   if(c.durationMs){
     const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-nowMs())/1000));
-    el.innerHTML=`Sent <strong>${escH(c.text)}</strong> · ${ageSec}s ago · clears in ${remain}s`;
+    el.innerHTML=`On air${onWhere}: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · disappears in ${remain}s`;
   }else{
-    el.innerHTML=`On air: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · <em style="color:var(--sub);">hit Clear to stop</em>`;
+    el.innerHTML=`On air${onWhere}: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · <em style="color:var(--sub);">stays until you press Clear</em>`;
   }
 }
 // Stage View overlay tick — runs on the main 250ms loop.

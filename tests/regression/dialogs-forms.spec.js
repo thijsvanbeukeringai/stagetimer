@@ -244,3 +244,74 @@ test.describe('time correction', () => {
     await done(r);
   });
 });
+
+test.describe('cues and manual mode (operator side)', () => {
+  test('target stage, active cue, duration and blackout are visible', async ({ browser }) => {
+    const r = await openOperator(browser);
+    const { page } = r;
+    await expect(page.locator('#cue-target')).toContainText('Cues go to the Main screens');
+    await expect(page.locator('#cue-clear')).toBeDisabled();
+    await page.locator('#cue-presets').getByRole('button', { name: 'WRAP UP' }).click();
+    await page.clock.runFor(500);
+    await expect(page.locator('#cue-status')).toContainText('On air: WRAP UP');
+    await expect(page.locator('#cue-status')).toContainText('stays until you press Clear');
+    await expect(page.locator('#cue-presets [data-cue="WRAP UP"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#cue-presets [data-cue="READY"]')).toHaveAttribute('aria-pressed', 'false');
+    expect(await page.evaluate(() => G.cue.stageId)).toBe('s1');
+    // Another stage selected: the cue is still on air on Main, and says so.
+    await page.evaluate(() => { G.activeStage = 's2'; renderAll(); });
+    await page.clock.runFor(500);
+    await expect(page.locator('#cue-status')).toContainText('On air on Main (not this stage): WRAP UP');
+    await expect(page.locator('#cue-target')).toContainText('Cues go to the Second screens');
+    await expect(page.locator('#cue-presets [data-cue="WRAP UP"]')).toHaveAttribute('aria-pressed', 'false');
+    await page.locator('#cue-clear').click();
+    await page.clock.runFor(500);
+    await expect(page.locator('#cue-status')).toHaveText('No active cue');
+    // A temporary cue says how long it stays.
+    await page.evaluate(() => sendCue('STRETCH', 'amber', 10000));
+    await page.clock.runFor(2000);
+    await expect(page.locator('#cue-status')).toContainText('disappears in 8s');
+    // Blackout: pressed state + explicit status line.
+    await expect(page.locator('#blackout-status')).toBeHidden();
+    await page.locator('#blackout-btn').click();
+    await page.clock.runFor(500);
+    await expect(page.locator('#blackout-btn')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#blackout-status')).toBeVisible();
+    await expect(page.locator('#blackout-status')).toContainText('Blackout is ON');
+    await done(r);
+  });
+  test('manual mode: cards never reset; Cue / prev / next / reset ask while a timer runs', async ({ browser }) => {
+    const r = await openOperator(browser);
+    const { page } = r;
+    const d = dlg(page);
+    await page.locator('#mb-man').click();
+    expect(await page.evaluate(() => M.showId)).toBe('a');
+    await page.locator('#btn-pp').click();               // start
+    await page.clock.runFor(5000);
+    // Tapping a card does nothing to the timer.
+    await page.locator('#slist .scard').nth(1).click({ position: { x: 5, y: 5 } });
+    expect(await page.evaluate(() => [M.showId, M.state])).toEqual(['a', 'running']);
+    await expect(d).toHaveCount(0);
+    // The explicit Cue button asks first.
+    await page.getByRole('button', { name: 'Cue Bravo on the timer' }).click();
+    await expect(d.locator('.st-dlg-title')).toHaveText('Reset the running timer?');
+    await expect(d.locator('.st-dlg-msg')).toContainText('"Alpha" is running');
+    await d.getByRole('button', { name: 'Keep the timer' }).click();
+    expect(await page.evaluate(() => [M.showId, M.state])).toEqual(['a', 'running']);
+    await page.getByRole('button', { name: 'Cue Bravo on the timer' }).click();
+    await d.getByRole('button', { name: 'Cue and reset' }).click();
+    expect(await page.evaluate(() => [M.showId, M.state])).toEqual(['b', 'idle']);
+    // Idle: next / reset need no confirmation.
+    await page.getByRole('button', { name: 'Cue the next show (resets the timer)' }).click();
+    await expect(d).toHaveCount(0);
+    expect(await page.evaluate(() => M.showId)).toBe('c');
+    // Running: reset asks, Escape keeps the timer.
+    await page.locator('#btn-pp').click();
+    await page.clock.runFor(3000);
+    await page.getByRole('button', { name: 'Reset the timer to the full show length' }).click();
+    await expect(d).toBeVisible();
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => M.state)).toBe('running');
+    await done(r);
+  });
+});
