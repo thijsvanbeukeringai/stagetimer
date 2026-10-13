@@ -5108,6 +5108,51 @@ function _fmtDay(ymd){
   const d=new Date(String(ymd).slice(0,10)+'T12:00:00');
   return isNaN(d)?String(ymd):d.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 }
+// ── The app's own modal overlays (project, stages, crew, days, import,
+// vouchers, one-off timer, FOH note, share links, limits) get the same
+// basics as stDialog without touching their markup or styles: dialog role
+// and name, Escape closes the top one (and nothing behind it), Tab stays
+// inside, focus returns to whatever opened it.
+(function _legacyModalA11y(){
+  const M=[
+    ['proj-modal-ov','New project',()=>closeProjModal()],['limit-modal-ov','Limit reached',()=>closeLimitModal()],
+    ['stage-modal-ov','Manage stages',()=>closeStageModal()],['crew-modal-ov','Manage crew',()=>closeCrewModal()],
+    ['day-modal-ov','Manage days',()=>closeDayModal()],['json-modal-ov','Import lineup',()=>closeJSONModal()],
+    ['voucher-modal-ov','New voucher',()=>closeVoucherModal()],['ot-modal-ov','One-off timer',()=>closeOTModal()],
+    ['fohn-ov','Add note',()=>closeFohnModal()],['share-ov','Shareable links',()=>closeShareModal()],
+  ];
+  const shown=ov=>!!ov&&getComputedStyle(ov).display!=='none'&&ov.getClientRects().length>0;
+  const state=new Map();
+  function topOpen(){
+    let best=null,bz=-1;
+    for(const[id,,close]of M){const ov=document.getElementById(id);if(!shown(ov))continue;const z=+getComputedStyle(ov).zIndex||0;if(z>=bz){bz=z;best={ov,close};}}
+    return best;
+  }
+  function watch(){
+    for(const[id,label]of M){
+      const ov=document.getElementById(id);if(!ov||state.has(id))continue;
+      const panel=ov.firstElementChild;
+      if(panel&&!panel.getAttribute('role')){panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');if(!panel.getAttribute('aria-labelledby'))panel.setAttribute('aria-label',label);}
+      const st={open:false,trigger:null};state.set(id,st);
+      new MutationObserver(()=>{
+        const now=shown(ov);if(now===st.open)return;st.open=now;
+        if(now){const a=document.activeElement;st.trigger=a&&!ov.contains(a)?a:null;}
+        else{const t=st.trigger;st.trigger=null;if(t&&t!==document.body&&document.contains(t)&&!stDialog.isOpen()&&(!document.activeElement||document.activeElement===document.body||ov.contains(document.activeElement)))try{t.focus({preventScroll:true});}catch(_){}}
+      }).observe(ov,{attributes:true,attributeFilter:['style','class']});
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();
+  document.addEventListener('keydown',e=>{
+    if(stDialog.isOpen()||(e.key!=='Escape'&&e.key!=='Tab'))return;
+    const t=topOpen();if(!t)return;
+    if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();t.close();return;}
+    const f=[...t.ov.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled])')].filter(el=>el.getClientRects().length);
+    if(!f.length)return;
+    const first=f[0],last=f[f.length-1],act=document.activeElement;
+    if(e.shiftKey&&(act===first||!t.ov.contains(act))){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&(act===last||!t.ov.contains(act))){e.preventDefault();first.focus();}
+  },true);
+})();
 // For the few code paths that may run before / without the dialog (node test
 // harness, very early boot): the dialog when it exists, else the browser one.
 function _stAlert(msg,o){return window.stDialog?window.stDialog.alert(msg,o):(alert(msg),Promise.resolve());}

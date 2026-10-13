@@ -69,6 +69,20 @@ test.describe('dialog component', () => {
   });
 });
 
+test.describe('existing modals', () => {
+  test('dialog role, Escape closes only the modal, focus returns', async ({ page, st }) => {
+    await openOperator({ page, st }, { open: false });
+    const btn = page.getByRole('button', { name: 'New project' });
+    await btn.click();
+    const modal = page.getByRole('dialog', { name: 'New project' });
+    await expect(modal).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(modal).toBeHidden();
+    await expect(page.locator('#dash')).toHaveClass(/open/);
+    await expect(btn).toBeFocused();
+  });
+});
+
 test.describe('show editor', () => {
   test('field errors sit next to the field, invalid seconds are not corrected', async ({ page, st, backend }) => {
     await openOperator({ page, st });
