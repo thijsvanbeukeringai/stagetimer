@@ -35,6 +35,7 @@ Sections start with `// ══ NAME`. Find them with `grep -n '// ══' app.ht
 | `SAVE / SYNC` | `save`, `_pushProject` / `_pushOnce`, 3-way merge `_mergeData`, `_markIntentionalRemoval`, `setSaveState`, realtime |
 | `PURE TIME MODULE ─ begin` … `─ end` | clock, Europe/Amsterdam, 07:00 festival day, show intervals, manual timer model, `makePollGate` |
 | `MANUAL TIMER`, `RENDER TIMER PANEL`, `RENDER SCHEDULE` | operator control screen |
+| `RIDER` | `show.rider = {drinks, tech}` helpers: `riderOf(s)` (trimmed strings), `hasRider(s)`, `RIDER_MAX`; share links: only `checkin` / `stagemanager` receive it |
 | `BOOTH LINK`, `MESSAGE BOOTH` | delivery receipts + screen presence over Realtime broadcast/presence; the phone-first "Message booth" sheet (just above `TICK`) |
 | `DIALOGS (stDialog)` | the one dialog component |
 | `VIEW HELPERS`, `FOH`, `BACKSTAGE`, `STAGE VIEW`, `STAGE OVERVIEW`, `TIMELINE VIEW` | screens; the Wall is the block headed `// CONTROL ROOM WALL` (no `══` name marker), the server clock is `SERVER TIME SYNC` right below it |
