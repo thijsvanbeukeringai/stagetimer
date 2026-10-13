@@ -1,0 +1,16 @@
+{
+  "name": "stagetimer-tests",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Dev-only regression harness for app.html (Playwright). Never deployed: see .vercelignore.",
+  "scripts": {
+    "test": "playwright test",
+    "test:booth": "playwright test --project=booth-chromium --project=booth-webkit",
+    "test:smoke": "playwright test --project=chromium --project=webkit",
+    "test:update-baseline": "node tests/support/update-baseline.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@supabase/supabase-js": "2.112.3"
+  }
+}
