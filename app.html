@@ -9466,6 +9466,30 @@ function _pvStartPolling(render,skip){
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')poll();});
 }
 
+// First load of a share link. Resolves with the project, or null when the
+// server says it does not exist (then: "Project not found."). Transient
+// failures - no status (network, timeout), 5xx, 408, 429 - retry after
+// 1s, 2s, 4s ... 30s, and at once when the device comes back online.
+const _PV_RETRY_MAX_MS=30000;
+function _pvTransient(e){const s=_errStatus(e);return!s||s>=500||s===408||s===429;}
+async function _pvLoadWithRetry(){
+  let wait=1000,attempt=0;
+  for(;;){
+    try{return await _fetchSharedProject(PUBLIC_PID);}
+    catch(e){
+      attempt++;
+      if(!_pvTransient(e)){console.warn('[public] load failed:',e?.message||e);return null;}
+      console.warn('[public] load failed (attempt '+attempt+'), retrying in '+Math.round(wait/1000)+'s:',e?.message||e);
+      const msg=document.querySelector('#loader > div:last-child');
+      if(msg)msg.textContent='Connecting…';
+      await new Promise(r=>{
+        const done=()=>{clearTimeout(t);window.removeEventListener('online',done);r();};
+        const t=setTimeout(done,wait);window.addEventListener('online',done);
+      });
+      wait=Math.min(wait*2,_PV_RETRY_MAX_MS);
+    }
+  }
+}
 async function loadPublicView(){
   // Use the early fetch started in <head> if available - saves ~1-3s on mobile
   let proj=null;
@@ -9474,7 +9498,11 @@ async function loadPublicView(){
   }
   if(!proj){
     // RPC, not a table read: anonymous viewers have no access to `projects`.
-    proj=await _fetchSharedProject(PUBLIC_PID).catch(e=>{console.warn('[public] load failed:',e?.message||e);return null;});
+    // "Not found" only when the server answered and there is no such project.
+    // A server error, timeout or no network (a booth screen that boots before
+    // the venue Wi-Fi is up) is retried with backoff while the existing
+    // loader says "Connecting…", instead of "Project not found." forever.
+    proj=await _pvLoadWithRetry();
   }
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project not found.</div>';return;}
   _pvSyncOk();

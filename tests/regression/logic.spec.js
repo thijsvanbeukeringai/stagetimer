@@ -72,6 +72,10 @@ async function openOperator(browser, { at, data, role = 'operator', timezoneId =
     return route.fulfill({ status: 404, body: '' });
   });
   await page.addInitScript(() => {
+    // Page-clock timestamps of share-link fetches (backoff assertions).
+    window.__rpcTimes = [];
+    const f = window.fetch;
+    window.fetch = function (u) { if (String(u).includes('/rpc/get_shared_project')) window.__rpcTimes.push(Date.now()); return f.apply(this, arguments); };
     if (sessionStorage.getItem('__seeded')) return; // keep state across reloads
     sessionStorage.setItem('__seeded', '1');
     localStorage.setItem('st_auth_v1', JSON.stringify({ access_token: 'user.jwt', refresh_token: 'r1' }));
@@ -114,8 +118,8 @@ test.describe('show editor uses festival time', () => {
       await page.evaluate(() => openDrawer(null));
       expect(await fields()).toEqual(['2026-06-20', '01:15', '00', '2026-06-20', '02:45', '00']);
       await page.clock.runFor(1000);
-      expect(st.patches.length).toBeGreaterThan(0);
-      expect(st.row.data.shows[0].startsAt).toBe('2026-06-19T23:30:15');
+      // The push itself is real async work (fetch through the route mock).
+      await expect.poll(() => st.row.data.shows[0].startsAt).toBe('2026-06-19T23:30:15');
       expect(st.errors).toEqual([]);
       expect(st.unexpected).toEqual([]);
       await context.close();
@@ -190,10 +194,10 @@ test.describe('server plan enforcement (PT402)', () => {
       },
     });
     await page.evaluate(() => { G.stages.push({ id: 's9', name: 'Club' }); G.shows[0].artist = 'Alpha!'; save(); });
-    await page.clock.runFor(2000);
+    await page.clock.runFor(1000);
+    await expect.poll(() => st.row.data.shows[0].artist).toBe('Alpha!');
     expect(st.row.data.stages.map(s => s.id)).toEqual(['s1']);
-    expect(st.row.data.shows[0].artist).toBe('Alpha!');
-    expect(await page.evaluate(() => [G.stages.length, getSaveState().state])).toEqual([1, 'saved']);
+    await expect.poll(() => page.evaluate(() => [G.stages.length, getSaveState().state])).toEqual([1, 'saved']);
     await expect(page.locator('#op-notices')).toContainText('Your plan includes 1 live stage(s)');
     await expect(page.locator('#op-notices')).toContainText('"Club"');
     expect(st.errors).toEqual([]);
@@ -292,6 +296,53 @@ test.describe('service worker update notice', () => {
   });
 });
 
+test.describe('share link first load', () => {
+  const rpcSeq = (answers, calls) => async (route, req, u, st, json) => {
+    if (!u.includes('/rest/v1/rpc/get_shared_project')) return false;
+    const a = answers[Math.min(calls.n++, answers.length - 1)];
+    if (a === 'hang') return true; // never answered: the client's own timeout fires
+    if (a === 'ok') await json(route, 200, st.row);
+    else if (a === 'null') await json(route, 200, 'null');
+    else await json(route, a, { message: 'boom' });
+    return true;
+  };
+  test('server errors at boot: "Connecting…", retries with backoff, then Stage View as normal', async ({ browser }) => {
+    const calls = { n: 0 };
+    const { page, context, st } = await openOperator(browser, {
+      at: '2026-06-19T22:30:00+02:00', query: '?mode=stage&pid=P1&sid=s1',
+      handle: rpcSeq([503, 500, 502, 'hang', 'ok'], calls),
+    });
+    // early fetch 503, first load 500 -> "Connecting…" while it retries
+    await expect(page.locator('#loader')).toBeVisible();
+    await expect(page.locator('#loader')).toContainText('Connecting…');
+    await expect(page.locator('#loader')).not.toContainText('not found');
+    // Drive the (fake) clock until the 5th request; replies are real async.
+    for (let t = 0; calls.n < 5 && t < 60000; t += 250) { await page.clock.runFor(250); await new Promise(r => setTimeout(r, 15)); }
+    // Page-time gaps between the requests = the backoff: 1s, 2s, then the
+    // 8s timeout of the hanging one + 4s.
+    const times = await page.evaluate(() => window.__rpcTimes);
+    const gaps = times.slice(1).map((t, i) => t - times[i]);
+    expect(gaps.length).toBe(4);
+    [0, 1000, 2000, 12000].forEach((g, i) => { expect(gaps[i]).toBeGreaterThanOrEqual(g - 50); expect(gaps[i]).toBeLessThanOrEqual(g + 1000); });
+    await page.clock.runFor(1000);
+    await expect(page.locator('#loader')).toBeHidden();
+    expect(await page.evaluate(() => document.getElementById('sv-artist').textContent)).toBe('Alpha');
+    expect(st.errors).toEqual([]);
+    expect(st.unexpected).toEqual([]);
+    await context.close();
+  });
+  test('the server says there is no such project: "Project not found."', async ({ browser }) => {
+    const calls = { n: 0 };
+    const { page, context } = await openOperator(browser, {
+      at: '2026-06-19T22:30:00+02:00', query: '?mode=stage&pid=P1&sid=s1', handle: rpcSeq(['null'], calls),
+    });
+    await expect(page.locator('#loader')).toHaveText('Project not found.');
+    await page.clock.runFor(10000);
+    expect(calls.n).toBe(2); // early fetch + load, no retries
+    await context.close();
+  });
+});
+
 test.describe('crew pushes via send-push', () => {
   const data = {
     memberIds: ['u1', 'u2'],
@@ -319,6 +370,7 @@ test.describe('crew pushes via send-push', () => {
         await json(route, 200, { ok: true, id: 'n' + sent.length, recipients: 2 });
       }),
     });
+    await expect.poll(() => sent.length).toBe(2);
     expect(sent.map(s => s.body.show_id)).toEqual(['a', 'late']);
     expect(sent[0].auth).toBe('Bearer user.jwt');
     expect(sent[0].body).toEqual({
@@ -343,10 +395,11 @@ test.describe('crew pushes via send-push', () => {
         await json(route, 404, { code: 'NOT_FOUND', message: 'Requested function was not found' });
       }),
     });
-    expect(calls).toBe(1);
     await expect(page.locator('#op-notices')).toContainText('Push is not configured yet');
+    expect(calls).toBe(1);
     await page.evaluate(() => openProject('P1'));
     await page.clock.runFor(1000);
+    await new Promise(r => setTimeout(r, 200));
     expect(calls).toBe(1);
     expect(st.errors).toEqual([]);
     await context.close();
