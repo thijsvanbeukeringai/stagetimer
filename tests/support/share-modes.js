@@ -8,7 +8,7 @@
 //
 // Only the fields below are ever stripped. Everything else in the blob
 // (stages, days, shows with their times/flags/genre/booth/type/priority/
-// arrived, activeStage/activeDay, timerMode, svModes, cue, blackout) reaches
+// arrived, activeStage/activeDay, timerMode, svModes, cue, blackout, branding) reaches
 // every mode: the shared time model, the cue/blackout overlays and the
 // Stage View need it, and none of it is personal or large.
 const SHARE_MODES = ['stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin'];
@@ -21,7 +21,7 @@ const SHARE_FIELD_MATRIX = {
   'shows[].crew': ['foh', 'legacy'],            // renderFOH fohCrewHTML (names + status)
   'shows[].photo': [],                          // operator timer panel / editor drawer only
   memberIds: [],                                // operator crew picker / push only
-  logo: [],                                     // refreshLogo is a no-op, .co-logo hidden
+  logo: ['backstage', 'foh', 'legacy'],         // refreshLogo: customer logo top-left (data.branding toggles)
 };
 
 const keeps = (field, mode) => SHARE_FIELD_MATRIX[field].includes(mode);
@@ -32,7 +32,7 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 function stripProjectData(data, mode) {
   if (!isObj(data)) return clone(data);
   const out = clone(data);
-  delete out.logo;
+  if (!keeps('logo', mode)) delete out.logo;
   if ('memberIds' in out) out.memberIds = [];
   if (!keeps('fohNotes', mode) && 'fohNotes' in out) out.fohNotes = {};
   const drop = ['photo'];

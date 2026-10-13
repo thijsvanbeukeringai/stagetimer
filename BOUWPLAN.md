@@ -355,7 +355,7 @@ De **OneSignal REST API-key** staat hardcoded in de code (`OS_REST_KEY`, regel 7
 
 ### 4.6 Opruimen
 - `festival-dashboard.html` bevat oude code, een tweede kopie van de OneSignal-key en aanroepen van `create-auth-user`/`delete-auth-user`. Er wordt alleen naar geredirect. Verwijderen nadat is gecontroleerd dat niets er nog naar linkt. **→ besluitpunt B5.**
-- De no-op's `applyLogo`/`refreshLogo` en de dode logo-uploadcode.
+- ~~De no-op's `applyLogo`/`refreshLogo` en de dode logo-uploadcode.~~ Vervallen: het projectlogo is terug als co-branding op Backstage/FOH (branch `feature/project-logo`).
 - 23 lege `catch`-blokken krijgen minstens een `console.warn` met context.
 - `index.html`:
   - `crowd.jpg` (6,2 MB) comprimeren naar WebP of een geoptimaliseerde JPEG van ongeveer 200 KB;

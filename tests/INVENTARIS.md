@@ -108,7 +108,7 @@ Legenda testbestanden:
 | FOH-notities (tijd, kleur, tekst) | `openFohnModal` 4326, `saveFohnNote` 4344, `delFohnNote` 4351, `fohNotesHTML` 4256 | operator: *FOH screen* (notitie zichtbaar; seed bevat `<script>` in notitie) |
 | Show-notitie | veld `note` in `saveShow` | operator: *show editor…* |
 | Artiestfoto (base64, compressie) | `previewPhoto` 4781, `_compressImage` 4764, `clearPhoto` 4803, `setTPPhoto` 4804 | seed bevat foto; verwijderen: gat (BOUWPLAN 1.5) |
-| Projectlogo | `handleLogoUpload` 8176, `removeProjectLogo` 8200, `applyLogo`/`refreshLogo` no-op | unit/sync-engine.test.js: *logo on a project that is not open* (`_saveProjectById`) |
+| Projectlogo (co-branding) | `openProjectLogo` (dashboardrij + Project settings), `handleLogoUpload`, `removeProjectLogo`, `_setLogoBranding`, `refreshLogo`/`_vwLogo` (Backstage/FOH-header), `_safeLogoSrc`, `_logoWantsBackdrop` | regression/project-logo: upload vanuit de dashboardrij → Storage-URL + `branding`, bucket ontbreekt → base64, voorbeeld donker/wit, toggles Backstage/FOH/witte plaat (automatisch bij donkere inkt), Project settings, weghalen (object verwijderd), realtime, oud logo zonder `branding` blijft verborgen, geen afbeelding → geweigerd, 390 px zonder overlap, deellinks backstage/foh tonen het en stage niet, alleen backstage/foh krijgen `logo`, kijker kan niets wijzigen, XSS/vreemde URL's nooit getoond; regression/share-mode: `keep_logo` = matrix; unit/sync-engine.test.js: *logo on a project that is not open* (`_saveProjectById`) |
 
 ## 10. Import
 

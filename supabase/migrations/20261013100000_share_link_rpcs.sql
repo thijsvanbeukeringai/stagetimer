@@ -23,7 +23,7 @@
 --     shows[].crew           -       -      yes    -        -      -     -
 --     shows[].photo          -       -       -     -        -      -     -
 --     memberIds              -       -       -     -        -      -     -
---     logo                   -       -       -     -        -      -     -
+--     logo                   -      yes     yes    -        -      -     -
 --   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed.)
 --   The JS twin of this matrix is tests/support/share-modes.js (the mock
 --   backend serves the 2-arg call with it; tests/regression/share-mode.spec.js
@@ -47,14 +47,19 @@
 --     svModes                      stage (countdown / clock / countup / blank)
 --     cue                          stage, backstage, foh (_renderCueOverlay)
 --     blackout                     every mode (blackout overlay; wall cells)
+--     branding {logoBackstage, logoFoh, logoBackdrop}
+--                                  backstage, foh (where the customer logo
+--                                  shows); three booleans, harmless elsewhere
 --   Verified against app.html on 2026-10-13 by reading renderSV (+ _svMode,
 --   _renderCueOverlay, renderBlackout), renderBS (notesBlock: fohNotes +
 --   note, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
 --   renderTL, renderOV, renderWV / tickWV and renderCI: none of the last
 --   four reads note, crew or fohNotes; Stage View reads none of the six.
 --   Photos are only used by the operator timer panel and editor drawer,
---   memberIds only by the operator crew picker / push, G.logo nowhere
---   (refreshLogo is a no-op). Proof: the booth suite runs every public Stage
+--   memberIds only by the operator crew picker / push, logo only by
+--   refreshLogo on Backstage and FOH (customer logo top-left, 2026-10-13,
+--   feature/project-logo; Stage View, Wall and the rest never show it).
+--   Proof: the booth suite runs every public Stage
 --   View state on this stripped feed against the unchanged baseline, and
 --   share-mode.spec.js renders every mode on both feeds and compares the DOM.
 --   Unknown modes get the strictest set.
@@ -164,6 +169,7 @@ declare
   keep_foh   boolean := p_mode in ('backstage', 'foh', 'legacy');
   keep_note  boolean := p_mode in ('backstage', 'legacy');
   keep_crew  boolean := p_mode in ('foh', 'legacy');
+  keep_logo  boolean := p_mode in ('backstage', 'foh', 'legacy');
   drop_show  text[]  := array['photo'];
   out        jsonb;
 begin
@@ -173,7 +179,7 @@ begin
   if not keep_note then drop_show := array_append(drop_show, 'note'); end if;
   if not keep_crew then drop_show := array_append(drop_show, 'crew'); end if;
 
-  out := p_data - 'logo';
+  out := case when keep_logo then p_data else p_data - 'logo' end;
   if out ? 'memberIds' then out := jsonb_set(out, '{memberIds}', '[]'::jsonb); end if;
   if not keep_foh and out ? 'fohNotes' then out := jsonb_set(out, '{fohNotes}', '{}'::jsonb); end if;
 
@@ -321,7 +327,7 @@ grant execute on function public.set_show_arrived(text, text, boolean, bigint) t
 --     baseline). Not deployed yet.
 --   * BLOCKER: the iPad app "Stagetimer Booth" (nl.stagetimer.booth) loads
 --     project data in a way that is not known yet. If it calls
---     get_shared_project(p_id) and needs photos, memberIds or logo, or reads
+--     get_shared_project(p_id) and needs photos or memberIds, or reads
 --     projects directly, PHASE B (or rls_enable) breaks every iPad booth
 --     screen. Establish its endpoints and fields first (source code or a
 --     network trace, e.g. Proxyman). See docs/MIGRATIES.md.
@@ -329,8 +335,8 @@ grant execute on function public.set_show_arrived(text, text, boolean, bigint) t
 -- is live, (2) the app never saves in PUBLIC_MODE (done), (3) a few days have
 -- passed so cached tabs reloaded, and (4) the iPad app is known to work with
 -- the narrowed legacy output. After this, the legacy call returns the union
--- of what any public mode needs (fohNotes, notes, crew) but no photos /
--- memberIds / logo, and no company_id.
+-- of what any public mode needs (fohNotes, notes, crew, logo) but no photos /
+-- memberIds, and no company_id.
 --
 -- create or replace function public.get_shared_project(p_id text)
 -- returns jsonb language sql stable security definer set search_path = public as $$
