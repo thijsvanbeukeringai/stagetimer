@@ -2456,11 +2456,27 @@ function setSyncDot(s){const d=document.getElementById('sync-dot');if(d)d.classN
 const AKEY='st_app_v1';
 let APP,G;
 
+// ── Sync state, per project id (used by SAVE / SYNC further down)
+const _pendingPush={}; // true while local changes are not yet confirmed by the server
+const _base={};        // last blob the server acknowledged to this tab (merge base); a JSON string until first use
+const _sync={};        // push queue / retry / realtime bookkeeping, see _syncSt()
+const _editSeq={};     // bumped by every save(): tells a finished push whether edits landed while it was out
+const _sharedSel={};   // {activeDay} the operator deliberately shares with public screens, see _selChanged()
+// Ids the user removed on purpose in this session (delShow, delDay, import via
+// _markIntentionalRemoval). A show that is missing locally but still on the
+// server and NOT in here is staleness, and gets merged back instead of deleted.
+const _intentional={shows:new Set(),days:new Set(),stages:new Set()};
+
 // Load from localStorage cache (instant, used before Supabase responds)
 function loadAPPCache(){
-  try{APP=JSON.parse(localStorage.getItem(AKEY));if(!APP||!APP.projects)throw 0;}catch(e){
-    APP={companies:[],users:[],projects:[],activeProjectId:null};
+  let raw=null;
+  try{raw=localStorage.getItem(AKEY);APP=JSON.parse(raw);if(!APP||!APP.projects)throw 0;}catch(e){
+    raw=null;APP={companies:[],users:[],projects:[],activeProjectId:null};
   }
+  // Until the server answers, the cache is the merge base: only what the
+  // operator changes from now on counts as a local edit, so an old cache can
+  // never overwrite newer server data (see _mergeData).
+  if(raw)(APP.projects||[]).forEach(p=>{if(p&&p.id&&_base[p.id]===undefined)_base[p.id]=JSON.stringify(p.data||null);});
   if(!APP.companies)APP.companies=[];
   // Older builds cached companies.setup_token here. Drop it, keep only the flag.
   APP.companies.forEach(c=>{if('setupToken' in c){if(c.setupPending==null)c.setupPending=!!c.setupToken;delete c.setupToken;}});
@@ -2476,23 +2492,27 @@ function loadAPPCache(){
 // signInWithPassword / upsert). PostgREST returns the same shape: data[] or
 // error string. We mimic { data, error } so callers don't change.
 async function _restGet(table,cols){
-  const ctrl=new AbortController();
-  const tmo=setTimeout(()=>ctrl.abort(),10000);
-  let jwt=SUPA_KEY;
-  try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
-  try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}`,{
-      signal:ctrl.signal,
-      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'},
-    });
-    clearTimeout(tmo);
-    if(!res.ok){const txt=await res.text().catch(()=>'');return{data:null,error:{message:'HTTP '+res.status+(txt?' '+txt:'')}};}
-    const data=await res.json().catch(()=>null);
-    return{data,error:null};
-  }catch(e){
-    clearTimeout(tmo);
-    return{data:null,error:{message:e?.name==='AbortError'?'timeout':(e?.message||String(e))}};
-  }
+  const once=async()=>{
+    const ctrl=new AbortController();
+    const tmo=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}`,{
+        signal:ctrl.signal,
+        headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'},
+      });
+      clearTimeout(tmo);
+      if(!res.ok){const txt=await res.text().catch(()=>'');return{data:null,error:{status:res.status,message:'HTTP '+res.status+(txt?' '+txt:'')}};}
+      const data=await res.json().catch(()=>null);
+      return{data,error:null};
+    }catch(e){
+      clearTimeout(tmo);
+      return{data:null,error:{name:e?.name,message:e?.name==='AbortError'?'timeout':(e?.message||String(e))}};
+    }
+  };
+  let r=await once();
+  // Expired user token (st_auth_v1 lags supa's refresh): refresh once, retry.
+  if(r.error&&r.error.status===401&&_jwt()!==SUPA_KEY&&typeof _refreshAuthToken==='function'&&await _refreshAuthToken())r=await once();
+  return r;
 }
 
 // ── Companies: never read setup_token ─────────────────────────────────────
@@ -2547,6 +2567,7 @@ async function _supaCompanies(){
 async function loadAPPRemote(){
   setSyncDot('ing');
   try{
+    const ack0={};for(const id in _sync)ack0[id]=_sync[id].ackSeq;
     const[cosRes,usrsRes,projsRes]=await Promise.all([
       _restGetCompanies(),
       _restGet('app_users'),
@@ -2563,13 +2584,29 @@ async function loadAPPRemote(){
     if(projsRes.error){
       console.warn('[load] projects fetch failed, keeping cached projects:',projsRes.error);
       setSyncDot('err');
+      const d=document.getElementById('sync-dot');if(d)d.title=humanError(projsRes.error,'Loading the latest data');
     }else{
-      APP.projects=(projsRes.data||[]).map(p=>({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data||{}}));
-      setSyncDot('ok');
+      const prev=new Map(APP.projects.map(p=>[p.id,p]));
+      APP.projects=(projsRes.data||[]).map(p=>{
+        const old=prev.get(p.id),st=_sync[p.id];
+        // A push finished or is still out since this request left: our copy is
+        // newer than this response. Keep it; the push refetches afterwards.
+        if(old&&st&&(st.inflight||st.ackSeq!==ack0[p.id])){st.serverDirty=true;return old;}
+        const np={id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data||{}};
+        // Edits made on the cached copy before the server answered: replay them
+        // onto the server copy instead of throwing them away.
+        if(old&&_pendingPush[p.id]&&_validData(p.data)){
+          const r=_mergeData(_getBase(p.id),old.data||{},p.data,{intentional:_intentional});
+          if(r.refused)_pendingPush[p.id]=false;else{np.data=_clone(r.data);np.data._rev=p.data._rev;}
+        }
+        _base[p.id]=_validData(p.data)?JSON.stringify(p.data):null;
+        return np;
+      });
+      _refreshSaveState();
     }
     // Keep active project from cache
     APP.activeProjectId=localStorage.getItem('st_active_proj')||APP.activeProjectId||null;
-    localStorage.setItem(AKEY,JSON.stringify(APP));
+    _cacheAPP();
     // Only when we've successfully fetched companies+users do we trust the data
     // enough to render the subscription banner. Prevents stale-cache banners.
     if(cosRes.data&&usrsRes.data)window._remoteLoaded=true;
@@ -2587,20 +2624,66 @@ function loadG(){
   }
   // Sort days chronologically by date (dateless days fall to the end)
   G.days.sort((a,b)=>{const ad=a.date||'￿',bd=b.date||'￿';return ad<bd?-1:ad>bd?1:0;});
+  // Operator screens: this device's own stage / day / timer-mode choice wins
+  // over the shared blob (see _selChanged). Public screens keep the blob's.
+  if(!window.PUBLIC_MODE)_applySel(APP.activeProjectId);
   if(!G.activeDay||!G.days.find(d=>d.id===G.activeDay))G.activeDay=G.days[0].id;
   if(!G.timerMode)G.timerMode='live';
   if(!G.fohNotes)G.fohNotes={};
   if(!G.memberIds)G.memberIds=[];
+  // The realtime subscription is filtered to the open project: follow it.
+  if(!window.PUBLIC_MODE&&_rt.started&&_rt.pid!==(APP.activeProjectId||null))setupRealtime();
+}
+
+// ── Per-device selections ─────────────────────────────────────────────
+// activeStage / activeDay / timerMode used to live only in the shared blob,
+// so one operator browsing to Day 3 moved every other operator and every
+// public monitor with them ("no show" during a live set). They are now kept
+// per device and per project in localStorage (st_sel_<pid>); changing them
+// no longer saves the blob. save() still sends the blob, but _mergeData
+// always takes these three keys from the server copy, so a selection never
+// leaks out as a side effect of another edit.
+// Transition, decided after reading loadPublicView: public stage / backstage
+// / FOH / overview screens reload G from the blob every second and so show
+// the blob's activeDay (stage view picks no day of its own). We therefore
+// still write activeDay into the blob, but only when that cannot pull a
+// monitor off a live day: when no day in the project is dated today (the
+// blob is then the only way to steer those screens - unchanged legacy
+// behaviour) or when the operator picks today's day. Browsing any other day
+// stays on this device. activeStage is never written (share links carry
+// ?sid=), timerMode never either: it only switches this device's timer
+// panel, and the manual timer state (M) was never shared to begin with.
+const _SEL_KEY=pid=>'st_sel_'+pid;
+function _saveSel(pid){
+  if(!pid||!G||window.PUBLIC_MODE)return;
+  try{localStorage.setItem(_SEL_KEY(pid),JSON.stringify({activeStage:G.activeStage||null,activeDay:G.activeDay||null,timerMode:G.timerMode||'live'}));}catch(e){console.warn('[sel] could not store selection:',e);}
+}
+function _applySel(pid){
+  if(!pid)return;
+  let s=null;try{s=JSON.parse(localStorage.getItem(_SEL_KEY(pid))||'null');}catch(_){}
+  if(!s)return; // first visit on this device: start from the blob's values
+  if(s.activeStage&&(G.stages||[]).some(x=>x.id===s.activeStage))G.activeStage=s.activeStage;
+  if(s.activeDay&&(G.days||[]).some(d=>d.id===s.activeDay))G.activeDay=s.activeDay;
+  if(s.timerMode==='live'||s.timerMode==='manual')G.timerMode=s.timerMode;
+}
+function _selChanged(kind){
+  const pid=APP&&APP.activeProjectId;if(!pid||!G)return;
+  _saveSel(pid);
+  if(kind!=='day')return;
+  const today=(G.days||[]).find(d=>d.date&&d.date===festivalDayStr());
+  if(today&&today.id!==G.activeDay)return;
+  const B=_getBase(pid);if(B&&B.activeDay===G.activeDay&&!_sharedSel[pid])return;
+  _sharedSel[pid]={activeDay:G.activeDay};
+  save();
 }
 
 // Debounced syncs
 let _metaSync,_projSync={};
-const _pendingPush={}; // tracks projects with unsaved local changes
 window.addEventListener('beforeunload',e=>{if(Object.values(_pendingPush).some(Boolean)){e.preventDefault();e.returnValue='There are unsaved changes. Are you sure you want to leave this page?';}});
 
 function saveAPP(){
-  localStorage.setItem(AKEY,JSON.stringify(APP));
-  localStorage.setItem('st_active_proj',APP.activeProjectId||'');
+  _cacheAPP();
+  try{localStorage.setItem('st_active_proj',APP.activeProjectId||'');}catch(e){console.warn('[cache] st_active_proj:',e);}
   clearTimeout(_metaSync);
   _metaSync=setTimeout(_pushMeta,700);
 }
@@ -2608,162 +2691,537 @@ function saveAPP(){
 async function _pushMeta(){
   // Companies and users are synced explicitly on add/delete - no bulk upsert here
   // to avoid re-inserting records deleted directly in Supabase.
-  setSyncDot('ok');
+  // Re-derive the dot instead of forcing green: a failed project save must stay visible.
+  _refreshSaveState();
+}
+
+// ══ SAVE / SYNC ═══════════════════════════════════════════════════════
+// How a change reaches the server:
+//  save()          local cache + _pendingPush[id]=true, then a debounced push.
+//  _pushProject()  single flight per project: calls while a push is out are
+//                  coalesced into one follow-up. A failed push keeps
+//                  _pendingPush (and the beforeunload warning) and retries
+//                  after 1s,2s,5s,10s,30s,30s..., and at once on `online` or
+//                  when the tab becomes visible. A 401 refreshes the token
+//                  once (_refreshAuthToken) and retries.
+//  _pushOnce()     GET the row, 3-way merge per item id and per field
+//                  (base = last blob the server acknowledged to us, local =
+//                  this device, server = the fresh copy), PATCH the result.
+//                  That result becomes the new base.
+// LIMIT: GET + PATCH is not atomic. A write from another device that lands in
+// the ~100ms between our GET and PATCH is still overwritten; only a server
+// side compare-and-swap closes that window (TODO in _pushOnce).
+// The sync dot shows one of: saved | saving | unsaved(reason). It is never
+// green while a save failed or the wipe guard had to step in.
+
+// Readable text for save / load failures: _friendlyError (shared helper) plus
+// the two cases only the sync path has - a full device storage and offline.
+function _errStatus(e){if(!e)return 0;if(e.status)return +e.status;const m=/HTTP (\d{3})/.exec(String(e.message||e));return m?+m[1]:0;}
+function humanError(e,action){
+  if(_isQuota(e)||/quota/i.test(String((e&&e.message)||'')))return'This device ran out of storage space. Changes still go to the server, but the offline copy on this device is incomplete.';
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)return'You are offline. Changes stay on this device and are saved when the connection is back.';
+  return _friendlyError(e,action||'Saving');
+}
+
+let _saveState={state:'saved',detail:''};
+// saved | saving | unsaved. Drives the existing sync dot today; a later phase
+// can render it better by listening to the 'st:savestate' event.
+function setSaveState(state,detail){
+  _saveState={state,detail:detail||'',at:Date.now()};
+  setSyncDot(state==='saved'?'ok':state==='saving'?'ing':'err');
+  const d=document.getElementById('sync-dot');
+  if(d)d.title=state==='saved'?'All changes saved':state==='saving'?'Saving changes...':(detail||'Changes not saved');
+  try{window.dispatchEvent(new CustomEvent('st:savestate',{detail:_saveState}));}catch(_){}
+}
+function getSaveState(){return _saveState;}
+// One dot for all projects: an error anywhere beats "saving" beats a guard
+// notice beats "saved".
+function _refreshSaveState(){
+  let err='',note='',busy=false;
+  for(const id in _sync){const s=_sync[id];if(_pendingPush[id]&&s.err&&!err)err=s.err;if(s.note&&!note)note=s.note;if(s.inflight)busy=true;}
+  for(const id in _pendingPush)if(_pendingPush[id])busy=true;
+  if(err)return setSaveState('unsaved',err);
+  if(busy)return setSaveState('saving');
+  if(note)return setSaveState('unsaved',note);
+  setSaveState('saved');
+}
+
+// ── Local cache. setItem throws QuotaExceededError once base64 photos fill
+// the ~5MB budget; that used to abort save() before the server push. Never
+// throws now. If the full copy does not fit, embedded images are swapped for
+// a 1px placeholder (_STRIP_PX) - the merge treats that placeholder as
+// "unchanged", so a stripped cache can never push a photo removal.
+function _isQuota(e){return!!e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014);}
+function _cacheAPP(){
+  try{localStorage.setItem(AKEY,JSON.stringify(APP));return true;}
+  catch(e){if(!_isQuota(e)){console.warn('[cache] write failed:',e);return false;}}
+  try{
+    localStorage.setItem(AKEY,JSON.stringify(APP,(k,v)=>typeof v==='string'&&v.length>1024&&v.startsWith('data:')?_STRIP_PX:v));
+    console.warn('[cache] storage full - offline copy saved without photos');return true;
+  }catch(e){console.warn('[cache] storage full - offline copy not updated:',e);return false;}
+}
+
+// ── 3-way merge (pure: no DOM, no globals) ────────────────────────────
+// Blob shape: top-level keys; shows / days / stages (and nested lists such as
+// fohNotes[showId]) are arrays of objects with a unique `id`, merged per id
+// and then per field. Rules, per value: unchanged here -> take the server's;
+// unchanged on the server -> take ours; both changed -> merge deeper if both
+// are objects / id-lists, else ours wins.
+// Removals: a show / day present on the server but missing here is only
+// removed when it is in the intentional set (delShow, delDay, import);
+// otherwise it is staleness and is restored. Stages (delStage keeps no
+// list) are removed when the base had them - a stale tab cannot remove a
+// stage it never saw. Deleted on the server and untouched here = stays
+// deleted; deleted there but edited here = kept.
+const _SEL_KEYS=['activeStage','activeDay','timerMode'];
+const _STRIP_PX='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const _isObj=v=>!!v&&typeof v==='object'&&!Array.isArray(v);
+const _clone=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
+function _validData(d){return _isObj(d)&&Array.isArray(d.stages);}
+function _eq(a,b){
+  if(a===b)return true;
+  if(a==null||b==null)return a==null&&b==null;
+  if(typeof a!=='object'||typeof b!=='object'||Array.isArray(a)!==Array.isArray(b))return false;
+  if(Array.isArray(a)){if(a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(!_eq(a[i],b[i]))return false;return true;}
+  const ka=Object.keys(a).filter(k=>a[k]!==undefined),kb=Object.keys(b).filter(k=>b[k]!==undefined);
+  if(ka.length!==kb.length)return false;
+  for(const k of ka)if(!_eq(a[k],b[k]))return false;
+  return true;
+}
+// Same blob ignoring _rev (and the per-device selection keys unless withSel).
+function _sameContent(a,b,withSel){
+  if(!_isObj(a)||!_isObj(b))return _eq(a,b);
+  const skip=new Set(withSel?['_rev']:['_rev',..._SEL_KEYS]);
+  const keys=new Set([...Object.keys(a),...Object.keys(b)]);
+  for(const k of keys)if(!skip.has(k)&&!_eq(a[k],b[k]))return false;
+  return true;
+}
+// Set of ids if v is an array of objects with unique ids, else null.
+function _idList(v){
+  if(!Array.isArray(v))return null;
+  const s=new Set();
+  for(const x of v){if(!_isObj(x)||x.id==null||s.has(x.id))return null;s.add(x.id);}
+  return s;
+}
+const _hasStrip=v=>{if(v===_STRIP_PX)return true;if(v&&typeof v==='object')for(const k in v)if(_hasStrip(v[k]))return true;return false;};
+// Remove placeholders that have no server value to fall back to (photo never
+// reached the server): better no photo than a 1px one.
+const _dropStrip=v=>{if(v&&typeof v==='object')for(const k of Object.keys(v)){if(v[k]===_STRIP_PX&&!Array.isArray(v))delete v[k];else _dropStrip(v[k]);}return v;};
+function _m3(b,l,s){
+  if(l===_STRIP_PX)return s;      // stripped cache placeholder: never a local edit
+  if(_eq(l,b))return s;
+  // Server unchanged: ours wins - but a placeholder inside ours must still
+  // pick up the server's real photo, so go per field then.
+  if(_eq(s,b)&&!(_hasStrip(l)&&((_isObj(l)&&_isObj(s))||(_idList(l)&&_idList(s)))))return l;
+  if(_isObj(l)&&_isObj(s))return _mObj(_isObj(b)?b:{},l,s);
+  if(_idList(l)&&_idList(s))return _mArr(_idList(b)?b:[],l,s,null,null,'');
+  return l;
+}
+function _mObj(b,l,s,skip){
+  const out={};
+  for(const k of new Set([...Object.keys(b),...Object.keys(l),...Object.keys(s)])){
+    if(skip&&skip.has(k))continue;
+    const v=_m3(b[k],l[k],s[k]);if(v!==undefined)out[k]=v;
+  }
+  return out;
+}
+// removalOk(id) decides a local removal (in base + server, missing here);
+// null = plain 3-way (removal honoured). Restored ids go to `restored`.
+function _mArr(b,l,s,removalOk,restored,kind){
+  const mb=new Map(b.map(x=>[x.id,x])),ml=new Map(l.map(x=>[x.id,x])),ms=new Map(s.map(x=>[x.id,x]));
+  const res=new Map();
+  for(const[id,si]of ms){
+    const li=ml.get(id),bi=mb.get(id);
+    if(li!==undefined)res.set(id,_m3(bi===undefined?si:bi,li,si));
+    else if(bi===undefined)res.set(id,si);                       // added elsewhere
+    else if(!removalOk||removalOk(id))continue;                   // removed here on purpose
+    else{res.set(id,si);if(restored)restored.push({kind,id});}    // missing here only: stale, keep it
+  }
+  for(const[id,li]of ml){
+    if(ms.has(id))continue;
+    const bi=mb.get(id);
+    if(bi===undefined||!_eq(li,bi))res.set(id,li);                // added here / edited here after a remote delete
+  }
+  // Order: ours if we reordered shared items, else the server's; new items after.
+  const common=(arr,other)=>arr.map(x=>x.id).filter(id=>other.has(id)&&res.has(id)).join('\u0000');
+  const reordered=common(l,mb)!==common(b,ml);
+  const out=[],seen=new Set();
+  for(const src of reordered?[l,s]:[s,l])for(const x of src)if(res.has(x.id)&&!seen.has(x.id)){seen.add(x.id);out.push(res.get(x.id));}
+  return out;
+}
+// B = base (null if unknown: then the server copy stands in for it, so every
+// difference counts as a local edit and every missing show needs to be
+// intentional), L = local, S = fresh server copy.
+// o.intentional = {shows,days,stages} Sets; o.shared = selection keys to write.
+// Returns {refused, data, restored:[{kind,id}]}.
+function _mergeData(B,L,S,o){
+  o=o||{};
+  const it=o.intentional||{shows:new Set(),days:new Set(),stages:new Set()};
+  const arr=v=>Array.isArray(v)?v:[];
+  L=_isObj(L)?L:{};S=_isObj(S)?S:{};
+  const baseKnown=_isObj(B);if(!baseKnown)B=S;
+  // Wipe guard: an empty local lineup never overwrites a populated server,
+  // unless every server show and stage was removed here on purpose. This is
+  // what loadG() builds when a project arrives without data (realtime payload
+  // without `data`, broken cache).
+  const sShows=arr(S.shows),sStages=arr(S.stages);
+  if(!arr(L.stages).length&&!arr(L.shows).length&&(sShows.length||sStages.length)
+    &&!(sShows.every(x=>x&&it.shows.has(x.id))&&sStages.every(x=>x&&it.stages.has(x.id))))
+    return{refused:true,data:S,restored:[]};
+  const restored=[];
+  const special=['shows','days','stages'];
+  const out=_mObj(B,L,S,new Set([...special,..._SEL_KEYS,'_rev']));
+  for(const k of special){
+    if(L[k]===undefined&&S[k]===undefined&&B[k]===undefined)continue;
+    const ok=k==='stages'?(id=>baseKnown||it.stages.has(id)):(id=>it[k].has(id));
+    const lb=arr(B[k]),ll=arr(L[k]),ls=arr(S[k]);
+    // Duplicate ids cannot be merged per id: fall back to a plain 3-way value merge.
+    out[k]=(_idList(lb)&&_idList(ll)&&_idList(ls))?_mArr(lb,ll,ls,ok,restored,k):_m3(B[k],L[k],S[k]);
+    if(out[k]===undefined)delete out[k];
+  }
+  for(const k of _SEL_KEYS){
+    const v=o.shared&&k in o.shared?o.shared[k]:(S[k]!==undefined?S[k]:L[k]);
+    if(v!==undefined)out[k]=v;
+  }
+  return{refused:false,data:_dropStrip(out),restored};
+}
+// ── end 3-way merge
+
+// Register removals the user asked for, so the merge does not resurrect them.
+// showIds: id, array or Set. more: {days:[...], stages:[...]} (optional).
+function _markIntentionalRemoval(showIds,more){
+  const add=(set,v)=>{if(v==null)return;(typeof v!=='string'&&typeof v[Symbol.iterator]==='function'?[...v]:[v]).forEach(x=>{if(x!=null)set.add(x);});};
+  add(_intentional.shows,showIds);
+  if(more){add(_intentional.days,more.days);add(_intentional.stages,more.stages);}
+}
+window._markIntentionalRemoval=_markIntentionalRemoval;
+
+function _getBase(id){
+  if(typeof _base[id]==='string'){try{_base[id]=JSON.parse(_base[id]);}catch(_){_base[id]=null;}}
+  return _validData(_base[id])?_base[id]:null;
+}
+function _setBase(id,d){_base[id]=_validData(d)?_clone(d):null;}
+// Every blob we write carries a client-generated _rev. Old clients ignore the
+// key and simply carry it along; we use it to recognise our own realtime echoes.
+const _CLIENT_ID=Math.random().toString(36).slice(2,8);
+let _revN=0;
+const _newRev=()=>Date.now().toString(36)+'-'+_CLIENT_ID+'-'+(++_revN);
+const _sentRevs=new Set();
+const _BACKOFF=[1000,2000,5000,10000,30000];
+function _syncSt(id){return _sync[id]||(_sync[id]={inflight:false,again:false,attempt:0,retryT:null,err:'',note:'',ackSeq:0,ackRev:null,serverDirty:false,fetching:false,waiters:[]});}
+
+// Minimal REST helper: user token (or anon key), hard timeout, errors carry .status.
+async function _sbFetch(path,init,ms,anon){
+  const ctrl=new AbortController(),tmo=setTimeout(()=>ctrl.abort(),ms||10000);
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/${path}`,{...(init||{}),signal:ctrl.signal,
+      headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${anon?SUPA_KEY:_jwt()}`,'Accept':'application/json',...((init&&init.headers)||{})}});
+    const txt=await res.text().catch(()=>'');
+    if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt.slice(0,300):''));e.status=res.status;throw e;}
+    try{return txt?JSON.parse(txt):null;}catch(_){return null;}
+  }catch(e){
+    if(e&&e.name==='AbortError'){const t=new Error('timeout');t.name='AbortError';throw t;}
+    throw e;
+  }finally{clearTimeout(tmo);}
+}
+// On 401, refresh the token once (helper owned by the auth code) and retry.
+async function _withAuthRetry(fn){
+  try{return await fn();}
+  catch(e){
+    if(_errStatus(e)===401&&typeof _refreshAuthToken==='function'){
+      let ok=false;try{ok=await _refreshAuthToken();}catch(err){console.warn('[sync] token refresh failed:',err);}
+      if(ok)return await fn();
+    }
+    throw e;
+  }
+}
+async function _fetchProjectRow(id,anon){
+  const rows=await _sbFetch(`projects?id=eq.${encodeURIComponent(id)}&select=id,name,data`,{},10000,anon);
+  return Array.isArray(rows)&&rows.length?rows[0]:null;
+}
+// return=representation + select=id: a PATCH that matched no row (deleted, or
+// RLS said no) answers 200 [] - that must not count as saved.
+async function _patchProjectData(id,data,anon){
+  const rows=await _sbFetch(`projects?id=eq.${encodeURIComponent(id)}&select=id`,{
+    method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({data}),
+  },15000,anon);
+  // On the anon key (signed out) RLS hides the row: report it as a session problem.
+  if(!Array.isArray(rows)||!rows.length){const e=new Error('No project row was updated');e.status=(!anon&&_jwt()===SUPA_KEY)?401:404;throw e;}
 }
 
 function save(opts){
-  const proj=APP.projects.find(p=>p.id===APP.activeProjectId);
-  if(proj)proj.data=G;
-  localStorage.setItem(AKEY,JSON.stringify(APP));
+  // Share-link screens never write: their blob may be stripped per mode (no
+  // photos / notes / crew), saving it would wipe those. Check-in has its own path.
+  if(window.PUBLIC_MODE)return;
   const id=APP.activeProjectId;
+  const proj=APP.projects.find(p=>p.id===id);
+  if(proj)proj.data=G;
+  _saveSel(id);
+  _cacheAPP();                          // never throws: the push below must happen even with a full cache
+  if(!proj)return;
+  _editSeq[id]=(_editSeq[id]||0)+1;
   _pendingPush[id]=true;
+  _refreshSaveState();
   clearTimeout(_projSync[id]);
   if(opts&&opts.immediate){_pushProject(id);return;}
   _projSync[id]=setTimeout(()=>_pushProject(id),300);
 }
 
-async function _pushProject(id){
-  const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
-  setSyncDot('ing');
-  // SAFETY NET: refuse to clobber a populated server with our stale local
-  // state. Catches two scenarios that hit live festivals today:
-  //   1. Full wipe: local shows=[] while server has shows (stale tab,
-  //      cache from before a manual SQL restore, etc.)
-  //   2. Partial wipe: local is missing entire stages worth of shows
-  //      compared to server (operator tab loaded mid-edit by a peer
-  //      device, then saves something and clobbers the missing stage)
-  // Threshold for #2 is `lostShows >= 5` - a single delete or two are
-  // legitimate edits; losing five at once is always a sign of staleness.
-  // Only fires when the project has stages (= real festival, not a
-  // blank new project). Costs one extra REST GET per save (~80-150ms).
-  const localShows=(proj.data&&Array.isArray(proj.data.shows))?proj.data.shows:[];
-  const localStages=(proj.data&&Array.isArray(proj.data.stages))?proj.data.stages:[];
-  if(localStages.length>0){
-    try{
-      const peekRes=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(proj.id)}&select=data`,{
-        headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'},
-      });
-      if(peekRes.ok){
-        const arr=await peekRes.json();
-        const serverData=arr?.[0]?.data;
-        if(serverData&&Array.isArray(serverData.shows)){
-          const serverCount=serverData.shows.length;
-          const localCount=localShows.length;
-          const lostShows=serverCount-localCount;
-          const fullWipe=localCount===0&&serverCount>0;
-          const partialWipe=lostShows>=5;
-          if(fullWipe||partialWipe){
-            console.warn('[_pushProject] ABORT clobber: local',localCount,'shows, server',serverCount,'(',lostShows,'lost) - adopting server state');
-            proj.data=serverData;
-            localStorage.setItem(AKEY,JSON.stringify(APP));
-            if(id===APP.activeProjectId){loadG();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();}
-            setSyncDot('ok');
-            _pendingPush[id]=false;
-            return;
-          }
-        }
-      }
-    }catch(e){console.warn('[_pushProject] peek failed, proceeding:',e);}
-  }
-  // Direct REST PATCH bypasses supa.from() - that client can deadlock on
-  // stale auth refresh and silently swallow the upsert, which left
-  // operators thinking shows were saved while the DB stayed empty (the
-  // lineup wipe bug). Sent on the user's token so RLS can scope the write.
-  // AbortController gives us a hard 10s ceiling.
-  const row={
-    id:proj.id,
-    name:proj.name,
-    company_id:proj.companyId||null,
-    created_at:proj.createdAt||Date.now(),
-    created_by:proj.createdBy||null,
-    data:proj.data,
-  };
-  const ctrl=new AbortController();
-  const tmo=setTimeout(()=>ctrl.abort(),10000);
-  try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(proj.id)}`,{
-      method:'PATCH',
-      signal:ctrl.signal,
-      headers:{
-        'Content-Type':'application/json',
-        'apikey':SUPA_KEY,
-        'Authorization':`Bearer ${_jwt()}`,
-        'Prefer':'return=minimal',
-      },
-      body:JSON.stringify(row),
-    });
-    clearTimeout(tmo);
-    if(!res.ok){
-      const body=await res.text().catch(()=>'');
-      throw new Error('HTTP '+res.status+(body?' - '+body:''));
-    }
-    _pendingPush[id]=false;
-    setSyncDot('ok');
-  }catch(e){
-    clearTimeout(tmo);
-    _pendingPush[id]=false;
-    setSyncDot('err');
-    console.error('[_pushProject] failed:',e);
-    const d=document.getElementById('sync-dot');
-    if(d){d.title='Save failed: '+((e&&e.message)||String(e));}
-  }
+// Queue entry point (also called directly by the logo upload code).
+function _pushProject(id){
+  if(!id||window.PUBLIC_MODE)return;
+  const st=_syncSt(id);
+  clearTimeout(st.retryT);st.retryT=null;
+  if(st.inflight){st.again=true;return;}   // coalesce: one follow-up push after this one
+  if(!_pendingPush[id]){_settle(id);return;}
+  st.inflight=true;st.again=false;
+  _refreshSaveState();
+  _pushOnce(id).then(()=>{st.err='';st.attempt=0;},e=>{
+    st.attempt++;
+    const wait=_BACKOFF[Math.min(st.attempt,_BACKOFF.length)-1];
+    st.err=humanError(e,'Saving')+' Your changes are kept on this device and retried automatically (next try in '+Math.round(wait/1000)+'s).';
+    console.error('[_pushProject] failed (attempt '+st.attempt+'):',e);
+    st.retryT=setTimeout(()=>_pushProject(id),wait);
+  }).finally(()=>{
+    st.inflight=false;
+    if(!st.err&&_pendingPush[id])_pushProject(id);   // edits made while the push was out
+    else if(!st.err&&st.serverDirty){st.serverDirty=false;_refetchProject(id);}
+    _settle(id);_refreshSaveState();
+  });
 }
+// Resolve _whenSaved() callers: true once nothing is pending, false on a failure.
+function _settle(id){
+  const st=_syncSt(id);if(!st.waiters.length)return;
+  if(!_pendingPush[id]){st.waiters.splice(0).forEach(r=>r(true));}
+  else if(st.err&&!st.inflight){st.waiters.splice(0).forEach(r=>r(false));}
+}
+function _whenSaved(id){return new Promise(r=>{if(!_pendingPush[id])return r(true);_syncSt(id).waiters.push(r);});}
+
+async function _pushOnce(id){
+  if(!_pendingPush[id])return;   // a late timer: nothing left to send
+  let proj=APP.projects.find(p=>p.id===id);
+  if(!proj){_pendingPush[id]=false;return;}
+  const st=_syncSt(id),seq0=_editSeq[id]||0;
+  const L0=_clone(proj.data||{});
+  const shared=_sharedSel[id]?{..._sharedSel[id]}:null;
+  // The fresh row doubles as the wipe guard's reference and the merge input.
+  const row=await _withAuthRetry(()=>_fetchProjectRow(id));
+  if(!row){const e=new Error('Project row not found');e.status=404;throw e;}
+  const S=_isObj(row.data)?row.data:{};
+  const r=_mergeData(_getBase(id),L0,S,{intentional:_intentional,shared});
+  proj=APP.projects.find(p=>p.id===id);if(!proj){_pendingPush[id]=false;return;}
+  if(r.refused){
+    console.warn('[_pushProject] REFUSED: empty local lineup over',(S.shows||[]).length,'server shows - keeping the server version');
+    st.note='Not saved: this screen had an empty lineup while the server has '+(S.shows||[]).length+' shows and '+(S.stages||[]).length+' stages. The server version was kept; check the lineup and redo your last change if it is missing.';
+    _setBase(id,S);st.ackSeq++;
+    _applyAck(id,proj,S,L0,seq0,true);
+    return;
+  }
+  let out=r.data;
+  // TODO(save_project, migration 20261013110000_project_versioning, runbook
+  // step 13): once applied, select `version` with the row above and send `out`
+  // via _rpc('save_project',{p_id,p_expected_version,p_data}). On
+  // {conflict:true} use the returned data as the new S, merge again and retry;
+  // on {error:'would_wipe'} handle like r.refused. That makes this
+  // read-merge-write atomic (and `version` can replace _rev for echoes).
+  // Do not call it before the migration is applied.
+  if(_sameContent(out,S,true)){
+    out=S;   // nothing new for the server (e.g. only this device's selection changed)
+  }else{
+    out._rev=_newRev();
+    _sentRevs.add(out._rev);if(_sentRevs.size>50)_sentRevs.delete(_sentRevs.values().next().value);
+    await _withAuthRetry(()=>_patchProjectData(id,out));
+    st.ackRev=out._rev;
+  }
+  st.ackSeq++;
+  _setBase(id,out);
+  if(shared&&_sharedSel[id]&&_sharedSel[id].activeDay===shared.activeDay)delete _sharedSel[id];
+  const n=r.restored.filter(x=>x.kind==='shows').length,nd=r.restored.length-n;
+  st.note=r.restored.length?'Check the lineup: '+(n?n+' show'+(n===1?'':'s'):'')+(n&&nd?' and ':'')+(nd?nd+' day'+(nd===1?'':'s')+'/stage'+(nd===1?'':'s'):'')+' missing on this screen still exist on the server and were kept (they were not deleted here).':'';
+  if(r.restored.length)console.warn('[_pushProject] restored items missing locally:',r.restored);
+  proj=APP.projects.find(p=>p.id===id)||proj;
+  _applyAck(id,proj,out,L0,seq0,false);
+}
+// After the server confirmed `out`: bring the local copy in line with it.
+// Edits made while the push was out are replayed on top (3-way against L0).
+function _applyAck(id,proj,out,L0,seq0,refused){
+  const active=id===APP.activeProjectId;
+  if((_editSeq[id]||0)===seq0||refused){
+    _pendingPush[id]=false;
+    if(!refused&&_sameContent(out,L0,false)){if(proj.data)proj.data._rev=out._rev;}
+    else{proj.data=_clone(out);if(active){loadG();_rerenderActive();}}
+  }else{
+    const rb=_mergeData(L0,proj.data||{},out,{intentional:_intentional});
+    proj.data=_clone(rb.refused?out:rb.data);proj.data._rev=out._rev;
+    if(rb.refused)_pendingPush[id]=false;
+    if(active){loadG();_rerenderActive();}
+  }
+  _cacheAPP();
+}
+function _rerenderActive(){
+  if(window.PUBLIC_MODE)return;
+  try{
+    renderAll();refreshLogo();
+    const open=id=>document.getElementById(id)?.classList.contains('open');
+    if(open('foh'))renderFOH();if(open('bs'))renderBS();if(open('tl'))renderTL();
+    if(open('ci'))renderCI();if(open('wv'))renderWV();
+  }catch(e){console.warn('[sync] re-render failed:',e);}
+}
+function _rerenderDash(){const el=document.getElementById('dash');if(!window.PUBLIC_MODE&&el&&el.classList.contains('open'))renderDash();}
+
+// Take a server copy of a project (realtime payload or REST refetch).
+function _adoptServer(id,S,name){
+  const proj=APP.projects.find(p=>p.id===id);if(!proj||!_validData(S))return;
+  const st=_syncSt(id);
+  if(st.inflight){st.serverDirty=true;return;}   // the push merges and refetches afterwards
+  const nameChanged=typeof name==='string'&&name!==proj.name;
+  if(typeof name==='string')proj.name=name;
+  const B=_getBase(id);
+  if(!_pendingPush[id]&&B&&_validData(proj.data)&&_sameContent(S,B,true)){if(nameChanged){_cacheAPP();_rerenderDash();}return;}
+  if(_pendingPush[id]){
+    // Unsent local edits: keep them on top of the new server state.
+    const r=_mergeData(B,proj.data||{},S,{intentional:_intentional});
+    if(r.refused){proj.data=S;_pendingPush[id]=false;st.note='Not saved: this screen had an empty lineup; the server version was kept.';}
+    else{proj.data=_clone(r.data);proj.data._rev=S._rev;}
+  }else proj.data=S;
+  _setBase(id,S);
+  _cacheAPP();
+  if(id===APP.activeProjectId){loadG();_rerenderActive();}
+  _rerenderDash();_settle(id);_refreshSaveState();
+}
+async function _refetchProject(id){
+  if(!id||window.PUBLIC_MODE)return;
+  const st=_syncSt(id);
+  if(st.inflight){st.serverDirty=true;return;}
+  if(st.fetching)return;
+  st.fetching=true;const ack0=st.ackSeq;
+  try{
+    const row=await _withAuthRetry(()=>_fetchProjectRow(id));
+    if(st.inflight){st.serverDirty=true;return;}
+    if(st.ackSeq!==ack0)return;   // a push landed meanwhile and is newer than this answer
+    if(!row){console.warn('[sync] project not visible on the server (deleted / no access):',id);return;}
+    if(!_validData(row.data)){console.warn('[sync] server row has no valid data, ignored:',id);return;}
+    _adoptServer(id,row.data,row.name);
+  }catch(e){console.warn('[sync] refetch failed:',humanError(e,'Loading the latest data'),e);}
+  finally{st.fetching=false;}
+}
+// Catch up after a gap (offline, sleep, realtime down): push what is pending
+// (the push merges with the server), otherwise refetch the open project.
+function _resyncAll(){
+  if(window.PUBLIC_MODE)return;
+  for(const id in _pendingPush)if(_pendingPush[id])_pushProject(id);
+  const a=APP&&APP.activeProjectId;
+  if(a&&_rt.started&&!_pendingPush[a])_refetchProject(a);
+}
+window.addEventListener('online',_resyncAll);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')_resyncAll();});
 
 // Realtime
+const _rt={chan:null,pid:null,status:'',started:false,poll:null};
 function setupRealtime(){
-  supa.channel('db-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'projects'},payload=>{
-      if(payload.eventType==='UPDATE'||payload.eventType==='INSERT'){
-        const p=payload.new;
-        const proj=APP.projects.find(x=>x.id===p.id);
-        // Skip overwrite if we have pending local changes for this project
-        if(_pendingPush[p.id]){console.log('Realtime skipped – local push pending for',p.id);return;}
-        if(proj){proj.data=p.data;proj.name=p.name;}
-        else{APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data||{}});}
-        localStorage.setItem(AKEY,JSON.stringify(APP));
-        if(p.id===APP.activeProjectId){
-          loadG();
-          if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
-          if(PUBLIC_MODE==='overview'){renderOV();}
-          else if(PUBLIC_MODE==='timeline'){renderTL();}
-          else if(PUBLIC_MODE==='backstage'){renderBS();}
-          else if(PUBLIC_MODE==='foh'){renderFOH();}
-          else if(PUBLIC_MODE==='stage'){renderSV();}
-          else if(PUBLIC_MODE==='checkin'){renderCI();}
-          else if(PUBLIC_MODE==='wall'){renderWV();}
-          else{renderAll();refreshLogo();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('ci').classList.contains('open'))renderCI();if(document.getElementById('wv').classList.contains('open'))renderWV();}
-        }
-        const dashEl=document.getElementById('dash');if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
-      } else if(payload.eventType==='DELETE'){
-        const deletedId=payload.old?.id;
-        if(deletedId){
-          APP.projects=APP.projects.filter(p=>p.id!==deletedId);
-          if(APP.activeProjectId===deletedId)APP.activeProjectId=null;
-          localStorage.setItem(AKEY,JSON.stringify(APP));
-          if(document.getElementById('dash').classList.contains('open'))renderDash();
-        }
-      }
-    })
-    // Also listen for company updates - so when the Stripe webhook flips a
-    // workspace from 'incomplete' to 'active' on payment success, the user's
-    // subscription banner disappears immediately instead of after a refresh.
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'companies'},payload=>{
-      const c=payload.new;
-      if(!c)return;
-      const local=APP.companies.find(x=>x.id===c.id);
-      const mapped=_mapCompany(c);
-      // Realtime never carries setup_pending (generated column) nor setup_token
-      // (stripped from the publication), so keep the flag we already know.
-      if(c.setup_pending==null&&c.setup_token==null&&local)mapped.setupPending=local.setupPending;
-      if(local)Object.assign(local,mapped);
-      else APP.companies.push(mapped);
-      localStorage.setItem(AKEY,JSON.stringify(APP));
-      // Re-render whatever is on screen
-      const dashEl=document.getElementById('dash'),adminEl=document.getElementById('admin');
-      if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
-      if(!PUBLIC_MODE&&adminEl&&adminEl.classList.contains('open'))renderAdmin();
-    })
-    .subscribe();
+  _rt.started=true;
+  const pid=(window.PUBLIC_MODE?PUBLIC_PID:(APP&&APP.activeProjectId))||null;
+  if(_rt.chan&&_rt.pid===pid)return;   // already listening to this project
+  if(_rt.chan){try{supa.removeChannel(_rt.chan);}catch(e){console.warn('[realtime] removeChannel:',e);}}
+  _rt.pid=pid;_rt.status='';
+  let ch=supa.channel('db-changes-'+(pid||'none')+'-'+Date.now().toString(36));
+  // Only the open project's row. Unfiltered, every client received every
+  // customer's full blob on every edit while RLS is off.
+  if(pid)ch=ch.on('postgres_changes',{event:'*',schema:'public',table:'projects',filter:'id=eq.'+pid},_onProjectChange);
+  if(!window.PUBLIC_MODE){
+    // DELETE events cannot be filtered server-side and carry only the id;
+    // the project list needs them to drop deleted projects.
+    ch=ch.on('postgres_changes',{event:'DELETE',schema:'public',table:'projects'},_onProjectChange);
+    // Company updates - so when the Stripe webhook flips a workspace from
+    // 'incomplete' to 'active' on payment success, the subscription banner
+    // disappears immediately instead of after a refresh. Own workspace only,
+    // except for platform admins (admin panel lists every company).
+    const coId=CURRENT_USER&&CURRENT_USER.companyId;
+    const coOpts={event:'UPDATE',schema:'public',table:'companies'};
+    if(coId&&!isAdmin())coOpts.filter='id=eq.'+coId;
+    ch=ch.on('postgres_changes',coOpts,_onCompanyChange);
+  }
+  _rt.chan=ch;
+  ch.subscribe(status=>{
+    if(_rt.chan!==ch)return;   // replaced by a newer subscription
+    _rt.status=status;
+    if(status!=='SUBSCRIBED')console.warn('[realtime]',status);
+    // Every (re)subscribe: fetch what we may have missed while not listening
+    // (also closes the gap between the initial load and the first subscribe).
+    else if(!window.PUBLIC_MODE&&pid)(_pendingPush[pid]?_pushProject(pid):_refetchProject(pid));
+  });
+  // Slow fallback poll, only while realtime is not delivering.
+  if(!_rt.poll&&!window.PUBLIC_MODE)_rt.poll=setInterval(()=>{
+    if(_rt.status==='SUBSCRIBED'||document.visibilityState!=='visible')return;
+    _resyncAll();
+  },30000);
+}
+function _onProjectChange(payload){
+  if(payload.eventType==='DELETE'){
+    const deletedId=payload.old?.id;
+    if(deletedId&&!window.PUBLIC_MODE&&APP.projects.some(p=>p.id===deletedId)){
+      APP.projects=APP.projects.filter(p=>p.id!==deletedId);
+      _pendingPush[deletedId]=false;if(_sync[deletedId])clearTimeout(_sync[deletedId].retryT);
+      if(APP.activeProjectId===deletedId)APP.activeProjectId=null;
+      _cacheAPP();_rerenderDash();_settle(deletedId);_refreshSaveState();
+    }
+    return;
+  }
+  if(payload.eventType!=='UPDATE'&&payload.eventType!=='INSERT')return;
+  const p=payload.new||{};if(!p.id)return;
+  // Supabase may leave large (TOASTed) columns out of a realtime payload.
+  // Never build a project from a payload without a real blob: loadG() would
+  // turn it into an empty lineup that the next save writes back.
+  if(window.PUBLIC_MODE){
+    if(p.id!==PUBLIC_PID||!_validData(p.data))return;   // the 1s poll fetches what realtime could not carry
+    const proj=APP.projects.find(x=>x.id===p.id);if(!proj)return;
+    proj.data=p.data;if(p.name)proj.name=p.name;
+    const keepDay=G&&G.activeDay;
+    loadG();
+    if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
+    if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
+    if(PUBLIC_MODE==='overview'){renderOV();}
+    else if(PUBLIC_MODE==='timeline'){renderTL();}
+    else if(PUBLIC_MODE==='backstage'){renderBS();}
+    else if(PUBLIC_MODE==='foh'){renderFOH();}
+    else if(PUBLIC_MODE==='stage'){renderSV();}
+    else if(PUBLIC_MODE==='checkin'){renderCI();}
+    else if(PUBLIC_MODE==='wall'){renderWV();}
+    return;
+  }
+  const proj=APP.projects.find(x=>x.id===p.id);
+  if(!_validData(p.data)){if(proj)_refetchProject(p.id);return;}
+  if(!proj){
+    APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data});
+    _setBase(p.id,p.data);_cacheAPP();_rerenderDash();return;
+  }
+  const st=_syncSt(p.id),rev=p.data._rev;
+  // While a push is out, only a foreign write needs a refetch afterwards.
+  if(st.inflight){if(!(rev&&_sentRevs.has(rev)))st.serverDirty=true;return;}
+  // Our own writes come back as echoes. The latest one carries nothing new;
+  // an older one (arriving after a newer push was confirmed) would roll the
+  // screen back, so verify against the server instead of applying it.
+  if(rev&&_sentRevs.has(rev)){
+    if(rev===st.ackRev&&_sameContent(p.data,_getBase(p.id),true))return;
+    if(rev!==st.ackRev){_refetchProject(p.id);return;}
+  }
+  _adoptServer(p.id,p.data,p.name);
+}
+function _onCompanyChange(payload){
+  const c=payload.new;
+  if(!c)return;
+  const local=APP.companies.find(x=>x.id===c.id);
+  const mapped=_mapCompany(c);
+  // Realtime never carries setup_pending (generated column) nor setup_token
+  // (stripped from the publication), so keep the flag we already know.
+  if(c.setup_pending==null&&c.setup_token==null&&local)mapped.setupPending=local.setupPending;
+  if(local)Object.assign(local,mapped);
+  else APP.companies.push(mapped);
+  _cacheAPP();
+  // Re-render whatever is on screen
+  const dashEl=document.getElementById('dash'),adminEl=document.getElementById('admin');
+  if(!PUBLIC_MODE&&dashEl&&dashEl.classList.contains('open'))renderDash();
+  if(!PUBLIC_MODE&&adminEl&&adminEl.classList.contains('open'))renderAdmin();
 }
 
 // ── Overnight day boundary: 07:00. Shows before this time are treated as "same night" as the previous day.
@@ -4271,7 +4729,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllDD();});
 function renderHeader(){
   const sel=document.getElementById('stage-sel');
   sel.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
-  sel.value=G.activeStage;sel.onchange=()=>{G.activeStage=sel.value;M.idx=0;mReset();save();renderAll();};
+  // Stage / day choices are per device (_selChanged), they no longer save the shared blob.
+  sel.value=G.activeStage;sel.onchange=()=>{G.activeStage=sel.value;M.idx=0;mReset();_selChanged('stage');renderAll();};
 
   // Day dropdown (desktop button-menu)
   const activeDay=getDays().find(d=>d.id===G.activeDay)||getDays()[0];
@@ -4280,7 +4739,7 @@ function renderHeader(){
   const dayMenu=document.getElementById('day-dd-menu');
   if(dayMenu){
     dayMenu.innerHTML=getDays().map(d=>`
-      <button class="dd-item ${d.id===G.activeDay?'on':''}" onclick="closeAllDD();setDay('${d.id}')">
+      <button class="dd-item ${d.id===G.activeDay?'on':''}" onclick="closeAllDD();setDay(${escH(JSON.stringify(String(d.id)))})">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         ${escH(d.name)}
       </button>`).join('')+`<div class="dd-sep"></div>
@@ -4292,21 +4751,21 @@ function renderHeader(){
   // Day dropdown (mobile native <select>)
   const daySel=document.getElementById('day-sel-mobile');
   if(daySel){
-    daySel.innerHTML=getDays().map(d=>`<option value="${d.id}"${d.id===G.activeDay?' selected':''}>${escH(d.name)}</option>`).join('');
+    daySel.innerHTML=getDays().map(d=>`<option value="${escH(d.id)}"${d.id===G.activeDay?' selected':''}>${escH(d.name)}</option>`).join('');
     daySel.onchange=()=>setDay(daySel.value);
   }
 
   // FOH selects
   const fs=document.getElementById('foh-ssel');
   fs.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
-  fs.value=G.activeStage;fs.onchange=()=>{G.activeStage=fs.value;save();renderFOH();renderAll();};
+  fs.value=G.activeStage;fs.onchange=()=>{G.activeStage=fs.value;_selChanged('stage');renderFOH();renderAll();};
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   document.getElementById('foh-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayFOH');
 
   // Backstage selects
   const bs=document.getElementById('bs-ssel');
   bs.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
-  bs.value=G.activeStage;bs.onchange=()=>{G.activeStage=bs.value;save();renderBS();renderAll();};
+  bs.value=G.activeStage;bs.onchange=()=>{G.activeStage=bs.value;_selChanged('stage');renderBS();renderAll();};
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   document.getElementById('bs-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayBS','bshbtn');
 
@@ -4322,19 +4781,20 @@ function renderHeader(){
     }
   }
 }
-function setDay(d){G.activeDay=d;M.idx=0;mReset();save();renderAll();if(document.getElementById('tl').classList.contains('open'))renderTL();}
+function setDay(d){G.activeDay=d;M.idx=0;mReset();_selChanged('day');renderAll();if(document.getElementById('tl').classList.contains('open'))renderTL();}
 // Day-picker handlers - kept thin so they can be referenced from inline onclick/onchange.
 function _pickDayFOH(id){setDay(id);renderFOH();}
 function _pickDayBS(id){setDay(id);renderBS();}
 function _pickDayTL(id){setDay(id);renderTL();}
-function _pickDayOV(id){G.activeDay=id;save();renderOV();}
+function _pickDayOV(id){G.activeDay=id;_selChanged('day');renderOV();}
 // Render BOTH a button pill row (desktop) and a native <select> (mobile).
 // CSS toggles which one is visible per breakpoint, so users on a phone get
 // a real dropdown they can actually use one-handed.
 function _dayPickerHTML(activeId,handlerName,pillClass='fhbtn'){
   const days=getDays();if(!days.length)return'';
-  const pills=days.map(d=>`<button class="${pillClass} ${d.id===activeId?'on':''}" onclick="${handlerName}('${d.id}')">${escH(d.name)}</button>`).join('');
-  const opts=days.map(d=>`<option value="${d.id}"${d.id===activeId?' selected':''}>${escH(d.name)}</option>`).join('');
+  // Day ids come from project data (imports, old date ids): JSON-quote + escape for the inline handler.
+  const pills=days.map(d=>`<button class="${pillClass} ${d.id===activeId?'on':''}" onclick="${handlerName}(${escH(JSON.stringify(String(d.id)))})">${escH(d.name)}</button>`).join('');
+  const opts=days.map(d=>`<option value="${escH(d.id)}"${d.id===activeId?' selected':''}>${escH(d.name)}</option>`).join('');
   return`<div class="day-picker"><div class="day-pills">${pills}</div><select class="day-select" aria-label="Select day" onchange="${handlerName}(this.value)">${opts}</select></div>`;
 }
 
@@ -4969,10 +5429,10 @@ function saveShow(){
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
   save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
 }
-function delShow(id,e){e.stopPropagation();if(!confirm('Delete this show?'))return;G.shows=G.shows.filter(s=>s.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
+function delShow(id,e){e.stopPropagation();if(!confirm('Delete this show?'))return;_markIntentionalRemoval([id]);G.shows=G.shows.filter(s=>s.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
 
 // ══ MODE
-function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();save();renderAll();}
+function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
 
 // ══ OPEN/CLOSE screens
 function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));}
@@ -6142,10 +6602,12 @@ function _watchImportSave(projId,addedIds,setStatus,summary){
     const proj=(APP.projects||[]).find(p=>p.id===projId);
     const ids=new Set(((proj&&proj.data&&proj.data.shows)||[]).map(s=>s.id));
     const kept=addedIds.every(id=>ids.has(id));
-    const dot=document.getElementById('sync-dot');
-    const failed=!!(dot&&/\berr\b/.test(dot.className));
+    // A failed save keeps _pendingPush true and retries by itself
+    // (getSaveState: 'unsaved' + reason), so report it and keep watching.
+    const ss=typeof getSaveState==='function'?getSaveState():null;
+    const failed=ss?(pending&&ss.state==='unsaved'):/\berr\b/.test(document.getElementById('sync-dot')?.className||'');
     if(!kept){setStatus('The import was not saved: the server has a different version of this project. Reload the page and import again.','#fca5a5');return;}
-    if(!pending&&failed){setStatus(summary+', but saving failed. Keep this tab open and check your connection; the sync indicator shows when it is saved.','#fca5a5');return;}
+    if(failed){setStatus(summary+', but saving failed: '+(ss&&ss.detail||'check your connection')+' Keep this tab open.','#fca5a5');if(Date.now()-t0<120000)setTimeout(tick,1000);return;}
     if(!pending){setStatus(summary+'. Saved.','#86efac');return;}
     if(Date.now()-t0>20000){setStatus(summary+'. Still saving… keep this tab open until the sync indicator turns green.','#fbbf24');return;}
     setTimeout(tick,300);
@@ -6432,6 +6894,7 @@ function addDay(){
 function delDay(id){
   if(G.days.length<=1){alert('You cannot delete the last day.');return;}
   if(!confirm('Delete this day? Shows on this day will be kept but will no longer be visible.'))return;
+  _markIntentionalRemoval([],{days:[id]}); // so the save merge does not bring it back
   G.days=G.days.filter(d=>d.id!==id);
   if(G.activeDay===id)G.activeDay=G.days[0].id;
   save();renderAll();renderDayList();
@@ -7993,11 +8456,12 @@ async function loadCurrentUser(session){
   // Direct REST instead of supa.from() - same hang-protection as everywhere
   const ctrl=new AbortController();
   const tmo=setTimeout(()=>ctrl.abort(),8000);
-  let jwt=SUPA_KEY;
-  try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
   try{
     const url=`${SUPA_URL}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&select=*&limit=1`;
-    const res=await fetch(url,{signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'}});
+    const get=()=>fetch(url,{signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'}});
+    let res=await get();
+    // Stale st_auth_v1 token: refresh once and retry (same rule as _restGet).
+    if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await get();
     clearTimeout(tmo);
     if(!res.ok){console.warn('[loadCurrentUser] HTTP',res.status);return;}
     const rows=await res.json();
@@ -8188,7 +8652,7 @@ function closeShareModal(){document.getElementById('share-ov').classList.remove(
 // ══ ARTIST CHECK-IN viewer (share-link mode=checkin).
 // Operator and check-in viewer share the same projects.data column.
 // A tap on the Arrived button flips show.arrived locally, repaints the
-// row, and pushes the updated data via direct REST PATCH. The 1-second
+// row, and persists only that show's arrived fields (see ciToggleArrived). The 1-second
 // polling + Realtime subscription on every other viewer fans the change
 // out across the operator dashboard and all share-link screens.
 function openCI(){document.getElementById('ci').classList.add('open');renderCI();}
@@ -8216,9 +8680,9 @@ function renderCI(){
       const past=_showIsPast(s);
       const arrTime=s.arrivedAt?_fmtArrivedTime(s.arrivedAt):'';
       return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}">
-        <div class="ci-time">${(s.start||'').slice(0,5)}</div>
+        <div class="ci-time">${escH((s.start||'').slice(0,5))}</div>
         <div class="ci-artist">${escH(s.artist||'(no name)')}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${arrTime}</span>`:''}</div>
-        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived('${s.id}')">
+        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived(${escH(JSON.stringify(String(s.id)))})">
           ${isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived'}
         </button>
       </div>`;
@@ -8239,14 +8703,34 @@ function renderCI(){
 function _fmtArrivedTime(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 // In-flight tracker so the 1s poll in checkin mode doesn't briefly overwrite
-// an optimistic toggle while the PATCH is still in flight.
+// an optimistic toggle while the write is still in flight.
 let _ciWriteInFlight=0;
+// Shows whose check-in write is still out: repeat taps are ignored meanwhile
+// (a double tap used to send two opposite writes racing each other).
+const _ciBusy=new Set();
+// Until the rls_prep migration is applied, set_show_arrived does not exist.
+// (PostgREST: 404 + PGRST202. A plain 404 can also be the RPC's own "show not found".)
+function _isMissingRpc(e){return /PGRST202|could not find the function/i.test(String((e&&e.message)||e||''));}
+let _ciRpcMissing=false;   // remembered for this session once the RPC proved missing
+// Pre-migration fallback: read the freshest row, flip only this show's
+// arrived fields, write it back. Never writes the (possibly stale) blob this
+// screen holds. A write landing between the read and the write can still be
+// lost - the RPC does this under a row lock and supersedes this path.
+async function _ciPatchFallback(showId,arrived,arrivedAt){
+  const row=await _fetchProjectRow(PUBLIC_PID,true);
+  const fresh=row&&row.data;
+  if(!_validData(fresh)||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
+  const t=fresh.shows.find(x=>x.id===showId);
+  if(!t){const e=new Error('Show not found in latest data');e.status=404;throw e;}
+  t.arrived=arrived;t.arrivedAt=arrivedAt;
+  await _patchProjectData(PUBLIC_PID,fresh,true);
+  return fresh;
+}
 // Toggle arrived for a show. Optimistic local update + immediate persist.
-// In public checkin mode there is no Supabase auth session, so we PATCH the
-// projects row directly with the anon key. RLS is OFF on projects.
 async function ciToggleArrived(showId){
+  if(_ciBusy.has(showId))return;
   const s=(G.shows||[]).find(x=>x.id===showId);if(!s)return;
-  const wasArrived=!!s.arrived;
+  const wasArrived=!!s.arrived,prevAt=s.arrivedAt;
   s.arrived=!wasArrived;
   s.arrivedAt=s.arrived?Date.now():null;
   // Immediate UI repaint - in checkin mode just repaint the list; in
@@ -8257,22 +8741,38 @@ async function ciToggleArrived(showId){
     if(document.getElementById('stov')?.classList.contains('open'))renderOV();
     if(document.getElementById('ci')?.classList.contains('open'))renderCI();
   }
-  // Persist - in operator mode, go through the regular save() so the
-  // syncDot, localStorage mirror and Realtime fanout all happen as usual.
-  if(!PUBLIC_MODE){save({immediate:true});return;}
-  // Public checkin mode: one RPC. This used to be a client-side
-  // read-modify-write of the entire `data` JSONB, which could clobber an
-  // operator edit that landed between the read and the write. set_show_arrived
-  // does the same mutation inside the database, under a row lock, and it is
-  // the ONLY write an anonymous visitor is granted - the lineup is not just
-  // untouched by convention any more, it is out of reach.
+  // Operator mode: the regular save queue. Its push merges per show and per
+  // field onto a fresh server copy, so only arrived/arrivedAt of this show is
+  // written over what other devices did; failures stay visible on the sync
+  // dot and are retried. Taps on this show are blocked until it settles.
+  if(!PUBLIC_MODE){
+    const pid=APP.activeProjectId;
+    save({immediate:true});
+    _ciBusy.add(showId);
+    _whenSaved(pid).then(()=>_ciBusy.delete(showId));
+    return;
+  }
+  // Public checkin mode: one RPC. set_show_arrived does the mutation inside
+  // the database, under a row lock, and it is the ONLY write an anonymous
+  // visitor is granted once RLS is on.
+  _ciBusy.add(showId);
   _ciWriteInFlight++;
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
   try{
-    const fresh=await _rpc('set_show_arrived',{
-      p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
-    });
+    let fresh=null;
+    if(!_ciRpcMissing){
+      try{
+        fresh=await _rpc('set_show_arrived',{
+          p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
+        });
+      }catch(e){
+        if(!_isMissingRpc(e))throw e;
+        console.warn('[ciToggleArrived] set_show_arrived not available yet, using read-merge-write fallback');
+        _ciRpcMissing=true;
+      }
+    }
+    if(_ciRpcMissing)fresh=await _ciPatchFallback(showId,newArrived,newArrivedAt);
     if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
     // Adopt the returned snapshot locally so any operator edits that landed in
     // the meantime are visible immediately.
@@ -8284,12 +8784,13 @@ async function ciToggleArrived(showId){
   }catch(e){
     // Revert optimistic UI on failure
     const s2=(G.shows||[]).find(x=>x.id===showId);
-    if(s2){s2.arrived=wasArrived;s2.arrivedAt=wasArrived?s2.arrivedAt:null;}
+    if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
     renderCI();
     console.error('[ciToggleArrived]',e);
-    alert('Check-in save failed: '+(e?.message||String(e)));
+    alert(humanError(e,'Saving the check-in'));
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
+    _ciBusy.delete(showId);
   }
 }
 
