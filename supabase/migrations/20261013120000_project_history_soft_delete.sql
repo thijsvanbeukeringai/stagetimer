@@ -27,7 +27,8 @@
 --       restore_project(p_id)             -> {ok, source:'soft'|'history'}
 --                                            (undo soft delete, or re-create
 --                                            a HARD-deleted project from its
---                                            last DELETE snapshot)
+--                                            newest snapshot: the DELETE one,
+--                                            or after a purge the soft_delete one)
 --       list_deleted_projects()           -> rows for the caller's workspace
 --       list_project_versions(p_id)       -> metadata only (no data)
 --       restore_project_version(p_version_id) -> {ok, version}
@@ -35,6 +36,13 @@
 --                                            projects soft-deleted > 30 days
 --     Access rule = the RLS rule (own workspace, or admin/super_admin).
 --     Restores bypass the plan-limit trigger (the data existed before).
+--   * projects_lifecycle_guard (BEFORE INSERT/UPDATE): clients cannot set
+--     deleted_at / deleted_by (only these RPCs and machine callers can) and
+--     always insert with version 0. Closes "backdate deleted_at so the purge
+--     hard-deletes a live project", with or without rls_enable (which also
+--     narrows the client UPDATE grant to data, name, company_id).
+--   * EXECUTE: only the five client RPCs above are granted, to authenticated
+--     only. purge/prune and every helper: not executable by anon/authenticated.
 --   * Soft-deleted projects disappear from share links, save_project,
 --     patch_show and set_show_arrived (_project_is_live is redefined).
 --
@@ -78,12 +86,21 @@
 --     from public.project_versions order by id desc limit 10;
 --   select has_table_privilege('authenticated','public.project_versions','select');  -- false
 --   select * from cron.job where jobname like 'stagetimer_%';   -- if pg_cron exists
+--   select has_function_privilege('authenticated','public.purge_deleted_projects()','execute'),  -- false
+--          has_function_privilege('anon','public.soft_delete_project(text)','execute');          -- false
+--   -- a client cannot backdate deleted_at (must FAIL with insufficient_privilege):
+--   begin;
+--     select set_config('request.jwt.claims','{"role":"authenticated","email":"<operator e-mail>"}', true);
+--     update public.projects set deleted_at = now() - interval '90 days' where id = '<pid>';
+--   rollback;
 --
 -- ROLLBACK (history is lost on drop; export it first if needed:
 --   copy (select * from public.project_versions) to stdout ...)
 --   select cron.unschedule('stagetimer_prune_project_versions');   -- if scheduled
 --   select cron.unschedule('stagetimer_purge_deleted_projects');   -- if scheduled
 --   drop trigger if exists projects_history on public.projects;
+--   drop trigger if exists projects_lifecycle_guard on public.projects;
+--   drop function if exists public.projects_lifecycle_guard();
 --   drop function if exists public.projects_history(), public.prune_project_versions(),
 --     public.purge_deleted_projects(), public.soft_delete_project(text),
 --     public.restore_project(text), public.list_deleted_projects(),
@@ -135,7 +152,9 @@ set search_path = public
 as $$
   select coalesce((select value from public.backend_settings where key = p_key), p_default)
 $$;
-revoke all on function public._setting(text, text) from public;
+-- Internal; Supabase grants EXECUTE on new functions to anon/authenticated
+-- directly, so every helper here is revoked by name, not only from public.
+revoke all on function public._setting(text, text) from public, anon, authenticated;
 
 -- ── Soft delete columns ────────────────────────────────────────────────
 alter table public.projects add column if not exists deleted_at timestamptz;
@@ -151,7 +170,7 @@ set search_path = public
 as $$
   select exists (select 1 from public.projects p where p.id::text = p_id and p.deleted_at is null)
 $$;
-revoke all on function public._project_is_live(text) from public;
+revoke all on function public._project_is_live(text) from public, anon, authenticated;
 
 create or replace function public.projects_version_bump()
 returns trigger
@@ -168,6 +187,47 @@ begin
   return new;
 end
 $$;
+revoke all on function public.projects_version_bump() from public, anon, authenticated;
+
+-- ── Lifecycle columns are server-owned ─────────────────────────────────
+-- deleted_at / deleted_by change only through the RPCs below (they set
+-- stagetimer.lifecycle_rpc) or machine callers; version only through
+-- projects_version_bump. Without this an operator (or, before rls_enable,
+-- anyone with the anon key) could PATCH deleted_at to a date > keep_days ago
+-- and let purge_deleted_projects hard-delete a live project. rls_enable also
+-- narrows the client UPDATE grant to (data, name, company_id); this trigger
+-- covers the time before that and does not depend on grants.
+create or replace function public.projects_lifecycle_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if public._caller_is_machine() or current_setting('stagetimer.lifecycle_rpc', true) = 'on' then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    -- Clients only create live projects, starting at version 0. Normalised
+    -- instead of rejected: app.html never sends these columns.
+    new.deleted_at := null;
+    new.deleted_by := null;
+    new.version    := 0;
+    return new;
+  end if;
+  if new.deleted_at is distinct from old.deleted_at or new.deleted_by is distinct from old.deleted_by then
+    raise exception 'projects.deleted_at / deleted_by can only be changed through soft_delete_project / restore_project'
+      using errcode = 'insufficient_privilege';
+  end if;
+  return new;
+end
+$$;
+revoke all on function public.projects_lifecycle_guard() from public, anon, authenticated;
+
+drop trigger if exists projects_lifecycle_guard on public.projects;
+create trigger projects_lifecycle_guard
+  before insert or update on public.projects
+  for each row execute function public.projects_lifecycle_guard();
 
 -- ── History table ──────────────────────────────────────────────────────
 create table if not exists public.project_versions (
@@ -195,6 +255,7 @@ stable
 as $$
   select coalesce(nullif(auth.jwt() ->> 'email', ''), nullif(auth.jwt() ->> 'role', ''), 'sql')
 $$;
+revoke all on function public._caller_label() from public, anon, authenticated;
 
 create or replace function public.projects_history()
 returns trigger
@@ -258,6 +319,7 @@ drop trigger if exists projects_history on public.projects;
 create trigger projects_history
   after update or delete on public.projects
   for each row execute function public.projects_history();
+revoke all on function public.projects_history() from public, anon, authenticated;
 
 -- ── Cleanup ────────────────────────────────────────────────────────────
 create or replace function public.prune_project_versions()
@@ -287,7 +349,12 @@ end
 $$;
 
 -- Hard-delete projects that have been in the bin longer than keep_days.
--- No snapshot: the user already had keep_days to restore.
+-- No DELETE snapshot: the user already had keep_days to restore. The
+-- 'soft_delete' snapshot written when the project was binned stays the
+-- restore point (restore_project uses the newest snapshot of ANY kind) until
+-- the age cap prunes it - normally the same night, since both use keep_days.
+-- If deleted_at was ever wrong (clients cannot set it any more, see
+-- projects_lifecycle_guard), that snapshot is young and still restorable.
 create or replace function public.purge_deleted_projects()
 returns integer
 language plpgsql
@@ -306,8 +373,8 @@ begin
 end
 $$;
 
-revoke all on function public.prune_project_versions()  from public;
-revoke all on function public.purge_deleted_projects()  from public;
+revoke all on function public.prune_project_versions()  from public, anon, authenticated;
+revoke all on function public.purge_deleted_projects()  from public, anon, authenticated;
 
 do $$
 begin
@@ -337,7 +404,9 @@ begin
     raise exception 'project % not found or not accessible', p_id using errcode = 'insufficient_privilege';
   end if;
   if v_deleted is null then
+    perform set_config('stagetimer.lifecycle_rpc', 'on', true);
     update public.projects set deleted_at = now(), deleted_by = public._caller_label() where id::text = p_id;
+    perform set_config('stagetimer.lifecycle_rpc', 'off', true);
   end if;
   return jsonb_build_object('ok', true);
 end
@@ -363,21 +432,26 @@ begin
     end if;
     if v_deleted is not null then
       perform set_config('stagetimer.skip_plan_guard', 'on', true);
+      perform set_config('stagetimer.lifecycle_rpc', 'on', true);
       update public.projects set deleted_at = null, deleted_by = null where id::text = p_id;
+      perform set_config('stagetimer.lifecycle_rpc', 'off', true);
       perform set_config('stagetimer.skip_plan_guard', 'off', true);
     end if;
     return jsonb_build_object('ok', true, 'source', 'soft');
   end if;
 
-  -- Hard-deleted: re-create from the newest DELETE snapshot.
+  -- Hard-deleted: re-create from the newest snapshot. Normally that is the
+  -- DELETE snapshot; after purge_deleted_projects (which writes none) it is
+  -- the 'soft_delete' snapshot taken when the project was binned.
   select * into v_snap from public.project_versions v
-   where v.project_id = p_id and v.op = 'DELETE'
+   where v.project_id = p_id
    order by v.id desc limit 1;
   if not found or not public._caller_can_write_project(v_snap.company_id) then
     raise exception 'no restorable copy of project % (or not accessible)', p_id using errcode = 'insufficient_privilege';
   end if;
 
   perform set_config('stagetimer.skip_plan_guard', 'on', true);
+  perform set_config('stagetimer.lifecycle_rpc', 'on', true);
   insert into public.projects
   select * from jsonb_populate_record(
            null::public.projects,
@@ -385,6 +459,7 @@ begin
              || jsonb_build_object('id', v_snap.project_id, 'name', v_snap.name, 'data', v_snap.data,
                                    'deleted_at', null, 'deleted_by', null,
                                    'version', coalesce(v_snap.version, 0) + 1));
+  perform set_config('stagetimer.lifecycle_rpc', 'off', true);
   perform set_config('stagetimer.skip_plan_guard', 'off', true);
   return jsonb_build_object('ok', true, 'source', 'history');
 end
@@ -403,9 +478,8 @@ as $$
      and public._caller_can_write_project(p.company_id::text)
   union all
   select d.project_id, d.name, d.company_id, d.changed_at, d.changed_by, 'history'
-    from (select distinct on (v.project_id) v.*
+    from (select distinct on (v.project_id) v.*      -- newest snapshot, as restore_project
             from public.project_versions v
-           where v.op = 'DELETE'
            order by v.project_id, v.id desc) d
    where not exists (select 1 from public.projects p where p.id::text = d.project_id)
      and public._caller_can_write_project(d.company_id)
@@ -456,21 +530,23 @@ begin
 
   perform set_config('stagetimer.force_snapshot', 'on', true);
   perform set_config('stagetimer.skip_plan_guard', 'on', true);
+  perform set_config('stagetimer.lifecycle_rpc', 'on', true);
   update public.projects p
      set data = v_snap.data, name = coalesce(v_snap.name, p.name), deleted_at = null, deleted_by = null
    where p.id::text = v_snap.project_id
   returning p.version into v_version;
   perform set_config('stagetimer.force_snapshot', 'off', true);
   perform set_config('stagetimer.skip_plan_guard', 'off', true);
+  perform set_config('stagetimer.lifecycle_rpc', 'off', true);
   return jsonb_build_object('ok', true, 'version', v_version);
 end
 $$;
 
-revoke all on function public.soft_delete_project(text)       from public;
-revoke all on function public.restore_project(text)           from public;
-revoke all on function public.list_deleted_projects()         from public;
-revoke all on function public.list_project_versions(text)     from public;
-revoke all on function public.restore_project_version(bigint) from public;
+revoke all on function public.soft_delete_project(text)       from public, anon, authenticated;
+revoke all on function public.restore_project(text)           from public, anon, authenticated;
+revoke all on function public.list_deleted_projects()         from public, anon, authenticated;
+revoke all on function public.list_project_versions(text)     from public, anon, authenticated;
+revoke all on function public.restore_project_version(bigint) from public, anon, authenticated;
 grant execute on function public.soft_delete_project(text)       to authenticated;
 grant execute on function public.restore_project(text)           to authenticated;
 grant execute on function public.list_deleted_projects()         to authenticated;

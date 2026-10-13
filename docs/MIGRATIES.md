@@ -29,13 +29,20 @@ Dit document zet alles in één volgorde.
 5. De voorwaarden worden gecontroleerd. Bijna elk bestand begint met een `do $$ … raise exception …`-blok dat afbreekt als een eerdere stap ontbreekt. Een foutmelding met "apply X first" betekent dus: verkeerde volgorde, er is niets veranderd.
 6. De bestanden zijn **idempotent**: twee keer draaien kan geen kwaad. Uitzonderingen staan bij de stap.
 7. Na elke stap: zet in `#ops` of in een notitie welke stap op welk tijdstip is gedaan.
-8. De CLI-migratiehistorie (`supabase_migrations.schema_migrations`) loopt hierdoor niet gelijk met de map. Dat is bewust. Voer **niet** `supabase migration repair` uit zonder overleg.
+8. **Functierechten.** Supabase geeft anon en authenticated standaard direct EXECUTE op elke nieuwe functie in `public`. `revoke ... from public` haalt dat dus niet weg. Elk bestand trekt EXECUTE daarom expliciet in bij anon en authenticated en geeft het alleen terug voor wat de app echt aanroept. Na alle stappen mag anon alleen nog `get_shared_project` (beide varianten), `set_show_arrived` en `get_shared_project_version` uitvoeren. Ingelogde gebruikers krijgen daarnaast de admin-, save- en herstel-RPC's, plus `caller_role` en `caller_company_id` (die gebruiken de RLS-policies). Controle (de query staat ook in de kop van `rls_prep`):
+   ```sql
+   select p.oid::regprocedure from pg_proc p
+    where p.pronamespace = 'public'::regnamespace
+      and has_function_privilege('anon', p.oid, 'execute') order by 1;
+   ```
+9. De CLI-migratiehistorie (`supabase_migrations.schema_migrations`) loopt hierdoor niet gelijk met de map. Dat is bewust. Voer **niet** `supabase migration repair` uit zonder overleg.
 
 ## De bestanden
 
 | Bestand | Inhoud | Toestand |
 |---|---|---|
-| `20261013090000_hotfix_setup_token.sql` | `setup_pending`-kolom (deel 1), kolomrechten en realtime-kolomlijst op companies (deel 2), verificatie (deel 3) | herzien: kop met volgorde |
+| `20261013080000_urgent_anon_write_lockdown.sql` | anon mag `app_users` en `companies` niet meer schrijven of verwijderen (stap 0, urgent) | nieuw |
+| `20261013090000_hotfix_setup_token.sql` | `setup_pending`-kolom (deel 1), kolomrechten en realtime-kolomlijst op companies, met een check op de replica identity (deel 2), verificatie (deel 3) | herzien: kop met volgorde |
 | `20260819111158_rls_prep.sql` | helpers voor de beller (`caller_role()` geeft nooit NULL), guards als allowlist, `admin_set_user_role`, `admin_delete_company`, `role NOT NULL DEFAULT 'operator'` en een unieke `lower(email)` | herschreven |
 | `20261013100000_share_link_rpcs.sql` | `get_shared_project(p_id)` (legacy) en `get_shared_project(p_id, p_mode)` (gestript per modus), `set_show_arrived` op veldniveau | nieuw; de RPC's kwamen uit rls_prep |
 | `20260819111228_rls_enable.sql` | RLS aan, policies, kolom-allowlists, anon zonder tabelrechten | herschreven |
@@ -63,6 +70,11 @@ Dit document zet alles in één volgorde.
   select table_name, column_name, data_type from information_schema.columns
    where table_schema='public' and table_name in ('projects','app_users','companies')
    order by table_name, ordinal_position;
+  ```
+- Kijk welke replica identity `companies` heeft en of de tabel in de realtime-publicatie zit. Stap 5 hangt daarvan af:
+  ```sql
+  select relreplident from pg_class where oid = 'public.companies'::regclass;   -- d, f of i
+  select attnames from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'companies';
   ```
 
 ### Stap 1: hotfix deel 1, `setup_pending` (app: elke versie)
@@ -110,8 +122,17 @@ Dit document zet alles in één volgorde.
 - **Wat:** voer de blokken `PART 2` en `PART 3` van de hotfix uit. Selecteer alleen die regels in de SQL-editor.
 - **Voorwaarde:** stap 4 staat live en de tabbladen zijn herladen.
 - **Timing:** **niet tijdens een show.** Een oude app met `select=*` op companies krijgt 403.
-- **Controle:** de verwachte uitkomsten staan in PART 3. Met de anon-key moet `curl` 401 of 403 geven.
-- **Rollback:** zie de kop van de hotfix. Dit geldt alleen zolang `rls_enable` nog niet is toegepast.
+- **Anon-schrijfrechten:** PART 2 herhaalt de revoke van stap 0 (anon mag `app_users` en `companies` niet schrijven of verwijderen). Is stap 0 al gedaan, dan verandert dat niets.
+- **Replica identity (belangrijk):** PART 2 haalt `setup_token` uit de realtime-publicatie met een kolomlijst. Staat `companies` op `REPLICA IDENTITY FULL` (stap 0 laat het zien als `f`), dan zou die kolomlijst **elke** UPDATE en DELETE op companies laten falen: de Stripe-webhook, finalize-signup, hernoemen, `admin_delete_company`. Daarom:
+  - bij `d` of `i` wordt de kolomlijst gewoon gezet;
+  - bij `f` slaat PART 2 de kolomlijst over en meldt dat met een NOTICE. `setup_token` blijft dan beschermd door de kolomrechten. Dat is de standaard en altijd veilig;
+  - wil je bij `f` toch de kolomlijst, zet dan als eerste regel van het script `select set_config('stagetimer.companies_replica_identity_default', 'on', false);`. PART 2 zet companies dan op `REPLICA IDENTITY DEFAULT`. Gevolg: realtime-events op companies bevatten in `payload.old` alleen nog de primaire sleutel. De app gebruikt alleen `payload.new`. Controleer eerst of iets anders (database-webhooks, replicatie naar BI) de oude rij nodig heeft.
+- **Controle:**
+  - de verwachte uitkomsten staan in PART 3, ook de combinatie replica identity / kolomlijst (nooit `f` samen met een kolomlijst);
+  - `begin; update public.companies set name = name where id = (select id from public.companies limit 1); rollback;` moet lukken;
+  - met de anon-key moet `curl` 401 of 403 geven;
+  - **realtime met een echte client.** Supabase Realtime leest de WAL zelf (wal2json) en houdt zich mogelijk niet aan de kolomlijst van de publicatie. Wat het wel toepast, zijn de kolomrechten en RLS van de abonnee. Test dat: log in de app in, voer in de browserconsole `supa.channel('t').on('postgres_changes',{event:'UPDATE',schema:'public',table:'companies'},p=>console.log(Object.keys(p.new))).subscribe()` uit, hernoem de workspace vanuit een tweede tabblad (als company_admin) en controleer dat `setup_token` **niet** in de gelogde sleutels staat.
+- **Rollback:** zie de kop van de hotfix. Dit geldt alleen zolang `rls_enable` nog niet is toegepast. De rollback geeft anon geen schrijfrechten terug (dat is stap 0).
 - **Volgorde:** `rls_enable` (stap 10) zet precies dezelfde rechten op companies. Stap 5 en stap 10 mogen dus in willekeurige volgorde. De tweede is voor companies een no-op. Doe stap 5 toch zo vroeg mogelijk: dit is de spoedfix.
 
 ### Stap 6: `project_versioning` (app: elke versie)
@@ -135,6 +156,8 @@ Dit document zet alles in één volgorde.
     select public.restore_project('<pid>');
   commit;
   ```
+- **`deleted_at` is van de server:** een trigger (`projects_lifecycle_guard`) weigert elke client-wijziging van `deleted_at` en `deleted_by`, ook met de anon-key vóór stap 10. Alleen `soft_delete_project`, `restore_project`, `restore_project_version` en machine-aanroepen (SQL-editor, service_role, cron) mogen dat. Zo kan niemand een project "30 dagen geleden verwijderd" maken zodat de nachtelijke purge het hard verwijdert. Een client die een project aanmaakt, begint altijd op `version` 0.
+- **Herstel na de purge:** `restore_project` gebruikt de nieuwste momentopname van welke soort ook. Na een purge is dat de momentopname van het moment van weggooien, tot die na 30 dagen wordt opgeruimd.
 - **pg_cron:** is die extensie actief, dan wordt het opruimen elke nacht ingepland. Anders verschijnt er een NOTICE. Zet pg_cron dan aan (Dashboard → Database → Extensions) en draai het bestand opnieuw.
 - **Controle na een week:** `select pg_size_pretty(pg_total_relation_size('public.project_versions'));`
 - **Rollback:** zie de kop van het bestand. Exporteer de historie eerst.
@@ -144,7 +167,7 @@ Dit document zet alles in één volgorde.
 - **Wat:** voer `20261013130000_plan_enforcement.sql` uit. De modus staat dan op `log`: overtredingen worden alleen vastgelegd en niets wordt geblokkeerd.
 - **Voorwaarde:** de improve-app staat live (stap 4). Die stuurt het JWT van de gebruiker mee bij het opslaan. De oude app gebruikt de anon-key, en dan ziet de server niet wie er opslaat (admin/super_admin).
 - **Beslissing B2** is verwerkt: `trialing` telt als actief.
-- **Controle:** vergelijk de `eff_limit` per workspace met het adminscherm. Gebruik daarvoor de query in de kop.
+- **Controle:** vergelijk de `eff_limit` per workspace met het adminscherm. Gebruik daarvoor de query in de kop (in de SQL-editor). `company_stage_limit` en `company_can_create_projects` zijn bewust **niet** aanroepbaar voor anon of ingelogde gebruikers: ze accepteren elk company-id en zouden de abonnementsstatus van andere workspaces verraden. De app gebruikt ze niet.
 - **Rollback:** `update public.backend_settings set value='off' where key='plan_enforcement';`. Dat werkt direct en zonder lock.
 
 ### Stap 9: app-release "RLS-ready"
@@ -164,12 +187,15 @@ Zie "App-wijzigingen" hieronder.
 - **Wat:** voer `20260819111228_rls_enable.sql` uit.
 - **Voorwaarden:** stap 2, 3 en 1 zijn gecontroleerd. Stap 9 staat live en de tabbladen zijn herladen.
 - **Timing:** een rustige doordeweekse ochtend, **nooit** met een show binnen 24 uur. Houd de rollback open.
+- **Projects-kolommen:** ingelogde gebruikers mogen op `projects` alleen nog `data`, `name` en `company_id` wijzigen (wat de app PATCHt). `version`, `deleted_at` en `deleted_by` lopen via de RPC's.
+- **Realtime:** blok 4c doet dezelfde replica-identitycheck als stap 5. Zie daar wat er bij `f` gebeurt.
 - **Controle:**
   - de queries in de kop;
+  - de realtime-test met een echte client uit stap 5, als die nog niet gedaan is;
   - in de app als operator, company_admin, admin en super_admin: project openen, opslaan, jezelf hernoemen, een rol wijzigen (admin), een workspace verwijderen (super_admin, met een testworkspace);
   - alle deellinks openen en een check-in doen;
   - realtime tussen twee ingelogde tabbladen.
-- **Rollback:** zie de kop. RLS gaat dan uit en de tabelrechten komen terug. Companies blijft wel beperkt.
+- **Rollback:** zie de kop. RLS gaat dan uit en de tabelrechten komen terug. Companies blijft wel beperkt, en anon krijgt op `app_users` alleen leesrecht terug (stap 0 blijft staan).
 
 ### Stap 11: `share_link_rpcs` PHASE B (een paar dagen na stap 9)
 
@@ -202,7 +228,7 @@ update public.backend_settings set value='enforce', updated_at=now() where key='
    - `signup-checkout` gebruikt `issue_signup_token`;
    - `finalize-signup` gebruikt `consume_signup_token`, plus een limiet per IP.
 3. Test een volledige signup op een testworkspace.
-4. Voer fase B uit (commentaarblok). Draai daarna blok 4b en 4c van `rls_enable` opnieuw.
+4. Voer fase B uit (commentaarblok). Die geeft binnen dezelfde transactie leesrecht op de opnieuw aangemaakte kolom `setup_pending` en zet hem in de realtime-kolomlijst als die er is. Zonder dat leesrecht faalt de companies-select van de app met "permission denied". Controleer daarna met de query onder het blok en open het adminoverzicht.
 
 **Rollback** per fase staat in het bestand.
 
@@ -249,7 +275,12 @@ Lokaal is alles getest tegen een **aangenomen** schema. Dat is gebeurd op `supab
 - het kiezen van de juiste `get_shared_project`-variant per argument;
 - dat `PT402` een HTTP 402 geeft;
 - conflict, wipe-guard, `patch_show`, momentopnamen, soft delete, herstel uit de historie, log- en enforce-modus;
-- lockout van tokens.
+- lockout van tokens;
+- (13-10, review-fixes) met `companies` op `REPLICA IDENTITY DEFAULT`, op `FULL` en op `FULL` met opt-in: UPDATE en DELETE op companies als service_role en postgres blijven werken; de oude kolomlijst bij `FULL` gaf "Column list used by the publication does not cover the replica identity" en een nieuwe run van PART 2 repareert dat;
+- anon en authenticated kunnen geen interne helper aanroepen (41 aanroepen, allemaal "permission denied"); anon kan alleen de vier deellink-RPC's uitvoeren; triggers werken nog voor ingelogde gebruikers;
+- een operator kan `deleted_at`, `deleted_by` en `version` niet wijzigen (kolomrechten na stap 10, trigger ervoor); `data` en `name` wel; soft delete, purge en daarna `restore_project` uit de momentopname van het weggooien;
+- company_admin hernoemt de eigen workspace, een operator niet;
+- fase B van de signup-tokens: de app-select met `setup_pending` werkt daarna nog.
 
 Deze aannames moet Thijs bevestigen. Het makkelijkst gaat dat met `supabase db pull` en een commit:
 
@@ -263,7 +294,7 @@ Deze aannames moet Thijs bevestigen. Het makkelijkst gaat dat met `supabase db p
    - gebruikt `invite-member` `role: null`? (Dat wordt `operator`, dus het is veilig.)
    - voegt `invite-member` dubbele e-mailadressen toe? (Dat faalt nu.)
    - maakt `signup-checkout` companies aan met de service_role-key?
-7. **Realtime:** zit `companies` in de publicatie `supabase_realtime`? Kolomlijsten werken pas vanaf PG 15. De configuratie zegt 17.
+7. **Realtime:** zit `companies` in de publicatie `supabase_realtime`, en met welke replica identity (stap 0)? Kolomlijsten werken pas vanaf PG 15. De configuratie zegt 17. Bij `REPLICA IDENTITY FULL` slaan stap 5 en 10 de kolomlijst standaard over (zie stap 5). Of Supabase Realtime de kolomlijst überhaupt gebruikt, is niet zeker; de kolomrechten zijn de echte bescherming. Test het met een echte client (stap 5).
 8. Is pg_cron beschikbaar?
 9. **auto_expose:** nieuwe tabellen (`project_versions`, `plan_violations`, `backend_settings`) krijgen hoe dan ook expliciet geen rechten voor anon en authenticated. Dat is correct, ongeacht deze instelling.
 10. De opslag van `project_versions` hangt af van de grootte van de blobs met base64-foto's. Meet dat na stap 7.
