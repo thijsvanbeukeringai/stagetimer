@@ -6,7 +6,7 @@
   "scripts": {
     "test": "playwright test",
     "test:booth": "playwright test --project=booth-chromium --project=booth-webkit",
-    "test:smoke": "playwright test --project=chromium --project=webkit",
+    "test:smoke": "playwright test tests/smoke --project=chromium --project=webkit",
     "test:update-baseline": "node tests/support/update-baseline.mjs"
   },
   "devDependencies": {
