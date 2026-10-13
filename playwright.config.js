@@ -60,12 +60,19 @@ for (const engine of ENGINES) {
   projects.push({
     name: `booth-${engine}`,
     testDir: './tests/booth',
+    // One retry, booth only: under heavy parallel load Chromium has torn a
+    // screenshot once (half-drawn frame). A real visual change fails twice;
+    // a retried pass is reported as "flaky" so it stays visible.
+    retries: 1,
     use: dev,
   });
 }
 
 module.exports = defineConfig({
   testDir: './tests',
+  // Playwright specs only. Plain node scripts (tests/unit/*.test.js, run with
+  // `node`) are not Playwright files; see the test:node script.
+  testMatch: '**/*.spec.js',
   outputDir: './test-results',
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFileName}/{projectName}/{arg}-{platform}{ext}',
   fullyParallel: true,

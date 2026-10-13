@@ -9,6 +9,7 @@ npm test                       # everything (smoke + unit + regression + booth),
 npm run test:smoke             # tests/smoke only
 npm run test:booth             # Stage View pixel comparison against the 845eb0d baseline
 npm run test:update-baseline   # regenerate the booth baseline FROM 845eb0d (rarely!)
+npm run test:node              # plain node scripts tests/unit/*.test.js (not Playwright)
 npx playwright test tests/unit --project=chromium   # any subset
 ```
 
@@ -22,7 +23,7 @@ If the shared browser cache is locked by another install, put browsers in `~/Lib
 | `tests/support/` | `mock-backend.js` (fake Supabase + realtime stub), `seed.js` (festival data), `fixtures.js` (`test`, `expect`, `st` driver), `static-server.mjs`, local fonts, baseline script |
 | `tests/booth/` | Stage View baseline. **Do not regenerate to make a failure go away.** A diff means the boothscreen changed, which BOUWPLAN forbids. |
 | `tests/smoke/` | One coarse test per screen/function. Should survive refactors. |
-| `tests/unit/` | Pure logic (time model, parsers). Today they run inside the page against app.html globals; once logic moves to `js/*.js` modules, plain node tests (`import` the module inside a Playwright test file) are fine too. |
+| `tests/unit/` | Playwright picks up `*.spec.js` only; `*.test.js` are plain node scripts run by `npm run test:node`. Pure logic (time model, parsers). Today they run inside the page against app.html globals; once logic moves to `js/*.js` modules, plain node tests (`import` the module inside a Playwright test file) are fine too. |
 | `tests/regression/` | One test per fixed bug, named after the BOUWPLAN item. Known-but-unfixed bugs: write the real test and wrap it in `test.fail(...)`; when your fix lands Playwright reports "expected to fail but passed": flip it to `test(...)`. |
 | `tests/INVENTARIS.md` | Function/screen inventory (Dutch) with the covering test. Update it when you add coverage. |
 
@@ -79,4 +80,4 @@ backend.onesignal                            // requests that would have gone to
 Fake PostgREST supports `select` (column lists, aliases), `eq/neq/in/is/gt/gte/lt/lte/like/ilike/not.`, `order`, `limit`, `offset`, `Prefer: return=representation|count=exact|resolution=merge-duplicates`, single-object `Accept`, and returns 42703 / PGRST204 for unknown columns.
 
 ### Booth baseline
-Generated from commit 845eb0d (`npm run test:update-baseline` adds a temporary `git worktree` of that commit, serves it as `BASE_ROOT`, runs the booth projects with `--update-snapshots=all`, and removes the worktree). Comparisons are pixel-exact (`maxDiffPixels: 0`, `threshold: 0`) with one documented exception: the `overtime` moment allows 12 pixels, because Chromium sometimes leaves a 1-3 colour-level raster residue at the end of the collapsing progress bar. Animations are captured with Playwright's `animations: 'disabled'`; every screenshot set has a JSON fingerprint of the computed styles (incl. `animation-name`, transitions, fonts, geometry) so a removed blink or pulse is still caught. Snapshots are per engine and per OS (`-darwin`); generating on Linux CI needs its own baseline from 845eb0d.
+Generated from commit 845eb0d (`npm run test:update-baseline` adds a temporary `git worktree` of that commit, serves it as `BASE_ROOT`, runs the booth projects with `--update-snapshots=all`, and removes the worktree). Comparisons are pixel-exact (`maxDiffPixels: 0`, `threshold: 0`) with one documented exception: the `overtime` moment allows 12 pixels (and booth projects get 1 retry for a torn frame under heavy load, reported as "flaky"), because Chromium sometimes leaves a 1-3 colour-level raster residue at the end of the collapsing progress bar. Animations are captured with Playwright's `animations: 'disabled'`; every screenshot set has a JSON fingerprint of the computed styles (incl. `animation-name`, transitions, fonts, geometry) so a removed blink or pulse is still caught. Snapshots are per engine and per OS (`-darwin`); generating on Linux CI needs its own baseline from 845eb0d.

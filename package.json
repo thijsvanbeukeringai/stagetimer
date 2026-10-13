@@ -7,7 +7,8 @@
     "test": "playwright test",
     "test:booth": "playwright test --project=booth-chromium --project=booth-webkit",
     "test:smoke": "playwright test tests/smoke --project=chromium --project=webkit",
-    "test:update-baseline": "node tests/support/update-baseline.mjs"
+    "test:update-baseline": "node tests/support/update-baseline.mjs",
+    "test:node": "node -e \"for(const f of require('fs').readdirSync('tests/unit').filter(f=>f.endsWith('.test.js')))require('child_process').execFileSync(process.execPath,['tests/unit/'+f],{stdio:'inherit'})\""
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

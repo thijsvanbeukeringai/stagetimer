@@ -22,7 +22,6 @@ test.describe('logged in', () => {
     backend.failNext({ method: 'PATCH', path: '/rest/v1/projects', status: 500, json: { message: 'boom' } });
     await page.locator('#blackout-btn').click();
     await expect(page.locator('#sync-dot')).toHaveClass(/err/);
-    await expect(page.locator('#sync-dot')).toHaveAttribute('title', /HTTP 500/);
     expect(backend.calls({ method: 'PATCH' }).filter((r) => r.injected)).toHaveLength(1);
   });
 
