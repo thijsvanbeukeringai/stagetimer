@@ -5981,9 +5981,12 @@ function _effectiveStageLimit(co){
   if(co.liveStagesOverride!=null)return co.liveStagesOverride;
   // 3. Active event pass: unlimited for its duration.
   if(_passActive(co))return null;
-  // 4. Active or past-due subscription: use the limit denormalised by the webhook.
-  //    `null` here means unlimited (festival / pro-legacy / business-legacy).
-  const subActive=co.subscriptionStatus==='active'||co.subscriptionStatus==='past_due';
+  // 4. Active, trialing or past-due subscription: use the limit denormalised
+  //    by the webhook. `null` here means unlimited (festival / pro-legacy /
+  //    business-legacy). Trialing counts as active (owner decision B2): it
+  //    used to fall through to 0, so trial customers could not add a stage.
+  //    Same set of statuses canCreateProject() lets through, plus past_due.
+  const subActive=['active','trialing','past_due'].includes(co.subscriptionStatus);
   if(subActive&&co.planSlug){
     return (co.liveStagesLimit===null||co.liveStagesLimit===undefined)?null:co.liveStagesLimit;
   }
@@ -6336,7 +6339,7 @@ function _updateWsSidebar(){
   if(wsMeta){
     if(!co){wsMeta.textContent=isAdmin()?'Platform admin':'-';}
     else{
-      const tier=co.subscriptionTier?co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1):'Free';
+      const tier=_planLabel(co);
       const seats=co.extraSeats||0;
       const seatText=seats>0?` · ${seats} paid seat${seats===1?'':'s'}`:'';
       wsMeta.textContent=`${tier}${seatText}`;
@@ -6354,7 +6357,7 @@ function _updateWsSidebar(){
   if(mobWsMeta){
     if(!co){mobWsMeta.textContent=isAdmin()?'Platform admin':'';}
     else{
-      const tier=co.subscriptionTier?co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1):'Free';
+      const tier=_planLabel(co);
       const seats=co.extraSeats||0;
       const seatText=seats>0?` · ${seats} paid seat${seats===1?'':'s'}`:'';
       mobWsMeta.textContent=`${tier}${seatText}`;
@@ -6380,6 +6383,57 @@ function showWsSection(name){
 }
 window.showWsSection=showWsSection;
 
+// ── Billing: one reading of the plan, its cycle and any event pass.
+// The admin code said 'yearly'/'monthly' and this page compared against
+// 'year', so every yearly customer was shown as monthly. Everything now asks
+// _billingCycle(), which answers 'year' | 'month' | null.
+// List prices mirror the published pricing (index.html TIERS); seat prices
+// are the existing ones. Unknown / legacy plans keep the Stagetimer Pro price.
+const _PLAN_CATALOG={
+  freelancer:{name:'Stagetimer Freelancer',month:12.95,year:129.50},
+  team:      {name:'Stagetimer Team',      month:29.95,year:299.50},
+  festival:  {name:'Stagetimer Festival',  month:39.95,year:399.50},
+};
+const _LEGACY_PLAN={name:'Stagetimer Pro',month:12.95,year:129.50};
+const _PASS_NAMES={'pass-single':'Single Event Pass','pass-weekend':'Weekend Festival Pass','pass-monthly':'Monthly Festival Pass'};
+function _billingCycle(co){
+  if(!co)return null;
+  // An explicit cycle in the plan slug / tier wins (e.g. "team-yearly").
+  const tag=[co.planSlug,co.subscriptionTier].filter(x=>x&&!/^pass/i.test(x)).join(' ').toLowerCase();
+  if(/year|annual/.test(tag))return'year';
+  if(/month/.test(tag))return'month';
+  // Otherwise: length of the paid period.
+  if(co.lastPaidAt&&co.currentPeriodEnd){
+    const days=(new Date(co.currentPeriodEnd)-new Date(co.lastPaidAt))/86400000;
+    if(!isNaN(days)&&days>0)return days>180?'year':'month';
+  }
+  // No payment date yet (e.g. trial): a period ending > 45 days out is yearly.
+  if(co.currentPeriodEnd){
+    const left=(new Date(co.currentPeriodEnd)-Date.now())/86400000;
+    if(!isNaN(left)&&left>45)return'year';
+  }
+  return null;
+}
+function _planInfo(co){
+  const slug=String(co?.planSlug||'').toLowerCase().replace(/[-_](monthly|yearly|annual|month|year)$/,'');
+  const plan=_PLAN_CATALOG[slug]||_LEGACY_PLAN;
+  const passOn=!!(co?.passSlug&&_passActive(co));
+  return{
+    name:plan.name,known:!!_PLAN_CATALOG[slug],
+    cycle:_billingCycle(co),
+    price:plan,
+    pass:passOn?{name:_PASS_NAMES[co.passSlug]||'Event pass',expiresAt:co.passExpiresAt}:null,
+  };
+}
+function _planLabel(co){
+  if(!co)return'Free';
+  const pi=_planInfo(co);
+  if(co.planSlug)return pi.name.replace(/^Stagetimer /,'');
+  if(co.subscriptionTier)return co.subscriptionTier.charAt(0).toUpperCase()+co.subscriptionTier.slice(1);
+  if(pi.pass)return pi.pass.name;
+  return'Free';
+}
+
 function renderSubscriptionPage(){
   const body=document.getElementById('ws-subscription-body');
   if(!body)return;
@@ -6387,39 +6441,48 @@ function renderSubscriptionPage(){
   const co=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
   if(!co){body.innerHTML='<div class="ws-card"><div class="ws-card-meta">You are not linked to a workspace. Contact support.</div></div>';return;}
   const status=co.subscriptionStatus||'inactive';
-  const cycle=_detectCycle(co);
+  const pi=_planInfo(co);
+  const cycle=pi.cycle;
   const seats=co.extraSeats||0;
   const seatPrice=cycle==='year'?119.40:9.95;
-  const basePrice=cycle==='year'?129.50:12.95;
+  const basePrice=cycle==='year'?pi.price.year:pi.price.month;
   const cycleLabel=cycle==='year'?'year':'month';
   const cycleShort=cycle==='year'?'yr':'mo';
-  const statusColor=status==='active'?'#15803D':status==='past_due'?'#B45309':'#B91C1C';
+  const statusColor=(status==='active'||status==='trialing')?'#15803D':status==='past_due'?'#B45309':'#B91C1C';
   const statusLabel={active:'Active',trialing:'Trial',past_due:'Past due',canceled:'Cancelled',inactive:'Inactive',incomplete:'Incomplete'}[status]||status;
   const baseAnnualized=cycle==='year'?basePrice:basePrice*12;
   const seatsAnnualized=cycle==='year'?seatPrice*seats:seatPrice*12*seats;
   const totalAnnualized=baseAnnualized+seatsAnnualized;
   const totalMonthly=totalAnnualized/12;
+  // Event pass without a subscription: show the pass, not a recurring price.
+  const passOnly=!!pi.pass&&!['active','trialing','past_due'].includes(status);
 
   body.innerHTML=`
     <div class="ws-cards">
       <div class="ws-card">
         <div class="ws-card-title">Current plan</div>
-        <div class="ws-card-value">Stagetimer Pro</div>
+        <div class="ws-card-value">${escH(passOnly?pi.pass.name:pi.name)}</div>
         <div class="ws-card-meta">
-          <span style="color:${statusColor};font-weight:600;">${statusLabel}</span>
+          ${passOnly
+            ?`<span style="color:#15803D;font-weight:600;">Active</span> · until ${_fmtDate(pi.pass.expiresAt)}`
+            :`<span style="color:${statusColor};font-weight:600;">${escH(statusLabel)}</span>
           ${cycle?` · ${cycle==='year'?'Yearly':'Monthly'} billing`:''}
+          ${pi.pass?`<br>${escH(pi.pass.name)} · active until ${_fmtDate(pi.pass.expiresAt)}`:''}`}
         </div>
       </div>
       <div class="ws-card">
         <div class="ws-card-title">Monthly cost (effective)</div>
-        <div class="ws-card-value">€${totalMonthly.toFixed(2).replace('.',',')}</div>
-        <div class="ws-card-meta">Total annualized: €${totalAnnualized.toFixed(2).replace('.',',')}</div>
+        ${passOnly
+          ?`<div class="ws-card-value">One-time pass</div>
+        <div class="ws-card-meta">No recurring charge</div>`
+          :`<div class="ws-card-value">€${totalMonthly.toFixed(2).replace('.',',')}</div>
+        <div class="ws-card-meta">Total annualized: €${totalAnnualized.toFixed(2).replace('.',',')}</div>`}
       </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Plan breakdown</div>
       <div class="ws-divrow">
-        <div class="ws-divrow-label">Stagetimer Pro · base seat</div>
+        <div class="ws-divrow-label">${escH(pi.name)} · base seat</div>
         <div class="ws-divrow-value">€${basePrice.toFixed(2).replace('.',',')} / ${cycleLabel}</div>
       </div>
       <div class="ws-divrow">
@@ -6430,7 +6493,7 @@ function renderSubscriptionPage(){
         <div class="ws-divrow-label" style="font-weight:600;color:#0A0A0B;">Total</div>
         <div class="ws-divrow-value" style="font-size:14px;">€${(basePrice+seats*seatPrice).toFixed(2).replace('.',',')} / ${cycleLabel}</div>
       </div>
-      ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">Next renewal</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
+      ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">${status==='trialing'?'Trial ends':status==='canceled'?'Access until':'Next renewal'}</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
       ${co.lastPaidAt?`<div class="ws-divrow"><div class="ws-divrow-label">Last payment</div><div class="ws-divrow-value">${_fmtDate(co.lastPaidAt)}</div></div>`:''}
     </div>
     <div class="ws-card" style="margin-top:18px;">
@@ -6459,7 +6522,7 @@ function renderSubscriptionPage(){
       const isOwner=u.role==='company_admin'||u.role==='admin'||u.role==='super_admin';
       const roleLabel=isOwner?'Admin':'Operator';
       return`<div class="ws-seat-row">
-        <div class="ws-seat-avatar">${initials}</div>
+        <div class="ws-seat-avatar">${escH(initials)}</div>
         <div class="ws-seat-info">
           <div class="ws-seat-name">${escH(u.name||u.email)}${pending}${isMe?' <span style="font-size:10px;color:#78716C;">(you)</span>':''}</div>
           <div class="ws-seat-email">${escH(u.email||'')} · ${roleLabel}</div>
@@ -7039,11 +7102,10 @@ function _fmtDate(iso){if(!iso)return'-';const d=new Date(iso);if(isNaN(d))retur
 function _projectsFor(coId){return APP.projects.filter(p=>p.companyId===coId);}
 // Pro subscription prices (live in Stripe)
 const PRO_MONTHLY=12.95, PRO_YEARLY=129.50;
+// Admin wording of _billingCycle() (shared helper, one source of truth).
 function _detectCycle(c){
-  if(!c.lastPaidAt||!c.currentPeriodEnd)return null;
-  const days=(new Date(c.currentPeriodEnd)-new Date(c.lastPaidAt))/86400000;
-  if(isNaN(days))return null;
-  return days>180?'yearly':'monthly';
+  const cy=_billingCycle(c);
+  return cy==='year'?'yearly':cy==='month'?'monthly':null;
 }
 function _mrrFor(c){
   if(c.subscriptionStatus!=='active')return 0;
