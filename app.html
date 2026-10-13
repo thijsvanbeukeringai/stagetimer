@@ -2224,6 +2224,73 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .ws-table tbody tr:has(.ws-empty){display:block !important;padding:0;}
   .ws-empty{padding:40px 18px;}
 }
+/* ═══════════════════════════════════════════════════════════════
+   DIALOGS (stDialog) - dialog-specific styles only. Buttons and
+   inputs reuse the existing classes (.btn-p / .btn-g / .btn-del on
+   the dark screens, .ws-btn-* in the light back office).
+   Never shown on Stage View unless an operator action opens one.
+   ═══════════════════════════════════════════════════════════════ */
+.st-dlg-ov{position:fixed;left:0;right:0;top:0;height:100%;z-index:10000;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+.st-dlg{width:min(440px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--s2);color:var(--text);
+  border:1px solid var(--border2);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.55);font-family:var(--ff);
+  user-select:text;-webkit-user-select:text;outline:none;animation:st-dlg-in .14s ease-out;}
+.st-dlg.st-dlg-wide{width:min(560px,100%);}
+@keyframes st-dlg-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.st-dlg-title{margin:0;padding:18px 20px 6px;font-size:16px;font-weight:800;line-height:1.3;letter-spacing:-.2px;}
+.st-dlg-bd{padding:6px 20px 4px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;}
+.st-dlg-msg{margin:0 0 12px;font-size:13.5px;line-height:1.55;color:var(--sub);white-space:pre-line;}
+.st-dlg-field{margin:0 0 12px;}
+.st-dlg-lbl{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub);margin:0 0 5px;}
+.st-dlg-in{width:100%;padding:9px 11px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);
+  font-family:var(--ff);font-size:14px;font-weight:500;user-select:text;-webkit-user-select:text;}
+.st-dlg-in[aria-invalid="true"]{border-color:#ef4444;}
+.st-dlg-help{font-size:12px;color:var(--sub);margin-top:5px;line-height:1.45;}
+.st-dlg-err{font-size:12px;font-weight:600;color:#fca5a5;margin-top:5px;line-height:1.4;}
+.st-dlg-formerr{margin:4px 0 10px;padding:9px 11px;border-radius:8px;font-size:12.5px;line-height:1.45;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+.st-dlg-ft{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 20px 18px;flex-shrink:0;}
+.st-dlg-ft button{min-height:40px;padding:9px 16px;font-size:13px;justify-content:center;}
+.st-dlg-ft .st-dlg-danger{background:#dc2626;border:1px solid #dc2626;color:#fff;font-weight:700;}
+.st-dlg-ft .st-dlg-danger:hover{background:#b91c1c;border-color:#b91c1c;color:#fff;}
+.st-dlg :focus-visible{outline:2px solid #a5b4fc;outline-offset:2px;}
+.st-dlg .st-dlg-in:focus-visible{outline:2px solid #a5b4fc;outline-offset:0;border-color:transparent;}
+/* Small blocks dialogs build with `html` (previews, lists) */
+.st-dlg-list{margin:0 0 12px;padding:0;list-style:none;border:1px solid var(--border2);border-radius:8px;overflow:hidden;font-size:12.5px;}
+.st-dlg-list li{display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-top:1px solid var(--border);}
+.st-dlg-list li:first-child{border-top:none;}
+.st-dlg-list .st-dlg-k{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.st-dlg-list .st-dlg-v{font-family:var(--ffm);font-size:12px;white-space:nowrap;color:var(--sub);}
+.st-dlg-list .st-dlg-v b{color:var(--text);font-weight:700;}
+.st-dlg-list .st-dlg-chg{color:#fbbf24;}
+.st-dlg-note{font-size:12px;color:var(--sub);margin:0 0 12px;line-height:1.5;}
+.st-dlg-opts{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;}
+/* Light back office */
+.st-dlg-light .st-dlg{background:#fff;color:#0A0A0B;border-color:rgba(28,25,23,.12);box-shadow:0 20px 60px rgba(28,25,23,.25);font-family:'Geist','Inter',system-ui,sans-serif;}
+.st-dlg-light{background:rgba(28,25,23,.45);}
+.st-dlg-light .st-dlg-msg,.st-dlg-light .st-dlg-help,.st-dlg-light .st-dlg-note,.st-dlg-light .st-dlg-list .st-dlg-v{color:#52525B;}
+.st-dlg-light .st-dlg-lbl{color:#3F3F46;}
+.st-dlg-light .st-dlg-in{background:#fff;border-color:rgba(28,25,23,.18);color:#0A0A0B;}
+.st-dlg-light .st-dlg-in[aria-invalid="true"]{border-color:#B91C1C;}
+.st-dlg-light .st-dlg-err{color:#B91C1C;}
+.st-dlg-light .st-dlg-formerr{background:#FEF2F2;border-color:rgba(185,28,28,.25);color:#991B1B;}
+.st-dlg-light .st-dlg-list{border-color:rgba(28,25,23,.12);}
+.st-dlg-light .st-dlg-list li{border-color:rgba(28,25,23,.08);}
+.st-dlg-light .st-dlg-list .st-dlg-v b{color:#0A0A0B;}
+.st-dlg-light .st-dlg-list .st-dlg-chg{color:#B45309;}
+.st-dlg-light :focus-visible{outline-color:#1E40AF;}
+.st-dlg-light .st-dlg-ft .st-dlg-danger{background:#B91C1C;border-color:#B91C1C;color:#fff;}
+/* Phones: a sheet on the bottom of the visible viewport (above the
+   keyboard, see _fitViewport), full-width stacked buttons. */
+@media (max-width:600px){
+  .st-dlg-ov{align-items:flex-end;padding:0;}
+  .st-dlg,.st-dlg.st-dlg-wide{width:100%;border-radius:16px 16px 0 0;max-height:calc(100% - 24px);}
+  .st-dlg-ft{flex-direction:column-reverse;padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+  .st-dlg-ft button{width:100%;min-height:46px;font-size:15px;}
+  .st-dlg-in{font-size:16px;} /* no iOS zoom-on-focus */
+}
+@media (prefers-reduced-motion:reduce){.st-dlg{animation:none;}}
+/* ═══ end DIALOGS ═══ */
 </style>
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
@@ -4798,6 +4865,190 @@ function renderTbar(){
 </div>
 
 <script>
+// ══ DIALOGS (stDialog) ═══════════════════════════════════════════════════
+// One accessible dialog for every alert / confirm / prompt / small form.
+// role="dialog" + aria-modal, a labelled title, focus kept inside (Tab and
+// Shift+Tab wrap), Escape cancels, focus goes back to whatever opened it.
+// It mounts in the fullscreen element when there is one, and follows the
+// visual viewport so the buttons stay above an on-screen keyboard.
+// Every call returns a Promise:
+//   stDialog.alert(msg,{title})                      -> undefined
+//   stDialog.confirm(msg,{title,okLabel,danger})      -> true | false
+//   stDialog.prompt(msg,{title,label,value,validate}) -> string | null
+//   stDialog.form({title,fields,onSubmit,...})        -> values | null
+//   stDialog.choice({title,choices:[{value,label}]})  -> value | null
+// Texts (message, labels) are plain text and always escaped; `html` is for
+// callers that build their own escaped markup (previews, lists).
+const stDialog=(()=>{
+  const stack=[];let seq=0;
+  const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const host=()=>document.fullscreenElement||document.webkitFullscreenElement||document.body;
+  const top=()=>stack[stack.length-1]||null;
+  const visible=el=>!!(el&&(el.offsetWidth||el.offsetHeight||el.getClientRects().length));
+  const focusables=d=>[...d.panel.querySelectorAll(FOCUSABLE)].filter(visible);
+  // Light back office (#dash / #admin) or the dark production screens.
+  function _isLight(trigger){
+    if(trigger&&trigger!==document.body&&trigger.closest)return!!trigger.closest('#dash,#admin');
+    return['dash','admin'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  }
+  function _fitViewport(){
+    const vv=window.visualViewport;
+    stack.forEach(d=>{
+      if(!vv){d.ov.style.top='';d.ov.style.height='';return;}
+      d.ov.style.top=vv.offsetTop+'px';d.ov.style.height=vv.height+'px';
+    });
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',_fitViewport);
+    window.visualViewport.addEventListener('scroll',_fitViewport);
+  }
+  // Capture phase on window: the dialog sees keys before any page handler
+  // (the global Escape that closes screens, Enter handlers on inputs below).
+  window.addEventListener('keydown',e=>{
+    const d=top();if(!d)return;
+    if(e.key==='Escape'){
+      e.preventDefault();e.stopPropagation();
+      if(!d.busy)d.close(d.cancelValue);
+      return;
+    }
+    if(e.key==='Tab'){
+      const f=focusables(d);if(!f.length){e.preventDefault();d.panel.focus();return;}
+      const first=f[0],last=f[f.length-1],a=document.activeElement;
+      if(e.shiftKey&&(a===first||!d.panel.contains(a))){e.preventDefault();last.focus();}
+      else if(!e.shiftKey&&(a===last||!d.panel.contains(a))){e.preventDefault();first.focus();}
+      e.stopPropagation();
+      return;
+    }
+    // Keys typed inside the dialog belong to the dialog only.
+    if(d.panel.contains(e.target))e.stopPropagation();
+  },true);
+  // Focus that escapes (a click on the page behind, a script) comes back.
+  document.addEventListener('focusin',e=>{
+    const d=top();if(!d||d.ov.contains(e.target))return;
+    (focusables(d)[0]||d.panel).focus({preventScroll:true});
+  });
+  const esc=s=>escH(s==null?'':s);
+  function _fieldHTML(f,id){
+    const fid=id+'-f-'+f.name,help=f.help?`<div class="st-dlg-help" id="${fid}-h">${esc(f.help)}</div>`:'';
+    const describedBy=[f.help?fid+'-h':'',fid+'-e'].filter(Boolean).join(' ');
+    const common=`id="${fid}" name="${esc(f.name)}" aria-describedby="${describedBy}"${f.required?' aria-required="true"':''}${f.autocomplete?` autocomplete="${esc(f.autocomplete)}"`:''}${f.placeholder?` placeholder="${esc(f.placeholder)}"`:''}${f.inputmode?` inputmode="${esc(f.inputmode)}"`:''}${f.maxlength?` maxlength="${+f.maxlength}"`:''}${f.min!=null?` min="${esc(f.min)}"`:''}${f.max!=null?` max="${esc(f.max)}"`:''}${f.step!=null?` step="${esc(f.step)}"`:''}`;
+    let input;
+    if(f.type==='select')input=`<select class="st-dlg-in" ${common}>${(f.options||[]).map(o=>`<option value="${esc(o.value)}"${String(o.value)===String(f.value??'')?' selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
+    else if(f.type==='textarea')input=`<textarea class="st-dlg-in" rows="${+f.rows||3}" ${common}>${esc(f.value??'')}</textarea>`;
+    else input=`<input class="st-dlg-in" type="${esc(f.type||'text')}" value="${esc(f.value??'')}" ${common}>`;
+    return`<div class="st-dlg-field" data-field="${esc(f.name)}"><label class="st-dlg-lbl" for="${fid}">${esc(f.label||f.name)}</label>${input}${help}<div class="st-dlg-err" id="${fid}-e" hidden></div></div>`;
+  }
+  // opts: title, message, html, fields, actions[{label,value,kind,submit}],
+  //       cancelValue, onSubmit(values,ctx), busyLabel, trigger, initial
+  //       ('first' | 'cancel' | selector), backdrop (click outside cancels).
+  function open(opts){
+    opts=opts||{};
+    return new Promise(resolve=>{
+      const id='st-dlg-'+(++seq);
+      const trigger=opts.trigger||document.activeElement;
+      const light=opts.light!=null?opts.light:_isLight(trigger);
+      const fields=opts.fields||[];
+      const actions=opts.actions||[{label:'OK',value:true,kind:'primary',submit:true}];
+      const ov=document.createElement('div');
+      ov.className='st-dlg-ov'+(light?' st-dlg-light':'');
+      const btnCls=k=>light
+        ?(k==='primary'?'ws-btn-primary':k==='danger'?'ws-btn-primary st-dlg-danger':'ws-btn-secondary')
+        :(k==='primary'?'btn-p':k==='danger'?'btn-del st-dlg-danger':'btn-g');
+      ov.innerHTML=`<form class="st-dlg${opts.wide?' st-dlg-wide':''}" role="dialog" aria-modal="true" aria-labelledby="${id}-t"${opts.message?` aria-describedby="${id}-m"`:''} tabindex="-1" novalidate>
+        <h2 class="st-dlg-title" id="${id}-t">${esc(opts.title||'Stagetimer')}</h2>
+        <div class="st-dlg-bd">
+          ${opts.message?`<p class="st-dlg-msg" id="${id}-m">${esc(opts.message)}</p>`:''}
+          ${opts.html||''}
+          ${fields.map(f=>_fieldHTML(f,id)).join('')}
+          <div class="st-dlg-formerr" role="alert" hidden></div>
+        </div>
+        <div class="st-dlg-ft">${actions.map((a,i)=>`<button type="${a.submit?'submit':'button'}" class="${btnCls(a.kind)}" data-i="${i}"${a.kind==='danger'?' data-danger="1"':''}>${esc(a.label)}</button>`).join('')}</div>
+      </form>`;
+      const panel=ov.firstElementChild;
+      const d={ov,panel,busy:false,cancelValue:opts.cancelValue!==undefined?opts.cancelValue:null,trigger};
+      const formErr=panel.querySelector('.st-dlg-formerr');
+      const fieldEl=n=>panel.querySelector(`[data-field="${CSS.escape(n)}"]`);
+      const inputOf=n=>fieldEl(n)?.querySelector('.st-dlg-in');
+      const values=()=>{const v={};fields.forEach(f=>{const el=inputOf(f.name);v[f.name]=el?(f.type==='password'?el.value:el.value.trim()):'';});return v;};
+      function setFieldError(n,msg){
+        const w=fieldEl(n);if(!w)return;
+        const e=w.querySelector('.st-dlg-err'),inp=w.querySelector('.st-dlg-in');
+        e.textContent=msg||'';e.hidden=!msg;
+        if(msg)inp.setAttribute('aria-invalid','true');else inp.removeAttribute('aria-invalid');
+      }
+      function setError(msg){formErr.textContent=msg||'';formErr.hidden=!msg;}
+      function setBusy(on,label){
+        d.busy=!!on;panel.setAttribute('aria-busy',on?'true':'false');
+        panel.querySelectorAll('button,input,select,textarea').forEach(el=>{el.disabled=!!on;});
+        const sb=panel.querySelector('button[type=submit]');
+        if(sb){if(on){sb.dataset.label=sb.textContent;sb.textContent=label||opts.busyLabel||'Working…';}else if(sb.dataset.label){sb.textContent=sb.dataset.label;}}
+      }
+      d.close=val=>{
+        const i=stack.indexOf(d);if(i<0)return;
+        stack.splice(i,1);ov.remove();
+        if(!stack.length)document.documentElement.classList.remove('st-dlg-open');
+        const t=d.trigger;
+        if(t&&t!==document.body&&document.contains(t)&&typeof t.focus==='function'){try{t.focus({preventScroll:true});}catch(_){}}
+        else if(top())(focusables(top())[0]||top().panel).focus();
+        resolve(val);
+      };
+      fields.forEach(f=>{const el=inputOf(f.name);if(el)el.addEventListener('input',()=>{setFieldError(f.name,'');setError('');});});
+      async function run(a){
+        if(d.busy)return;
+        if(!a.submit){d.close(a.value);return;}
+        // Field checks first, all of them, messages next to each field.
+        const v=values();let firstBad=null;
+        fields.forEach(f=>{
+          let msg='';
+          if(f.required&&!v[f.name])msg=f.requiredMsg||`${f.label||f.name} is required.`;
+          else if(f.validate)msg=f.validate(v[f.name],v)||'';
+          setFieldError(f.name,msg);if(msg&&!firstBad)firstBad=f.name;
+        });
+        if(firstBad){inputOf(firstBad)?.focus();return;}
+        setError('');
+        if(opts.onSubmit){
+          setBusy(true);
+          let r;
+          try{r=await opts.onSubmit(v,{setFieldError,setError,action:a.value});}
+          catch(e){setBusy(false);setError(e&&e.message?e.message:String(e));panel.querySelector('button[type=submit]')?.focus();return;}
+          setBusy(false);
+          if(r===false){const bad=fields.find(f=>!fieldEl(f.name)?.querySelector('.st-dlg-err').hidden);(bad?inputOf(bad.name):panel.querySelector('button[type=submit]'))?.focus();return;}
+          if(r!==undefined&&r!==true){d.close(r);return;}
+        }
+        d.close(fields.length?v:a.value);
+      }
+      panel.addEventListener('submit',e=>{e.preventDefault();const sb=panel.querySelector('button[type=submit]');run(actions[+(sb?.dataset.i||0)]);});
+      panel.querySelector('.st-dlg-ft').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.type==='submit')return;run(actions[+b.dataset.i]);});
+      if(opts.backdrop!==false&&!fields.length)ov.addEventListener('mousedown',e=>{if(e.target===ov&&!d.busy)d.close(d.cancelValue);});
+      stack.push(d);
+      document.documentElement.classList.add('st-dlg-open');
+      host().appendChild(ov);
+      _fitViewport();
+      let first=null;
+      if(opts.initial==='cancel')first=panel.querySelector('.st-dlg-ft button:not([type=submit])');
+      else if(typeof opts.initial==='string'&&opts.initial!=='first')first=panel.querySelector(opts.initial);
+      if(!first)first=panel.querySelector('.st-dlg-in')||panel.querySelector('.st-dlg-ft button[type=submit]')||focusables(d)[0];
+      (first||panel).focus({preventScroll:true});
+      if(first&&first.select&&first.type!=='date'&&first.type!=='time')try{first.select();}catch(_){}
+    });
+  }
+  const alert=(message,o={})=>open({...o,message,actions:[{label:o.okLabel||'OK',value:undefined,kind:'primary',submit:true}],cancelValue:undefined}).then(()=>undefined);
+  const confirm=(message,o={})=>open({...o,message,initial:o.initial||(o.danger?'cancel':null),
+    actions:[{label:o.cancelLabel||'Cancel',value:false,kind:'secondary'},{label:o.okLabel||'OK',value:true,kind:o.danger?'danger':'primary',submit:true}],cancelValue:false});
+  const prompt=(message,o={})=>open({...o,message,
+    fields:[{name:'value',label:o.label||'Value',type:o.type||'text',value:o.value||'',placeholder:o.placeholder,required:o.required!==false,requiredMsg:o.requiredMsg,validate:o.validate,maxlength:o.maxlength,autocomplete:o.autocomplete||'off'}],
+    actions:[{label:o.cancelLabel||'Cancel',value:null,kind:'secondary'},{label:o.okLabel||'OK',value:true,kind:'primary',submit:true}],cancelValue:null})
+    .then(v=>v&&typeof v==='object'?v.value:null);
+  const form=(o={})=>open({...o,actions:o.actions||[{label:o.cancelLabel||'Cancel',value:null,kind:'secondary'},{label:o.submitLabel||'Save',value:true,kind:o.danger?'danger':'primary',submit:true}],cancelValue:null});
+  const choice=(o={})=>open({...o,initial:o.initial||'first',
+    actions:[{label:o.cancelLabel||'Cancel',value:null,kind:'secondary'},...(o.choices||[]).map(c=>({label:c.label,value:c.value,kind:c.kind||'primary'}))],cancelValue:null});
+  return{open,alert,confirm,prompt,form,choice,isOpen:()=>stack.length>0,closeAll:()=>{while(stack.length)stack[stack.length-1].close(stack[stack.length-1].cancelValue);}};
+})();
+window.stDialog=stDialog;
+// For the few code paths that may run before / without the dialog (node test
+// harness, very early boot): the dialog when it exists, else the browser one.
+function _stAlert(msg,o){return window.stDialog?window.stDialog.alert(msg,o):(alert(msg),Promise.resolve());}
+
 // ══ RENDER TIMER PANEL
 function renderTP(){
   if(G.timerMode==='manual'){renderTPManual();renderTbar();return;}
