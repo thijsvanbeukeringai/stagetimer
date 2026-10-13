@@ -397,7 +397,19 @@ Op een gewone festivalwifi kunnen browsers niet rechtstreeks met elkaar praten. 
 - **Inloggen offline:** koppel een apparaat één keer online aan de hub. Daarna geeft de hub het apparaat lokaal toegang met een koppelcode. Stagetimer heeft geen account-check meer nodig tijdens de show.
 - **Beveiliging:** iedereen op dezelfde wifi zou anders cues kunnen sturen. Daarom: koppelcode per apparaat en rollen (operator of alleen lezen).
 
-### 5C. Echte iOS-app in de App Store (1–2 weken plus review, na 5A)
+### 5C. iPhone-versie van de bestaande iPad-app (1–2 weken plus review)
+**Uitgangspunt (13-10-2026):** er is al een Stagetimer iPad-app in het Apple Developer-account van Thijs. Die is gemaakt op een andere computer; de techniek en de broncode zijn nog onbekend.
+- **Stap 1, vaststellen:**
+  - Installeer de iPad-app via de Mac App Store (Apple-chip) en bekijk de pakketinhoud. Een map `public/` met `capacitor.config.json` betekent Capacitor.
+  - Of zoek het Xcode-project op de andere computer of op GitHub.
+  - Noteer de bundle-ID uit App Store Connect.
+- **Stap 2a, broncode gevonden:** zet iPhone aan als apparaatfamilie (universele app). Bij Capacitor werkt de mobiele layout uit fase 2 direct.
+- **Stap 2b, broncode niet gevonden:** bouw een nieuw Capacitor-project met **dezelfde bundle-ID** en publiceer het als update van de bestaande app, nu universeel (iPad + iPhone). Bestaande iPad-gebruikers krijgen een gewone update.
+  - Let op: van alleen-iPad naar universeel mag. Andersom kan niet.
+  - Controleer vooraf de signing-certificaten en provisioning profiles in het developer-account.
+- **Daarna geldt de onderstaande lijst** (native push, Bonjour, achtergrond) voor iPad en iPhone samen.
+
+#### Wat een echte app toevoegt
 - **Capacitor-wrapper** rond de bestaande app. De code wordt hergebruikt; een volledige herschrijving in Swift raad ik niet aan.
 - **Wat de echte app toevoegt:**
   - native push via APNs, betrouwbaarder dan web-push;
