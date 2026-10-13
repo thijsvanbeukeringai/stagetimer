@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#0b0b0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,6 +22,10 @@
      from /fonts so no request goes to Google (AVG) and the SW can cache them. -->
 <link href="/fonts/fonts.css" rel="stylesheet">
 <script>
+// Booth screen (public Stage View link): keep the zoom lock it always had, set
+// before first paint. Every other screen may be pinch-zoomed; the in-app Stage
+// View sets the same lock while it is open (_svZoomLock).
+(function(){try{if(new URLSearchParams(location.search).get('mode')==='stage'){var m=document.querySelector('meta[name=viewport]');if(m)m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');}}catch(e){}})();
 // EARLY PUBLIC FETCH - kick off the Supabase request immediately, in parallel with the
 // supabase-js download and the rest of the page parsing. By the time loadPublicView()
 // runs, the response is often already in. Cuts public-view first-paint by ~1-3 sec on mobile.
@@ -104,6 +108,15 @@ html.no-session #login{display:flex !important;}
   --text:#eeeef8;--sub:#7f7f99;--dim:rgba(255,255,255,.2);
   --green:#22c55e;--orange:#f97316;--red:#ef4444;--blue:#6366f1;
   --ff:'Inter',system-ui,sans-serif;--ffm:'JetBrains Mono',monospace;
+  /* Control-screen design tokens (BOUWPLAN 3.2). New names only: nothing on
+     Stage View reads them. Type scale, spacing, radius, button heights. */
+  --fs-2xs:11px;--fs-xs:12px;--fs-sm:13px;--fs-md:14px;--fs-lg:16px;--fs-xl:20px;
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;
+  --r-sm:6px;--r-md:8px;--r-lg:12px;--r-pill:999px;
+  --btn-h-sm:32px;--btn-h:36px;--btn-h-lg:44px;--touch:44px;
+  --sub2:#a6a6bd;            /* secondary text with more contrast than --sub */
+  --accent:#6366f1;--accent-txt:#c7d2fe;--accent-soft:rgba(99,102,241,.16);--accent-line:rgba(99,102,241,.5);
+  --focus:#a5b4fc;
 }
 html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent;user-select:none;}
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh;padding-bottom:env(safe-area-inset-bottom);}
@@ -149,7 +162,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .dd-sep{height:1px;background:var(--border);margin:4px 2px;}
 .dd-info{padding:8px 11px;border-radius:6px;}
 .dd-info-name{font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
-.dd-info-sub{font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:1px;}
+.dd-info-sub{font-size:11px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;margin-top:1px;}
 .dd-caret{margin-left:2px;opacity:.6;}
 .user-avatar{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a855f7);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;}
 
@@ -162,28 +175,28 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 #tp-photo-wrap.has-photo{display:block;}
 #tp-photo{width:100%;height:auto;display:block;}
 #modetog{display:flex;margin:9px 10px 0;border-radius:7px;background:var(--s3);border:1px solid var(--border);padding:2px;gap:2px;}
-.mdb{flex:1;padding:4px 6px;border-radius:5px;font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--sub);transition:all .15s;}
+.mdb{flex:1;padding:4px 6px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--sub);transition:all .15s;}
 .mdb.on{background:var(--s1);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.5);}
 #tinner{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 16px 8px;overflow:hidden;}
 #tinner.has-photo{justify-content:flex-start;padding-top:0;}
 /* Meta row above the artist name: stage · status · booth on a single line */
 #tp-meta{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
 .tp-meta-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,.18);flex-shrink:0;}
-#tp-stage{font-size:9px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--sub);margin:0;}
+#tp-stage{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--sub);margin:0;}
 #tp-sr{display:flex;align-items:center;gap:5px;margin:0;}
 #tp-dot{width:7px;height:7px;border-radius:50%;background:var(--dim);}
-#tp-st{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);}
+#tp-st{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);}
 #tp-artist{font-size:15px;font-weight:800;letter-spacing:-.3px;text-align:center;margin-bottom:2px;line-height:1.2;padding:0 4px;}
-#tp-genre{font-size:10px;color:var(--sub);margin-bottom:14px;}
-#tp-booth{font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;margin:0;display:none;}
+#tp-genre{font-size:11px;color:var(--sub);margin-bottom:14px;}
+#tp-booth{font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;margin:0;display:none;}
 #tp-cd{font-family:var(--ffm);font-size:52px;font-weight:700;line-height:1;letter-spacing:-.04em;text-align:center;transition:color .4s;margin-bottom:5px;font-variant-numeric:tabular-nums;}
-#tp-cdlbl{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);margin-bottom:14px;}
+#tp-cdlbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);margin-bottom:14px;}
 #tp-bw{width:100%;height:3px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;margin-bottom:14px;}
 #tp-bar{height:100%;border-radius:99px;transition:width .3s linear,background .4s;}
 #tp-next{width:100%;padding:9px 11px;background:var(--s2);border:1px solid var(--border);border-radius:8px;}
-#tp-nl{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:2px;}
+#tp-nl{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:2px;}
 #tp-na{font-size:12px;font-weight:600;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#tp-nt{font-family:var(--ffm);font-size:10px;color:var(--sub);margin-top:1px;}
+#tp-nt{font-family:var(--ffm);font-size:12px;color:var(--sub);margin-top:1px;}
 
 /* Transport */
 #tbar{flex-shrink:0;padding:10px 10px 12px;border-top:1px solid var(--border);display:none;}
@@ -196,11 +209,11 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .tb.go:hover{background:#16a34a;}
 .tb.pau{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.35);color:var(--orange);}
 .tb.stp{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--red);}
-#t-inf{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);font-family:var(--ffm);padding:0 2px;}
+#t-inf{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);font-family:var(--ffm);padding:0 2px;}
 /* Display mode bar - operator picks what the active stage's Stage View
    renders: live countdown, wall clock, count-up timer, or blank screen. */
 #display-mode-bar{flex-shrink:0;border-top:1px solid var(--border);padding:10px 12px 12px;background:var(--s2);}
-.dm-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.dm-label{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
 .dm-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .dm-btn{padding:8px 4px;border-radius:7px;border:1px solid var(--border2);background:var(--s3);color:var(--sub);font-family:var(--ff);font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;line-height:1.1;}
 .dm-btn:hover{background:var(--s4);color:var(--text);}
@@ -210,12 +223,12 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
    so the operator can see at a glance which items won't render on shared
    public links. */
 .scard.hidden-from-public{opacity:.55;}
-.scard.hidden-from-public::after{content:'🙈 Hidden';position:absolute;top:8px;right:8px;font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--sub);background:var(--s3);padding:2px 7px;border-radius:99px;border:1px solid var(--border2);}
+.scard.hidden-from-public::after{content:'🙈 Hidden';position:absolute;top:8px;right:8px;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--sub);background:var(--s3);padding:2px 7px;border-radius:99px;border:1px solid var(--border2);}
 
 /* Quick-adjust bar - operator can extend/shorten the live show without
    opening the drawer. Sits between the timer card and the cue panel. */
 #quick-adjust{flex-shrink:0;border-top:1px solid var(--border);padding:10px 12px 12px;background:var(--s1);}
-.qa-label{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.qa-label{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
 .qa-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .qa-btn{padding:10px 6px;border-radius:7px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-family:var(--ff);font-size:12px;font-weight:800;cursor:pointer;transition:all .12s;line-height:1;}
 .qa-btn:hover{transform:translateY(-1px);}
@@ -224,7 +237,7 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);background:var(--bg)
 .qa-minus:hover{background:rgba(220,38,38,.12);}
 .qa-plus {color:#15803D;border-color:rgba(22,163,74,.3);background:rgba(22,163,74,.06);}
 .qa-plus:hover{background:rgba(22,163,74,.12);}
-.qa-hint{font-size:10px;color:var(--sub);margin-top:6px;font-family:var(--ffm);}
+.qa-hint{font-size:11px;color:var(--sub);margin-top:6px;font-family:var(--ffm);}
 
 /* Blackout overlay - covers every public viewer screen (Stage View,
    Backstage, FOH) when the operator hits the kill switch. Operator
@@ -343,7 +356,7 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
 #stov-daylbl{font-family:var(--ffm);font-size:12px;font-weight:700;color:rgba(255,255,255,.75);white-space:nowrap;}
 #stov-daylbl.mixed{color:#c7d2fe;}
 /* FOH crew status: visible words next to the icon buttons */
-.foh-crew-stl{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.5);white-space:nowrap;}
+.foh-crew-stl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;}
 .foh-crew-stl.present{color:#86efac;}.foh-crew-stl.otw{color:#fcd34d;}.foh-crew-stl.unknown{color:#fca5a5;}
 .foh-nolive{padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;color:rgba(255,255,255,.78);}
 .foh-nolive strong{color:#fff;}
@@ -390,13 +403,16 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
   background:rgba(34,197,94,.18);color:#22c55e;border:1px solid rgba(34,197,94,.3);}
 .stov-arrived.no{background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.1);}
 
-/* Schedule row checkmark - small clickable dot the operator can flip. */
-.sc-arrived{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
-  background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.18);color:transparent;cursor:pointer;
-  flex-shrink:0;margin-right:2px;transition:all .12s ease;}
+/* Schedule card check-in toggle: icon + words ("Checked in" / "Not checked in"). */
+.sc-arrived{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px 0 5px;border-radius:999px;
+  background:transparent;border:1px solid var(--border2);color:var(--sub2);font-family:var(--ff);font-size:12px;font-weight:600;
+  cursor:pointer;flex-shrink:0;transition:all .12s ease;white-space:nowrap;}
+.sc-arrived-ic{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.3);color:#04130a;flex-shrink:0;}
 .sc-arrived:hover{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08);}
-.sc-arrived.on{background:#22c55e;border-color:#22c55e;color:#04130a;}
-.sc-arrived.on svg{width:11px;height:11px;}
+.sc-arrived.on{background:rgba(34,197,94,.14);border-color:rgba(34,197,94,.45);color:#86efac;}
+.sc-arrived.on .sc-arrived-ic{background:#22c55e;border-color:#22c55e;}
+.sc-arrived .sc-arrived-ic svg{width:11px;height:11px;}
 
 /* ─────────────────────────────────────────────────────────────────────
    ITEM-TYPE BADGE (broadcast rundown). Optional per-show colour-coded
@@ -424,7 +440,7 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
    ───────────────────────────────────────────────────────────────────── */
 #cue-panel{flex-shrink:0;border-top:1px solid var(--border);padding:12px 12px 14px;background:var(--s2);}
 #cue-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap;}
-.cue-title{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);flex-shrink:0;}
+.cue-title{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text);flex-shrink:0;}
 .cue-status{font-size:11px;color:var(--sub);font-family:var(--ffm);text-align:right;flex:1;min-width:0;}
 .cue-status strong{color:var(--text);font-weight:700;}
 .cue-blackout-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:7px;border:1px solid var(--border2);background:var(--s3);color:var(--text);font-family:var(--ff);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .15s;flex-shrink:0;}
@@ -475,13 +491,13 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
 #spanel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 #shdr{flex-shrink:0;display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--s1);}
 #shdr h2{font-size:13px;font-weight:700;white-space:nowrap;}
-.cpill{font-size:10px;font-weight:600;color:var(--sub);background:var(--s3);padding:2px 8px;border-radius:99px;white-space:nowrap;}
+.cpill{font-size:11px;font-weight:600;color:var(--sub);background:var(--s3);padding:2px 8px;border-radius:99px;white-space:nowrap;}
 #slist{flex:1;overflow-y:auto;padding:6px;}
 #slist::-webkit-scrollbar{width:3px;}
 #slist::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
 
 /* ── SHOW CARDS (FOH-style) ── */
-.sc-booth{font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0;text-align:center;}
+.sc-booth{font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;flex-shrink:0;text-align:center;}
 .scard{border-radius:9px;border:1px solid transparent;margin-bottom:4px;position:relative;overflow:hidden;background:var(--s1);cursor:pointer;transition:background .12s,border-color .12s;}
 .scard:hover{background:rgba(255,255,255,.025);border-color:var(--border);}
 .scard.now{background:rgba(99,102,241,.07);border-color:rgba(99,102,241,.22);}
@@ -493,7 +509,7 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
 .scard-name{flex:1;font-size:13px;font-weight:700;color:var(--text);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .scard-act{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s;}
 .scard:hover .scard-act{opacity:1;}
-.scard-note{padding:0 11px 6px;font-size:10px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scard-note{padding:0 11px 6px;font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .scard-sep{margin:0 11px 6px;height:1px;background:var(--border);}
 .scard-crew{padding:0 11px 7px;}
 .scard-fnotes{padding:0 11px 7px;display:flex;flex-direction:column;gap:3px;}
@@ -596,7 +612,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #foh-col-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:99px;}
 /* live card */
 .foh-now{padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.06);position:relative;overflow:hidden;}
-.foh-now-lbl{font-size:9px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.foh-now-lbl{font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .foh-now-dot{width:6px;height:6px;border-radius:50%;}
 .foh-now-row{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;}
 .foh-now-artist{font-size:clamp(22px,3vw,40px);font-weight:900;letter-spacing:-.5px;color:#fff;line-height:1.05;}
@@ -605,7 +621,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .foh-bar{height:100%;border-radius:99px;transition:width .4s linear;}
 .foh-empty{padding:28px;font-size:13px;color:rgba(255,255,255,.2);}
 /* schedule rows */
-.foh-up-hdr{padding:12px 28px 6px;font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.22);}
+.foh-up-hdr{padding:12px 28px 6px;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.5);}
 .foh-srow{display:flex;align-items:flex-start;gap:14px;padding:12px 28px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s;}
 .foh-srow:hover{background:rgba(255,255,255,.03);}
 .foh-srow.live{background:rgba(99,102,241,.06);border-left:2px solid rgba(99,102,241,.35);}
@@ -613,11 +629,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .foh-sr-m{flex:1;min-width:0;}
 .foh-sr-top{display:flex;align-items:center;gap:8px;}
 .foh-sr-a{font-size:15px;font-weight:700;color:rgba(255,255,255,.85);}
-.foh-booth-badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.04em;flex-shrink:0;}
+.foh-booth-badge{font-size:11px;font-weight:800;padding:2px 7px;border-radius:99px;letter-spacing:.04em;flex-shrink:0;}
 /* FOH notes */
 .foh-notes{margin-top:7px;display:flex;flex-direction:column;gap:4px;}
 .foh-note-item{display:flex;align-items:flex-start;gap:8px;padding:6px 10px;background:rgba(255,255,255,.06);border-radius:6px;border-left:3px solid rgba(255,230,0,.7);}
-.foh-note-time{font-family:var(--ffm);font-size:10px;font-weight:600;color:rgba(255,230,0,.9);flex-shrink:0;padding-top:1px;}
+.foh-note-time{font-family:var(--ffm);font-size:11px;font-weight:600;color:rgba(255,230,0,.9);flex-shrink:0;padding-top:1px;}
 .foh-note-txt{flex:1;font-size:12px;color:rgba(255,255,255,.92);line-height:1.4;font-weight:500;}
 .fohn-colors{display:flex;gap:6px;flex-wrap:wrap;}
 .fohn-color-swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s;}
@@ -627,8 +643,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .foh-add-note{display:flex;align-items:center;gap:5px;margin-top:6px;padding:4px 8px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.25);font-family:var(--ff);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;width:auto;}
 .foh-add-note:hover{border-color:rgba(255,230,0,.3);color:rgba(255,230,0,.6);}
 .foh-sr-act{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s;}
-.foh-srow:hover .foh-sr-act{opacity:1;}
-.frb{width:24px;height:24px;border-radius:5px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.35);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.foh-srow:hover .foh-sr-act,.foh-srow:focus-within .foh-sr-act{opacity:1;}
+@media (hover:none){.foh-sr-act{opacity:1;}}
+.frb{width:24px;height:24px;border-radius:5px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.65);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .frb:hover{background:rgba(255,255,255,.12);color:#fff;}
 .frb.d:hover{background:rgba(239,68,68,.18);color:#ef4444;}
 .foh-add{display:flex;align-items:center;gap:6px;padding:14px 28px;border-top:1px solid rgba(255,255,255,.04);background:transparent;border-left:none;border-right:none;border-bottom:none;color:rgba(255,255,255,.28);font-family:var(--ff);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;width:100%;}
@@ -647,7 +664,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 /* Crew - FOH */
 .foh-crew{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:3px;}
 .foh-crew-row{display:flex;align-items:center;gap:10px;padding:3px 0;}
-.foh-crew-role{font-size:10px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.28);width:46px;flex-shrink:0;}
+.foh-crew-role{font-size:11px;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.55);width:46px;flex-shrink:0;}
 .foh-crew-name{flex:1;font-size:13px;font-weight:600;color:rgba(255,255,255,.72);}
 .foh-crew-st{display:flex;gap:3px;}
 .csb{padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.3);transition:all .12s;}
@@ -674,13 +691,13 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .bs-row.bs-past{opacity:.25;}
 .bs-row-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;}
 .bs-row-left{flex:1;min-width:0;}
-.bs-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px;}
+.bs-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px;}
 .bs-badge-dot{width:6px;height:6px;border-radius:50%;}
 .bs-artist{font-size:clamp(18px,2.5vw,30px);font-weight:900;letter-spacing:-.5px;color:#fff;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bs-meta{font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;font-weight:500;}
 .bs-note-inline{margin-top:6px;font-size:11px;color:rgba(255,255,255,.4);padding:5px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.12);line-height:1.4;}
 .bs-row-right{flex-shrink:0;text-align:right;}
-.bs-cd-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:3px;}
+.bs-cd-lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:3px;}
 .bs-cd{font-family:var(--ffm);font-size:clamp(28px,4vw,46px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;transition:color .4s;}
 /* Progress bar */
 .bs-bar-wrap{width:100%;height:8px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;}
@@ -1209,80 +1226,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 
 /* ── RESPONSIVE ── */
 @media(max-width:700px){
-  /* Header: three clean rows
-     Row 1: [ ⬛ stagetimer wordmark ]                  [ HH:MM:SS ]
-     Row 2: [ stage select ............ ]  [ day dropdown ]
-     Row 3: [ + Add show ........................................ ]
-  */
-  #hdr{flex-wrap:wrap;height:auto;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;gap:8px;overflow-x:visible;align-items:center;}
-  /* Hide the old logo / project logo / sync dot - brand element replaces them */
-  #logo, #co-logo-main, #sync-dot, #hdr-vsep1{display:none!important;}
-  /* Brand: row 1 left */
-  #st-brand-dash{display:inline-flex;order:1;flex-shrink:0;}
-  /* Row 1 spacer pushes the clock to the right */
-  #hdr-spacer1{order:2;flex:1;}
-  /* Clock: row 1 right - same big tabular-nums treatment as the overlay views */
-  #clock-hdr{display:block!important;order:3;font-size:18px;font-weight:700;color:#fff;
-    font-family:var(--ffm);font-variant-numeric:tabular-nums;letter-spacing:.02em;
-    text-align:right;min-width:96px;}
-  /* Break to row 2 */
-  #mob-hdr-break{display:block;width:100%;height:0;order:4;}
-  /* Row 2: stage select fills, day dropdown right - heights matched (48px) */
-  #stage-sel{order:5;flex:1;min-width:0;font-size:15px;font-weight:700;
-    min-height:48px;height:48px;padding:0 32px 0 12px;border-radius:10px;}
-  #hdr-daywrap{order:6;overflow:visible;flex-shrink:0;display:flex;}
-  /* On mobile we swap the button-style dropdown for a native <select> -
-     matches the FOH/BS/TL day pickers exactly and has no overflow risk. */
-  #day-dd{display:none !important;}
-  .day-select-dash{display:block;min-height:48px;height:48px;padding:0 38px 0 14px;
-    font-size:15px;font-weight:700;border-radius:10px;color:#fff;font-family:var(--ff);
-    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
-    -webkit-appearance:none;appearance:none;cursor:pointer;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='rgba(255,255,255,0.6)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-    background-repeat:no-repeat;background-position:right 14px center;background-size:12px 8px;}
-  /* Hide everything else from header on mobile */
-  #mob-hdr-cd,#admin-dd,#user-dd,
-  #hdr-spacer2,#hdr-ov-btn,#hdr-bs-btn,#hdr-foh-btn,#hdr-sv-btn,#hdr-tl-btn,
-  .vsep{display:none!important;}
-  #logo-name{display:none;}
-  /* "+ Add show" in the header is redundant on mobile - the Schedule
-     panel below already has a "+ New show" button. Hide it here. */
-  #hdr-add-show-btn{display:none!important;}
-  #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
-  /* Bottom nav - fixed, polished, all-flat-icon */
-  #mob-nav{
-    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;
-    background:rgba(11,11,14,.92);backdrop-filter:saturate(1.4) blur(20px);
-    -webkit-backdrop-filter:saturate(1.4) blur(20px);
-    border-top:1px solid rgba(255,255,255,.06);
-    padding:8px 4px calc(8px + env(safe-area-inset-bottom));
-    justify-content:space-around;
-  }
-  .mob-nav-btn{
-    display:flex;flex-direction:column;align-items:center;gap:4px;
-    background:none;border:none;color:rgba(255,255,255,.45);
-    font-family:var(--ff);font-size:10px;font-weight:600;letter-spacing:.01em;
-    cursor:pointer;padding:6px 4px;border-radius:10px;
-    flex:1;min-width:0;-webkit-tap-highlight-color:transparent;
-    transition:color .15s,background .15s;
-  }
-  .mob-nav-btn svg{width:22px;height:22px;display:block;flex-shrink:0;}
-  .mob-nav-btn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-  .mob-nav-btn:active{background:rgba(255,255,255,.05);color:#fff;}
-  .mob-nav-btn.active{color:#fff;}
-  .mob-nav-btn.active svg{color:#a5b4fc;}
-  /* Add bottom padding to body content so it's not hidden behind nav */
-  #body{padding-bottom:60px;}
-
-  /* Body: vertical stack on mobile */
-  #body{flex-direction:column;}
-  #tpanel{width:100%!important;border-right:none;border-bottom:1px solid var(--border);overflow:visible;}
-  #modetog{margin-bottom:8px;}
-  #tpanel::before{display:none;}
-  #tinner{flex:none;}
-  #mob-timer-fab{display:none!important;}
-  #mob-sheet-ov{display:none!important;}
-  #spanel{width:100%;flex:1;}
+  /* Header, bottom nav and body on mobile: see the CONTROL SCREEN block. */
 
   /* Drawer full-width + safe-area insets so iOS status bar doesn't
      overlap "New show" title and home indicator doesn't cover Save/Cancel */
@@ -1423,8 +1367,8 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 
 @media(max-width:400px){
   #hdr{gap:4px;}
-  .hbtn{padding:5px 8px;font-size:10px;}
-  .daybtn{padding:3px 7px;font-size:10px;}
+  .hbtn{padding:5px 8px;font-size:11px;}
+  .daybtn{padding:3px 7px;font-size:11px;}
 }
 @media(max-width:768px){
   /* Touch targets follow Apple HIG: minimum 44x44px hit area. Production
@@ -1469,6 +1413,340 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   select.fi,select.admin-fi{padding-right:36px;background-position:right 12px center;}
   /* Bigger close × on modals / drawers */
   .modal-close,.drawer-close,#drclose,#admin-close{min-width:44px;min-height:44px;font-size:24px;}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTROL SCREEN (operator, dark) - header, timer panel, schedule.
+   BOUWPLAN fase 2 + 3.1/3.2. Everything here is scoped to #app (and the
+   operator drop-downs / drawer); nothing may match Stage View (#sv,
+   #cue-overlay, #blackout-overlay) - tests/booth guards that pixel-exact.
+   Sizes come from the tokens in :root (--fs-*, --sp-*, --r-*, --btn-h*).
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Focus: visible keyboard focus everywhere except the booth screen ── */
+#dash,#admin{--focus:#1E40AF;}
+:focus-visible:not(#sv *){outline:2px solid var(--focus);outline-offset:2px;}
+.mob-only{display:none;}
+.dd-head{padding:8px 11px 4px;font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--sub2);}
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;}
+
+/* ── HEADER: row 1 = brand · project › stage › day · save … settings · account
+                row 2 = views … clock ── */
+#hdr{height:auto;flex-direction:column;align-items:stretch;gap:0;padding:0;}
+.hdr-row{display:flex;align-items:center;gap:10px;padding:0 14px;min-width:0;}
+#hdr-row1{min-height:56px;}
+#hdr-row2{min-height:44px;border-top:1px solid var(--border);}
+#hdr .dd{display:flex;align-items:center;}
+.hdr-ctx{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px;min-width:0;}
+.hdr-k{font-size:var(--fs-2xs);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sub2);line-height:1;}
+#hdr-proj{flex:0 3 auto;max-width:280px;min-width:56px;}
+#hdr-proj-name{max-width:100%;font-size:var(--fs-md);font-weight:800;letter-spacing:-.2px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;}
+.hdr-crumb{align-self:flex-end;margin-bottom:12px;color:var(--sub);font-size:16px;line-height:1;flex-shrink:0;}
+#hdr-stagewrap{flex:0 1 auto;min-width:130px;}
+#hdr .hsel{height:var(--btn-h-sm);font-size:var(--fs-sm);padding:0 28px 0 10px;max-width:260px;min-width:130px;width:100%;}
+#hdr .hsel:focus{border-color:var(--accent-line);}
+#hdr-daywrap{flex:0 0 auto;}
+#day-dd > .hbtn{height:var(--btn-h-sm);font-size:var(--fs-sm);color:var(--text);}
+#hdr-views{display:flex;align-items:center;gap:6px;min-height:44px;}
+#hdr .hbtn{height:var(--btn-h-sm);font-size:var(--fs-xs);}
+#hdr .hbtn.hv{color:var(--text);background:var(--s2);}
+#hdr .hbtn.hv svg{color:var(--sub2);flex-shrink:0;}
+#hdr .hbtn.hv:hover svg{color:var(--text);}
+#admin-dd > .hbtn{color:var(--text);}
+#clock-hdr{font-size:var(--fs-md);font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+.dd-info-sub{font-size:var(--fs-2xs);}
+.dd-item{font-size:var(--fs-sm);}
+
+/* Save status pill: words + dot, never colour alone. */
+.save-status{display:inline-flex;align-items:center;gap:7px;height:var(--btn-h-sm);padding:0 12px;border-radius:var(--r-pill);
+  border:1px solid var(--border2);background:var(--s2);color:var(--text);font-family:var(--ff);font-size:var(--fs-xs);font-weight:700;
+  white-space:nowrap;cursor:pointer;}
+.save-status #sync-dot{width:8px;height:8px;}
+.save-status.is-saved{color:#bbf7d0;}
+.save-status.is-saving{color:#fed7aa;border-color:rgba(249,115,22,.45);}
+.save-status.is-saving #sync-dot{animation:lp 1.2s ease-in-out infinite;}
+.save-status.is-unsaved{color:#fecaca;border-color:rgba(239,68,68,.65);background:rgba(239,68,68,.14);}
+#save-menu{left:0;right:auto;min-width:260px;max-width:min(340px,calc(100vw - 24px));}
+#save-menu .dd-info-name{max-width:none;white-space:normal;}
+.save-detail{margin-top:4px;font-size:var(--fs-xs);line-height:1.45;color:var(--sub2);white-space:normal;}
+
+/* ── TIMER PANEL ── */
+#tpanel{width:340px;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;}
+#tpanel::-webkit-scrollbar{width:4px;}
+#tpanel::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px;}
+#tinner{flex:1 0 auto;overflow:visible;padding:20px 16px 14px;}
+#tp-meta{gap:8px;margin-bottom:10px;}
+#tp-stage,#tp-st{font-size:var(--fs-2xs);}
+#tp-stage{color:var(--sub2);letter-spacing:.14em;}
+#tp-booth{font-size:var(--fs-xs);font-weight:800;padding:3px 10px;letter-spacing:.04em;border:1px solid currentColor;}
+#tp-artist{font-size:19px;line-height:1.2;margin-bottom:10px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+#tp-genre{display:none;}
+#tp-cdlbl{font-size:var(--fs-2xs);font-weight:700;letter-spacing:.1em;margin-bottom:12px;}
+#tp-nl{font-size:var(--fs-2xs);color:var(--sub2);}
+#tp-na{font-size:var(--fs-md);color:rgba(255,255,255,.8);}
+#tp-nt{font-size:var(--fs-xs);}
+#ctrl-toggle{display:none;}
+#tp-controls{flex-shrink:0;}
+#tpanel .tp-group{border-top:1px solid var(--border);padding:12px 12px 14px;background:var(--s2);}
+#tpanel .tp-group-h{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--sub2);margin-bottom:8px;}
+#tp-grp-timer{background:var(--s1)!important;}
+#modetog{margin:0;}
+.mdb{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:var(--btn-h-sm);font-size:var(--fs-2xs);letter-spacing:.06em;}
+.mdb.on{background:var(--accent);color:#fff;box-shadow:none;}
+/* One selected style on the control screen: accent fill + white text
+   (mode toggle, display mode, day menu). */
+#hdr .dd-item.on,#hdr .dd-item.on:hover{background:var(--accent);color:#fff;}
+#tbar{padding:10px 0 0;border-top:none;}
+.tb{height:var(--btn-h);font-size:var(--fs-sm);}
+#t-inf{font-size:var(--fs-2xs);}
+.dm-btn{min-height:var(--btn-h);font-size:var(--fs-xs);}
+.dm-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.qa-btn{min-height:var(--btn-h);font-size:var(--fs-sm);}
+.qa-minus{color:#fca5a5;border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08);}
+.qa-plus{color:#86efac;border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08);}
+.qa-hint{font-size:var(--fs-2xs);color:var(--sub2);}
+#cue-hdr{flex-wrap:wrap;}
+#cue-hdr .cue-title{margin-bottom:0;flex:1;min-width:0;}
+.cue-target{margin-left:4px;font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--accent-txt);}
+#cue-hdr .cue-status{flex-basis:100%;order:3;text-align:left;font-size:var(--fs-xs);}
+/* Presets on the dark operator panel: light text so the label is legible
+   (the old dark-green/dark-red text was made for a light background).
+   Scoped to #cue-presets: the .cue-* classes also colour the Stage View banner. */
+#cue-presets .cue-btn{min-height:var(--btn-h);font-size:var(--fs-xs);}
+#cue-presets .cue-green {color:#86efac;}
+#cue-presets .cue-amber {color:#fcd34d;}
+#cue-presets .cue-red   {color:#fca5a5;}
+#cue-presets .cue-blue  {color:#93c5fd;}
+#cue-presets .cue-purple{color:#c4b5fd;}
+#cue-send{background:var(--accent);border-color:var(--accent);}
+#cue-input,#cue-send,#cue-clear{min-height:var(--btn-h);}
+
+/* ── SCHEDULE ── */
+#shdr h2{font-size:var(--fs-lg);}
+.cpill{font-size:var(--fs-2xs);}
+#slist{padding:8px;}
+.scard{border:1px solid var(--border);border-radius:10px;margin-bottom:6px;}
+.scard-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"time name act" "time meta act";
+  align-items:start;column-gap:12px;row-gap:5px;padding:10px 12px 8px;}
+.scard-time{grid-area:time;font-size:var(--fs-xs);color:var(--sub2);padding-top:2px;}
+.scard-time-sep{color:var(--sub);}
+.scard-name{grid-area:name;font-size:var(--fs-md);white-space:normal;overflow-wrap:anywhere;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.scard-meta{grid-area:meta;display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0;}
+.scard-meta:empty{display:none;}
+.scard-act{grid-area:act;opacity:.7;align-self:start;}
+.scard:hover .scard-act,.scard:focus-within .scard-act{opacity:1;}
+.sc-booth{font-size:var(--fs-2xs);font-weight:800;padding:2px 8px;letter-spacing:.02em;}
+.scard .it-badge{font-size:var(--fs-2xs);}
+.sc-status{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-2xs);font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:var(--r-pill);border:1px solid var(--border2);color:var(--sub2);line-height:1.35;}
+.sc-status.st-now{background:var(--accent);border-color:var(--accent);color:#fff;}
+.sc-status.st-cued{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-txt);}
+.sc-status.st-next{border-color:rgba(165,180,252,.5);color:var(--accent-txt);}
+.sc-status.st-cancelled{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.5);color:#fca5a5;}
+.sc-status.st-hidden{border-style:dashed;}
+.scard.state-now{background:rgba(99,102,241,.1);border-color:var(--accent-line);box-shadow:inset 3px 0 0 var(--accent);}
+.scard.state-cued{box-shadow:inset 3px 0 0 var(--accent);}
+.scard.state-next{border-color:rgba(165,180,252,.28);}
+/* Past shows stay readable: muted, not faded to 30%. */
+.scard.past{opacity:1;background:transparent;}
+.scard.past .scard-name{color:var(--sub2);}
+.scard.past .scard-time{color:var(--sub);}
+.scard.cancelled .scard-name{text-decoration:line-through;color:var(--sub2);}
+.scard.hidden-from-public{opacity:1;border-style:dashed;}
+.scard.hidden-from-public::after{content:none;}
+.rb{width:30px;height:30px;border-radius:var(--r-sm);color:var(--sub2);}
+.scard-note{padding:0 12px 8px;font-size:var(--fs-xs);color:var(--sub2);line-height:1.45;white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.scard-note-k{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);margin-right:4px;}
+.scard-sep{margin:0 12px 8px;}
+.scard-crew{padding:0 12px 8px;}
+.scard .foh-crew{margin:0;padding:0;border:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:2px 18px;}
+.scard .foh-crew-row{gap:8px;padding:2px 0;min-width:0;}
+.scard .foh-crew-role{width:46px;font-size:var(--fs-2xs);text-transform:uppercase;color:var(--sub2);}
+.scard .foh-crew-name{font-size:var(--fs-sm);color:var(--text);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scard .csb{min-width:30px;height:26px;padding:0 6px;font-size:var(--fs-xs);color:rgba(255,255,255,.55);}
+.scard-fnotes{padding:0 12px 8px;}
+.scard .foh-note-time{font-size:var(--fs-2xs);}
+.scard .foh-note-txt{font-size:var(--fs-xs);}
+.scard .foh-note-del{color:var(--sub2);}
+.scard-ft{flex-wrap:wrap;gap:8px;padding:0 12px 10px;}
+.scard .foh-add-note{margin:0;height:28px;padding:0 10px;font-size:var(--fs-xs);color:var(--sub2);border-color:var(--border2);}
+.scard-cd{font-size:var(--fs-xs);}
+
+/* ── Buttons: primary / secondary / danger read the same everywhere ── */
+/* (the <=768px block keeps its larger 48px / 14px sizes) */
+@media (min-width:769px){
+  .btn-p,.btn-g{min-height:var(--btn-h-sm);font-size:var(--fs-xs);}
+}
+.btn-g{color:var(--text);}
+
+/* ── One-off timer cards (dashboard): actions in the flow, never on top of
+   the status / name, and visible without hover. ── */
+#ot-grid .proj-card-body{display:flex;flex-direction:column;}
+#ot-grid .proj-card-name{overflow-wrap:anywhere;}
+#ot-grid .proj-card-actions{position:static;order:10;opacity:1;pointer-events:auto;margin-top:14px;gap:6px;}
+.ot-card-status{font-size:var(--fs-2xs);font-weight:800;letter-spacing:.1em;margin-bottom:6px;text-transform:uppercase;}
+
+/* ── Touch: comfortable targets (44px) on coarse pointers ── */
+@media (hover:none){
+  .scard-act{opacity:1;}
+}
+@media (pointer:coarse){
+  #app .hbtn,.save-status,#app .hsel,.btn-p,.btn-g{min-height:var(--touch);}
+  .mdb,.tb,.dm-btn,.qa-btn,#cue-presets .cue-btn,#cue-send,#cue-clear,#cue-input,.cue-blackout-btn{min-height:var(--touch);}
+  .rb{width:var(--touch);height:var(--touch);}
+  .sc-arrived,.scard .foh-add-note{min-height:var(--touch);}
+  .scard .csb{min-width:var(--touch);height:var(--touch);}
+  .scard .foh-note-del{width:var(--touch);height:var(--touch);}
+  #ctrl-toggle{min-height:var(--touch);}
+  #ot-grid .proj-card-btn{min-height:var(--touch);}
+}
+
+/* ── Reduced motion: no pulses / blinks / slides on the operator side.
+   Deliberately NOT applied to Stage View, the cue banner or blackout. ── */
+@media (prefers-reduced-motion:reduce){
+  #app *,#app *::before,#app *::after,#drawer,#dov,#dash *,#admin *,#foh *,#bs *,.ot-modal-overlay,.ot-modal{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
+/* ── Tablet (701-1100): compact header, nothing falls off-screen ── */
+@media (max-width:1100px){
+  #hdr #logo,#hdr-vsep1{display:none;}
+  #st-brand-dash{display:inline-flex;padding:5px;}
+  #st-brand-dash .st-brand-mark{display:none;}
+  .hdr-crumb{display:none;}
+  #hdr{column-gap:8px;}
+  #hdr-proj{max-width:200px;}
+  #hdr .hsel{max-width:200px;}
+  #day-dd > .hbtn > svg:first-child{display:none;}
+  #admin-dd > .hbtn .hbtn-lbl,#admin-dd > .hbtn .dd-caret{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  #tpanel{width:300px;}
+}
+/* Very short screens beside the timer (landscape phone, 1024x600): one header row. */
+@media (min-width:701px) and (max-height:520px){
+  .hdr-k,#user-dd{display:none!important;}
+  #hdr{flex-direction:row;}
+  #hdr-row1{flex:1 1 auto;min-height:52px;padding-right:6px;}
+  #hdr-row2{flex:0 0 auto;min-height:0;border-top:none;padding-left:0;}
+  #hdr-views{min-height:0;gap:4px;}
+  #hdr .hbtn.hv{padding:0 9px;}
+  #hdr .hbtn.hv .hbtn-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  #hdr-proj{max-width:140px;}
+  #hdr-spacer1{display:none;}
+  #tinner{padding-top:12px;}
+}
+
+/* ── MOBILE (≤700): compact sticky timer on top, schedule always in view,
+   extra controls fold away, one scroll container, safe areas. ── */
+@media (max-width:700px){
+  #app{height:100vh;height:100dvh;padding-bottom:0;}
+  /* Header: row 1 = brand · project · save · clock · menu; row 2 = stage + day */
+  #hdr{flex-direction:row;flex-wrap:wrap;padding:calc(env(safe-area-inset-top) + 8px) max(12px,env(safe-area-inset-right)) 8px max(12px,env(safe-area-inset-left));
+    gap:8px;align-items:center;}
+  .hdr-row{display:contents;}
+  #logo,#co-logo-main,#hdr-vsep1,.vsep,.hdr-crumb,.hdr-k,#user-dd,#hdr-views,#hdr-spacer1,#hdr-spacer2,#mob-hdr-cd,#hdr-add-show-btn{display:none!important;}
+  #st-brand-dash{display:inline-flex;order:1;flex-shrink:0;padding:5px;}
+  #st-brand-dash .st-brand-mark{display:none;}
+  #hdr-proj{order:2;flex:1 1 0;max-width:none;min-width:0;}
+  #hdr-proj-name{font-size:var(--fs-sm);white-space:normal;overflow-wrap:anywhere;line-height:1.25;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  #save-dd{order:3;flex-shrink:0;}
+  #save-menu{left:auto;right:0;}
+  #clock-hdr{display:block!important;order:4;flex-shrink:0;font-size:var(--fs-lg);font-weight:700;color:#fff;min-width:0;text-align:right;}
+  #admin-dd{order:5;flex-shrink:0;}
+  #admin-dd > .hbtn{width:var(--touch);height:var(--touch);min-height:var(--touch);padding:0;justify-content:center;}
+  #admin-dd > .hbtn svg:first-child{width:18px;height:18px;}
+  #admin-dd > .hbtn .hbtn-lbl,#admin-dd > .hbtn .dd-caret{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  #admin-dd .dd-menu{max-height:calc(100dvh - 120px);}
+  .mob-only{display:flex;}
+  .dd-sep.mob-only,.dd-head.mob-only{display:block;}
+  #mob-hdr-break{display:block;flex-basis:100%;width:100%;height:0;order:6;}
+  #hdr-stagewrap{order:7;flex:1.2 1 0;min-width:0;}
+  #hdr-daywrap{order:8;flex:1 1 0;min-width:0;}
+  #hdr .hsel,#stage-sel{max-width:none;min-width:0;width:100%;min-height:var(--touch);height:var(--touch);font-size:16px;font-weight:700;padding:0 32px 0 12px;border-radius:10px;}
+  #day-dd{display:none!important;}
+  .day-select-dash{display:block;width:100%;min-height:var(--touch);height:var(--touch);padding:0 34px 0 12px;
+    font-size:16px;font-weight:700;border-radius:10px;color:#fff;font-family:var(--ff);
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);-webkit-appearance:none;appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='rgba(255,255,255,0.6)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;text-overflow:ellipsis;}
+  #tp-photo-wrap,#tp-photo-wrap.has-photo{display:none!important;}
+
+  /* Bottom navigation */
+  #mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:150;
+    background:rgba(11,11,14,.94);backdrop-filter:saturate(1.4) blur(20px);-webkit-backdrop-filter:saturate(1.4) blur(20px);
+    border-top:1px solid rgba(255,255,255,.08);
+    padding:4px max(4px,env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(4px,env(safe-area-inset-left));justify-content:space-around;}
+  .mob-nav-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;
+    background:none;border:none;color:rgba(255,255,255,.7);font-family:var(--ff);font-size:var(--fs-2xs);font-weight:600;
+    cursor:pointer;padding:4px 2px;border-radius:10px;flex:1;min-width:0;-webkit-tap-highlight-color:transparent;}
+  .mob-nav-btn svg{width:22px;height:22px;display:block;flex-shrink:0;}
+  .mob-nav-btn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .mob-nav-btn:active{background:rgba(255,255,255,.06);color:#fff;}
+  .mob-nav-btn.active{color:#fff;}
+  .mob-nav-btn.active svg{color:#a5b4fc;}
+  #drawer.open ~ #mob-nav,body.drawer-open #mob-nav{display:none!important;}
+
+  /* One scroll container: the whole body. Nested scroll areas are what made
+     the schedule end up 0px high. */
+  #body{display:flex;flex-direction:column;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+    padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+  #body > *{flex-shrink:0;}
+  #tpanel{display:contents;}
+  #tpanel > *{flex-shrink:0;}
+  #mob-timer-fab,#mob-sheet-ov{display:none!important;}
+
+  /* Compact timer, sticky at the top of the scroll area */
+  #tinner{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"meta meta" "artist cd" "artist lbl" "bar bar" "next next";
+    align-items:center;column-gap:12px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));
+    background:var(--s1);border-bottom:1px solid var(--border);box-shadow:0 8px 18px rgba(0,0,0,.4);}
+  #tp-meta{grid-area:meta;justify-content:flex-start;margin-bottom:6px;gap:7px;}
+  #tp-artist{grid-area:artist;text-align:left;font-size:17px;margin:0;-webkit-line-clamp:2;padding:0;}
+  #tp-cd{grid-area:cd;font-size:40px;margin:0;text-align:right;}
+  #tp-cdlbl{grid-area:lbl;margin:2px 0 0;text-align:right;}
+  #tp-bw{grid-area:bar;margin:8px 0 8px;}
+  #tp-next{grid-area:next;display:flex;align-items:baseline;gap:8px;padding:6px 10px;}
+  #tp-nl{margin:0;flex-shrink:0;}
+  #tp-na{flex:1;min-width:0;}
+  #tp-nt{margin:0;flex-shrink:0;}
+
+  /* Fold-away controls */
+  #ctrl-toggle{display:flex;align-items:center;gap:10px;width:100%;min-height:var(--touch);padding:8px max(14px,env(safe-area-inset-right)) 8px max(14px,env(safe-area-inset-left));
+    background:var(--s2);border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--ff);text-align:left;cursor:pointer;}
+  .ctrl-toggle-lbl{font-size:var(--fs-xs);font-weight:800;letter-spacing:.1em;text-transform:uppercase;flex-shrink:0;}
+  .ctrl-summary{flex:1;min-width:0;font-size:var(--fs-xs);color:var(--sub2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ctrl-summary.blackout{color:#fca5a5;font-weight:700;}
+  .ctrl-chev{flex-shrink:0;color:var(--sub2);transition:transform .15s;}
+  #app.ctrl-open .ctrl-chev{transform:rotate(180deg);}
+  #app:not(.ctrl-open) #quick-adjust,#app:not(.ctrl-open) #display-mode-bar,#app:not(.ctrl-open) #cue-panel,
+  #app:not(.ctrl-open) #modetog,#app:not(.ctrl-open) #tp-grp-timer-h{display:none!important;}
+  #app:not(.ctrl-open) #tp-grp-timer{padding:0;border:0;}
+  #app:not(.ctrl-open) #tbar.vis{padding:10px 14px;border-bottom:1px solid var(--border);}
+  #tpanel .tp-group{padding:12px max(14px,env(safe-area-inset-right)) 14px max(14px,env(safe-area-inset-left));}
+  #cue-presets{grid-template-columns:repeat(3,1fr);}
+  #cue-input{font-size:16px;}
+
+  /* Schedule: part of the page scroll */
+  #spanel{flex:none;overflow:visible;width:100%;}
+  #shdr{padding:10px 12px;}
+  #slist{flex:none;overflow:visible;padding:8px 8px 16px;}
+}
+@media (max-width:480px){
+  .scard-top{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"time act" "name act" "meta meta";}
+  #cue-presets{grid-template-columns:repeat(2,1fr);}
+  .scard .foh-crew{grid-template-columns:1fr;}
+}
+@media (max-width:360px){
+  #clock-hdr{font-size:var(--fs-sm)!important;}
+  .save-status{padding:0 9px;}
+  #tp-cd{font-size:34px;}
+}
+/* Small landscape phones in the mobile layout: the timer scrolls away so
+   the schedule keeps room. */
+@media (max-width:700px) and (max-height:500px){
+  #tinner{position:static;box-shadow:none;}
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2394,15 +2672,15 @@ button.booth-opt{font-family:inherit;min-width:32px;}
 #drawer :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
 /* Cue panel / manual timer (operator side only, never Stage View) */
 #cue-hdr #cue-status{order:3;flex:1 1 100%;text-align:left;line-height:1.45;}
-.st-cue-target{font-size:11px;color:var(--sub);margin:-2px 0 8px;line-height:1.4;}
+.st-cue-target{font-size:11px;color:var(--sub2);margin:-2px 0 8px;line-height:1.4;}
 .st-cue-target strong{color:var(--text);}
 .st-bo-status{font-size:11.5px;font-weight:700;line-height:1.4;margin:0 0 8px;padding:7px 10px;border-radius:7px;
   background:rgba(220,38,38,.14);border:1px solid rgba(220,38,38,.45);color:#fca5a5;}
 .cue-btn.st-cue-on{box-shadow:0 0 0 2px #fff inset;filter:brightness(1.35);}
 .cue-btn.st-cue-on::before{content:"● ";}
 #cue-clear:disabled{opacity:.45;cursor:default;}
-.st-thelp{font-size:10.5px;color:var(--sub);line-height:1.4;margin-top:6px;padding:0 2px;}
-.st-cued{font-size:10px;font-weight:800;color:#86efac;letter-spacing:.04em;}
+.st-thelp{font-size:11px;color:var(--sub2);line-height:1.4;margin-top:6px;padding:0 2px;}
+.st-cued{font-size:11px;font-weight:800;color:#86efac;letter-spacing:.04em;}
 #cue-panel :focus-visible,#tbar :focus-visible,.scard :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
 /* Back office forms (light theme): field errors and save status */
 .st-ws-err{font-size:12px;font-weight:600;color:#B91C1C;margin-top:6px;line-height:1.4;}
@@ -4155,7 +4433,7 @@ function renderTbar(){
 
 <!-- Mobile timer sheet overlay + FAB -->
 <div id="mob-sheet-ov" onclick="closeMobTimer()"></div>
-<button id="mob-timer-fab" onclick="toggleMobTimer()" title="Timer">⏱</button>
+<button id="mob-timer-fab" onclick="toggleMobTimer()" title="Timer" aria-label="Timer">⏱</button>
 
 <!-- LOADER -->
 <div id="loader" style="position:fixed;inset:0;z-index:999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;">
@@ -4176,75 +4454,111 @@ function renderTbar(){
 <!-- ══ APP ══ -->
 <div id="app">
   <div id="hdr">
-    <!-- Row 1 (mobile): brand left, clock right; (desktop): unchanged after brand -->
+    <!-- Order on every screen size: project > stage > day > view.
+         Desktop/tablet row 1: brand, project, stage, day, save status ... settings, account.
+         Desktop/tablet row 2: views ... clock. Mobile: see the RESPONSIVE block. -->
+    <div class="hdr-row" id="hdr-row1">
     <img class="co-logo" id="co-logo-main" alt="logo">
-    <a class="st-brand" id="st-brand-dash" href="#" onclick="goToDash();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
-    <div id="logo" style="cursor:pointer;" onclick="goToDash()" title="Back to dashboard"><img id="logo-icon" src="stagetimer-logo.png" alt="Stagetimer"></div>
-    <div id="sync-dot" title="Sync status"></div>
+    <a class="st-brand" id="st-brand-dash" href="#" onclick="goToDash();return false;" aria-label="Stagetimer: all projects"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
+    <div id="logo" style="cursor:pointer;" onclick="goToDash()" title="Back to all projects"><img id="logo-icon" src="stagetimer-logo.png" alt="Stagetimer"></div>
     <div class="vsep" id="hdr-vsep1"></div>
-    <div id="hdr-daywrap" style="display:flex;align-items:center;">
+    <div class="hdr-ctx" id="hdr-proj">
+      <span class="hdr-k">Project</span>
+      <span class="hdr-v" id="hdr-proj-name">-</span>
+    </div>
+    <span class="hdr-crumb" aria-hidden="true">›</span>
+    <label class="hdr-ctx" id="hdr-stagewrap">
+      <span class="hdr-k">Stage</span>
+      <select id="stage-sel" class="hsel" aria-label="Stage"></select>
+    </label>
+    <span class="hdr-crumb" aria-hidden="true">›</span>
+    <div class="hdr-ctx" id="hdr-daywrap">
+      <span class="hdr-k">Day</span>
       <div class="dd" id="day-dd">
-        <button class="hbtn" onclick="toggleDD('day-dd')" title="Pick day">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <button class="hbtn" onclick="toggleDD('day-dd')" title="Pick day" aria-haspopup="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span id="day-dd-label" class="hbtn-lbl">-</span>
-          <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         </button>
         <div class="dd-menu" id="day-dd-menu" style="min-width:240px;max-width:calc(100vw - 24px);"></div>
       </div>
       <!-- Mobile: native <select> mirrors the dropdown above. CSS hides one
            or the other per viewport so styling stays consistent with FOH/BS. -->
-      <select id="day-sel-mobile" class="day-select-dash" aria-label="Pick day"></select>
+      <select id="day-sel-mobile" class="day-select-dash" aria-label="Day"></select>
       <div id="day-tabs" style="display:none;"></div>
     </div>
+    <!-- Save status: always visible (also on mobile). Driven by the
+         st:savestate event; tap/click shows the reason. #sync-dot is kept:
+         setSaveState() and tests still address it. -->
+    <div class="dd" id="save-dd">
+      <button type="button" id="save-status" class="save-status is-saved" onclick="toggleDD('save-dd')" aria-haspopup="true" aria-describedby="save-detail">
+        <span id="sync-dot" class="ok" title="Sync status" aria-hidden="true"></span>
+        <span id="save-status-txt">Saved</span>
+      </button>
+      <div class="dd-menu" id="save-menu" role="status">
+        <div class="dd-info"><div class="dd-info-name" id="save-detail-title">All changes saved</div><div class="save-detail" id="save-detail">Everything on this screen is stored on the server.</div></div>
+      </div>
+    </div>
     <div style="flex:1;" id="hdr-spacer1"></div>
-    <div id="clock-hdr"></div>
-    <!-- Break to row 2 on mobile -->
-    <div id="mob-hdr-break"></div>
-    <!-- Row 2 (mobile): stage selector, countdown, action buttons -->
-    <select id="stage-sel" class="hsel"></select>
-    <div id="mob-hdr-cd"></div>
-    <div style="flex:1;" id="hdr-spacer2"></div>
-    <button class="hbtn gr" onclick="openBS()" id="hdr-bs-btn">🎭 <span class="hbtn-lbl">Backstage</span></button>
-    <button class="hbtn ac" onclick="openFOH()" id="hdr-foh-btn">📺 <span class="hbtn-lbl">FOH</span></button>
-    <button class="hbtn" onclick="openSV()" id="hdr-sv-btn">⛶ <span class="hbtn-lbl">Stage View</span></button>
-    <button class="hbtn" onclick="openTL()" id="hdr-tl-btn">▦ <span class="hbtn-lbl">Timeline</span></button>
-    <button class="hbtn" onclick="openOV()" id="hdr-ov-btn">⊞ <span class="hbtn-lbl">Overview</span></button>
-    <div class="vsep"></div>
-    <!-- Admin dropdown -->
+    <!-- Project settings (stages, days, crew, import). Platform admin lives in
+         the account menu and is a separate, super-admin-only area. On mobile
+         this menu also carries Overview and the account items. -->
     <div class="dd" id="admin-dd">
-      <button class="hbtn" onclick="toggleDD('admin-dd')" title="Admin">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span class="hbtn-lbl">Admin</span>
-        <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <button class="hbtn" onclick="toggleDD('admin-dd')" title="Project settings" aria-label="Project settings" aria-haspopup="true">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="hbtn-lbl">Project settings</span>
+        <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
       <div class="dd-menu">
+        <div class="dd-head">Project settings</div>
         <button class="dd-item" onclick="closeAllDD();openStageModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 21 12"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 1 0 21 12"/></svg>
           Manage stages
         </button>
+        <button class="dd-item" onclick="closeAllDD();openDayModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Manage days
+        </button>
         <button class="dd-item" onclick="closeAllDD();openCrewModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Manage crew
         </button>
         <button class="dd-item" onclick="closeAllDD();openJSONModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Import lineup
         </button>
-        <button class="dd-item" onclick="closeAllDD();openDayModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Manage days
+        <!-- Mobile only: the header has no room for these. -->
+        <div class="dd-sep mob-only"></div>
+        <div class="dd-head mob-only">Views</div>
+        <button class="dd-item mob-only" onclick="closeAllDD();openOV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Overview (all stages)
+        </button>
+        <div class="dd-sep mob-only"></div>
+        <div class="dd-head mob-only">Account</div>
+        <button class="dd-item mob-only" onclick="closeAllDD();goToDash()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          All projects
+        </button>
+        <button class="dd-item mob-only super-admin-only" style="display:none;" onclick="closeAllDD();openAdmin()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
+          Platform admin
+        </button>
+        <button class="dd-item danger mob-only" onclick="closeAllDD();doLogout()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log out
         </button>
       </div>
     </div>
     <button class="hbtn" id="hdr-add-show-btn" onclick="openDrawer(null)" style="display:none;">
-      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       Add show
     </button>
     <!-- User dropdown -->
     <div class="dd" id="user-dd" style="display:none;">
-      <button class="hbtn" onclick="toggleDD('user-dd')" title="Account" style="padding:4px 9px;">
+      <button class="hbtn" onclick="toggleDD('user-dd')" title="Account" aria-label="Account" aria-haspopup="true" style="padding:4px 9px;">
         <span class="user-avatar" id="user-dd-avatar">?</span>
-        <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <svg class="dd-caret" width="9" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       </button>
       <div class="dd-menu">
         <div class="dd-info">
@@ -4253,19 +4567,34 @@ function renderTbar(){
         </div>
         <div class="dd-sep"></div>
         <button class="dd-item" onclick="closeAllDD();goToDash()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          Projects
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          All projects
         </button>
         <button class="dd-item super-admin-only" style="display:none;" onclick="closeAllDD();openAdmin()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
           Platform admin
         </button>
         <div class="dd-sep"></div>
         <button class="dd-item danger" onclick="closeAllDD();doLogout()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Log out
         </button>
       </div>
+    </div>
+    </div>
+    <!-- Break to row 2 on mobile (the .hdr-row wrappers are display:contents there) -->
+    <div id="mob-hdr-break"></div>
+    <div class="hdr-row" id="hdr-row2">
+    <nav id="hdr-views" aria-label="Open a view">
+      <button class="hbtn hv" onclick="openBS()" id="hdr-bs-btn" title="Backstage monitor"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg><span class="hbtn-lbl">Backstage</span></button>
+      <button class="hbtn hv" onclick="openFOH()" id="hdr-foh-btn" title="Front of house"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg><span class="hbtn-lbl">FOH</span></button>
+      <button class="hbtn hv" onclick="openSV()" id="hdr-sv-btn" title="Stage View (booth screen)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg><span class="hbtn-lbl">Stage View</span></button>
+      <button class="hbtn hv" onclick="openTL()" id="hdr-tl-btn" title="Timeline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="7" height="5" rx="1"/><rect x="12" y="5" width="9" height="5" rx="1"/><rect x="3" y="14" width="10" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/></svg><span class="hbtn-lbl">Timeline</span></button>
+      <button class="hbtn hv" onclick="openOV()" id="hdr-ov-btn" title="Overview of all stages"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="hbtn-lbl">Overview</span></button>
+    </nav>
+    <div id="mob-hdr-cd"></div>
+    <div style="flex:1;" id="hdr-spacer2"></div>
+    <div id="clock-hdr" aria-label="Festival time"></div>
     </div>
     <!-- Hidden legacy nodes for backwards compatibility (still referenced in code) -->
     <div id="user-info" style="display:none;"><span id="user-info-name"></span><span id="user-info-co"></span></div>
@@ -4273,25 +4602,25 @@ function renderTbar(){
   </div>
 
   <!-- Mobile bottom navigation (hidden on desktop) -->
-  <div id="mob-nav">
+  <div id="mob-nav" role="navigation" aria-label="Views">
     <button class="mob-nav-btn" data-nav="bs" onclick="openBS()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 8a5 5 0 0 1 10 0v1.5a5 5 0 1 1-10 0V8z" opacity=".55"/><path d="M9 11a5 5 0 0 1 10 0v1.5a5 5 0 1 1-10 0V11z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h10M7 17h6"/></svg>
       <span>Backstage</span>
     </button>
     <button class="mob-nav-btn" data-nav="foh" onclick="openFOH()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="5" width="20" height="13" rx="2.5"/><rect x="7" y="19" width="10" height="1.6" rx=".8"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       <span>FOH</span>
     </button>
     <button class="mob-nav-btn" data-nav="sv" onclick="openSV()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h6v2H5v4H3V3zm12 0h6v6h-2V5h-4V3zM3 15h2v4h4v2H3v-6zm16 0h2v6h-6v-2h4v-4z"/><rect x="7" y="8" width="10" height="8" rx="1.2"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg>
       <span>Stage View</span>
     </button>
     <button class="mob-nav-btn" data-nav="tl" onclick="openTL()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="6" height="6" rx="1.2"/><rect x="11" y="5" width="10" height="6" rx="1.2"/><rect x="3" y="13" width="10" height="6" rx="1.2"/><rect x="15" y="13" width="6" height="6" rx="1.2"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="7" height="5" rx="1"/><rect x="12" y="5" width="9" height="5" rx="1"/><rect x="3" y="14" width="10" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/></svg>
       <span>Timeline</span>
     </button>
     <button class="mob-nav-btn" data-nav="dash" onclick="goToDash()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 2 10v11a1 1 0 0 0 1 1h6v-7h6v7h6a1 1 0 0 0 1-1V10L12 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Projects</span>
     </button>
   </div>
@@ -4299,11 +4628,9 @@ function renderTbar(){
   <div id="body">
     <!-- TIMER PANEL -->
     <div id="tpanel">
-      <div id="modetog">
-        <button class="mdb on" id="mb-live" onclick="setMode('live')">🕐 Live clock</button>
-        <button class="mdb" id="mb-man" onclick="setMode('manual')">▶ Manual</button>
-      </div>
-      <div id="tinner">
+      <!-- NOW: active show, remaining time and booth come first. On mobile
+           this block is the compact, sticky timer at the top. -->
+      <div id="tinner" aria-label="Active show">
         <div id="tp-photo-wrap"><img id="tp-photo" src="" alt=""></div>
         <div id="tp-meta">
           <div id="tp-stage">-</div>
@@ -4323,35 +4650,39 @@ function renderTbar(){
           <div id="tp-nt"></div>
         </div>
       </div>
-      <div id="tbar">
-        <div id="trow">
-          <button class="tb" onclick="mPrevUI()" aria-label="Cue the previous show (resets the timer)" title="Cue the previous show (resets the timer)">⏮</button>
-          <button class="tb stp" onclick="mStopUI()" aria-label="Reset the timer to the full show length" title="Reset the timer to the full show length">⏹</button>
-          <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
-          <button class="tb" onclick="mNextUI()" aria-label="Cue the next show (resets the timer)" title="Cue the next show (resets the timer)">⏭</button>
+      <!-- Mobile only: the extra controls fold away so the schedule stays in
+           view. The summary keeps their state visible while folded. -->
+      <button type="button" id="ctrl-toggle" aria-expanded="false" aria-controls="tp-controls" onclick="toggleCtrlPanel()">
+        <span class="ctrl-toggle-lbl">Controls</span>
+        <span id="ctrl-summary" class="ctrl-summary"></span>
+        <svg class="ctrl-chev" width="12" height="8" viewBox="0 0 12 8" fill="none" aria-hidden="true"><path d="M1 1.5l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div id="tp-controls">
+      <!-- 1. Timer controls -->
+      <section class="tp-group" id="tp-grp-timer" aria-labelledby="tp-grp-timer-h">
+        <div class="tp-group-h" id="tp-grp-timer-h">Timer</div>
+        <div id="modetog" role="group" aria-label="Timer mode">
+          <button class="mdb on" id="mb-live" onclick="setMode('live')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Live clock</button>
+          <button class="mdb" id="mb-man" onclick="setMode('manual')"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Manual</button>
         </div>
-        <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
-        <div class="st-thelp" id="t-help">⏮ ⏭ cue another show · ⏹ resets the timer · use "Cue" on a show to select it. Cards never reset the timer.</div>
-      </div>
-      <!-- Display mode toggle: what the Stage View for the active stage shows.
-           Per-stage so the operator can put one stage on "Blank" (between sets)
-           while another stage keeps counting down. -->
-      <div id="display-mode-bar">
-        <div class="dm-label">Stage View shows</div>
-        <div class="dm-row">
-          <button class="dm-btn" data-mode="countdown" onclick="setSVMode('countdown')">Countdown</button>
-          <button class="dm-btn" data-mode="clock"     onclick="setSVMode('clock')">Clock</button>
-          <button class="dm-btn" data-mode="countup"   onclick="setSVMode('countup')">Count up</button>
-          <button class="dm-btn" data-mode="blank"     onclick="setSVMode('blank')">Blank</button>
+        <div id="tbar">
+          <div id="trow">
+            <button class="tb" onclick="mPrevUI()" aria-label="Cue the previous show (resets the timer)" title="Cue the previous show (resets the timer)">⏮</button>
+            <button class="tb stp" onclick="mStopUI()" aria-label="Reset the timer to the full show length" title="Reset the timer to the full show length">⏹</button>
+            <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
+            <button class="tb" onclick="mNextUI()" aria-label="Cue the next show (resets the timer)" title="Cue the next show (resets the timer)">⏭</button>
+          </div>
+          <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
+          <div class="st-thelp" id="t-help">⏮ ⏭ cue another show · ⏹ resets the timer · use "Cue" on a show to select it. Cards never reset the timer.</div>
         </div>
-      </div>
-      <!-- Quick-adjust bar (Live clock mode only). Only visible when there's
-           a currently running show on the active stage. Extends/shortens the
-           live show on the fly; if the next show started exactly when this
-           one ended, the next show's start gets nudged by the same amount
-           while its end time stays put - so only one slot absorbs the change. -->
-      <div id="quick-adjust" style="display:none;">
-        <div class="qa-label">Adjust live show</div>
+      </section>
+      <!-- 2. Schedule corrections. Quick-adjust bar (Live clock mode only):
+           only visible while a show runs on the active stage. Extends/shortens
+           the live show; if the next show started exactly when this one
+           ended, the next show's start moves by the same amount while its end
+           stays put - so only one slot absorbs the change. -->
+      <section class="tp-group" id="quick-adjust" style="display:none;" aria-labelledby="qa-label">
+        <div class="qa-label tp-group-h" id="qa-label">Adjust live show</div>
         <div class="qa-row">
           <button class="qa-btn qa-minus" onclick="adjustLiveShow(-5)">-5 min</button>
           <button class="qa-btn qa-minus" onclick="adjustLiveShow(-1)">-1 min</button>
@@ -4359,20 +4690,32 @@ function renderTbar(){
           <button class="qa-btn qa-plus"  onclick="adjustLiveShow(5)">+5 min</button>
         </div>
         <div class="qa-hint" id="qa-hint">Next show's end time stays fixed.</div>
-      </div>
-      <!-- ═══ Floor cue panel (broadcast / TV use). Operator types or taps a
+      </section>
+      <!-- 3. Display mode: what the Stage View for the active stage shows.
+           Per-stage so the operator can put one stage on "Blank" (between
+           sets) while another stage keeps counting down. -->
+      <section class="tp-group" id="display-mode-bar" aria-labelledby="dm-label">
+        <div class="dm-label tp-group-h" id="dm-label">Stage View shows</div>
+        <div class="dm-row" role="group" aria-labelledby="dm-label">
+          <button class="dm-btn" data-mode="countdown" onclick="setSVMode('countdown')">Countdown</button>
+          <button class="dm-btn" data-mode="clock"     onclick="setSVMode('clock')">Clock</button>
+          <button class="dm-btn" data-mode="countup"   onclick="setSVMode('countup')">Count up</button>
+          <button class="dm-btn" data-mode="blank"     onclick="setSVMode('blank')">Blank</button>
+        </div>
+      </section>
+      <!-- 4. Floor cues (broadcast / TV use). Operator types or taps a
            preset; the message flashes as a banner on every Stage View open
-           for the active stage. Cue auto-dismisses after `durationMs`. ═══ -->
-      <div id="cue-panel">
+           for the active stage. Cue auto-dismisses after `durationMs`. -->
+      <section class="tp-group" id="cue-panel" aria-labelledby="cue-title">
         <div id="cue-hdr">
-          <div class="cue-title">Floor cue</div>
-          <div class="cue-status" id="cue-status">No active cue</div>
+          <div class="cue-title tp-group-h" id="cue-title">Floor cue</div>
           <!-- Blackout: kills all viewer screens instantly. Used between
                segments / for go-to-break / emergency wipe. -->
           <button id="blackout-btn" class="cue-blackout-btn" onclick="toggleBlackout()" title="Hide all viewer displays" aria-pressed="false" aria-describedby="blackout-status">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 0 1-5.2-9l8.2 8.2A6 6 0 0 1 12 18zm5.2-3L9 6.8A6 6 0 0 1 17.2 15z"/></svg>
             <span id="blackout-btn-label">Blackout</span>
           </button>
+          <div class="cue-status" id="cue-status" role="status">No active cue</div>
         </div>
         <div class="st-cue-target" id="cue-target"></div>
         <div class="st-bo-status" id="blackout-status" hidden>Blackout is ON: every viewer screen of this project (Stage View, Backstage, FOH, all stages) is black.</div>
@@ -4385,10 +4728,11 @@ function renderTbar(){
           <button class="cue-btn cue-purple" onclick="sendCue('GO TO BREAK','purple')" data-cue="GO TO BREAK" aria-pressed="false">GO TO BREAK</button>
         </div>
         <div id="cue-custom">
-          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" aria-label="Custom cue text" onkeydown="if(event.key==='Enter')sendCustomCue()">
+          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" aria-label="Custom cue text" enterkeyhint="send" onkeydown="if(event.key==='Enter')sendCustomCue()">
           <button id="cue-send" onclick="sendCustomCue()">Send</button>
           <button id="cue-clear" onclick="clearCue()" title="Clear active cue">Clear</button>
         </div>
+      </section>
       </div>
     </div>
 
@@ -4493,7 +4837,7 @@ function renderTbar(){
     <div id="foh-dtabs"></div>
     <span class="vw-sync" hidden></span>
     <div id="foh-clock"></div>
-    <button class="fhbtn" id="foh-close-btn" onclick="closeFOH()">✕</button>
+    <button class="fhbtn" id="foh-close-btn" onclick="closeFOH()" aria-label="Close FOH">✕</button>
   </div>
   <div id="foh-body"><div id="foh-col"><div id="foh-col-body"></div></div></div>
 </div>
@@ -5086,7 +5430,7 @@ function renderTbar(){
     <div id="bs-dtabs"></div>
     <span class="vw-sync" hidden></span>
     <div id="bs-clock"></div>
-    <button class="bshbtn" id="bs-close-btn" onclick="closeBS()">✕</button>
+    <button class="bshbtn" id="bs-close-btn" onclick="closeBS()" aria-label="Close Backstage">✕</button>
   </div>
   <div id="bs-body"></div>
 </div>
@@ -5387,7 +5731,18 @@ function _fmtDay(ymd){
 function _stAlert(msg,o){return window.stDialog?window.stDialog.alert(msg,o):(alert(msg),Promise.resolve());}
 
 // ══ RENDER TIMER PANEL
+// Mode toggle + transport follow G.timerMode also when it was restored from
+// this device's saved selection (setMode is only called on a click).
+function _syncModeToggle(){
+  const m=G.timerMode==='manual'?'manual':'live',l=document.getElementById('mb-live'),b=document.getElementById('mb-man');
+  if(!l||!b||l.dataset.m===m)return;
+  l.dataset.m=m;
+  l.className='mdb'+(m==='live'?' on':'');b.className='mdb'+(m==='manual'?' on':'');
+  l.setAttribute('aria-pressed',m==='live');b.setAttribute('aria-pressed',m==='manual');
+  const tb=document.getElementById('tbar');if(tb)tb.className=m==='manual'?'vis':'';
+}
 function renderTP(){
+  _syncModeToggle();
   if(G.timerMode==='manual'){renderTPManual();renderTbar();return;}
   renderTPLive();
 }
@@ -5453,12 +5808,23 @@ function renderTPManual(){
   document.getElementById('tp-nt').textContent=nx?nx.start.slice(0,5):'';
 }
 function setDot(col,pulse){const d=document.getElementById('tp-dot');d.style.background=col;d.className=pulse?'lp':'';}
+// The countdown colour (tColor) is repeated in words on the control screen,
+// so the state never depends on colour alone: "remaining · under 5 min",
+// "OVER +02:13". Stage View keeps its own, unchanged rendering.
+function _cdWords(remSec,lbl){
+  if(lbl!=='remaining'&&lbl!=='OVERTIME')return lbl;
+  if(remSec<0)return'Over +'+s2cdH(Math.ceil(-remSec));
+  if(remSec<60)return lbl+' · last minute';
+  if(remSec<300)return lbl+' · under 5 min';
+  if(remSec<600)return lbl+' · under 10 min';
+  return lbl;
+}
 function setCD(remSec,col,lbl){
   const el=document.getElementById('tp-cd');
   el.textContent=s2cdH(Math.ceil(Math.abs(remSec))*(remSec<0?-1:1));
   el.style.color=col;
   el.className=shouldBlink(remSec)?'ot':'';
-  document.getElementById('tp-cdlbl').textContent=lbl;
+  document.getElementById('tp-cdlbl').textContent=_cdWords(remSec,lbl);
   document.getElementById('tp-cdlbl').style.color=remSec<0?col:'var(--sub)';
 }
 function setNxt(nxt){
@@ -5485,6 +5851,8 @@ function renderSched(){
     return;
   }
   const mIdx=_mIdx(shows),now=nowMs();
+  // "Next" = the first upcoming, not cancelled show (live mode).
+  const nextId=G.timerMode==='live'?(shows.find(x=>!x.cancelled&&_showIsFuture(x))||{}).id:null;
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
     const showIsToday=isShowToday(s); // still used downstream for "starts in" labels
@@ -5509,35 +5877,43 @@ function renderSched(){
     const notesHTML=notes.map(nt=>`<div class="foh-note-item" style="border-left-color:${safeColor(nt.color,'#ffe600')}">
       ${nt.time?`<span class="foh-note-time" style="color:${safeColor(nt.color,'#ffe600')}">${escH(nt.time)}</span>`:''}
       <span class="foh-note-txt">${escH(nt.text)}</span>
-      <button class="foh-note-del" onclick="delFohnNote('${s.id}','${nt.id}');event.stopPropagation()">×</button>
+      <button class="foh-note-del" onclick="delFohnNote('${s.id}','${nt.id}');event.stopPropagation()" aria-label="Delete note" title="Delete note">×</button>
     </div>`).join('');
     const hasCrew=CREW_ROLES.some(r=>s.crew?.[r.id]?.name);
     const hasContent=s.note||hasCrew||notes.length;
-    const arrivedDot=`<button class="sc-arrived ${s.arrived?'on':''}" title="${s.arrived?'Checked in':'Not checked in - click to mark arrived'}" onclick="ciToggleArrived('${s.id}');event.stopPropagation()">${s.arrived?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}</button>`;
-    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}">
+    // Check-in: a labelled toggle instead of an unlabelled dot.
+    const arrivedDot=`<button class="sc-arrived ${s.arrived?'on':''}" aria-pressed="${s.arrived?'true':'false'}" title="${s.arrived?'Checked in - click to undo':'Not checked in - click to mark arrived'}" onclick="ciToggleArrived(${_jsArg(s.id)});event.stopPropagation()"><span class="sc-arrived-ic" aria-hidden="true">${s.arrived?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}</span><span class="sc-arrived-lbl">${s.arrived?'Checked in':'Not checked in'}</span></button>`;
+    // Status in words (not colour only), same vocabulary as the views
+    // (VW_STATUS: Live / Next / Done / Cancelled / Hidden) plus "Cued" for
+    // the show loaded on the manual timer.
+    const isNext=!isNow&&!isPast&&s.id===nextId;
+    const state=s.cancelled?'cancelled':isNow?'now':(isSel?'cued':isNext?'next':isPast?'past':'later');
+    const stLbl={cancelled:VW_STATUS.cancelled,now:VW_STATUS.live,cued:'Cued',next:VW_STATUS.next,past:VW_STATUS.done}[state];
+    const statusChip=stLbl?`<span class="sc-status st-${state}">${stLbl}</span>`:'';
+    const hiddenChip=s.hidden?`<span class="sc-status st-hidden" title="Hidden from public share screens"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10 10 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/></svg>${VW_STATUS.hidden}</span>`:'';
+    const aName=escH(s.artist);
+    // A tap on a card never cues or resets the timer: manual mode has an explicit Cue button.
+    return`<div class="scard state-${state} ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''} ${s.cancelled?'cancelled':''}">
       ${(isNow||isSel)?`<div class="spr" style="width:${pct.toFixed(1)}%;"></div>`:''}
       <div class="scard-top">
-        <span class="scard-time">${s.start.slice(0,5)}<span style="color:var(--dim)"> – </span>${s.end.slice(0,5)}</span>
-        ${arrivedDot}
-        <span class="scard-name">${escH(s.artist)}</span>
-        ${itemTypeBadge(s)}
-        ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${escH(s.booth)}</span>`:''}
+        <span class="scard-time">${s.start.slice(0,5)}<span class="scard-time-sep"> – </span>${s.end.slice(0,5)}</span>
+        <span class="scard-name" title="${aName}">${aName}</span>
+        <span class="scard-meta">${itemTypeBadge(s)}${s.booth?`<span class="sc-booth booth-${s.booth==='A'?'a':'b'}" style="background:${bBg};color:${bCol};">Booth ${escH(s.booth)}</span>`:''}${statusChip}${hiddenChip}</span>
         <span class="scard-act">
-          <button class="rb" onclick="openDrawer(${_jsArg(s.id)});event.stopPropagation()" aria-label="Edit ${escH(s.artist)}" title="Edit show">✏️</button>
-          <button class="rb d" onclick="delShow(${_jsArg(s.id)},event)" aria-label="Delete ${escH(s.artist)}" title="Delete show">🗑</button>
+          <button class="rb" onclick="openDrawer(${_jsArg(s.id)});event.stopPropagation()" aria-label="Edit ${aName}" title="Edit show"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button class="rb d" onclick="delShow(${_jsArg(s.id)},event)" aria-label="Delete ${aName}" title="Delete show"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
         </span>
       </div>
       ${hasContent?`<div class="scard-sep"></div>`:''}
-      ${s.note?`<div class="scard-note">📝 ${escH(s.note)}</div>`:''}
+      ${s.note?`<div class="scard-note" title="${escH(s.note)}"><span class="scard-note-k">Note</span> ${escH(s.note)}</div>`:''}
       ${hasCrew?`<div class="scard-crew">${fohCrewHTML(s)}</div>`:''}
       ${notes.length?`<div class="scard-fnotes">${notesHTML}</div>`:''}
       <div class="scard-ft">
-        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal(${_jsArg(s.id)});event.stopPropagation()">+ Note</button>
-        ${G.timerMode==='manual'&&!s.cancelled?(isSel
-          ?`<span class="st-cued" aria-label="This show is cued on the timer">● Cued</span>`
-          :`<button class="foh-add-note st-cue-show" style="font-size:10px;padding:3px 8px;" onclick="selMCueUI(${i});event.stopPropagation()" aria-label="Cue ${escH(s.artist)} on the timer">▶ Cue</button>`):''}
-        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
-        ${_showIsFuture(s)&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
+        ${arrivedDot}
+        <button class="foh-add-note" onclick="openFohnModal(${_jsArg(s.id)});event.stopPropagation()" aria-label="Add FOH note to ${aName}">+ Note</button>
+        ${G.timerMode==='manual'&&!s.cancelled&&!isSel?`<button class="foh-add-note st-cue-show" onclick="selMCueUI(${i});event.stopPropagation()" aria-label="Cue ${aName} on the timer">▶ Cue</button>`:''}
+        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;">ends in ${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
+        ${_showIsFuture(s)&&G.timerMode==='live'&&!s.cancelled?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">starts in ${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -5577,11 +5953,11 @@ function tickSched(){
     cd.style.display='';
     if(isLive){
       const remSec=Math.max(0,Math.ceil((ea.getTime()-nowMs)/1000));
-      cd.textContent=s2cdH(remSec);
+      cd.textContent='ends in '+s2cdH(remSec);
       cd.style.color=remSec<300?'#ef4444':remSec<900?'#f97316':'#22c55e';
     } else {
       const secUntil=Math.max(0,Math.round((sa.getTime()-nowMs)/1000));
-      cd.textContent=s2cdH(Math.ceil(secUntil));
+      cd.textContent='starts in '+s2cdH(Math.ceil(secUntil));
       cd.style.color=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     }
   });
@@ -5621,7 +5997,21 @@ function closeAllDD(){document.querySelectorAll('.dd.open').forEach(d=>d.classLi
 document.addEventListener('click',e=>{if(!e.target.closest('.dd'))closeAllDD();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAllDD();});
 
+// "Friday · Fri 19 Jun": the day name plus its date, so the operator always
+// sees which calendar day the schedule is for (control screen only).
+function _dayLabel(d,short){
+  if(!d)return'Day';
+  if(!d.date)return d.name;
+  try{
+    const dt=new Date(d.date+'T12:00:00');if(isNaN(dt))return d.name;
+    const ds=(short?'':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]+' ')+dt.getDate()+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][dt.getMonth()];
+    return d.name+' · '+ds;
+  }catch(_){return d.name;}
+}
 function renderHeader(){
+  const proj=APP&&APP.projects&&APP.projects.find(p=>p.id===APP.activeProjectId);
+  const pn=document.getElementById('hdr-proj-name');
+  if(pn){pn.textContent=proj?proj.name:'-';pn.title=proj?proj.name:'';}
   const sel=document.getElementById('stage-sel');
   sel.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
   // Stage / day choices are per device (_selChanged), they no longer save the shared blob.
@@ -5630,13 +6020,13 @@ function renderHeader(){
   // Day dropdown (desktop button-menu)
   const activeDay=getDays().find(d=>d.id===G.activeDay)||getDays()[0];
   const dayLbl=document.getElementById('day-dd-label');
-  if(dayLbl)dayLbl.textContent=activeDay?activeDay.name:'Day';
+  if(dayLbl)dayLbl.textContent=_dayLabel(activeDay);
   const dayMenu=document.getElementById('day-dd-menu');
   if(dayMenu){
     dayMenu.innerHTML=getDays().map(d=>`
       <button class="dd-item ${d.id===G.activeDay?'on':''}" onclick="closeAllDD();setDay(${escH(JSON.stringify(String(d.id)))})">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        ${escH(d.name)}
+        ${escH(_dayLabel(d))}
       </button>`).join('')+`<div class="dd-sep"></div>
       <button class="dd-item" onclick="closeAllDD();openDayModal()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -5646,7 +6036,7 @@ function renderHeader(){
   // Day dropdown (mobile native <select>)
   const daySel=document.getElementById('day-sel-mobile');
   if(daySel){
-    daySel.innerHTML=getDays().map(d=>`<option value="${escH(d.id)}"${d.id===G.activeDay?' selected':''}>${escH(d.name)}</option>`).join('');
+    daySel.innerHTML=getDays().map(d=>`<option value="${escH(d.id)}"${d.id===G.activeDay?' selected':''}>${escH(_dayLabel(d,true))}</option>`).join('');
     daySel.onchange=()=>setDay(daySel.value);
   }
 
@@ -5829,7 +6219,7 @@ function fohNotesHTML(showId){
   return`<div class="foh-notes">${notes.map(n=>{const col=vwColor(n.color,'#ffe600');return`<div class="foh-note-item" style="border-left-color:${col}">
     ${n.time?`<span class="foh-note-time" style="color:${col}">${escH(n.time)}</span>`:''}
     <span class="foh-note-txt">${escH(n.text)}</span>
-    <button class="foh-note-del" aria-label="Delete note" onclick="delFohnNote(${_jsArg(showId)},${_jsArg(n.id)});event.stopPropagation()">×</button>
+    <button class="foh-note-del" aria-label="Delete note" title="Delete note" onclick="delFohnNote(${_jsArg(showId)},${_jsArg(n.id)});event.stopPropagation()">×</button>
   </div>`;}).join('')}</div>`;
 }
 function renderFOH(){
@@ -5888,8 +6278,8 @@ function renderFOH(){
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
         <div class="foh-sr-act">
-          <button class="frb" onclick="openDrawer(${_jsArg(s.id)})" title="Edit" aria-label="Edit ${escH(s.artist)}">✏️</button>
-          <button class="frb d" onclick="delShow(${_jsArg(s.id)},event)" title="Delete" aria-label="Delete ${escH(s.artist)}">🗑</button>
+          <button class="frb" onclick="openDrawer(${_jsArg(s.id)})" title="Edit show" aria-label="Edit ${escH(s.artist)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button class="frb d" onclick="delShow(${_jsArg(s.id)},event)" title="Delete show" aria-label="Delete ${escH(s.artist)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
         </div>
         ${_showIsFuture(s)?`<div id="foh-sr-cd-${escH(s.id)}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
         <div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:.06em;">until start</div>`:''}
@@ -6574,16 +6964,16 @@ async function delShow(id,e){
 }
 
 // ══ MODE
-function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
+function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('mb-live').setAttribute('aria-pressed',m==='live');document.getElementById('mb-man').setAttribute('aria-pressed',m==='manual');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
 
 // ══ OPEN/CLOSE screens
-function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));}
+function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));_svZoomLock(false);}
 // Sync the bottom-nav active state with whichever overlay is currently open.
 // Called from open/close + goToDash so the highlighted tab always reflects
 // the view the user is on.
 function _syncMobNavActive(){
   const map={bs:'bs',foh:'foh',sv:'sv',tl:'tl'};
-  let active='dash';
+  let active='';   // the control screen itself has no tab (it is not "Projects")
   for(const id of Object.keys(map)){
     if(document.getElementById(id)?.classList.contains('open')){active=map[id];break;}
   }
@@ -6595,8 +6985,18 @@ function openFOH(){_closeAllScreens();document.getElementById('foh').classList.a
 function closeFOH(){document.getElementById('foh').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();_syncMobNavActive();}
 function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
-function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();_syncMobNavActive();}
-function closeSV(){document.getElementById('sv').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
+function openSV(){_closeAllScreens();_svZoomLock(true);document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();_syncMobNavActive();}
+function closeSV(){document.getElementById('sv').classList.remove('open');_svZoomLock(false);_releaseWakeLockIfIdle();_syncMobNavActive();}
+// Pinch-zoom is allowed everywhere (WCAG 1.4.4) except on the booth screen,
+// where an accidental zoom would hide the countdown. Same viewport the whole
+// app had before while Stage View is open; see also the early script in <head>.
+function _svZoomLock(on){
+  const m=document.querySelector('meta[name=viewport]');if(!m)return;
+  // Unlocked: the on-screen keyboard shrinks the layout (Chrome/Android), so
+  // fixed footers with Save / Close stay above it.
+  m.setAttribute('content',on?'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+    :'width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content');
+}
 
 // ── Fullscreen API: when running in a browser (not installed as PWA),
 // auto-request fullscreen on the first user gesture. Particularly important
@@ -7270,9 +7670,59 @@ window.setSVMode=setSVMode;
 function renderDisplayModeBar(){
   const cur=_svMode(G&&G.activeStage);
   document.querySelectorAll('#display-mode-bar .dm-btn').forEach(b=>{
-    b.classList.toggle('on',b.dataset.mode===cur);
+    const on=b.dataset.mode===cur;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',on?'true':'false');
   });
+  _renderCtrlSummary(cur);
 }
+// ── Control panel summary (mobile: the folded "Controls" bar) + cue target.
+// Keeps display mode, cue and blackout visible while the controls are folded.
+const _SV_MODE_LBL={countdown:'Countdown',clock:'Clock',countup:'Count up',blank:'Blank'};
+let _ctrlSumKey='';
+function _renderCtrlSummary(mode){
+  if(!G)return;
+  const c=G.cue,cueOn=_cueActive(c)&&(!c.stageId||c.stageId===G.activeStage);
+  const stage=activeStageObj().name||'';
+  const key=[mode,cueOn?c.text:'',G.blackout?1:0,stage,G.timerMode].join('|');
+  if(key===_ctrlSumKey)return;
+  _ctrlSumKey=key;
+  const sum=document.getElementById('ctrl-summary');
+  if(sum){
+    const parts=[(G.timerMode==='manual'?'Manual':'Live clock'),'Stage View: '+(_SV_MODE_LBL[mode]||mode)];
+    if(cueOn)parts.push('Cue: '+c.text);
+    sum.textContent=parts.join(' · ');
+    sum.classList.toggle('blackout',!!G.blackout);
+    if(G.blackout)sum.textContent+=' · BLACKOUT ON';
+  }
+}
+function toggleCtrlPanel(force){
+  const app=document.getElementById('app');
+  const open=typeof force==='boolean'?force:!app.classList.contains('ctrl-open');
+  app.classList.toggle('ctrl-open',open);
+  const b=document.getElementById('ctrl-toggle');if(b)b.setAttribute('aria-expanded',open?'true':'false');
+  try{localStorage.setItem('st_ctrl_open',open?'1':'0');}catch(_){}
+}
+window.toggleCtrlPanel=toggleCtrlPanel;
+// ── Save status in the header: "Saved / Saving… / Not saved" + the reason.
+function _renderSaveStatus(st){
+  st=st||(typeof getSaveState==='function'?getSaveState():{state:'saved'});
+  const btn=document.getElementById('save-status');if(!btn)return;
+  const txt=st.state==='saved'?'Saved':st.state==='saving'?'Saving…':'Not saved';
+  btn.className='save-status is-'+st.state;
+  const t=document.getElementById('save-status-txt');if(t)t.textContent=txt;
+  const title=st.state==='saved'?'All changes saved':st.state==='saving'?'Saving changes…':'Changes not saved';
+  const detail=st.state==='saved'?'Everything on this screen is stored on the server.'
+    :st.state==='saving'?'Sending your latest changes to the server.'
+    :(st.detail||'Your changes are kept on this device and retried automatically.');
+  btn.setAttribute('aria-label','Save status: '+txt+(st.state==='unsaved'&&st.detail?'. '+st.detail:''));
+  btn.title=st.state==='unsaved'&&st.detail?st.detail:title;
+  const h=document.getElementById('save-detail-title');if(h)h.textContent=title;
+  const d=document.getElementById('save-detail');if(d)d.textContent=detail;
+}
+window.addEventListener('st:savestate',e=>_renderSaveStatus(e.detail));
+_renderSaveStatus();
+try{if(localStorage.getItem('st_ctrl_open')==='1')toggleCtrlPanel(true);}catch(_){}
 
 // ══════════════════════════════════════════════════════════════════════════
 // QUICK ADJUST - extend or shorten the currently live show.
@@ -10778,10 +11228,10 @@ function renderOTSection(){
       <div class="proj-card-accent" style="background:${live?col:'linear-gradient(90deg,#6366f1,#8b5cf6)'}"></div>
       <div class="proj-card-body">
         <div class="proj-card-actions">
-          <button class="proj-card-btn" onclick="openOTModal('${t.id}');event.stopPropagation()">✏️ Edit</button>
-          <button class="proj-card-btn del" onclick="delOT('${t.id}');event.stopPropagation()" title="Delete"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+          <button class="proj-card-btn" onclick="openOTModal('${t.id}');event.stopPropagation()" aria-label="Edit timer ${escH(t.artist)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Edit</button>
+          <button class="proj-card-btn del" onclick="delOT('${t.id}');event.stopPropagation()" title="Delete timer" aria-label="Delete timer ${escH(t.artist)}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
         </div>
-        <div style="font-size:10px;font-weight:800;letter-spacing:.1em;color:${statusCol};margin-bottom:6px;">${status}</div>
+        <div class="ot-card-status" style="color:${statusCol};">${status}</div>
         <div class="proj-card-name">${escH(t.artist)}</div>
         <div style="font-family:var(--ffm);font-size:11px;color:var(--sub);margin-top:5px;">${t.start.slice(0,5)} – ${t.end.slice(0,5)} · ${t.date}</div>
         ${live&&rem!==null?`<div style="font-family:var(--ffm);font-size:20px;font-weight:700;color:${col};margin-top:8px;letter-spacing:-.04em;">${s2cdH(Math.max(0,Math.ceil(rem)))}</div>`:''}
