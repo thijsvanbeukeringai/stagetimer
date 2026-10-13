@@ -35,6 +35,7 @@ Sections start with `// ══ NAME`. Find them with `grep -n '// ══' app.ht
 | `SAVE / SYNC` | `save`, `_pushProject` / `_pushOnce`, 3-way merge `_mergeData`, `_markIntentionalRemoval`, `setSaveState`, realtime |
 | `PURE TIME MODULE ─ begin` … `─ end` | clock, Europe/Amsterdam, 07:00 festival day, show intervals, manual timer model, `makePollGate` |
 | `MANUAL TIMER`, `RENDER TIMER PANEL`, `RENDER SCHEDULE` | operator control screen |
+| `BOOTH LINK`, `MESSAGE BOOTH` | delivery receipts + screen presence over Realtime broadcast/presence; the phone-first "Message booth" sheet (just above `TICK`) |
 | `DIALOGS (stDialog)` | the one dialog component |
 | `VIEW HELPERS`, `FOH`, `BACKSTAGE`, `STAGE VIEW`, `STAGE OVERVIEW`, `TIMELINE VIEW` | screens; the Wall is the block headed `// CONTROL ROOM WALL` (no `══` name marker), the server clock is `SERVER TIME SYNC` right below it |
 | `JSON IMPORT`, `DAY MANAGEMENT`, `STAGE MANAGEMENT`, `DASHBOARD` | planning and back office |
@@ -52,6 +53,7 @@ Sections start with `// ══ NAME`. Find them with `grep -n '// ══' app.ht
 - **Saving**: change `G`, then call `save()` (`save({immediate:true})` when it must go out now). Never PATCH the project blob yourself. Show `setSaveState` / `_refreshSaveState` rather than painting the sync dot. When the user deliberately removes shows, days or stages, call `_markIntentionalRemoval(showIds, {days, stages})` **before** `save()`, or the merge restores them as "stale". `_whenSaved(pid)` resolves when the push settled.
 - **Requests**: `_restGet` / `_sbFetch` / `_rpc` (user JWT, timeout, one refresh on 401). Share-link screens use the anon key only (`_rpc` does that when `PUBLIC_MODE` and `pid` are set). Never await `supa.auth.*` without `_withTimeout`.
 - **Share-link screens never save the blob** (`save()` returns in `PUBLIC_MODE`); check-in writes through `set_show_arrived`.
+- **Booth link** (`// ══ BOOTH LINK`, phase 5D): one Realtime channel `st-proj-<pid>` with broadcast + presence only (no `postgres_changes`, no DB write). Booth screens track presence and broadcast `cue-ack {cueId, stageId, device, at}`; operators count them. Cue content never travels over it (only from `G.cue` in the saved project) and every incoming field is validated. It needs Realtime broadcast/presence enabled on the Supabase project (the default); it is a public channel, so acks can be faked by anyone with the pid: tighten later with private channels + Realtime Authorization. Never `send()` on a channel that is not `SUBSCRIBED` (supabase-js would fall back to a REST POST); use `_pcSend`.
 
 ## Tests
 
