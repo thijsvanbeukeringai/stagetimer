@@ -12,13 +12,32 @@
 -- this exact order; part 3 breaks any app.html that still does select=*.
 --
 --   PART 1  add the derived flag              (safe any time)
+--   ---->   apply 20261013100000_share_link_rpcs.sql (and rls_prep): the new
+--           app.html loads EVERY public share link through the
+--           get_shared_project RPC; without it all share links show
+--           "Project not found".
 --   ---->   deploy app.html from branch improve/2026-10-13 (selects explicit
 --           columns incl. setup_pending, never setup_token), wait for open tabs
 --           to reload (app.html is served no-store; a reload picks it up)
 --   PART 2  revoke column access + trim realtime (do NOT run during a live show)
 --   PART 3  verify
 --
--- Rollback (restores today's behaviour, including the hole):
+-- Relation to rls_enable: rls_enable block 4b/4c applies exactly the same
+-- companies grants and realtime column list as PART 2 below, so PART 2 and
+-- rls_enable may run in either order; the second one is a no-op for
+-- companies. Full runbook: docs/MIGRATIES.md.
+--
+-- Verification of PART 1:
+--   select column_name, is_generated from information_schema.columns
+--    where table_schema='public' and table_name='companies' and column_name='setup_pending';
+--   select count(*) filter (where setup_pending) from public.companies;  -- = S.1 count
+--
+-- Rollback of PART 1 only (safe while no app reads the column):
+--   alter table public.companies drop column if exists setup_pending;
+--
+-- Rollback of PART 2 (restores today's behaviour, including the hole; only
+-- meant for "the new app.html cannot load companies" before rls_enable - once
+-- rls_enable is applied, roll that back instead and leave this in place):
 --   grant select, update on public.companies to anon, authenticated;
 --   -- and re-add companies to the realtime publication without a column list:
 --   alter publication supabase_realtime drop table public.companies;
