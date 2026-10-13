@@ -12,6 +12,22 @@ Achtergrond: zie `BOUWPLAN.md` (plan), `docs/MIGRATIES.md` (draaiboek), `CLAUDE.
 - Boothscreen (Stage View) pixel-identiek aan de code van vóór deze ronde (`845eb0d`).
 - Node-unittests: 48 geslaagd.
 
+## Toegevoegd na de eerste afronding (13-10, middag)
+Alles staat op dezelfde branch.
+- **Fase 5A/5D:** paneel "Message booth" (ook op iPhone), ontvangstbevestiging ("Delivered to 2 of 2 · seen 22:41:05") en welke boothschermen online zijn. Loopt via Realtime broadcast/presence, zonder migratie.
+- **Atomair opslaan** via `save_project`, en "Recently deleted" plus versiegeschiedenis met herstel. Dit gaat vanzelf aan zodra migraties 13 (versioning) en 14 (history) zijn uitgevoerd.
+- **Share-links:** sturen `p_mode` mee (2-arg → 1-arg → tabel) en pollen goedkoop via een versie. Stage View is bewezen identiek met afgeslankte data.
+- **Foto's en logo** gaan naar Supabase Storage na migratiestap 16, met terugvaloptie naar base64.
+- **Export per project** (JSON) en een CI-workflow (`.github/workflows/tests.yml`).
+- **Laatste volledige run:** 658 geslaagd, 0 gefaald (Chromium + WebKit).
+
+**Voorwaarden van de iPad-app (Stagetimer Booth), vóór deze migraties:**
+- `rls_enable`
+- share-link PHASE B
+- stap 16 (foto's). Kan de iPad-app een https-URL in `show.photo` aan?
+
+`SW_VERSION` staat op v30 en productie op v29, dus open schermen krijgen bij deploy de update-melding.
+
 ## Volgorde voor Thijs
 
 1. **Vandaag nog:**
