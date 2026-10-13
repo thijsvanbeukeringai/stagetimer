@@ -398,7 +398,22 @@ Op een gewone festivalwifi kunnen browsers niet rechtstreeks met elkaar praten. 
 - **Beveiliging:** iedereen op dezelfde wifi zou anders cues kunnen sturen. Daarom: koppelcode per apparaat en rollen (operator of alleen lezen).
 
 ### 5C. iPhone-versie van de bestaande iPad-app (1–2 weken plus review)
-**Uitgangspunt (13-10-2026):** er is al een Stagetimer iPad-app in het Apple Developer-account van Thijs. Die is gemaakt op een andere computer; de techniek en de broncode zijn nog onbekend.
+**Uitgangspunt (13-10-2026):** de bestaande app is **Stagetimer Booth**.
+- Bundle-ID `nl.stagetimer.booth`, App Store-id 6786184442.
+- v1.0 van 2 juli 2026, alleen iPad, iPadOS 15+, ongeveer 3 MB.
+- Het is de iPad-versie van Stage View. Je plakt een projectcode of share-link, kiest een podium, en de show wordt lokaal gecached zodat het scherm blijft werken als de wifi wegvalt.
+- De app is op een andere computer gemaakt. De techniek en de broncode zijn nog onbekend.
+
+**⚠️ Blokkade voor `rls_enable` en share-link PHASE B:** eerst vaststellen hoe de iPad-app zijn data ophaalt.
+- Leest hij `projects` rechtstreeks met de anon-key, dan valt elk iPad-boothscherm stil zodra RLS aan gaat.
+- Laadt hij `stagetimer.nl/app?mode=stage` in een WebView, dan is er geen probleem (de app heeft een terugvaloptie).
+- Bij PHASE B: welke velden gebruikt de app (bijvoorbeeld foto's)?
+
+**Advies: één universele app** onder `nl.stagetimer.booth`. Bij de eerste start kies je per apparaat "Boothscherm" of "Crew / bediening".
+- De iPhone wordt vooral gebruikt voor Crew: berichten naar de booth (5A/5D), cues en blackout.
+- De naam in de App Store kan naar "Stagetimer" gaan.
+- **Offline zonder hub:** als bediening en boothscherm allebei de native app draaien, praten ze rechtstreeks via het lokale netwerk of via peer-to-peer wifi (Bonjour of MultipeerConnectivity, bij Capacitor via een kleine Swift-plugin). Er is dan geen router met internet nodig. De iPad cachet de show al.
+- Boothschermen die een laptop met browser zijn, hebben daarnaast nog de cloud of de hub (5B) nodig.
 - **Stap 1, vaststellen:**
   - Installeer de iPad-app via de Mac App Store (Apple-chip) en bekijk de pakketinhoud. Een map `public/` met `capacitor.config.json` betekent Capacitor.
   - Of zoek het Xcode-project op de andere computer of op GitHub.

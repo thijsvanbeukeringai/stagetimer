@@ -22,6 +22,11 @@ Dit document zet alles in één volgorde.
 > Deze migratie trekt alleen anon-schrijfrechten op `app_users` en `companies` in. De live-app schrijft die tabellen nooit als anon, en `projects` blijft ongemoeid.
 > Lokaal getest: na de migratie geeft `delete` als anon "permission denied". Rollback staat in het bestand.
 
+
+> **BLOKKADE vóór `rls_enable` en share-link PHASE B (13-10-2026):** de iPad-app **Stagetimer Booth** (`nl.stagetimer.booth`) haalt projectdata op een nog onbekende manier op.
+> Leest hij `projects` rechtstreeks met de anon-key, dan breekt `rls_enable` elk iPad-boothscherm.
+> Eerst vaststellen, via de broncode of een netwerk-trace van de app (bijvoorbeeld met Proxyman), welke endpoints en welke velden hij gebruikt. Pas daarna deze stappen uitvoeren.
+
 ## Spelregels
 
 1. **Nooit `supabase db push`.** De bestandsnamen staan niet in de volgorde waarin ze moeten draaien, en de hotfix bestaat uit delen die je los moet uitvoeren. `db push` zou alles in één keer toepassen.
