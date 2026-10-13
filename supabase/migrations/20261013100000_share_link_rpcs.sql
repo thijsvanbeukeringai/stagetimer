@@ -25,14 +25,39 @@
 --     memberIds              -       -       -     -        -      -     -
 --     logo                   -       -       -     -        -      -     -
 --   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed.)
---   Everything else (stages, days, shows incl. hidden/cancelled/arrived,
---   activeStage, activeDay, timerMode, svModes, cue, blackout) is kept: the
---   timer maths and the cue/blackout overlays need it, and Stage View must
---   stay pixel-identical. Unknown modes get the strictest set.
---   Derived from app.html: renderSV, renderBS (notesBlock: fohNotes + note),
---   renderFOH (fohNotesHTML + fohCrewHTML), renderTL, renderOV, renderWV,
---   renderCI; photos are only used by the operator timer panel and editor
---   drawer, memberIds only by the operator crew picker / push, G.logo nowhere.
+--   The JS twin of this matrix is tests/support/share-modes.js (the mock
+--   backend serves the 2-arg call with it; tests/regression/share-mode.spec.js
+--   checks this table and keep_* below against it).
+--
+--   Kept for EVERY mode (needed by the shared time model, the cue/blackout
+--   overlays and what each screen draws; nothing personal or large):
+--     stages[] (id, name)          all modes (stage name, stage columns)
+--     days[] (id, name, date)      all modes (festival day, day labels)
+--     shows[] id, stage, day, artist, date, start, end, startsAt, endsAt,
+--             endsNextDay, cancelled, hidden
+--                                  all modes (live / next / done maths)
+--     shows[].genre                stage (#sv-genre)
+--     shows[].booth                backstage, foh, timeline (booth badge)
+--     shows[].type                 backstage, foh (item-type badge)
+--     shows[].priority             wall, timeline, overview (star / tint)
+--     shows[].arrived, arrivedAt   checkin, overview, timeline (check-in dot)
+--     activeStage, activeDay       all (fallback when the link has no sid /
+--                                  no day is dated today)
+--     timerMode                    loadG default; harmless
+--     svModes                      stage (countdown / clock / countup / blank)
+--     cue                          stage, backstage, foh (_renderCueOverlay)
+--     blackout                     every mode (blackout overlay; wall cells)
+--   Verified against app.html on 2026-10-13 by reading renderSV (+ _svMode,
+--   _renderCueOverlay, renderBlackout), renderBS (notesBlock: fohNotes +
+--   note, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
+--   renderTL, renderOV, renderWV / tickWV and renderCI: none of the last
+--   four reads note, crew or fohNotes; Stage View reads none of the six.
+--   Photos are only used by the operator timer panel and editor drawer,
+--   memberIds only by the operator crew picker / push, G.logo nowhere
+--   (refreshLogo is a no-op). Proof: the booth suite runs every public Stage
+--   View state on this stripped feed against the unchanged baseline, and
+--   share-mode.spec.js renders every mode on both feeds and compares the DOM.
+--   Unknown modes get the strictest set.
 --
 --   set_show_arrived(...)  Same signature and return shape as before (a data
 --   object with a shows array, which ciToggleArrived adopts), but:
@@ -48,17 +73,21 @@
 --     * returns the checkin-mode view of the data (no fohNotes/crew/notes/
 --       photos), not the full blob.
 --
--- APP CHANGE NEEDED to use the per-mode version (another agent wires it):
---   1. FIRST make save()/_pushProject a no-op when PUBLIC_MODE is set (except
---      the check-in RPC). Today a logged-in operator who opens a share link in
---      the same browser, or (before RLS) any anonymous FOH viewer pressing a
---      crew-status button, PATCHes G back to projects - with the stripped data
---      that would wipe photos, notes and crew. Hard requirement.
---   2. (NOT DONE yet, see PHASE B) Then call {p_id: PUBLIC_PID, p_mode: PUBLIC_MODE} in the <head> early
---      fetch, in loadPublicView and in the seven 1-second polls. PostgREST
---      picks the overload by argument names; p_mode has NO default on purpose
---      (a default would make {p_id} ambiguous between the two).
---   3. After every cached tab has reloaded (a few days), apply PHASE B at the
+-- APP CHANGE to use the per-mode version:
+--   1. DONE: save()/_pushProject are a no-op when PUBLIC_MODE is set (except
+--      the check-in RPC). Before that, a logged-in operator who opened a
+--      share link in the same browser, or (before RLS) any anonymous FOH
+--      viewer pressing a crew-status button, PATCHed G back to projects -
+--      with the stripped data that would wipe photos, notes and crew.
+--   2. DONE (branch feature/share-link-p-mode): the <head> early fetch,
+--      loadPublicView and the 1-second poll call {p_id, p_mode: PUBLIC_MODE}.
+--      Fallback chain: 2-arg missing (404 / PGRST202) -> {p_id} -> direct
+--      table read; the variant that answered is remembered per page session;
+--      401 / 5xx / timeouts never fall back. PostgREST picks the overload by
+--      argument names; p_mode has NO default on purpose (a default would make
+--      {p_id} ambiguous between the two).
+--   3. After that release has been live for a few days (cached tabs
+--      reloaded) AND the blocker below is cleared, apply PHASE B at the
 --      bottom of this file so the legacy 1-arg call stops returning the full
 --      blob to anonymous callers.
 --
@@ -285,17 +314,23 @@ grant execute on function public.set_show_arrived(text, text, boolean, bigint) t
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- PHASE B - DO NOT RUN with the rest of this file.
--- STATUS 2026-10-13: NOT READY. app.html still calls get_shared_project with
--- {p_id} only (p_mode is deliberately not wired: stripped data could change
--- what Stage View renders, e.g. photos). Running PHASE B now strips photos
--- from every share link, Stage View included. It may only run after a future
--- app release passes p_mode with a 2-arg -> 1-arg -> table fallback chain AND
--- the booth suite proves Stage View is identical with stripped data.
--- Run only when (1) the app calls the 2-arg version everywhere, (2) the app
--- never saves in PUBLIC_MODE, and (3) a few days have passed so cached tabs
--- reloaded. After this, the legacy call returns the union of what any public
--- mode needs (fohNotes, notes, crew) but no photos / memberIds / logo, and
--- no company_id.
+-- STATUS 2026-10-13: NOT READY - BLOCKED.
+--   * App side: done on branch feature/share-link-p-mode (p_mode everywhere,
+--     2-arg -> 1-arg -> table fallback chain; `npm run test:booth` runs every
+--     public Stage View state on the stripped feed against the unchanged
+--     baseline). Not deployed yet.
+--   * BLOCKER: the iPad app "Stagetimer Booth" (nl.stagetimer.booth) loads
+--     project data in a way that is not known yet. If it calls
+--     get_shared_project(p_id) and needs photos, memberIds or logo, or reads
+--     projects directly, PHASE B (or rls_enable) breaks every iPad booth
+--     screen. Establish its endpoints and fields first (source code or a
+--     network trace, e.g. Proxyman). See docs/MIGRATIES.md.
+-- Run only when (1) the app release that calls the 2-arg version everywhere
+-- is live, (2) the app never saves in PUBLIC_MODE (done), (3) a few days have
+-- passed so cached tabs reloaded, and (4) the iPad app is known to work with
+-- the narrowed legacy output. After this, the legacy call returns the union
+-- of what any public mode needs (fohNotes, notes, crew) but no photos /
+-- memberIds / logo, and no company_id.
 --
 -- create or replace function public.get_shared_project(p_id text)
 -- returns jsonb language sql stable security definer set search_path = public as $$
