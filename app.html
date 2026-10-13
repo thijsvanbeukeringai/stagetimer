@@ -30,14 +30,27 @@
     const p=new URLSearchParams(location.search);
     const mode=p.get('mode'),pid=p.get('pid');
     if(!mode||!pid)return;
-    const url='https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/rpc/get_shared_project';
+    const base='https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/';
     const key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbWpwc3F1aGR6eHZzeW1sZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTQ2ODUsImV4cCI6MjA5MDUzMDY4NX0.657ty4HprURSCfdwfORQejBjXCcj6nK81rN9WoOOwiQ';
-    window._earlyPublicFetch=fetch(url,{
+    const hdr={apikey:key,Authorization:'Bearer '+key};
+    // get_shared_project may not be deployed yet: only when the function
+    // itself is missing (404 / PGRST202) read the row the legacy way, and
+    // tell loadPublicView (window._sharedProjectLegacy) to keep doing so.
+    window._earlyPublicFetch=fetch(base+'rpc/get_shared_project',{
         method:'POST',
-        headers:{'Content-Type':'application/json',apikey:key,Authorization:'Bearer '+key},
+        headers:Object.assign({'Content-Type':'application/json'},hdr),
         body:JSON.stringify({p_id:pid}),
       })
-      .then(r=>r.ok?r.json():null).then(row=>row||null).catch(()=>null);
+      .then(async r=>{
+        if(r.ok)return r.json();
+        const t=await r.text().catch(()=>'');
+        if(r.status!==404&&t.indexOf('PGRST202')<0)return null;
+        window._sharedProjectLegacy=true;
+        const l=await fetch(base+'projects?id=eq.'+encodeURIComponent(pid)+'&select=id,name,company_id,data',{headers:hdr});
+        const rows=l.ok?await l.json():null;
+        return Array.isArray(rows)?rows[0]||null:null;
+      })
+      .then(row=>row||null).catch(()=>null);
   }catch(e){}
 })();
 // EARLY NO-SESSION DETECTION (CSS-driven, no DOM, no network).
@@ -8642,10 +8655,46 @@ async function _rpcPublicRaw(fn,args,timeoutMs){
       body:JSON.stringify(args||{}),
     });
     const text=await res.text();
+    if(!res.ok){
+      const err=new Error('HTTP '+res.status+(text?' - '+text.slice(0,200):''));
+      err.status=res.status;err.rpcMissing=res.status===404||text.includes('PGRST202');
+      throw err;
+    }
+    return text;
+  }finally{clearTimeout(tmo);}
+}
+// ── Shared-project fetch, backward compatible with a backend that doesn't
+// have get_shared_project yet (migration 20261013100000 not applied): only
+// when the function itself is missing - HTTP 404 or PostgREST PGRST202 - read
+// the row directly (GET projects, anon key; what production does today) and
+// remember that for this page session. Any other failure (401, 5xx,
+// timeout) throws: the caller keeps its last data and counts a failed sync.
+// Returns the raw response text (an object for the RPC, a one-row array for
+// the legacy read); _sharedProjectFromText turns either into the row.
+let _sharedProjectLegacy=!!window._sharedProjectLegacy;
+async function _fetchSharedProjectRaw(pid,timeoutMs){
+  if(window._sharedProjectLegacy)_sharedProjectLegacy=true;
+  if(!_sharedProjectLegacy){
+    try{return await _rpcPublicRaw('get_shared_project',{p_id:pid},timeoutMs);}
+    catch(e){if(!e.rpcMissing)throw e;_sharedProjectLegacy=true;console.warn('[public] get_shared_project not available - reading the project directly');}
+  }
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
+  try{
+    const res=await fetch(`${SUPA_URL}/rest/v1/projects?id=eq.${encodeURIComponent(pid)}&select=id,name,company_id,data`,{
+      signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`,'Accept':'application/json'},
+    });
+    const text=await res.text();
     if(!res.ok)throw new Error('HTTP '+res.status+(text?' - '+text.slice(0,200):''));
     return text;
   }finally{clearTimeout(tmo);}
 }
+function _sharedProjectFromText(text){
+  let v=text?JSON.parse(text):null;
+  if(Array.isArray(v))v=v[0]||null;
+  return v||null;
+}
+async function _fetchSharedProject(pid,timeoutMs){return _sharedProjectFromText(await _fetchSharedProjectRaw(pid,timeoutMs));}
 // Kept as a name for share-view callers; _rpc already uses the anon key there.
 function _rpcPublic(fn,args,timeoutMs){return _rpc(fn,args,timeoutMs);}
 
@@ -8706,7 +8755,7 @@ function _pvRefresh(render,force){
 // Adopt a poll answer. A row without data.stages is treated as a failure
 // (keep the last good lineup) instead of being loaded as an empty project.
 function _pvAdopt(text){
-  const proj=text?JSON.parse(text):null;
+  const proj=_sharedProjectFromText(text);
   if(!proj||!proj.data||!Array.isArray(proj.data.stages))throw new Error('no project data in response');
   const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
   loadG();
@@ -8720,7 +8769,7 @@ function _pvStartPolling(render,skip){
     if(skip&&skip())return;
     const n=gate.begin();if(!n)return;
     try{
-      const text=await _rpcPublicRaw('get_shared_project',{p_id:PUBLIC_PID},5000);
+      const text=await _fetchSharedProjectRaw(PUBLIC_PID,5000);
       if(!gate.accept(n))return;
       if(skip&&skip())return;
       if(text!==_pvLastText){_pvAdopt(text);_pvLastText=text;}
@@ -8743,7 +8792,7 @@ async function loadPublicView(){
   }
   if(!proj){
     // RPC, not a table read: anonymous viewers have no access to `projects`.
-    proj=await _rpcPublic('get_shared_project',{p_id:PUBLIC_PID}).catch(e=>{console.warn('[public] load failed:',e?.message||e);return null;});
+    proj=await _fetchSharedProject(PUBLIC_PID).catch(e=>{console.warn('[public] load failed:',e?.message||e);return null;});
   }
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project not found.</div>';return;}
   _pvSyncOk();
