@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0b0b0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Stage Timer">
+<meta name="apple-mobile-web-app-title" content="Stagetimer">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="/manifest.json">
@@ -26,6 +26,11 @@
 // before first paint. Every other screen may be pinch-zoomed; the in-app Stage
 // View sets the same lock while it is open (_svZoomLock).
 (function(){try{if(new URLSearchParams(location.search).get('mode')==='stage'){var m=document.querySelector('meta[name=viewport]');if(m)m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');}}catch(e){}})();
+// Share links (?mode=...&pid=...): no web app manifest. Its start_url is the
+// operator app (/app), so "Add to Home Screen" on a booth or FOH link would
+// open the login screen instead of that screen. Without it iOS keeps the
+// share-link URL and still opens full screen (apple-mobile-web-app-capable).
+(function(){try{var q=new URLSearchParams(location.search);if(q.get('mode')&&q.get('pid')){var l=document.querySelector('link[rel=manifest]');if(l)l.remove();}}catch(e){console.warn('[pwa] share-link manifest:',e);}})();
 // EARLY PUBLIC FETCH - kick off the Supabase request immediately, in parallel with the
 // supabase-js download and the rest of the page parsing. By the time loadPublicView()
 // runs, the response is often already in. Cuts public-view first-paint by ~1-3 sec on mobile.
@@ -2694,6 +2699,91 @@ button.booth-opt{font-family:inherit;min-width:32px;}
 #dash :focus-visible,#admin :focus-visible{outline:2px solid #1E40AF;outline-offset:2px;}
 .st-pw-rule{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.4;}
 /* ═══ end DIALOGS ═══ */
+/* ═══ MESSAGE BOOTH (phase 5A/5D): crew sheet + delivery receipts. Operator
+   side only: every rule is scoped to #cm-ov / #cm-fab / #hdr-msg-btn /
+   .st-cue-receipt, nothing here reaches #sv or the cue banner. ═══ */
+.st-cue-receipt{font-size:11.5px;line-height:1.4;margin:0 0 8px;padding:6px 9px;border-radius:7px;border:1px solid var(--border2);color:var(--sub2);background:var(--s3);}
+.st-cue-receipt.is-ok{color:#86efac;border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08);}
+.st-cue-receipt.is-warn{color:#fcd34d;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.1);font-weight:600;}
+.st-cue-receipt.is-pending{color:var(--accent-txt);border-color:var(--accent-line);background:var(--accent-soft);}
+#hdr-msg-btn{color:var(--text);}
+#hdr-msg-btn svg{color:var(--accent-txt);}
+#cm-fab{display:none;}
+/* Tablet: row 2 holds five views and the clock; the icon is enough here. */
+@media (max-width:1000px){#hdr-msg-btn .hbtn-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}}
+#cm-ov{position:fixed;inset:0;z-index:190;background:rgba(0,0,0,.55);display:none;}
+#cm-ov.open{display:block;}
+#cm{position:absolute;top:0;right:0;bottom:0;width:min(420px,100%);display:flex;flex-direction:column;background:var(--s1);border-left:1px solid var(--border2);
+  color:var(--text);font-family:var(--ff);box-shadow:-12px 0 40px rgba(0,0,0,.45);user-select:none;}
+#cm .cm-hdr{display:flex;align-items:center;gap:var(--sp-3);flex-shrink:0;padding:14px 16px 12px;border-bottom:1px solid var(--border);}
+#cm-title{flex:1;min-width:0;margin:0;font-size:var(--fs-lg);font-weight:800;letter-spacing:-.2px;}
+#cm .cm-x{width:var(--touch);height:var(--touch);flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid var(--border2);background:var(--s3);color:var(--sub2);cursor:pointer;}
+#cm .cm-x:hover{color:var(--text);background:var(--s4);}
+#cm .cm-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:var(--sp-4);display:flex;flex-direction:column;gap:18px;}
+#cm .cm-lbl{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:var(--fs-2xs);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--sub2);margin-bottom:8px;}
+#cm .cm-count{font-family:var(--ffm);font-weight:600;letter-spacing:0;text-transform:none;color:var(--sub);}
+#cm .cm-count.is-full{color:#fcd34d;}
+#cm-stage{width:100%;min-height:var(--btn-h-lg);padding:0 36px 0 12px;border-radius:10px;border:1px solid var(--border2);background:var(--s2);color:var(--text);
+  font-family:var(--ff);font-size:16px;font-weight:700;-webkit-appearance:none;appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='rgba(255,255,255,0.6)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:12px 8px;}
+#cm .cm-presence{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:var(--fs-xs);color:var(--sub2);line-height:1.35;}
+#cm .cm-presence::before{content:"";width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--sub);}
+#cm .cm-presence.is-ok{color:#86efac;}
+#cm .cm-presence.is-ok::before{background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,.18);}
+#cm .cm-presence.is-warn{color:#fcd34d;}
+#cm .cm-presence.is-warn::before{background:#f59e0b;}
+#cm .cm-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+#cm .cm-presets .cue-btn{min-height:52px;font-size:var(--fs-md);letter-spacing:.04em;border-radius:10px;}
+#cm .cm-presets .cue-green{color:#86efac;}
+#cm .cm-presets .cue-amber{color:#fcd34d;}
+#cm .cm-presets .cue-red{color:#fca5a5;}
+#cm .cm-presets .cue-blue{color:#93c5fd;}
+#cm .cm-presets .cue-purple{color:#c4b5fd;}
+#cm .cm-presets .cue-btn.st-cue-on{box-shadow:0 0 0 2px #fff inset;filter:brightness(1.35);}
+#cm-text{width:100%;min-height:var(--btn-h-lg);padding:0 12px;border-radius:10px;border:1px solid var(--border2);background:var(--bg);color:var(--text);
+  font-family:var(--ff);font-size:16px;font-weight:700;text-transform:uppercase;outline:none;user-select:text;-webkit-user-select:text;}
+#cm-text::placeholder{text-transform:none;font-weight:500;color:var(--sub);}
+#cm-text:focus{border-color:var(--accent);}
+#cm .cm-seg{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr;gap:6px;}
+#cm .cm-seg label{position:relative;display:flex;}
+#cm .cm-seg input{position:absolute;opacity:0;width:1px;height:1px;}
+#cm .cm-seg span{flex:1;display:flex;align-items:center;justify-content:center;min-height:var(--touch);padding:0 6px;border-radius:9px;border:1px solid var(--border2);
+  background:var(--s3);color:var(--sub2);font-size:var(--fs-sm);font-weight:700;white-space:nowrap;cursor:pointer;}
+#cm .cm-seg input:checked + span{background:var(--accent);border-color:var(--accent);color:#fff;}
+#cm .cm-seg input:focus-visible + span{outline:2px solid var(--focus);outline-offset:2px;}
+#cm .cm-onair{border:1px solid var(--border2);border-radius:12px;background:var(--s2);padding:12px;}
+#cm .cm-onair-v{font-size:var(--fs-md);font-weight:700;line-height:1.35;overflow-wrap:anywhere;margin-bottom:8px;}
+#cm .cm-onair-v .cm-muted{color:var(--sub);font-weight:500;}
+#cm .cm-onair-sub{display:block;margin-top:2px;font-size:var(--fs-xs);font-weight:500;color:var(--sub2);}
+#cm .st-cue-receipt{margin:0;font-size:var(--fs-sm);}
+#cm .st-cue-receipt:empty{display:none;}
+#cm .cm-bo-note{font-size:var(--fs-xs);font-weight:700;color:#fca5a5;margin-top:8px;}
+#cm .cm-foot{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:var(--s1);}
+#cm .cm-foot button{min-height:52px;border-radius:12px;font-family:var(--ff);font-size:var(--fs-md);font-weight:800;cursor:pointer;border:1px solid var(--border2);}
+#cm .cm-bo{background:var(--s3);color:var(--text);text-transform:uppercase;letter-spacing:.04em;font-size:var(--fs-sm)!important;}
+#cm .cm-bo.on{background:#dc2626;border-color:#dc2626;color:#fff;}
+#cm .cm-clear{background:transparent;color:var(--sub2);}
+#cm .cm-send{background:var(--accent);border-color:var(--accent)!important;color:#fff;}
+#cm .cm-foot button:disabled{opacity:.4;cursor:default;}
+#cm :focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+@media (max-width:700px){
+  #hdr-msg-btn{display:none!important;}
+  #cm-fab{display:flex;align-items:center;gap:8px;position:fixed;z-index:149;right:max(14px,env(safe-area-inset-right));bottom:calc(76px + env(safe-area-inset-bottom));
+    min-height:52px;padding:0 18px 0 15px;border-radius:999px;border:1px solid rgba(165,180,252,.35);background:var(--accent);color:#fff;
+    font-family:var(--ff);font-size:var(--fs-md);font-weight:800;box-shadow:0 6px 22px rgba(0,0,0,.5);cursor:pointer;}
+  #cm-fab:active{transform:scale(.97);}
+  body.drawer-open #cm-fab,body.cm-open #cm-fab{display:none!important;}
+  /* Room under the last schedule card so the button never hides it. */
+  #slist{padding-bottom:64px;}
+  /* Full-height sheet. --cm-h follows the visual viewport, so the footer
+     stays above the iOS keyboard (which does not resize the layout). */
+  #cm{left:0;width:100%;top:var(--cm-top,0px);bottom:auto;height:var(--cm-h,100dvh);border-left:0;}
+  #cm .cm-hdr{padding:calc(env(safe-area-inset-top) + 10px) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));}
+  #cm .cm-body{padding:16px max(16px,env(safe-area-inset-right)) 20px max(16px,env(safe-area-inset-left));}
+  #cm .cm-foot{padding:10px max(16px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));}
+  body.cm-kb #cm .cm-foot{padding-bottom:10px;}
+}
 </style>
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
@@ -4676,6 +4766,7 @@ function renderTbar(){
       <button class="hbtn hv" onclick="openTL()" id="hdr-tl-btn" title="Timeline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="7" height="5" rx="1"/><rect x="12" y="5" width="9" height="5" rx="1"/><rect x="3" y="14" width="10" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/></svg><span class="hbtn-lbl">Timeline</span></button>
       <button class="hbtn hv" onclick="openOV()" id="hdr-ov-btn" title="Overview of all stages"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="hbtn-lbl">Overview</span></button>
     </nav>
+    <button type="button" class="hbtn" id="hdr-msg-btn" onclick="openCrewMsg(this)" title="Send a message to the booth screens" aria-label="Message booth" aria-haspopup="dialog"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="hbtn-lbl">Message booth</span></button>
     <div id="mob-hdr-cd"></div>
     <div style="flex:1;" id="hdr-spacer2"></div>
     <div id="clock-hdr" aria-label="Festival time"></div>
@@ -4685,6 +4776,8 @@ function renderTbar(){
     <button id="logout-btn" onclick="doLogout()" style="display:none;"></button>
   </div>
 
+  <!-- Mobile: "Message booth" button above the bottom navigation (phase 5A). -->
+  <button type="button" id="cm-fab" onclick="openCrewMsg(this)" aria-haspopup="dialog" aria-label="Message booth"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Booth</span></button>
   <!-- Mobile bottom navigation (hidden on desktop) -->
   <div id="mob-nav" role="navigation" aria-label="Views">
     <button class="mob-nav-btn" data-nav="bs" onclick="openBS()">
@@ -4802,6 +4895,7 @@ function renderTbar(){
           <div class="cue-status" id="cue-status" role="status">No active cue</div>
         </div>
         <div class="st-cue-target" id="cue-target"></div>
+        <div class="st-cue-receipt" id="cue-receipt" role="status" hidden></div>
         <div class="st-bo-status" id="blackout-status" hidden>Blackout is ON: every viewer screen of this project (Stage View, Backstage, FOH, all stages) is black.</div>
         <div id="cue-presets">
           <button class="cue-btn cue-green"  onclick="sendCue('READY','green')" data-cue="READY" aria-pressed="false">READY</button>
@@ -4832,6 +4926,53 @@ function renderTbar(){
         </button>
       </div>
       <div id="slist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MESSAGE BOOTH (phase 5A): phone-first crew sheet. Sends through the same
+     sendCue / clearCue / toggleBlackout as the Floor cue panel; receipts and
+     screen presence come from the booth link (phase 5D). -->
+<div id="cm-ov" onclick="if(event.target===this)closeCrewMsg()">
+  <div id="cm" role="dialog" aria-modal="true" aria-labelledby="cm-title">
+    <div class="cm-hdr">
+      <h2 id="cm-title">Message booth</h2>
+      <button type="button" class="cm-x" onclick="closeCrewMsg()" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="cm-body">
+      <div>
+        <label class="cm-lbl" for="cm-stage">Send to</label>
+        <select id="cm-stage" onchange="_cmRender(true)"></select>
+        <div class="cm-presence" id="cm-presence"></div>
+      </div>
+      <div>
+        <div class="cm-lbl"><span id="cm-pre-lbl">Quick cues</span><span class="cm-count">tap to send</span></div>
+        <div class="cm-presets" id="cm-presets" role="group" aria-labelledby="cm-pre-lbl"></div>
+      </div>
+      <div>
+        <label class="cm-lbl" for="cm-text">Message <span class="cm-count" id="cm-count" aria-live="polite">0/40</span></label>
+        <input id="cm-text" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="send" placeholder="e.g. STRETCH 2 MIN" oninput="_cmCount()" onkeydown="if(event.key==='Enter'){event.preventDefault();cmSend();}">
+      </div>
+      <div>
+        <div class="cm-lbl" id="cm-dur-lbl">Show for</div>
+        <div class="cm-seg" role="radiogroup" aria-labelledby="cm-dur-lbl">
+          <label><input type="radio" name="cm-dur" value="0" checked><span>Until cleared</span></label>
+          <label><input type="radio" name="cm-dur" value="10000"><span>10 s</span></label>
+          <label><input type="radio" name="cm-dur" value="30000"><span>30 s</span></label>
+          <label><input type="radio" name="cm-dur" value="60000"><span>1 min</span></label>
+        </div>
+      </div>
+      <div class="cm-onair">
+        <div class="cm-lbl">On air</div>
+        <div class="cm-onair-v" id="cm-onair-v"></div>
+        <div class="st-cue-receipt" id="cm-receipt" role="status"></div>
+        <div class="cm-bo-note" id="cm-bo-note" hidden>Blackout is ON: every viewer screen of this project is black.</div>
+      </div>
+    </div>
+    <div class="cm-foot">
+      <button type="button" class="cm-bo" id="cm-blackout" onclick="toggleBlackout();_cmRender(true)" aria-pressed="false" title="Black out every viewer screen of this project">Blackout</button>
+      <button type="button" class="cm-clear" id="cm-clear" onclick="clearCue();_cmRender(true)">Clear</button>
+      <button type="button" class="cm-send" id="cm-send" onclick="cmSend()">Send</button>
     </div>
   </div>
 </div>
@@ -5779,6 +5920,7 @@ function _fmtDay(ymd){
     ['day-modal-ov','Manage days',()=>closeDayModal()],['json-modal-ov','Import lineup',()=>closeJSONModal()],
     ['voucher-modal-ov','New voucher',()=>closeVoucherModal()],['ot-modal-ov','One-off timer',()=>closeOTModal()],
     ['fohn-ov','Add note',()=>closeFohnModal()],['share-ov','Shareable links',()=>closeShareModal()],
+    ['cm-ov','Message booth',()=>closeCrewMsg()],
   ];
   const shown=ov=>!!ov&&getComputedStyle(ov).display!=='none'&&ov.getClientRects().length>0;
   const state=new Map();
@@ -7867,9 +8009,12 @@ function tickWV(){
 // that workspace. After `durationMs` the banner auto-hides locally; the
 // row stays in the DB until the next cue overwrites it. No new schema.
 //
-// Shape: { text, color, stageId, sentAt, durationMs }
-//   stageId is the active stage at send time; viewers filter on it so a
-//   cue meant for Stage A never shows up on Stage B's screen.
+// Shape: { id, text, color, stageId, sentAt, durationMs }
+//   stageId is the active stage at send time (or the stage picked in the
+//   Message booth sheet, null = every stage); viewers filter on it so a cue
+//   meant for Stage A never shows up on Stage B's screen.
+//   id (phase 5D) is unique per send: booth screens acknowledge it over the
+//   booth link. Older clients ignore it; a cue without id has no receipt.
 // ══════════════════════════════════════════════════════════════════════════
 // Item-type badge helper. Returns an empty string if the show has no type
 // set, so festival users see no clutter unless they opt in via the drawer.
@@ -8156,9 +8301,14 @@ function renderBlackout(){
 // auto-dismiss was too short for broadcast use - a WRAP UP that vanishes
 // before the speaker looks up is worse than useless.
 // Pass a non-zero durationMs to sendCue() to opt into auto-expire.
-function sendCue(text,color,durationMs){
-  const t=String(text||'').trim();if(!t)return;
-  G.cue={text:t,color:color||'amber',stageId:G.activeStage||null,
+// opts.stageId (Message booth sheet): send to that stage, null = every stage.
+// Without it the cue goes to the active stage, as it always did.
+const CUE_MAX=40;   // what the Stage View banner shows legibly (also maxlength of #cue-input / #cm-text)
+const _cueId=()=>(window.crypto&&typeof crypto.randomUUID==='function')?crypto.randomUUID():uid()+uid()+uid();
+function sendCue(text,color,durationMs,opts){
+  const t=String(text||'').trim().slice(0,CUE_MAX);if(!t)return;
+  const sid=opts&&Object.prototype.hasOwnProperty.call(opts,'stageId')?(opts.stageId||null):(G.activeStage||null);
+  G.cue={id:_cueId(),text:t,color:color||'amber',stageId:sid,
          sentAt:nowMs(),   // server-corrected: receivers compare against their own nowMs()
          // null = stay until cleared (default for preset + custom cues)
          durationMs:(durationMs&&durationMs>0)?durationMs:null};
@@ -8245,6 +8395,296 @@ function _renderCueOverlay(){
   overlay.className='on cue-'+(c.color||'amber');
 }
 
+// ══ BOOTH LINK (phase 5D) - delivery receipts and screen presence
+// One Realtime channel per open project, `st-proj-<pid>`, with BROADCAST and
+// PRESENCE only: no postgres_changes, no database write, no migration.
+//   Booth screens (share link mode=stage, and the in-app Stage View) track
+//   presence {role:'booth',stageId,device,mode} and broadcast 'cue-ack'
+//   {cueId,stageId,device,at} once a cue is on their screen. That is decided
+//   from data (_cueLastKey, set by _renderCueOverlay); nothing in #sv changes.
+//   Operator screens count those screens and acks per cue.
+// Cue CONTENT never travels over this channel. The operator only listens for
+// 'cue-ack' / 'ack-request' and presence; the cue itself always comes from the
+// saved project (G.cue via save()), so whatever someone broadcasts on this
+// public channel cannot put text on a screen. Anyone who knows the pid can
+// still join and fake an ack or a presence entry: receipts are a convenience
+// signal, not proof. Private channels with Realtime Authorization can close
+// that later (README "Booth link").
+// Without Realtime (offline, blocked websocket, join refused) the cue still
+// goes out through save(); the receipt then says "Delivery unknown".
+const _pc={chan:null,pid:null,status:'',joinedAt:0,tracked:'',device:'b'+uid(),
+  acks:{id:null,dev:new Map()},online:[],shown:null,acked:new Set(),reAckAt:0};
+const _PC_ID=/^[A-Za-z0-9_-]{1,64}$/;
+const _PC_WARN_MS=3000;     // no ack within 3 s while screens are online: warn
+// Who this page is on the booth link right now: null (not on it), or the
+// project and whether this page is a booth screen.
+function _pcWant(){
+  if(!G||!_rt.started)return null;
+  const mode=window.PUBLIC_MODE;
+  if(mode)return mode==='stage'&&PUBLIC_PID?{pid:PUBLIC_PID,booth:true}:null;
+  const pid=APP&&APP.activeProjectId;if(!pid)return null;
+  return{pid,booth:!!document.getElementById('sv')?.classList.contains('open')};
+}
+function _pcStop(){
+  const ch=_pc.chan;
+  _pc.chan=null;_pc.pid=null;_pc.status='';_pc.tracked='';_pc.online=[];_pc.joinedAt=0;
+  _pc.acks={id:null,dev:new Map()};_pc.shown=null;
+  if(ch){try{supa.removeChannel(ch);}catch(e){console.warn('[booth-link] removeChannel:',e);}}
+}
+function _pcStart(pid){
+  _pc.pid=pid;_pc.status='';
+  let ch;
+  try{
+    ch=supa.channel('st-proj-'+pid,{config:{broadcast:{self:false,ack:false},presence:{key:_pc.device}}});
+    ch.on('broadcast',{event:'cue-ack'},m=>_pcOnAck(m&&m.payload))
+      .on('broadcast',{event:'ack-request'},()=>_pcReAck())
+      .on('presence',{event:'sync'},()=>_pcOnPresence());
+    _pc.chan=ch;
+    ch.subscribe(status=>{
+      if(_pc.chan!==ch)return;   // replaced (project switch) or stopped
+      _pc.status=status;
+      if(status!=='SUBSCRIBED'){console.warn('[booth-link]',status);return;}
+      // (Re)joined: presence on the server starts empty for this socket.
+      _pc.joinedAt=nowMs();_pc.tracked='';_pcOnPresence();
+      // Screens that showed the current cue before this page joined answer again.
+      if(!window.PUBLIC_MODE)_pcSend('ack-request',{});
+      _pcSync();
+    });
+  }catch(e){console.warn('[booth-link] channel setup failed:',e);_pc.chan=null;_pc.status='UNAVAILABLE';}
+}
+// Only on a joined channel: supabase-js would otherwise fall back to a REST
+// POST per message.
+function _pcSend(event,payload){
+  const ch=_pc.chan;if(!ch||_pc.status!=='SUBSCRIBED')return false;
+  try{Promise.resolve(ch.send({type:'broadcast',event,payload})).catch(e=>console.warn('[booth-link] send failed:',e));return true;}
+  catch(e){console.warn('[booth-link] send failed:',e);return false;}
+}
+function _pcTrack(meta){
+  const ch=_pc.chan;if(!ch||_pc.status!=='SUBSCRIBED')return;
+  const k=meta?JSON.stringify(meta):'';
+  if(k===_pc.tracked)return;
+  _pc.tracked=k;
+  try{Promise.resolve(meta?ch.track(meta):ch.untrack()).catch(e=>console.warn('[booth-link] presence failed:',e));}
+  catch(e){console.warn('[booth-link] presence failed:',e);}
+}
+// Runs on every tick, right after _renderCueOverlay: follows project switches,
+// Stage View open/close and stage changes, and acknowledges a cue the moment
+// this booth screen shows it.
+function _pcSync(){
+  let w=null;
+  try{w=_pcWant();}catch(e){console.warn('[booth-link] state:',e);}
+  const pid=w?w.pid:null;
+  if(pid!==_pc.pid){_pcStop();if(pid)_pcStart(pid);}
+  if(!_pc.chan)return;
+  const booth=!!(w&&w.booth);
+  _pcTrack(booth?{role:'booth',stageId:G.activeStage||null,device:_pc.device,mode:window.PUBLIC_MODE?'link':'app'}:null);
+  const c=G.cue;
+  _pc.shown=booth&&_cueLastKey&&c&&typeof c.id==='string'&&_PC_ID.test(c.id)?c:null;
+  if(_pc.shown&&!_pc.acked.has(_pc.shown.id)&&_pcAck())_pc.acked.add(_pc.shown.id);
+}
+function _pcAck(){
+  const c=_pc.shown;if(!c)return false;
+  const msg={cueId:c.id,stageId:G.activeStage||null,device:_pc.device,at:nowMs()};
+  // A logged-in device showing Stage View is an operator screen too: count it here.
+  if(!window.PUBLIC_MODE)_pcOnAck(msg);
+  return _pcSend('cue-ack',msg);
+}
+// An operator (re)joined and asks the screens to confirm what they show.
+// Throttled: anyone on the channel can send this.
+function _pcReAck(){
+  const t=Date.now();if(t-_pc.reAckAt<1500)return;
+  _pc.reAckAt=t;_pcAck();
+}
+// Operator side. The payload comes from an unauthenticated public channel:
+// only a well-formed ack for the cue that is on air (per the saved project)
+// for the stage it was sent to is counted. Nothing from it is rendered except
+// a count and the local time it arrived.
+function _pcOnAck(p){
+  if(!p||typeof p!=='object')return;
+  const c=G&&G.cue;
+  if(!c||typeof c.id!=='string'||p.cueId!==c.id)return;
+  if(typeof p.device!=='string'||!_PC_ID.test(p.device))return;
+  const sid=p.stageId==null?null:p.stageId;
+  if(sid!==null&&(typeof sid!=='string'||!_PC_ID.test(sid)))return;
+  if(c.stageId&&sid!==c.stageId)return;   // a screen of another stage cannot confirm this cue
+  if(_pc.acks.id!==c.id)_pc.acks={id:c.id,dev:new Map()};
+  if(_pc.acks.dev.size>=200||_pc.acks.dev.has(p.device))return;
+  _pc.acks.dev.set(p.device,nowMs());
+}
+function _pcOnPresence(){
+  const ch=_pc.chan;let st={};
+  try{st=(ch&&ch.presenceState())||{};}catch(e){console.warn('[booth-link] presence state:',e);}
+  const seen=new Map();
+  for(const k of Object.keys(st)){
+    const metas=Array.isArray(st[k])?st[k]:[];
+    for(const m of metas){
+      if(!m||m.role!=='booth'||typeof m.device!=='string'||!_PC_ID.test(m.device))continue;
+      if(m.stageId!=null&&(typeof m.stageId!=='string'||!_PC_ID.test(m.stageId)))continue;
+      if(m.device===_pc.device&&window.PUBLIC_MODE)continue;
+      seen.set(m.device,m.stageId||null);
+      if(seen.size>=200)break;
+    }
+  }
+  _pc.online=[...seen].map(([device,stageId])=>({device,stageId}));
+}
+// stageId null = every stage.
+const _pcOnlineFor=stageId=>_pc.online.filter(o=>!stageId||o.stageId===stageId).length;
+const _pcLive=()=>!!_pc.chan&&_pc.status==='SUBSCRIBED';
+const _pcScreens=(n,where)=>`${n} ${where?where+' ':''}${n===1?'screen':'screens'}`;
+function _pcStageName(id){return id?((G.stages||[]).find(s=>s.id===id)?.name||'this stage'):'';}
+// Receipt for the cue on air: {kind:'ok'|'warn'|'pending'|'muted', text} or null.
+function _pcReceipt(){
+  const c=G&&G.cue;
+  if(!_cueActive(c))return null;
+  if(typeof c.id!=='string')return{kind:'muted',text:'Delivery unknown: this cue was sent by an older version of Stagetimer.'};
+  const acks=_pc.acks.id===c.id?[..._pc.acks.dev.values()]:[];
+  const n=acks.length;
+  if(!_pcLive()&&!n)return{kind:'muted',text:'Delivery unknown: no live link to the booth screens. The cue is saved and still reaches them through the normal sync.'};
+  const where=_pcStageName(c.stageId);
+  const m=Math.max(n,_pcOnlineFor(c.stageId));
+  const late=nowMs()-Math.max(c.sentAt||0,_pc.joinedAt||0)>=_PC_WARN_MS;
+  if(n){
+    const txt=`Delivered to ${n} of ${_pcScreens(m,where)} · seen ${amsTimeStr(Math.max(...acks),true)}`;
+    return n<m&&late?{kind:'warn',text:`${txt} · ${m-n} not confirmed`}:{kind:'ok',text:txt};
+  }
+  if(!m)return{kind:'warn',text:c.stageId?'No booth screens online for this stage':'No booth screens online'};
+  if(!late)return{kind:'pending',text:`Sending to ${_pcScreens(m,where)}…`};
+  return{kind:'warn',text:`No confirmation from ${m===1?`the ${where?where+' ':''}screen`:`the ${_pcScreens(m,where)}`} after 3 s. Check the booth.`};
+}
+// Presence line for a target (stageId null = every stage).
+function _pcPresence(stageId){
+  if(!_pcLive())return{kind:'muted',text:'Screen status unknown: no live link'};
+  const n=_pcOnlineFor(stageId);
+  if(!n)return{kind:'warn',text:stageId?'No booth screens online for this stage':'No booth screens online'};
+  return{kind:'ok',text:`${n} booth ${n===1?'screen':'screens'} online${stageId?'':' (all stages)'}`};
+}
+// Operator UI: receipt (or, with no cue on air, presence for the active
+// stage) in the Floor cue panel; the sheet renders its own.
+let _pcUiKey='';
+function _pcRender(){
+  if(window.PUBLIC_MODE||!G)return;
+  const el=document.getElementById('cue-receipt');
+  if(el){
+    const r=_pcReceipt()||(_pc.chan?_pcPresence(G.activeStage||null):null);
+    const key=r?r.kind+'|'+r.text:'';
+    if(key!==_pcUiKey){
+      _pcUiKey=key;
+      el.hidden=!r;el.textContent=r?r.text:'';
+      el.className='st-cue-receipt'+(r?' is-'+r.kind:'');
+    }
+  }
+  if(_cmIsOpen())_cmRender();
+}
+window.addEventListener('online',()=>{if(_pc.chan&&_pc.status!=='SUBSCRIBED'){const p=_pc.pid;_pcStop();_pcStart(p);}});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&_pc.chan&&_pc.status&&_pc.status!=='SUBSCRIBED'){const p=_pc.pid;_pcStop();_pcStart(p);}
+});
+
+// ══ MESSAGE BOOTH (phase 5A) - phone-first crew sheet
+// Same actions as the Floor cue panel (sendCue / clearCue / toggleBlackout),
+// plus a target stage (default: the active stage; "All stages" = stageId
+// null, which every viewer already accepts), a duration and the receipt.
+const _cmIsOpen=()=>!!document.getElementById('cm-ov')?.classList.contains('open');
+let _cmKey='',_cmVV=null,_cmOpener=null;
+function openCrewMsg(opener){
+  if(!G)return;
+  const ov=document.getElementById('cm-ov');if(!ov)return;
+  // WebKit does not focus a clicked button, so remember who opened the sheet.
+  _cmOpener=opener&&opener.nodeType===1?opener:null;
+  // Presets: the Floor cue panel's buttons are the one list.
+  const pre=document.getElementById('cm-presets');
+  if(pre&&!pre.childElementCount){
+    document.querySelectorAll('#cue-presets .cue-btn').forEach(b=>{
+      const txt=b.dataset.cue,col=(b.className.match(/\bcue-(green|amber|red|blue|purple)\b/)||[])[1]||'amber';
+      if(!txt)return;
+      const btn=document.createElement('button');
+      btn.type='button';btn.className='cue-btn cue-'+col;btn.dataset.cue=txt;btn.textContent=txt;btn.setAttribute('aria-pressed','false');
+      btn.addEventListener('click',()=>cmSendPreset(txt,col));
+      pre.appendChild(btn);
+    });
+  }
+  const sel=document.getElementById('cm-stage');
+  if(sel){
+    sel.innerHTML=(G.stages||[]).map(s=>`<option value="${escH(s.id)}">${escH(s.name||'Stage')}</option>`).join('')+'<option value="">All stages</option>';
+    sel.value=G.activeStage||'';
+  }
+  _cmCount();
+  ov.classList.add('open');document.body.classList.add('cm-open');
+  _cmViewport(true);
+  _cmRender(true);
+  setTimeout(()=>{if(_cmIsOpen())document.getElementById('cm-stage')?.focus({preventScroll:true});},30);
+}
+function closeCrewMsg(){
+  const ov=document.getElementById('cm-ov');if(!ov||!ov.classList.contains('open'))return;
+  ov.classList.remove('open');document.body.classList.remove('cm-open','cm-kb');
+  _cmViewport(false);
+  const o=_cmOpener;_cmOpener=null;
+  if(o&&document.contains(o)&&o.getClientRects().length){try{o.focus({preventScroll:true});}catch(e){console.warn('[cm] focus:',e);}}
+}
+// iOS: the keyboard covers the layout viewport instead of resizing it. Size
+// the sheet to the visual viewport so Send stays above the keyboard.
+function _cmViewport(on){
+  const vv=window.visualViewport,el=document.getElementById('cm');
+  if(!vv||!el)return;
+  if(!on){if(_cmVV){vv.removeEventListener('resize',_cmVV);vv.removeEventListener('scroll',_cmVV);_cmVV=null;}
+    el.style.removeProperty('--cm-h');el.style.removeProperty('--cm-top');return;}
+  if(_cmVV)return;
+  _cmVV=()=>{
+    el.style.setProperty('--cm-h',Math.round(vv.height)+'px');
+    el.style.setProperty('--cm-top',Math.round(vv.offsetTop)+'px');
+    document.body.classList.toggle('cm-kb',window.innerHeight-vv.height>120);
+  };
+  vv.addEventListener('resize',_cmVV);vv.addEventListener('scroll',_cmVV);_cmVV();
+}
+function _cmTarget(){const v=document.getElementById('cm-stage')?.value;return v?v:null;}
+function _cmDuration(){const r=document.querySelector('#cm input[name="cm-dur"]:checked');const v=r?+r.value:0;return v>0?v:null;}
+function _cmCount(){
+  const inp=document.getElementById('cm-text'),c=document.getElementById('cm-count');if(!inp||!c)return;
+  const n=inp.value.length;c.textContent=n+'/'+CUE_MAX;c.classList.toggle('is-full',n>=CUE_MAX);
+  const s=document.getElementById('cm-send');if(s)s.disabled=!inp.value.trim();
+}
+function cmSendPreset(text,color){
+  sendCue(text,color,_cmDuration(),{stageId:_cmTarget()});
+  _cmRender(true);
+}
+function cmSend(){
+  const inp=document.getElementById('cm-text');if(!inp)return;
+  const t=inp.value.trim();if(!t){inp.focus();return;}
+  sendCue(t,'amber',_cmDuration(),{stageId:_cmTarget()});
+  inp.value='';_cmCount();_cmRender(true);
+}
+function _cmRender(force){
+  if(!_cmIsOpen()||!G)return;
+  const target=_cmTarget(),c=G.cue,active=_cueActive(c);
+  const pr=_pcPresence(target),rc=active?_pcReceipt():null;
+  const remain=active&&c.durationMs?Math.max(0,Math.ceil(((c.sentAt||0)+c.durationMs-nowMs())/1000)):0;
+  const key=[target,pr.kind,pr.text,active?c.id+'|'+c.text+'|'+c.stageId:'',remain,rc?rc.kind+rc.text:'',G.blackout?1:0].join('§');
+  if(!force&&key===_cmKey)return;
+  _cmKey=key;
+  const p=document.getElementById('cm-presence');
+  if(p){p.textContent=pr.text;p.className='cm-presence is-'+pr.kind;}
+  const v=document.getElementById('cm-onair-v');
+  if(v){
+    if(!active){v.innerHTML='<span class="cm-muted">No message on the screens</span>';}
+    else{
+      const where=c.stageId?_pcStageName(c.stageId):'All stages';
+      v.innerHTML=`${escH(c.text)}<span class="cm-onair-sub">${escH(where)} · ${c.durationMs?`disappears in ${remain}s`:'until you press Clear'}</span>`;
+    }
+  }
+  const r=document.getElementById('cm-receipt');
+  if(r){r.textContent=rc?rc.text:'';r.className='st-cue-receipt'+(rc?' is-'+rc.kind:'');}
+  document.querySelectorAll('#cm-presets .cue-btn').forEach(b=>{
+    const on=active&&b.dataset.cue===c.text&&(c.stageId||null)===target;
+    b.classList.toggle('st-cue-on',on);b.setAttribute('aria-pressed',on?'true':'false');
+  });
+  const clr=document.getElementById('cm-clear');if(clr)clr.disabled=!active;
+  const bo=document.getElementById('cm-blackout'),on=!!G.blackout;
+  if(bo){bo.classList.toggle('on',on);bo.setAttribute('aria-pressed',on?'true':'false');bo.textContent=on?'Blackout ON':'Blackout';}
+  const bn=document.getElementById('cm-bo-note');if(bn&&bn.hidden===on)bn.hidden=!on;
+}
+window.openCrewMsg=openCrewMsg;window.closeCrewMsg=closeCrewMsg;window.cmSend=cmSend;window.cmSendPreset=cmSendPreset;
+window._cmRender=_cmRender;window._cmCount=_cmCount;
+
 // ══ TICK (every 250ms)
 function tick(){
   if(!G)return; // app not initialized yet
@@ -8263,6 +8703,9 @@ function tick(){
   tickOTV();
   tickOV();
   vwTickSync();
+  // Booth link (receipts / presence): last, so a failure there can never
+  // keep a screen from rendering.
+  try{_pcSync();_pcRender();}catch(e){console.warn('[booth-link] tick:',e);}
 }
 
 // ══ STAGE MANAGEMENT

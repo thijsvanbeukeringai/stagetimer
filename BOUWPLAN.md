@@ -385,6 +385,7 @@ Toegevoegd op 13-10-2026 op verzoek van Thijs. Dit zijn nieuwe productfuncties, 
 - Een PWA "op het beginscherm" (iOS 16.4+): de app opent fullscreen en krijgt **web-push** via OneSignal. Dat werkt alleen voor geïnstalleerde PWA's op iOS.
 - Een compact scherm "Bericht naar booth": podium kiezen, presets, vrije tekst, duur, blackout, en een bevestiging dat het scherm het bericht ontving (zie 5D).
 - De mobiele layout uit fase 2 is hiervoor de basis.
+- **Status (13-10-2026, branch `feature/phase5-crew-messages`):** gebouwd. Sheet *Message booth* (knop in de header, op de telefoon de knop *Booth* boven de navigatie): podium of "All stages", presets uit het cuepaneel, vrije tekst (max. 40), duur (tot wissen / 10 s / 30 s / 1 min), Send, Clear, Blackout. Volledige hoogte op 390×844, safe areas, blijft boven het iOS-toetsenbord (`visualViewport`). PWA: manifest kreeg `id`, iOS-titel gelijk aan het manifest, en deellinks hebben geen manifest meer zodat "Zet op beginscherm" de deellink opent in plaats van de login. Web-push op iOS (OneSignal) is niet aangeraakt en niet getest.
 
 ### 5B. Robuust zonder internet: lokale "Stagetimer Hub" (2–4 weken)
 Op een gewone festivalwifi kunnen browsers niet rechtstreeks met elkaar praten. Een webpagina kan geen verbindingen ontvangen. Daarom is er één kastje op het lokale netwerk nodig.
@@ -435,6 +436,7 @@ Op een gewone festivalwifi kunnen browsers niet rechtstreeks met elkaar praten. 
 ### 5D. Bevestiging "aangekomen op het scherm" (hoort bij 5A/5B)
 - Stage View stuurt een stille ontvangstbevestiging terug: alleen gegevens, geen zichtbare wijziging.
 - De telefoon toont "Gezien door booth Main Stage om 22:41:05". Komt er geen bevestiging binnen 3 seconden, dan volgt een waarschuwing.
+- **Status (13-10-2026, branch `feature/phase5-crew-messages`):** gebouwd zonder migratie. Realtime broadcast + presence op kanaal `st-proj-<pid>`; elke cue krijgt een `id`. Bediening toont "Delivered to N of M Main Stage screens · seen 22:41:05", een waarschuwing na 3 s, "No booth screens online for this stage" en "Delivery unknown" zonder Realtime. Stage View pixel-gelijk (booth-suite 66/66). Tests: `tests/regression/phase5-crew.spec.js`. Open: publiek kanaal (acks te vervalsen met de `pid`), later private channels + Realtime Authorization.
 
 ### Advies over de volgorde
 1. **Snelste winst, zonder bouwwerk:** geef elk boothscherm een 4G/5G-router of hotspot als back-up van de festivalwifi. De huidige cloudversie werkt dan ook als de wifi van de locatie hapert.

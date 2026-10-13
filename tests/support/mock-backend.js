@@ -15,6 +15,8 @@
 //                           migration; backend.storage.bucketMissing = true answers
 //                           "Bucket not found" like production before that migration
 //     wss /realtime/v1/websocket   Phoenix stub, push postgres_changes at will
+//                                  + broadcast and presence per topic (phase 5D)
+//     /realtime/v1/api/broadcast    REST broadcast fallback: recorded, fanned out
 //   cdn.jsdelivr.net        supabase-js UMD served from node_modules (same bytes, SRI ok)
 //   fonts.googleapis/gstatic   local copies in tests/support/fonts
 //   *.onesignal.com         recorded, answered with a dummy 200, never real
@@ -138,16 +140,44 @@ class RealtimeStub {
     this.sockets = [];
     this.nextId = 1000;
     this.messages = []; // every client->server frame (decoded), for assertions
+    this.broadcasts = []; // every client broadcast {topic, event, payload, via:'ws'|'rest'|'server'}
+    this.restBroadcasts = []; // broadcasts that took supabase-js' REST fallback (should stay empty)
+    this.nextRef = 1;
   }
 
   async _onSocket(ws) {
     const conn = { ws, channels: new Map(), vsn: new URL(ws.url()).searchParams.get('vsn') || '1.0.0', open: true };
     this.sockets.push(conn);
+    // realtimeDown: the websocket is refused (blocked network, Realtime outage).
+    if (this.backend.realtimeDown) { conn.open = false; ws.close({ code: 1011, reason: 'realtime down (test)' }); return; }
     ws.onMessage((raw) => this._onMessage(conn, raw));
-    ws.onClose(() => { conn.open = false; });
+    ws.onClose(() => {
+      for (const [topic, ch] of conn.channels) this._presenceLeave(conn, topic, ch);
+      conn.open = false;
+    });
+  }
+
+  // supabase-js >= 2.1xx sends user broadcasts as a binary frame (kind 3,
+  // "userBroadcastPush"): header [kind, joinRefLen, refLen, topicLen,
+  // eventLen, metaLen, encoding] then those strings, then the payload.
+  _decodeBinary(buf) {
+    if (buf[0] !== 3) return null;
+    const lens = [buf[1], buf[2], buf[3], buf[4], buf[5]];
+    const enc = buf[6];
+    let o = 7;
+    const take = (n) => { const v = buf.slice(o, o + n).toString('utf8'); o += n; return v; };
+    const [join_ref, ref, topic, event] = lens.slice(0, 4).map(take);
+    take(lens[4]);
+    const rest = buf.slice(o);
+    const payload = enc === 1 ? JSON.parse(rest.toString('utf8') || 'null') : rest;
+    return { join_ref: join_ref || null, ref: ref || null, topic, event: 'broadcast', payload: { type: 'broadcast', event, payload } };
   }
 
   _decode(conn, raw) {
+    if (typeof raw !== 'string') {
+      const bin = this._decodeBinary(Buffer.from(raw));
+      if (bin) { conn.vsn = '2.0.0'; return bin; }
+    }
     const text = typeof raw === 'string' ? raw : Buffer.from(raw).toString('utf8');
     const v = JSON.parse(text);
     if (Array.isArray(v)) { conn.vsn = '2.0.0'; const [join_ref, ref, topic, event, payload] = v; return { join_ref, ref, topic, event, payload }; }
@@ -175,17 +205,132 @@ class RealtimeStub {
         if (this.backend.realtimeJoinError) return reply({ reason: this.backend.realtimeJoinError }, 'error');
         const pcs = (msg.payload && msg.payload.config && msg.payload.config.postgres_changes) || [];
         const bindings = pcs.map((f) => ({ id: this.nextId++, event: f.event, schema: f.schema, table: f.table, filter: f.filter }));
-        conn.channels.set(msg.topic, { joinRef: msg.join_ref || msg.ref, bindings });
+        const cfg = (msg.payload && msg.payload.config) || {};
+        const pres = cfg.presence || {};
+        const prev = conn.channels.get(msg.topic);
+        if (prev) this._presenceLeave(conn, msg.topic, prev);
+        const ch = {
+          joinRef: msg.join_ref || msg.ref, bindings,
+          broadcastSelf: !!(cfg.broadcast && cfg.broadcast.self),
+          presenceEnabled: !!pres.enabled,
+          presenceKey: pres.key || `pk-${this.nextId++}`,
+          presence: null,   // this channel's tracked meta
+        };
+        conn.channels.set(msg.topic, ch);
         reply({ postgres_changes: bindings });
         this._send(conn, { topic: msg.topic, event: 'system', payload: { channel: msg.topic.replace(/^realtime:/, ''), extension: 'postgres_changes', message: 'Subscribed to PostgreSQL', status: 'ok' } });
+        // Like the real server: a channel with presence enabled gets the full state after joining.
+        if (ch.presenceEnabled) this._send(conn, { join_ref: ch.joinRef, topic: msg.topic, event: 'presence_state', payload: this._presenceState(msg.topic) });
         return;
       }
-      case 'phx_leave':
+      case 'phx_leave': {
+        const ch = conn.channels.get(msg.topic);
+        if (ch) this._presenceLeave(conn, msg.topic, ch);
         conn.channels.delete(msg.topic);
         return reply({});
-      default:
-        // access_token, broadcast, presence...: acknowledge if a reply is expected.
+      }
+      case 'broadcast': {
+        const ch = conn.channels.get(msg.topic);
+        const p = msg.payload || {};
+        this.broadcasts.push({ topic: msg.topic, event: p.event, payload: clone(p.payload), via: 'ws' });
+        if (ch) this._fanOut(msg.topic, { type: 'broadcast', event: p.event, payload: p.payload }, ch.broadcastSelf ? null : conn);
         if (msg.ref) reply({});
+        return;
+      }
+      case 'presence': {
+        const ch = conn.channels.get(msg.topic);
+        const p = msg.payload || {};
+        if (ch && p.event === 'track') this._presenceTrack(conn, msg.topic, ch, p.payload || {});
+        if (ch && p.event === 'untrack') this._presenceLeave(conn, msg.topic, ch);
+        if (msg.ref) reply({});
+        return;
+      }
+      default:
+        // access_token and anything else: acknowledge if a reply is expected.
+        if (msg.ref) reply({});
+    }
+  }
+
+  // ── broadcast ────────────────────────────────────────────────────────
+  /** Every joined channel on `topic` (across all pages and contexts sharing this backend). */
+  *_members(topic) {
+    for (const conn of this.sockets) {
+      if (!conn.open) continue;
+      const ch = conn.channels.get(topic);
+      if (ch) yield [conn, ch];
+    }
+  }
+
+  _fanOut(topic, payload, exceptConn) {
+    let n = 0;
+    for (const [conn] of this._members(topic)) {
+      if (conn === exceptConn) continue;
+      this._send(conn, { topic, event: 'broadcast', payload });
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * Server-side broadcast, as if some other client sent it (e.g. an anonymous
+   * page that knows the project id). The 'realtime:' topic prefix is optional.
+   */
+  sendBroadcast(topic, event, payload) {
+    const t = topic.startsWith('realtime:') ? topic : `realtime:${topic}`;
+    this.broadcasts.push({ topic: t, event, payload: clone(payload), via: 'server' });
+    return this._fanOut(t, { type: 'broadcast', event, payload }, null);
+  }
+
+  /** Recorded broadcasts, optionally filtered by event name. */
+  broadcastsOf(event) { return this.broadcasts.filter((b) => !event || b.event === event); }
+
+  // ── presence ─────────────────────────────────────────────────────────
+  _presenceState(topic) {
+    const state = {};
+    for (const [, ch] of this._members(topic)) {
+      if (!ch.presence) continue;
+      (state[ch.presenceKey] = state[ch.presenceKey] || { metas: [] }).metas.push(ch.presence);
+    }
+    return state;
+  }
+
+  _presenceDiff(topic, joins, leaves) {
+    for (const [conn, ch] of this._members(topic)) {
+      if (!ch.presenceEnabled) continue;
+      this._send(conn, { join_ref: ch.joinRef, topic, event: 'presence_diff', payload: { joins, leaves } });
+    }
+  }
+
+  _presenceTrack(conn, topic, ch, meta) {
+    const old = ch.presence;
+    ch.presence = { ...clone(meta), phx_ref: `ref-${this.nextRef++}` };
+    if (old) ch.presence.phx_ref_prev = old.phx_ref;
+    this._presenceDiff(topic, { [ch.presenceKey]: { metas: [ch.presence] } }, old ? { [ch.presenceKey]: { metas: [old] } } : {});
+  }
+
+  _presenceLeave(conn, topic, ch) {
+    const old = ch.presence;
+    if (!old) return;
+    ch.presence = null;
+    this._presenceDiff(topic, {}, { [ch.presenceKey]: { metas: [old] } });
+  }
+
+  /** Tracked presence metas on a topic: [{key, ...meta}]. The 'realtime:' prefix is optional. */
+  presenceOf(topic) {
+    const t = topic.startsWith('realtime:') ? topic : `realtime:${topic}`;
+    const out = [];
+    for (const [, ch] of this._members(t)) if (ch.presence) out.push({ key: ch.presenceKey, ...ch.presence });
+    return out;
+  }
+
+  /** supabase-js falls back to POST /realtime/v1/api/broadcast when a channel is not joined. */
+  _restBroadcast(body) {
+    for (const m of (body && body.messages) || []) {
+      const topic = `realtime:${m.topic}`;
+      const rec = { topic, event: m.event, payload: clone(m.payload), via: 'rest' };
+      this.restBroadcasts.push(rec);
+      this.broadcasts.push(rec);
+      this._fanOut(topic, { type: 'broadcast', event: m.event, payload: m.payload }, null);
     }
   }
 
@@ -249,6 +394,7 @@ class MockBackend {
                                  // or an (async) function returning one per request, e.g. the page's
                                  // own fake clock (AppDriver.serverClockFollowsPage)
     this.realtimeJoinError = null;
+    this.realtimeDown = false;   // true: every realtime websocket is closed on connect
     // Column-level grants (setup_token hotfix PART 2): { companies: ['setup_token'] }.
     // Any read of a hidden column - an explicit select, select=* or the implicit
     // RETURNING * of return=representation without select= - fails with 42501,
@@ -478,6 +624,11 @@ class MockBackend {
     if (p.startsWith('/storage/v1/object/')) {
       const r = this._storage(p.slice('/storage/v1/object/'.length), method, rec);
       if (r) return r;
+    }
+    if (p === '/realtime/v1/api/broadcast' && method === 'POST') {
+      if (this.realtimeDown) return { status: 503, json: { message: 'realtime down (test)' } };
+      this.realtime._restBroadcast(body);
+      return { status: 202, body: '' };
     }
     if (p.startsWith('/storage/v1/')) return this._violation(`unmocked storage call ${method} ${url.href}`);
     return this._violation(`unmocked supabase path ${method} ${url.href}`);

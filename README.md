@@ -35,6 +35,7 @@ Elke view behalve de bediening is ook beschikbaar als **deellink** zonder login.
 - **Lineup-import** via JSON: eerst een voorbeeld van wat er wordt toegevoegd of vervangen, pas daarna toepassen. Vervangt alleen binnen (dag, podium).
 - **Tijdcorrecties** met expliciete keuze (alle volgende shows verschuiven / alleen de volgende show / annuleren) en een voorbeeld van de nieuwe tijden.
 - **Cues en blackout** naar een gekozen podium; **losse timers** (one-off) met hetzelfde middernachtmodel als shows.
+- **Bericht naar booth** (telefoon-eerst sheet, knop *Message booth* / *Booth*): podium of alle podia, presets, vrije tekst (max. 40 tekens), duur, wissen en blackout, met **ontvangstbevestiging** ("Delivered to 1 of 1 Main Stage screen · seen 22:41:05") en het aantal boothschermen online. Zie *Booth link*.
 - **Push-meldingen** voor crew via de edge function `send-push` (zie *Tech stack*).
 - **Wake lock** op FOH, Backstage, Stage View, Tijdlijn, Overzicht en Control Wall, zodat monitoren niet op zwart gaan.
 - **Offline opstarten**: de app-shell (HTML, supabase-js, fonts, iconen) staat in de service-worker-cache. Een opgeslagen login blijft geldig als de auth-server even onbereikbaar is.
@@ -141,6 +142,16 @@ De code staat in de sectie `// ══ SAVE / SYNC` van `app.html`; het commentaa
 7. **Opslagstatus**: `setSaveState('saved' | 'saving' | 'unsaved', detail)` stuurt het event `st:savestate`. Het bedieningsscherm toont dat op elk formaat als label *Saved / Saving… / Not saved* (tik voor de reden); de oude sync-stip zit daarin. De stip is nooit groen als een save mislukte of de wipe guard ingreep.
 8. **Cache**: `localStorage` vol (base64-foto's)? Dan wordt de offline kopie zonder foto's bewaard; de server-push hangt nooit van de cache af. Storage-URL's zijn kort en blijven altijd in de cache. De foto's zelf cachet alleen de browser (de service worker laat andere origins met rust): een toestel dat offline opstart zonder die cache, toont de timerfoto niet. Het fotovak klapt dan in. De Stage View toont geen foto's.
 9. **Na een onderbreking** (offline, slaapstand, realtime opnieuw verbonden): eerst openstaande wijzigingen pushen, anders het open project opnieuw ophalen. Zonder realtime pollt de app elke 30 s.
+
+### Booth link (ontvangstbevestiging en aanwezigheid)
+
+Code: `// ══ BOOTH LINK` en `// ══ MESSAGE BOOTH` in `app.html` (BOUWPLAN 5A/5D).
+
+- Per open project één Realtime-kanaal `st-proj-<pid>` met alleen **broadcast** en **presence**. Geen `postgres_changes`, geen schrijfactie in de database, geen migratie.
+- Boothschermen (deellink `mode=stage` en de Stage View in de app) melden zich via presence (`role:'booth'`, `stageId`, korte apparaat-id, `mode`). Zodra een cue op het scherm staat, sturen ze een broadcast `cue-ack` met het `id` van de cue (`G.cue.id`, nieuw, oude clients negeren het). Stage View zelf verandert niet.
+- De bediening telt schermen en acks per cue. Geen ack binnen 3 s terwijl er schermen online zijn: waarschuwing. Zonder Realtime gaat de cue gewoon via `save()` en zegt de bon "Delivery unknown".
+- **Beveiliging:** de inhoud van een cue komt alleen uit het opgeslagen project. De bediening luistert alleen naar `cue-ack`, `ack-request` en presence, valideert elk veld en toont alleen een aantal en een tijd. Het is een publiek kanaal: wie de `pid` kent, kan een ack of aanwezigheid vervalsen (niet een cue sturen). De bon is dus een signaal, geen bewijs.
+- **Supabase:** Realtime broadcast en presence moeten aan staan voor het project (standaard zo). Later aanscherpen kan met *private channels* plus Realtime Authorization (RLS-policies op `realtime.messages`): alleen ingelogde leden van het project mogen dan `ack-request` sturen en lezen, boothschermen krijgen een eigen token.
 
 ## Tijdmodel
 
