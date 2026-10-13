@@ -4,13 +4,11 @@
 // The operator app runs logged in against a fully mocked backend (see
 // _operator.js): nothing reaches a real server, edge functions such as
 // invite-member are mocks, so no invite or email is ever sent.
-const { test, expect } = require('@playwright/test');
-const { openOperator, dlg, done } = require('./_operator');
+const { test, expect, openOperator, dlg, projectPatches } = require('./_operator');
 
 test.describe('dialog component', () => {
-  test('labelled, focus trap, Escape cancels, focus returns to the trigger', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('labelled, focus trap, Escape cancels, focus returns to the trigger', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await page.evaluate(() => {
       const b = document.createElement('button'); b.id = 'trig'; b.textContent = 'open';
       b.onclick = () => { window.__res = 'pending'; stDialog.confirm('Delete "<b>x</b>"?', { title: 'Delete show', okLabel: 'Delete show', danger: true }).then(v => { window.__res = v; }); };
@@ -46,11 +44,9 @@ test.describe('dialog component', () => {
     await page.keyboard.press('Enter');
     await expect(d).toHaveCount(0);
     expect(await page.evaluate(() => window.__res)).toBe(true);
-    await done(r);
   });
-  test('form: inline field errors, Enter submits, async errors keep it open', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('form: inline field errors, Enter submits, async errors keep it open', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await page.evaluate(() => {
       window.__calls = 0;
       window.__p = stDialog.form({
@@ -70,14 +66,12 @@ test.describe('dialog component', () => {
     await page.keyboard.press('Enter'); // focus is on the submit button now
     expect(await page.evaluate(() => window.__p)).toEqual({ name: 'New name' });
     await expect(d).toHaveCount(0);
-    await done(r);
   });
 });
 
 test.describe('show editor', () => {
-  test('field errors sit next to the field, invalid seconds are not corrected', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('field errors sit next to the field, invalid seconds are not corrected', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await page.locator('#new-show-btn').click();
     await expect(page.locator('#drawer')).toHaveClass(/open/);
     await page.fill('#f-start-sec', '75');
@@ -90,11 +84,9 @@ test.describe('show editor', () => {
     // Labels: date / time / seconds are each labelled, for start and end.
     for (const l of ['Date', 'Time', 'Seconds']) await expect(page.locator('#drawer').getByLabel(l, { exact: true })).toHaveCount(2);
     expect(await page.evaluate(() => G.shows.length)).toBe(4);
-    await done(r);
   });
-  test('automatic end adjustment is announced in the duration preview', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('automatic end adjustment is announced in the duration preview', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await page.evaluate(() => openDrawer('b'));               // 23:00-23:30
     await page.fill('#f-start-time', '23:45');
     await page.locator('#f-start-time').dispatchEvent('change');
@@ -102,11 +94,9 @@ test.describe('show editor', () => {
     await expect(page.locator('#dur-txt')).toContainText('End moved to 01:15 the next day (start + 1h 30m)');
     await page.fill('#f-end-time', '01:00');
     await expect(page.locator('#dur-txt')).not.toContainText('End moved');
-    await done(r);
   });
-  test('overlap on the same stage warns; Go back keeps editing, Save anyway saves', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('overlap on the same stage warns; Go back keeps editing, Save anyway saves', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await page.evaluate(() => openDrawer('b'));
     await page.fill('#f-start-time', '22:45');
     await expect(page.locator('#f-overlap')).toContainText('Overlaps with Alpha (22:00–23:00)');
@@ -125,11 +115,9 @@ test.describe('show editor', () => {
     await page.evaluate(() => openDrawer('b'));
     await page.locator('#dr-cancel-btn').click();
     await expect(page.locator('#f-overlap')).toBeHidden();
-    await done(r);
   });
-  test('closing with unsaved changes asks first', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('closing with unsaved changes asks first', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     // Unchanged: Escape closes straight away and focus returns.
     await page.locator('#new-show-btn').focus();
     await page.keyboard.press('Enter');
@@ -153,11 +141,9 @@ test.describe('show editor', () => {
     await d.getByRole('button', { name: 'Discard changes' }).click();
     await expect(page.locator('#drawer')).not.toHaveClass(/open/);
     expect(await page.evaluate(() => G.shows.find(s => s.id === 'a').artist)).toBe('Alpha');
-    await done(r);
   });
-  test('delete show names the show and uses a danger button', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('delete show names the show and uses a danger button', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await page.evaluate(() => { delShow('b'); });
     const d = dlg(page);
     await expect(d.locator('.st-dlg-msg')).toContainText('"Bravo" (23:00–23:30)');
@@ -167,7 +153,6 @@ test.describe('show editor', () => {
     await d.getByRole('button', { name: 'Delete show' }).click();
     await expect(d).toHaveCount(0);
     expect(await page.evaluate(() => G.shows.some(s => s.id === 'b'))).toBe(false);
-    await done(r);
   });
 });
 
@@ -180,9 +165,8 @@ const ORIG = {
   c: '2026-06-19T23:30:00/2026-06-20T00:30:00',
 };
 test.describe('time correction', () => {
-  test('Cancel and Escape really cancel', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('Cancel and Escape really cancel', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     const d = dlg(page);
     await page.getByRole('button', { name: '+5 min' }).click();
     await expect(d.locator('.st-dlg-title')).toHaveText('Adjust "Alpha" by +5 min');
@@ -194,12 +178,10 @@ test.describe('time correction', () => {
     await page.keyboard.press('Escape');
     await expect(d).toHaveCount(0);
     expect(await times(page)).toEqual(ORIG);
-    expect(r.st.patches.length).toBe(0); // nothing was saved
-    await done(r);
+    expect(projectPatches(backend).length).toBe(0); // nothing was saved
   });
-  test('preview, then "Shift all following shows"', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('preview, then "Shift all following shows"', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     const d = dlg(page);
     await page.getByRole('button', { name: '+5 min' }).click();
     const shift = d.getByRole('button', { name: /Shift all following shows/ });
@@ -213,11 +195,9 @@ test.describe('time correction', () => {
       b: '2026-06-19T23:05:00/2026-06-19T23:35:00',
       c: '2026-06-19T23:35:00/2026-06-20T00:35:00',
     });
-    await done(r);
   });
-  test('preview, then "Only the next show absorbs it"', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('preview, then "Only the next show absorbs it"', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     const d = dlg(page);
     await page.getByRole('button', { name: '-1 min' }).click();
     const absorb = d.getByRole('button', { name: /Only the next show absorbs it/ });
@@ -229,11 +209,9 @@ test.describe('time correction', () => {
       b: '2026-06-19T22:59:00/2026-06-19T23:30:00',
       c: ORIG.c,
     });
-    await done(r);
   });
-  test('absorbing is offered as impossible when the next slot would vanish', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('absorbing is offered as impossible when the next slot would vanish', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     const d = dlg(page);
     await page.evaluate(() => { adjustLiveShow(30); });
     const absorb = d.getByRole('button', { name: /Only the next show absorbs it/ });
@@ -241,14 +219,12 @@ test.describe('time correction', () => {
     await expect(absorb).toContainText('"Bravo" would have no time left');
     await page.keyboard.press('Escape');
     expect(await times(page)).toEqual(ORIG);
-    await done(r);
   });
 });
 
 test.describe('cues and manual mode (operator side)', () => {
-  test('target stage, active cue, duration and blackout are visible', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('target stage, active cue, duration and blackout are visible', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     await expect(page.locator('#cue-target')).toContainText('Cues go to the Main screens');
     await expect(page.locator('#cue-clear')).toBeDisabled();
     await page.locator('#cue-presets').getByRole('button', { name: 'WRAP UP' }).click();
@@ -278,11 +254,9 @@ test.describe('cues and manual mode (operator side)', () => {
     await expect(page.locator('#blackout-btn')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('#blackout-status')).toBeVisible();
     await expect(page.locator('#blackout-status')).toContainText('Blackout is ON');
-    await done(r);
   });
-  test('manual mode: cards never reset; Cue / prev / next / reset ask while a timer runs', async ({ browser }) => {
-    const r = await openOperator(browser);
-    const { page } = r;
+  test('manual mode: cards never reset; Cue / prev / next / reset ask while a timer runs', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
     const d = dlg(page);
     await page.locator('#mb-man').click();
     expect(await page.evaluate(() => M.showId)).toBe('a');
@@ -312,6 +286,5 @@ test.describe('cues and manual mode (operator side)', () => {
     await expect(d).toBeVisible();
     await page.keyboard.press('Escape');
     expect(await page.evaluate(() => M.state)).toBe('running');
-    await done(r);
   });
 });
