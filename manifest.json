@@ -2,6 +2,7 @@
   "name": "Stagetimer",
   "short_name": "Stagetimer",
   "description": "Live show timing for production teams. Backstage, FOH, and stage views - always in sync.",
+  "id": "/app",
   "start_url": "/app",
   "scope": "/",
   "display": "fullscreen",

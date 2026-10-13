@@ -88,6 +88,8 @@ Legenda testbestanden:
 | Cue-overlay op viewers | `_renderCueOverlay` 5786 | booth: *cue-wrapup*, public: *…1 s poll* |
 | Blackout | `toggleBlackout` 5710, `renderBlackout` 5716 | operator: *cues, blackout…*, booth: *blackout* |
 | Hoofdtick (250 ms) | `tick` 5808 | alle booth-tests (deterministisch via `page.clock`) |
+| Bericht naar booth (sheet, 5A) | `openCrewMsg`, `cmSend`, `cmSendPreset`, `_cmRender`, `sendCue(…, {stageId})` | regression/phase5-crew: *390x844: presets, free text, stage, duration, clear and blackout…*, *1440: side panel…*, *free text is shown as text…* |
+| Ontvangstbevestiging en aanwezigheid (5D) | `_pcSync`, `_pcStart`/`_pcStop`, `_pcOnAck`, `_pcOnPresence`, `_pcReceipt`, `_pcPresence`, `_pcRender` | regression/phase5-crew: *booth screen joins, acknowledges…*, *no ack within 3 s…*, *in-app Stage View… booth screen too*, *Realtime unavailable…*, *join refused…*, *anonymous broadcasts cannot…*, *project switch…*; booth-suite: Stage View pixel-gelijk |
 
 ## 8. Crew, statussen en push
 
