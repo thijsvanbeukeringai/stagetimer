@@ -6911,11 +6911,6 @@ async function saveShow(){
     document.getElementById(errs[0][0])?.focus();
     return;
   }
-  const existing=editId?G.shows.find(x=>x.id===editId):null;
-  const crew=existing?.crew||{};
-  // The old photo is only a fallback while a new upload is still compressing;
-  // after an explicit ✕ the removal must stick.
-  const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
   // Overlap on the same stage: a warning, the operator may save anyway.
   const ov=_drOverlaps(sd,ed);
   if(ov.length){
@@ -6929,6 +6924,15 @@ async function saveShow(){
     }finally{_drSaving=false;}
     if(!go)return;
   }
+  // Resolve the show only now, after the dialog: a realtime update while it
+  // was open runs loadG() and replaces every object in G, so a show looked up
+  // before the await is an orphan and the edit would silently vanish.
+  const existing=editId?G.shows.find(x=>x.id===editId):null;
+  if(editId&&!existing){await stDialog.alert(`"${artist}" was deleted on another device while you were editing it. Your changes were not saved.`,{title:'Show no longer exists'});closeDrawer(true);return;}
+  const crew=existing?.crew||{};
+  // The old photo is only a fallback while a new upload is still compressing;
+  // after an explicit ✕ the removal must stick.
+  const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
   // Festival wall time (see _drSetDT), not the device's zone.
   const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
   const endDate=amsDateStr(ed.getTime()),endTime=amsTimeStr(ed.getTime(),true);
@@ -6950,7 +6954,7 @@ async function saveShow(){
     priority:_drFlags.priority||false,
     hidden:_drFlags.hidden||false,
   };
-  if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
+  if(existing)Object.assign(existing,obj);else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
   save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer(true);
 }
 async function delShow(id,e){
