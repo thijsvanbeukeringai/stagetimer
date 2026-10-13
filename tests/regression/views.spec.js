@@ -72,6 +72,7 @@ test.describe('timeline', () => {
   test('desktop: axis and stage labels stay visible while scrolling, overlaps get their own lane', async ({ page, st }) => {
     await page.setViewportSize({ width: 900, height: 260 });
     await st.gotoPublic({ mode: 'timeline', at: AT });
+    await st.advance(1500); // let openTL's scroll-to-now frame and the first poll settle
     const sc = page.locator('#tl-scroll');
     await sc.evaluate((el) => { el.scrollLeft = 600; el.scrollTop = 120; });
     const geo = await page.evaluate(() => {
