@@ -7,7 +7,7 @@
 // per-device selection and both public check-in branches (RPC / fallback).
 const fs=require('fs'),assert=require('assert');
 const html=fs.readFileSync(process.argv[2]||require('path').join(__dirname,'../../app.html'),'utf8');
-const a=html.indexOf('// ══ APP STATE (multi-project)'),b=html.indexOf('// ── Overnight day boundary');
+const a=html.indexOf('// ══ APP STATE (multi-project)'),b=html.indexOf('// ══ PURE TIME MODULE ─ begin');if(a<0||b<a)throw new Error('sync region markers not found in app.html');
 const fe=html.indexOf('function _friendlyError(');const friendly=html.slice(fe,html.indexOf('\n}\n',fe)+3);
 const ca=html.indexOf('// In-flight tracker so the 1s poll'),cb=html.indexOf('function copyLink(btn,url){');
 const region=friendly+html.slice(a,b)+html.slice(ca,cb);
