@@ -65,7 +65,7 @@ test.describe('stripped payload', () => {
       expect(row.company_id).toBeNull();
       expect(row.data).toEqual(stripProjectData(festivalData(), mode));
       const text = JSON.stringify(row);
-      expect(text).not.toContain('data:image');            // no photo, no logo, ever
+      expect(text).not.toContain('data:image');            // no photo, ever (logo: project-logo.spec)
       expect(row.data.memberIds).toEqual([]);
       const shows = row.data.shows;
       const has = (k) => shows.some((s) => k in s);
@@ -243,4 +243,5 @@ test('field matrix in the SQL equals the mock / spec matrix', () => {
   expect(keep('keep_foh')).toEqual([...SHARE_FIELD_MATRIX.fohNotes].sort());
   expect(keep('keep_note')).toEqual([...SHARE_FIELD_MATRIX['shows[].note']].sort());
   expect(keep('keep_crew')).toEqual([...SHARE_FIELD_MATRIX['shows[].crew']].sort());
+  expect(keep('keep_logo')).toEqual([...SHARE_FIELD_MATRIX.logo].sort());
 });

@@ -880,6 +880,54 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .co-logo-upload{width:28px;height:28px;border-radius:7px;border:1px dashed rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.3);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
 .co-logo-upload:hover{border-color:rgba(99,102,241,.5);color:#a5b4fc;background:rgba(99,102,241,.08);}
 .co-logo-thumb{height:22px;max-width:60px;object-fit:contain;border-radius:3px;cursor:pointer;}
+/* Customer logo (co-branding) on Backstage / FOH, top-left. Takes space only
+   while the project shows a logo on that screen (.vw-logo-on, refreshLogo);
+   the stagetimer.nl mark (.vw-st-mark) then sits in the same header, so
+   the Stagetimer brand never disappears behind a customer logo. Heights stay
+   inside the existing header rows: no layout jump when a logo arrives. */
+#bs .vw-logo,#foh .vw-logo,#bs .vw-st-mark,#foh .vw-st-mark{display:none;}
+#bs.vw-logo-on .vw-logo,#foh.vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:30px;max-width:180px;object-fit:contain;}
+#bs.vw-logo-bd .vw-logo,#foh.vw-logo-bd .vw-logo{background:#fff;padding:3px 7px;border-radius:6px;max-height:26px;}
+#bs.vw-logo-on .vw-st-mark,#foh.vw-logo-on .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;
+  padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+.vw-st-mark .vw-st-icon{height:20px;width:20px;border-radius:4px;display:block;flex-shrink:0;}
+.vw-st-mark .vw-st-word{height:13px;width:auto;display:block;filter:brightness(0) invert(1);opacity:.85;}
+@media (max-width:1100px){
+  #bs.vw-logo-on .vw-logo,#foh.vw-logo-on .vw-logo{max-width:130px;}
+  /* Operator copy: the stage select already names the stage; frees the room the logo takes. */
+  body:not(.public-mode) #bs.vw-logo-on #bs-title,body:not(.public-mode) #foh.vw-logo-on #foh-title{display:none;}
+}
+/* Narrow phones, operator copy (close button in the same cell): the app icon
+   alone, the wordmark does not fit next to the close button. */
+@media (max-width:374px){
+  body:not(.public-mode) #bs .vw-st-mark .vw-st-word,body:not(.public-mode) #foh .vw-st-mark .vw-st-word{display:none;}
+  body:not(.public-mode) #bs .vw-st-mark .vw-st-icon,body:not(.public-mode) #foh .vw-st-mark .vw-st-icon{display:block;height:24px;width:24px;}
+  body:not(.public-mode) #bs.vw-logo-on .vw-st-mark,body:not(.public-mode) #foh.vw-logo-on .vw-st-mark{padding:4px;}
+}
+/* Logo dialog (dashboard row + Project settings) */
+.st-logo-prev{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px;}
+.st-logo-sw{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0;}
+.st-logo-sw figcaption{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub);}
+.st-dlg-light .st-logo-sw figcaption{color:#52525B;}
+.st-logo-box{height:76px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;min-width:0;
+  border:1px solid rgba(255,255,255,.1);}
+.st-logo-sw.dark .st-logo-box{background:#050508;}
+.st-logo-sw.light .st-logo-box{background:#fff;border-color:rgba(28,25,23,.14);justify-content:center;}
+.st-logo-box img.st-logo-img{display:block;width:auto;height:auto;max-height:34px;max-width:100%;min-width:0;object-fit:contain;}
+.st-logo-sw.dark.bd img.st-logo-img{background:#fff;padding:3px 7px;border-radius:6px;max-height:28px;}
+.st-logo-box .vw-st-mark{display:inline-flex;align-items:center;flex-shrink:0;padding:3px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+.st-logo-box .vw-st-mark .vw-st-icon{height:16px;width:16px;}
+.st-logo-empty{font-size:12px;color:rgba(255,255,255,.5);}
+.st-logo-sw.light .st-logo-empty{color:#78716C;}
+.st-logo-acts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;}
+.st-logo-acts button{min-height:38px;padding:8px 14px;font-size:13px;}
+.st-logo-tg{display:flex;align-items:flex-start;gap:10px;padding:8px 0;font-size:13.5px;line-height:1.4;cursor:pointer;}
+.st-logo-tg input{width:18px;height:18px;margin:1px 0 0;flex-shrink:0;accent-color:#2456D6;cursor:pointer;}
+.st-logo-tg small{display:block;font-size:12px;color:var(--sub);}
+.st-dlg-light .st-logo-tg small{color:#52525B;}
+.st-logo-status{font-size:12.5px;line-height:1.45;margin:6px 0 4px;color:var(--sub);}
+.st-logo-status:empty{display:none;}
+.st-dlg-light .st-logo-status{color:#52525B;}
 /* Set password screen */
 #set-pw{position:fixed;inset:0;z-index:1001;background:var(--bg);display:none;align-items:center;justify-content:center;}
 #set-pw.open{display:flex;}
@@ -1380,7 +1428,18 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #foh-close-btn, #bs-close-btn, #tl-close-btn{grid-column:3;grid-row:1;justify-self:end;min-height:44px;min-width:44px;padding:0;font-size:16px;justify-content:center;}
   /* Page-title text and project logos are gone - only Stagetimer brand */
   #foh-title, #bs-title, #tl-title{display:none;}
-  #co-logo-bs, #co-logo-tl{display:none;}
+  #co-logo-tl{display:none;}
+  /* With a customer logo: the logo takes row 1, col 1; the stagetimer.nl
+     mark moves to col 3, left of the close button (alone there on share
+     links, which have no close button). */
+  #bs.vw-logo-on #st-brand-bs, #foh.vw-logo-on #st-brand-foh{display:none;}
+  #bs.vw-logo-on .vw-logo, #foh.vw-logo-on .vw-logo{grid-column:1;grid-row:1;justify-self:start;max-width:100%;max-height:32px;}
+  #bs.vw-logo-bd .vw-logo, #foh.vw-logo-bd .vw-logo{max-height:28px;}
+  #bs.vw-logo-on .vw-st-mark, #foh.vw-logo-on .vw-st-mark{grid-column:3;grid-row:1;justify-self:end;margin-right:52px;padding:6px 8px;}
+  #bs .vw-st-mark .vw-st-icon, #foh .vw-st-mark .vw-st-icon{display:none;}
+  /* Share links: same 38px pill as the brand it replaces, so row 1 keeps its height. */
+  body.public-mode #bs.vw-logo-on .vw-st-mark, body.public-mode #foh.vw-logo-on .vw-st-mark{margin-right:0;padding:5px 9px 5px 5px;gap:8px;}
+  body.public-mode #bs .vw-st-mark .vw-st-icon, body.public-mode #foh .vw-st-mark .vw-st-icon{display:block;height:26px;width:26px;border-radius:5px;}
   /* Row 2: stage select (cols 1-2) + day picker (col 3) on the SAME row.
      Stage select and day select must match height - both 48px. */
   #foh-ssel, #bs-ssel{grid-column:1/span 2;grid-row:2;min-height:48px;height:48px;padding:0 32px 0 12px;font-size:15px;font-weight:700;width:100%;border-radius:10px;}
@@ -2389,6 +2448,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 }
 .ws-icon-btn:hover{background:#F5F5F4;border-color:rgba(28,25,23,.1);color:#0A0A0B;}
 .ws-icon-btn.danger:hover{background:#FEF2F2;border-color:rgba(185,28,28,.25);color:#B91C1C;}
+.ws-icon-btn.has-logo,.ws-table tbody tr:hover .ws-icon-btn.has-logo{color:#1E40AF;}
 .ws-table tbody tr:hover .ws-icon-btn{color:#3F3F46;}
 .ws-empty{
   padding:48px 24px;text-align:center;color:#78716C;font-size:13px;
@@ -4855,6 +4915,10 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Manage crew
         </button>
+        <button class="dd-item" onclick="closeAllDD();openProjectLogo(APP.activeProjectId)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          Project logo
+        </button>
         <button class="dd-item" onclick="closeAllDD();openJSONModal()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Import lineup
@@ -5240,11 +5304,13 @@ function renderTbar(){
 <div id="foh">
   <div id="foh-hdr">
     <a class="st-brand" id="st-brand-foh" href="#" onclick="closeFOH();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
+    <img class="vw-logo" id="vw-logo-foh" alt="" decoding="async" onerror="_vwLogoFailed(this)">
     <div id="foh-title">FOH · <span id="foh-sname">-</span></div>
     <select id="foh-ssel" class="hsel" aria-label="Stage"></select>
     <div id="foh-dtabs"></div>
     <span class="vw-sync" hidden></span>
     <div id="foh-clock"></div>
+    <span class="vw-st-mark" role="img" aria-label="Powered by stagetimer.nl"><img class="vw-st-icon" src="/app-icon.svg" alt=""><img class="vw-st-word" src="/stagetimer-wordmark.png" alt=""></span>
     <button class="fhbtn" id="foh-close-btn" onclick="closeFOH()" aria-label="Close FOH">✕</button>
   </div>
   <div id="foh-body"><div id="foh-col"><div id="foh-col-body"></div></div></div>
@@ -5834,12 +5900,13 @@ function renderTbar(){
 <div id="bs">
   <div id="bs-hdr">
     <a class="st-brand" id="st-brand-bs" href="#" onclick="closeBS();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
-    <img class="co-logo" id="co-logo-bs" alt="logo">
+    <img class="vw-logo" id="vw-logo-bs" alt="" decoding="async" onerror="_vwLogoFailed(this)">
     <div id="bs-title">Backstage · <span id="bs-sname">-</span></div>
     <select id="bs-ssel" class="hsel" aria-label="Stage" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
     <div id="bs-dtabs"></div>
     <span class="vw-sync" hidden></span>
     <div id="bs-clock"></div>
+    <span class="vw-st-mark" role="img" aria-label="Powered by stagetimer.nl"><img class="vw-st-icon" src="/app-icon.svg" alt=""><img class="vw-st-word" src="/stagetimer-wordmark.png" alt=""></span>
     <button class="bshbtn" id="bs-close-btn" onclick="closeBS()" aria-label="Close Backstage">✕</button>
   </div>
   <div id="bs-body"></div>
@@ -6640,6 +6707,7 @@ function fohNotesHTML(showId){
 }
 function renderFOH(){
   if(!document.getElementById('foh').classList.contains('open'))return;
+  _vwLogo('foh');
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   const now=nowMs();
   const{shows:all,cur,nxt}=stageShowAt(G.activeStage,G.activeDay,now,'live');
@@ -6858,6 +6926,7 @@ function _fohBeep(kind){
 // ══ BACKSTAGE SCREEN
 function renderBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
+  _vwLogo('bs');
   document.getElementById('bs-sname').textContent=activeStageObj().name;
   const shows=_bsShows();
   const now=nowMs();
@@ -9703,6 +9772,9 @@ function renderDash(){
             <button class="ws-icon-btn" onclick="event.stopPropagation();renameProject(${_jsArg(p.id)})" title="Rename">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
+            <button class="ws-icon-btn${_safeLogoSrc(p.data?.logo)?' has-logo':''}" onclick="event.stopPropagation();openProjectLogo(${_jsArg(p.id)},this)" title="Project logo" aria-label="Project logo of ${escH(p.name)}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
             ${_canSeeHistory()?`<button class="ws-icon-btn" onclick="event.stopPropagation();openProjectHistory(${_jsArg(p.id)})" title="Version history" aria-label="Version history of ${escH(p.name)}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
             </button>`:''}
@@ -12321,15 +12393,95 @@ function closeMobTimer(){
   document.getElementById('mob-sheet-ov').classList.remove('open');
 }
 
-// ══ PROJECT LOGO - neutralised. Only the Stagetimer brand appears in app
-// chrome now. The DB still stores per-project logos for backward compat,
-// but they're never rendered.
-function applyLogo(){/* no-op */}
-function refreshLogo(){/* no-op */}
+// ══ PROJECT LOGO - customer co-branding on Backstage / FOH
+// data.logo: a data: URL or a project-media Storage URL (see _uploadMedia).
+// data.branding {logoBackstage, logoFoh, logoBackdrop}: which screens show
+// it (Backstage on, FOH off by default) and a white plate behind dark logos
+// that vanish on the dark screens. Older clients ignore both keys. A logo
+// stored back when logos were never rendered has no branding object and
+// stays hidden until the owner switches it on: no surprise logo appearing
+// on a festival that is running when this ships. Share links get logo and
+// branding for backstage / foh only (get_shared_project p_mode matrix).
+// The stagetimer.nl mark (.vw-st-mark) shows in the same header whenever a
+// customer logo does.
+const _LOGO_DATA_RE=/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
+// Only an inline raster image or an object in our own bucket. Never
+// javascript:, markup, or another host (a tracking pixel on every booth
+// screen). The result is assigned through img.src, never put into HTML.
+// Memo: renderBS / renderFOH ask on every repaint, a base64 logo is ~100 kB.
+let _logoChecked=['',''];
+function _safeLogoSrc(v){
+  if(typeof v!=='string'||!v||v===_STRIP_PX)return'';
+  if(v===_logoChecked[0])return _logoChecked[1];
+  let ok='';
+  if(_isMediaUrl(v)){const rest=v.slice(_MEDIA_PUB.length);ok=/^[A-Za-z0-9._~%-]+\/[A-Za-z0-9._~%-]+$/.test(rest)&&!rest.includes('..')?v:'';}
+  else ok=_LOGO_DATA_RE.test(v)?v:'';
+  _logoChecked=[v,ok];
+  return ok;
+}
+function _brandingOf(d){
+  const b=d&&d.branding&&typeof d.branding==='object'&&!Array.isArray(d.branding)?d.branding:null;
+  const legacy=!b&&!!_safeLogoSrc(d&&d.logo);
+  if(!b)return{logoBackstage:!legacy,logoFoh:false,logoBackdrop:false,legacy};
+  return{logoBackstage:b.logoBackstage!==false,logoFoh:b.logoFoh===true,logoBackdrop:b.logoBackdrop===true,legacy:false};
+}
+// proj.data and, for the open project, G (normally the same object).
+function _logoTargets(pid,proj){const t=[proj.data];if(pid===APP.activeProjectId&&G&&G!==proj.data)t.push(G);return t;}
+function _logoDataOf(pid){const p=APP&&APP.projects.find(x=>x.id===pid);return p?((pid===APP.activeProjectId&&G)||p.data||{}):null;}
+function _vwLogo(view){
+  const root=document.getElementById(view),img=document.getElementById('vw-logo-'+view);
+  if(!root||!img)return;
+  const d=G||null,b=_brandingOf(d),src=_safeLogoSrc(d&&d.logo);
+  const on=!!src&&(view==='bs'?b.logoBackstage:b.logoFoh)&&img.dataset.failed!==src;
+  if(on){
+    if(img.getAttribute('src')!==src)img.src=src;
+    const p=APP&&APP.projects&&APP.projects.find(x=>x.id===APP.activeProjectId);
+    img.alt=((p&&p.name)||'Project')+' logo';
+  }else if(img.hasAttribute('src')){img.removeAttribute('src');img.alt='';}
+  root.classList.toggle('vw-logo-on',on);
+  root.classList.toggle('vw-logo-bd',on&&b.logoBackdrop);
+}
+// A broken URL (object deleted, offline booth) collapses instead of showing
+// a broken-image icon; a new logo URL gets a fresh try.
+function _vwLogoFailed(img){
+  const src=img.getAttribute('src');if(!src)return;
+  console.warn('[logo] could not load the project logo');
+  img.dataset.failed=src;refreshLogo();
+}
+// Load, project switch, realtime update, share-link poll (via renderBS /
+// renderFOH) and every logo edit end up here.
+function refreshLogo(){_vwLogo('bs');_vwLogo('foh');_logoDlgSync();}
+function applyLogo(){refreshLogo();}
 
-let _logoProjectTarget=null;
+// A logo that is mostly see-through with dark ink (navy type on a
+// transparent PNG) disappears on the dark screens: suggest the white plate.
+// Opaque logos bring their own background and never need it.
+function _logoWantsBackdrop(src){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const k=Math.min(1,96/Math.max(img.naturalWidth||1,img.naturalHeight||1));
+        const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*k));c.height=Math.max(1,Math.round(img.naturalHeight*k));
+        const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
+        const px=x.getImageData(0,0,c.width,c.height).data;
+        const lin=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);};
+        let clear=0,ink=0,dark=0;
+        for(let i=0;i<px.length;i+=4){
+          if(px[i+3]<40){clear++;continue;}
+          ink++;if(.2126*lin(px[i])+.7152*lin(px[i+1])+.0722*lin(px[i+2])<.08)dark++;   // < 2.5:1 against #050508
+        }
+        res(ink>0&&clear/(clear+ink)>.1&&dark/ink>.25);
+      }catch(e){console.warn('[logo] backdrop check failed:',e);res(false);}
+    };
+    img.onerror=()=>res(false);
+    img.src=src;
+  });
+}
 
+let _logoProjectTarget=null,_logoBusy=null;
 function triggerLogoUpload(projId){
+  if(window.PUBLIC_MODE||!projId)return;
   _logoProjectTarget=projId;
   document.getElementById('logo-file-input').click();
 }
@@ -12338,55 +12490,134 @@ function triggerLogoUpload(projId){
 // or as a Storage URL once uploaded (see _uploadMedia), so it gets the same
 // treatment as artist photos: max 600px, JPEG .85 -
 // or PNG for formats that may be transparent - keeping the smaller of the
-// result and the original.
+// result and the original. SVG always becomes a PNG (one raster format for
+// every screen and for the bucket).
 async function _compressLogo(dataUrl,type){
   const alpha=/png|gif|webp|svg/i.test(type||'');
   const out=await _compressImage(dataUrl,600,.85,alpha?'image/png':'image/jpeg');
+  if(/svg/i.test(type||''))return out;
   const small=await new Promise(r=>{const i=new Image();i.onload=()=>r(i.width<=600&&i.height<=600);i.onerror=()=>r(false);i.src=dataUrl;});
   return(small&&dataUrl.length<=out.length)?dataUrl:out;
 }
 function handleLogoUpload(event){
   const file=event.target.files[0];
   if(!file)return;
-  if(!file.type.startsWith('image/')){event.target.value='';stDialog.alert(`"${file.name}" is not an image. Choose a PNG or JPEG file.`,{title:'Logo not added'});return;}
-  if(file.size>25*1024*1024){event.target.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Logo not added'});return;}
+  if(!file.type.startsWith('image/')){event.target.value='';stDialog.alert(`"${file.name}" is not an image. Choose a PNG or JPEG file.`,{title:'Logo not added',light:_logoDlg?.light});return;}
+  if(file.size>25*1024*1024){event.target.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Logo not added',light:_logoDlg?.light});return;}
   const tgt=_logoProjectTarget;
+  _logoBusy=tgt;_logoStatus('Processing the logo…');
+  const fail=msg=>stDialog.alert(msg,{title:'Logo not added',light:_logoDlg?.light});
   const reader=new FileReader();
+  reader.onerror=()=>{console.warn('[logo] file read failed:',reader.error);_logoBusy=null;_logoStatus('');fail('The file could not be read. Try again.');};
   reader.onload=async e=>{
-    let logo;
-    try{logo=await _compressLogo(e.target.result,file.type);}
-    catch(err){console.error('logo compress failed:',err);stDialog.alert('The logo could not be processed. Try a PNG or JPEG file.',{title:'Logo not added'});return;}
-    logo=(await _uploadMedia(tgt,logo))||logo;   // Storage URL, or inline as before
-    const proj=APP.projects.find(p=>p.id===tgt);
-    if(!proj){_deleteMedia(logo,tgt);return;}
-    if(!proj.data)proj.data={};
-    const old=tgt===APP.activeProjectId?G.logo:proj.data.logo;
-    proj.data.logo=logo;
-    // If this is the active project, update G too
-    if(tgt===APP.activeProjectId)G.logo=logo;
-    // Persist + push THE SPECIFIC project (not just the active one), through
-    // the save queue: quota-safe cache, and an edit sequence so a push that
-    // is already out cannot mark the logo as saved.
-    _saveProjectById(tgt);
-    if(old&&old!==logo)_dropMediaAfterSave(old,tgt);
-    refreshLogo();
-    renderDash();
+    try{
+      let logo;
+      try{logo=await _compressLogo(e.target.result,file.type);}
+      catch(err){console.warn('[logo] compress failed:',err);fail('The logo could not be processed. Try a PNG or JPEG file.');return;}
+      if(!_safeLogoSrc(logo)){fail('This image type cannot be used as a logo. Choose a PNG or JPEG file.');return;}
+      const backdrop=await _logoWantsBackdrop(logo);
+      _logoStatus('Uploading…');
+      logo=(await _uploadMedia(tgt,logo))||logo;   // Storage URL, or inline as before
+      const proj=APP.projects.find(p=>p.id===tgt);
+      if(!proj){_deleteMedia(logo,tgt);return;}
+      if(!proj.data)proj.data={};
+      const old=tgt===APP.activeProjectId&&G?G.logo:proj.data.logo;
+      // A new logo shows where the toggles say (Backstage by default) and gets
+      // the plate when it needs one; the owner can change both afterwards.
+      for(const d of _logoTargets(tgt,proj)){
+        const b=d.branding&&typeof d.branding==='object'?_brandingOf(d):{logoBackstage:true,logoFoh:false};
+        d.logo=logo;d.branding={logoBackstage:b.logoBackstage,logoFoh:b.logoFoh,logoBackdrop:backdrop};
+      }
+      // Persist + push THE SPECIFIC project (not just the active one), through
+      // the save queue: quota-safe cache, and an edit sequence so a push that
+      // is already out cannot mark the logo as saved.
+      _saveProjectById(tgt);
+      if(old&&old!==logo)_dropMediaAfterSave(old,tgt);
+      renderDash();
+    }finally{_logoBusy=null;_logoStatus('');refreshLogo();}
   };
   reader.readAsDataURL(file);
   event.target.value='';
 }
 
 function removeProjectLogo(projId){
+  if(window.PUBLIC_MODE)return;
   const proj=APP.projects.find(p=>p.id===projId);
   if(!proj)return;
-  const old=projId===APP.activeProjectId?G.logo:proj.data?.logo;
-  if(proj.data)proj.data.logo=null;
-  if(projId===APP.activeProjectId)G.logo=null;
+  if(!proj.data)proj.data={};
+  const old=projId===APP.activeProjectId&&G?G.logo:proj.data.logo;
+  for(const d of _logoTargets(projId,proj))d.logo=null;
   // Persist + push THE SPECIFIC project (not just the active one)
   _saveProjectById(projId);
   if(old)_dropMediaAfterSave(old,projId);
   refreshLogo();
   renderDash();
+}
+function _setLogoBranding(pid,patch){
+  if(window.PUBLIC_MODE)return;
+  const proj=APP.projects.find(p=>p.id===pid);if(!proj)return;
+  if(!proj.data)proj.data={};
+  for(const d of _logoTargets(pid,proj)){const b=_brandingOf(d);d.branding={logoBackstage:b.logoBackstage,logoFoh:b.logoFoh,logoBackdrop:b.logoBackdrop,...patch};}
+  _saveProjectById(pid);
+  refreshLogo();
+}
+
+// ── Logo dialog: dashboard row (Project logo) and Project settings. Every
+// change applies at once (upload, remove, toggles); "Done" only closes.
+// Previews on the Backstage black, next to the stagetimer.nl mark, and on
+// white.
+let _logoDlg=null;   // {pid, el, light, status}
+function openProjectLogo(pid,trigger){
+  if(window.PUBLIC_MODE||!pid)return;
+  const proj=APP.projects.find(p=>p.id===pid);if(!proj)return;
+  const t=trigger||document.activeElement;
+  const light=t&&t!==document.body&&t.closest?!!t.closest('#dash,#admin'):!!document.getElementById('dash')?.classList.contains('open');
+  const sec=light?'ws-btn-secondary':'btn-g',del=light?'ws-btn-secondary ws-btn-danger':'btn-del';
+  const html=`<div id="st-logo-dlg">
+    <div class="st-logo-prev">
+      <figure class="st-logo-sw dark"><div class="st-logo-box"><img class="st-logo-img" alt="Logo on the dark screens"><span class="st-logo-empty">No logo yet</span><span class="vw-st-mark" aria-hidden="true"><img class="vw-st-icon" src="/app-icon.svg" alt=""></span></div><figcaption>Backstage / FOH</figcaption></figure>
+      <figure class="st-logo-sw light"><div class="st-logo-box"><img class="st-logo-img" alt="Logo on white"><span class="st-logo-empty">No logo yet</span></div><figcaption>On white</figcaption></figure>
+    </div>
+    <div class="st-logo-acts"><button type="button" class="${sec}" data-logo-act="upload">Upload logo</button><button type="button" class="${del}" data-logo-act="remove">Remove logo</button></div>
+    <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoBackstage"><span>Show on Backstage<small>Top-left on the Backstage screen and its share link.</small></span></label>
+    <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoFoh"><span>Show on Front of House<small>Top-left on the FOH screen and its share link.</small></span></label>
+    <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoBackdrop"><span>White plate behind the logo<small>For dark logos on a transparent background, which disappear on the dark screens.</small></span></label>
+    <div class="st-logo-status" role="status" aria-live="polite"></div>
+    <p class="st-dlg-note">PNG with a transparent background works best; it is scaled to 600 px. The stagetimer.nl mark stays visible next to your logo.</p>
+  </div>`;
+  const done=stDialog.open({title:'Project logo',html,light,trigger:t,initial:'[data-logo-act="upload"]',
+    actions:[{label:'Done',value:true,kind:'primary',submit:true}],cancelValue:null});
+  const el=document.getElementById('st-logo-dlg');
+  const D=_logoDlg={pid,el,light,status:''};
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('[data-logo-act]');if(!b||b.disabled)return;
+    e.preventDefault();
+    if(b.dataset.logoAct==='upload')triggerLogoUpload(pid);else _confirmRemoveLogo(pid);
+  });
+  el.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.logoK;if(k)_setLogoBranding(pid,{[k]:!!e.target.checked});});
+  _logoDlgSync();
+  done.then(()=>{if(_logoDlg===D)_logoDlg=null;});
+  return done;
+}
+async function _confirmRemoveLogo(pid){
+  const ok=await stDialog.confirm('Backstage and FOH screens stop showing it right away. You can upload a logo again at any time.',
+    {title:'Remove the logo?',okLabel:'Remove logo',danger:true,light:_logoDlg?.light});
+  if(ok)removeProjectLogo(pid);
+}
+function _logoStatus(msg){if(_logoDlg)_logoDlg.status=msg||'';_logoDlgSync();}
+function _logoDlgSync(){
+  const D=_logoDlg;if(!D||!document.contains(D.el))return;
+  const d=_logoDataOf(D.pid)||{},src=_safeLogoSrc(d.logo),b=_brandingOf(d),busy=_logoBusy===D.pid;
+  D.el.querySelectorAll('img.st-logo-img').forEach(img=>{
+    if(src){if(img.getAttribute('src')!==src)img.src=src;img.style.display='';}else{img.removeAttribute('src');img.style.display='none';}
+  });
+  D.el.querySelectorAll('.st-logo-empty').forEach(x=>{x.hidden=!!src;});
+  D.el.querySelector('.st-logo-sw.dark').classList.toggle('bd',!!src&&b.logoBackdrop);
+  const up=D.el.querySelector('[data-logo-act="upload"]'),rm=D.el.querySelector('[data-logo-act="remove"]');
+  up.textContent=busy?'Working…':src?'Replace logo':'Upload logo';up.disabled=busy;
+  rm.style.display=src?'':'none';rm.disabled=busy;
+  D.el.querySelectorAll('[data-logo-k]').forEach(i=>{i.checked=!!b[i.dataset.logoK];});
+  D.el.querySelector('.st-logo-status').textContent=D.status||(b.legacy?'This logo was added before logos appeared on the screens, so it is not shown yet. Switch on where it should appear.':'');
 }
 
 // ══ ONE-OFF TIMERS

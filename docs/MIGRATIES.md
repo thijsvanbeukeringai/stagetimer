@@ -123,13 +123,13 @@ Dit document zet alles in één volgorde.
 | `shows[].crew` | - | - | ja | - | - | - | - |
 | `shows[].photo` | - | - | - | - | - | - | - |
 | `memberIds` | - | - | - | - | - | - | - |
-| `logo` | - | - | - | - | - | - | - |
+| `logo` | - | ja | ja | - | - | - | - |
 
 - `-` betekent gestript: `fohNotes` wordt `{}`, `memberIds` wordt `[]` en de rest verdwijnt. `company_id` is altijd `null`.
-- Alles anders blijft in elke modus staan. Het gaat om stages, days, de tijden en vlaggen van shows, `genre`, `booth`, `type`, `priority`, `arrived`, `activeStage`/`activeDay`, `timerMode`, `svModes`, `cue` en `blackout`. Het tijdmodel, de overlays en de schermen hebben die nodig, en er zit niets persoonlijks of groots in.
-- De Stage View leest geen van de zes gestripte velden. Foto's gebruikt alleen het operatorpaneel, `memberIds` alleen de crewkiezer en push, en `logo` nergens.
+- Alles anders blijft in elke modus staan. Het gaat om stages, days, de tijden en vlaggen van shows, `genre`, `booth`, `type`, `priority`, `arrived`, `activeStage`/`activeDay`, `timerMode`, `svModes`, `cue`, `blackout` en `branding` (drie booleans: waar het klantlogo staat). Het tijdmodel, de overlays en de schermen hebben die nodig, en er zit niets persoonlijks of groots in.
+- De Stage View leest geen van de zes gestripte velden. Foto's gebruikt alleen het operatorpaneel, `memberIds` alleen de crewkiezer en push. `logo` toont alleen Backstage en FOH (klantlogo linksboven, branch `feature/project-logo`, 13-10-2026); daarom houden `backstage` en `foh` (en de legacy/PHASE B-variant) het veld, alle andere modi niet. Wordt deze stap uitgevoerd met een oudere versie van het bestand (logo overal gestript), dan tonen de deellinks gewoon geen logo; er breekt niets. Een base64-logo (zolang stap 16 niet is uitgevoerd) reist mee in elke backstage/foh-poll; na stap 16 is het een URL van ~120 bytes.
 - De matrix staat in de kop van het SQL-bestand. De JS-tweeling `tests/support/share-modes.js` voedt de mock-backend. `share-mode.spec.js` controleert dat de twee gelijk zijn.
-- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip.
+- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip. Na de logo-wijziging (`keep_logo`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle negen modi (inclusief `strict` en `legacy`) gelijk aan de JS-strip, `logo` alleen in backstage, foh en legacy.
 
 ### Stap 4: app deployen (improve/2026-10-13)
 
@@ -241,8 +241,8 @@ Zie "App-wijzigingen" hieronder.
 - **NIET UITVOEREN: GEBLOKKEERD.** De app-kant is klaar (branch `feature/share-link-p-mode`, zie stap 9): `p_mode` wordt overal meegestuurd met de terugvalketen 2 argumenten → 1 argument → tabel (`404`/`PGRST202` → volgende). De booth-suite bewijst dat de Stage View met gestripte data pixel-identiek is. Uitvoeren mag pas als aan álle voorwaarden is voldaan:
   1. die release staat live;
   2. hij staat er een paar dagen, zodat gecachte tabbladen herladen zijn;
-  3. **de blokkade bovenaan is opgeheven.** De iPad-app **Stagetimer Booth** (`nl.stagetimer.booth`) haalt projectdata op een nog onbekende manier op. Roept hij `get_shared_project(p_id)` aan en heeft hij foto's, `memberIds` of het logo nodig, dan breekt PHASE B elk iPad-boothscherm. Leest hij `projects` direct, dan breekt `rls_enable` hem. Stel eerst vast welke endpoints en velden hij gebruikt (broncode of netwerk-trace).
-- Voer het commentaarblok onderaan `20261013100000_share_link_rpcs.sql` uit. De legacy-aanroep met één argument geeft dan geen foto's, `memberIds`, logo of `company_id` meer terug.
+  3. **de blokkade bovenaan is opgeheven.** De iPad-app **Stagetimer Booth** (`nl.stagetimer.booth`) haalt projectdata op een nog onbekende manier op. Roept hij `get_shared_project(p_id)` aan en heeft hij foto's of `memberIds` nodig, dan breekt PHASE B elk iPad-boothscherm. Leest hij `projects` direct, dan breekt `rls_enable` hem. Stel eerst vast welke endpoints en velden hij gebruikt (broncode of netwerk-trace).
+- Voer het commentaarblok onderaan `20261013100000_share_link_rpcs.sql` uit. De legacy-aanroep met één argument geeft dan geen foto's, `memberIds` of `company_id` meer terug (het logo wel: Backstage en FOH tonen het).
 - **Rollback:** voer de LEGACY-definitie uit hetzelfde bestand opnieuw uit.
 
 ### Stap 12: `plan_enforcement` naar `enforce`
