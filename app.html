@@ -5526,18 +5526,10 @@ function openDrawer(id,booth=null){
       // Split date + time inputs (iOS Safari shows seconds on type="time"
       // with step="1" but not on datetime-local). Source of truth still the
       // canonical startsAt / endsAt.
+      // Festival (Amsterdam) wall time, whatever zone this device is in.
       const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      const _d2=n=>String(n).padStart(2,'0');
-      if(sa){
-        document.getElementById('f-start-date').value=`${sa.getFullYear()}-${_d2(sa.getMonth()+1)}-${_d2(sa.getDate())}`;
-        document.getElementById('f-start-time').value=`${_d2(sa.getHours())}:${_d2(sa.getMinutes())}`;
-        document.getElementById('f-start-sec').value=_d2(sa.getSeconds());
-      }
-      if(ea){
-        document.getElementById('f-end-date').value=`${ea.getFullYear()}-${_d2(ea.getMonth()+1)}-${_d2(ea.getDate())}`;
-        document.getElementById('f-end-time').value=`${_d2(ea.getHours())}:${_d2(ea.getMinutes())}`;
-        document.getElementById('f-end-sec').value=_d2(ea.getSeconds());
-      }
+      if(sa)_drSetDT('start',sa.getTime());
+      if(ea)_drSetDT('end',ea.getTime());
       if(s.photo){document.getElementById('photo-preview').src=s.photo;document.getElementById('photo-preview-wrap').style.display='block';document.getElementById('f-photo-clear').style.display='';}
       else{document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';}
     }
@@ -5546,23 +5538,17 @@ function openDrawer(id,booth=null){
     clearPhoto();_photoRemoved=false;selBooth(booth||'');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
-    let startDt;
+    let startMs;
     if(shows.length){
       const last=shows[shows.length-1];
       const lastEnd=_showEndsAt(last);
-      startDt=lastEnd||new Date();
+      startMs=lastEnd?lastEnd.getTime():nowMs();
     }else{
-      // Today at the next round hour
-      const d=new Date();d.setHours(d.getHours(),0,0,0);startDt=d;
+      // Now, rounded down to the whole hour (festival time)
+      const n=nowMs();startMs=n-(amsSecOfDay(n)%3600)*1000-(n%1000);
     }
-    const endDt=new Date(startDt.getTime()+90*60*1000);
-    const _d2=n=>String(n).padStart(2,'0');
-    document.getElementById('f-start-date').value=`${startDt.getFullYear()}-${_d2(startDt.getMonth()+1)}-${_d2(startDt.getDate())}`;
-    document.getElementById('f-start-time').value=`${_d2(startDt.getHours())}:${_d2(startDt.getMinutes())}`;
-    document.getElementById('f-start-sec').value=_d2(startDt.getSeconds());
-    document.getElementById('f-end-date').value=`${endDt.getFullYear()}-${_d2(endDt.getMonth()+1)}-${_d2(endDt.getDate())}`;
-    document.getElementById('f-end-time').value=`${_d2(endDt.getHours())}:${_d2(endDt.getMinutes())}`;
-    document.getElementById('f-end-sec').value=_d2(endDt.getSeconds());
+    _drSetDT('start',startMs);
+    _drSetDT('end',startMs+90*60*1000);
   }
   _updateDrFlagBtns();
   updDur();
@@ -5574,28 +5560,29 @@ function openDrawer(id,booth=null){
 function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
 let curBooth='A';
 function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
-// Combine the six split inputs (start date+time+sec, end date+time+sec) into Date objects.
-function _readStartDate(){
-  const d=document.getElementById('f-start-date').value;
-  const t=document.getElementById('f-start-time').value;
-  const secRaw=(document.getElementById('f-start-sec').value||'0').trim();
+// The drawer's six split inputs (start/end date + time + sec) hold FESTIVAL
+// wall time (Europe/Amsterdam, see the time module), never the device's zone:
+// a laptop set to New York must read and write the same 22:00 as a Dutch one.
+// Write: an instant (ms) into the 'start' / 'end' inputs.
+function _drSetDT(which,ms){
+  document.getElementById(`f-${which}-date`).value=amsDateStr(ms);
+  document.getElementById(`f-${which}-time`).value=amsTimeStr(ms);
+  document.getElementById(`f-${which}-sec`).value=_p2(amsParts(ms).s);
+}
+// Read: the inputs as a Date (festival wall time → instant), or null.
+function _drReadDT(which){
+  const d=document.getElementById(`f-${which}-date`).value;
+  const t=document.getElementById(`f-${which}-time`).value;
+  const secRaw=(document.getElementById(`f-${which}-sec`).value||'0').trim();
   if(!d||!t)return null;
   const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
   // t is HH:MM (native time picker drops seconds on iOS); some browsers return HH:MM:SS - both fine
   const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
-  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
-  return isNaN(dt)?null:dt;
+  const ms=parseFestivalISO(`${d}T${hm}:${_p2(ss)}`);
+  return isNaN(ms)?null:new Date(ms);
 }
-function _readEndDate(){
-  const d=document.getElementById('f-end-date').value;
-  const t=document.getElementById('f-end-time').value;
-  const secRaw=(document.getElementById('f-end-sec').value||'0').trim();
-  if(!d||!t)return null;
-  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
-  const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
-  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
-  return isNaN(dt)?null:dt;
-}
+function _readStartDate(){return _drReadDT('start');}
+function _readEndDate(){return _drReadDT('end');}
 ['f-start-date','f-start-time','f-start-sec','f-end-date','f-end-time','f-end-sec'].forEach(id=>{
   const el=document.getElementById(id);
   if(el)el.addEventListener('input',updDur);
@@ -5608,11 +5595,7 @@ function _maybeBumpEnd(){
   const sd=_readStartDate(),ed=_readEndDate();
   if(!sd||!ed)return;
   if(ed<=sd){
-    const ne=new Date(sd.getTime()+90*60*1000);
-    const _d2=n=>String(n).padStart(2,'0');
-    document.getElementById('f-end-date').value=`${ne.getFullYear()}-${_d2(ne.getMonth()+1)}-${_d2(ne.getDate())}`;
-    document.getElementById('f-end-time').value=`${_d2(ne.getHours())}:${_d2(ne.getMinutes())}`;
-    document.getElementById('f-end-sec').value=_d2(ne.getSeconds());
+    _drSetDT('end',sd.getTime()+90*60*1000);
     updDur();
   }
 }
@@ -5701,11 +5684,9 @@ function saveShow(){
     alert('End must be after start. To run past midnight, pick tomorrow\'s date in the End field.');
     return;
   }
-  const _d2=n=>String(n).padStart(2,'0');
-  const startDate=`${sd.getFullYear()}-${_d2(sd.getMonth()+1)}-${_d2(sd.getDate())}`;
-  const startTime=`${_d2(sd.getHours())}:${_d2(sd.getMinutes())}:${_d2(sd.getSeconds())}`;
-  const endDate=`${ed.getFullYear()}-${_d2(ed.getMonth()+1)}-${_d2(ed.getDate())}`;
-  const endTime=`${_d2(ed.getHours())}:${_d2(ed.getMinutes())}:${_d2(ed.getSeconds())}`;
+  // Festival wall time (see _drSetDT), not the device's zone.
+  const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
+  const endDate=amsDateStr(ed.getTime()),endTime=amsTimeStr(ed.getTime(),true);
   const startsAt=`${startDate}T${startTime}`;
   const endsAt=`${endDate}T${endTime}`;
   const endsNextDay=startDate!==endDate;
