@@ -43,7 +43,7 @@ test('show editor opens, edits and saves to the backend', async ({ page, st, bac
   await st.openProject();
   const card = page.locator('#slist .scard', { hasText: "DJ O'Neil" }).first();
   await card.hover();
-  await card.locator('button', { hasText: '✏️' }).click();
+  await card.getByRole('button', { name: /^Edit / }).click();
   await expect(page.locator('#drawer')).toHaveClass(/open/);
   await expect(page.locator('#f-a')).toHaveValue("DJ O'Neil");
   await page.locator('#f-n').fill('Deep House set, bring USB');

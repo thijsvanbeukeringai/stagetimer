@@ -129,6 +129,7 @@ async function openOperator(browser, size, at = AT) {
     document.documentElement.classList.remove('no-session');
     document.getElementById('login').classList.remove('open');
     _hideLoader();
+    if (typeof _showLogoutBtn === 'function') _showLogoutBtn(true);
     openProject('P1');
   });
   await page.clock.runFor(1500);
@@ -144,12 +145,20 @@ async function operatorShots(browser) {
     await shot(page, `op-${size.name}`);
     // Manual mode, scrolled schedule, open menus: the states people complain about.
     if (size.name === '390x844' || size.name === '1440x900' || size.name === '768x1024') {
-      await page.evaluate(() => { const l = document.getElementById('slist'); if (l) l.scrollTop = 99999; });
+      await page.evaluate(() => ['slist', 'body', 'tpanel'].forEach(id => { const l = document.getElementById(id); if (l) l.scrollTop = 99999; }));
       await shot(page, `op-${size.name}-scrolled`);
-      await page.evaluate(() => { const l = document.getElementById('slist'); if (l) l.scrollTop = 0; setMode('manual'); });
+      await page.evaluate(() => { ['slist', 'body', 'tpanel'].forEach(id => { const l = document.getElementById(id); if (l) l.scrollTop = 0; }); setMode('manual'); });
       await page.clock.runFor(300);
       await shot(page, `op-${size.name}-manual`);
       await page.evaluate(() => setMode('live'));
+      // Mobile: the folded controls opened (only exists in the new layout).
+      if (size.mobile && await page.evaluate(() => typeof toggleCtrlPanel === 'function')) {
+        await page.evaluate(() => { toggleCtrlPanel(true); sendCue('WRAP UP', 'red'); });
+        await page.clock.runFor(300);
+        await shot(page, `op-${size.name}-controls`);
+        await page.evaluate(() => toggleDD('admin-dd'));
+        await shot(page, `op-${size.name}-menu`);
+      }
     }
     if (size.name === '1440x900') {
       await page.evaluate(() => toggleDD('admin-dd'));
