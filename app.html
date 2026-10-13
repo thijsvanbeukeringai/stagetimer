@@ -8799,8 +8799,11 @@ async function doLogin(){
     clearTimeout(tmo);
     if(!res.ok){
       const body=await res.json().catch(()=>({}));
-      const msg=body.error_description||body.msg||body.error||('HTTP '+res.status);
-      errEl.textContent='Login failed: '+msg;
+      const msg=body.error_description||body.msg||body.error||'';
+      // Auth's own 4xx sentences ("Invalid login credentials") are fine to
+      // show; a bare status or a server error gets the readable wording.
+      errEl.textContent=(res.status<500&&msg&&res.status!==429)?'Login failed: '+msg
+        :_friendlyError(Object.assign(new Error('HTTP '+res.status),{status:res.status}),'Login');
       errEl.style.display='block';
       btn.textContent='Log in';btn.disabled=false;
       return;
@@ -8837,7 +8840,7 @@ async function doLogin(){
     if(e?.name==='AbortError'){
       errEl.textContent='Login timed out after 10s. Check your connection and try again.';
     }else{
-      errEl.textContent='Login failed: '+(e?.message||String(e));
+      errEl.textContent=_friendlyError(e,'Login');
     }
     errEl.style.display='block';
     btn.textContent='Log in';btn.disabled=false;
