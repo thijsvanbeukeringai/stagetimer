@@ -10,7 +10,7 @@ const { FESTIVAL } = require('../support/seed');
 test.describe('BOUWPLAN 1.5', () => {
   test.use({ stAuth: 'admin' });
 
-  test.fail('crew selection is saved (toggleCrewMember called undefined saveProj)', async ({ page, st, backend }) => {
+  test('crew selection is saved (toggleCrewMember called undefined saveProj)', async ({ page, st, backend }) => {
     await st.gotoApp();
     await st.openProject();
     await page.locator('#admin-dd > button').click();
