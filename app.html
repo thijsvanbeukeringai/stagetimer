@@ -2262,9 +2262,16 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .st-dlg-list .st-dlg-k{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
 .st-dlg-list .st-dlg-v{font-family:var(--ffm);font-size:12px;white-space:nowrap;color:var(--sub);}
 .st-dlg-list .st-dlg-v b{color:var(--text);font-weight:700;}
-.st-dlg-list .st-dlg-chg{color:#fbbf24;}
+.st-dlg-list .st-dlg-chg,.st-dlg-list .st-dlg-chg b{color:#fbbf24;}
 .st-dlg-note{font-size:12px;color:var(--sub);margin:0 0 12px;line-height:1.5;}
-.st-dlg-opts{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;}
+.st-dlg-opts{display:flex;flex-direction:column;gap:10px;margin:0 0 12px;}
+.st-dlg-opt{display:block;width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--border2);
+  background:var(--s3);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;transition:border-color .12s,background .12s;}
+.st-dlg-opt:hover:not(:disabled){border-color:rgba(99,102,241,.6);background:var(--s4);}
+.st-dlg-opt:disabled{cursor:not-allowed;opacity:.6;}
+.st-dlg-opt-t{display:block;font-size:14px;font-weight:800;margin:0 0 3px;}
+.st-dlg-opt-d{display:block;font-size:12px;color:var(--sub);line-height:1.45;margin:0 0 8px;}
+.st-dlg-opt .st-dlg-list{margin:0;background:rgba(0,0,0,.18);}
 /* Light back office */
 .st-dlg-light .st-dlg{background:#fff;color:#0A0A0B;border-color:rgba(28,25,23,.12);box-shadow:0 20px 60px rgba(28,25,23,.25);font-family:'Geist','Inter',system-ui,sans-serif;}
 .st-dlg-light{background:rgba(28,25,23,.45);}
@@ -2277,7 +2284,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .st-dlg-light .st-dlg-list{border-color:rgba(28,25,23,.12);}
 .st-dlg-light .st-dlg-list li{border-color:rgba(28,25,23,.08);}
 .st-dlg-light .st-dlg-list .st-dlg-v b{color:#0A0A0B;}
-.st-dlg-light .st-dlg-list .st-dlg-chg{color:#B45309;}
+.st-dlg-light .st-dlg-list .st-dlg-chg,.st-dlg-light .st-dlg-list .st-dlg-chg b{color:#B45309;}
 .st-dlg-light :focus-visible{outline-color:#1E40AF;}
 .st-dlg-light .st-dlg-ft .st-dlg-danger{background:#B91C1C;border-color:#B91C1C;color:#fff;}
 /* Phones: a sheet on the bottom of the visible viewport (above the
@@ -4893,6 +4900,7 @@ function renderTbar(){
 //   stDialog.prompt(msg,{title,label,value,validate}) -> string | null
 //   stDialog.form({title,fields,onSubmit,...})        -> values | null
 //   stDialog.choice({title,choices:[{value,label}]})  -> value | null
+// Inside `html`, a <button data-st-value="x"> closes the dialog with "x".
 // Texts (message, labels) are plain text and always escaped; `html` is for
 // callers that build their own escaped markup (previews, lists).
 const stDialog=(()=>{
@@ -5035,6 +5043,8 @@ const stDialog=(()=>{
       }
       panel.addEventListener('submit',e=>{e.preventDefault();const sb=panel.querySelector('button[type=submit]');run(actions[+(sb?.dataset.i||0)]);});
       panel.querySelector('.st-dlg-ft').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.type==='submit')return;run(actions[+b.dataset.i]);});
+      // Option buttons inside the body (html) choose by data-st-value.
+      panel.querySelector('.st-dlg-bd').addEventListener('click',e=>{const b=e.target.closest('[data-st-value]');if(!b||b.disabled||d.busy)return;e.preventDefault();d.close(b.dataset.stValue);});
       if(opts.backdrop!==false&&!fields.length)ov.addEventListener('mousedown',e=>{if(e.target===ov&&!d.busy)d.close(d.cancelValue);});
       stack.push(d);
       document.documentElement.classList.add('st-dlg-open');
@@ -6811,65 +6821,55 @@ function _writeShowTimes(s, newStart, newEnd){
   s.endsAt=`${endDate}T${endTime}`;
   s.endsNextDay=startDate!==endDate;
 }
-function adjustLiveShow(minutes){
+// The two ways to apply a correction, computed WITHOUT touching the data so
+// the operator sees the resulting times first. The arithmetic is the one
+// the quick-adjust buttons always used:
+//   cascade: the live show's end and every following show move by delta.
+//   absorb:  the live show's end moves; a back-to-back next show gets the
+//            same start shift while its end stays fixed. Nothing else moves.
+// Returns {cascade:{changes}, absorb:{changes}|{error}} or {error}.
+function _qaPlans(minutes){
   const shows=getShows(G.activeStage,G.activeDay);
   const cur=curShow(shows);
-  if(!cur){alert('No live show to adjust on this stage.');return;}
+  if(!cur)return{error:'There is no live show on this stage to adjust.'};
   const ordered=_showsInOrder();
   const idx=ordered.findIndex(s=>s.id===cur.s.id);
-  if(idx<0){alert('Could not locate the live show in the schedule.');return;}
+  if(idx<0)return{error:'Could not find the live show in the schedule.'};
   const liveShow=ordered[idx];
   const liveStart=_showStartsAt(liveShow);
   const liveEnd=_showEndsAt(liveShow);
-  if(!liveStart||!liveEnd)return;
+  if(!liveStart||!liveEnd)return{error:'The live show has no start or end time.'};
   const deltaMs=minutes*60*1000;
   const newLiveEnd=new Date(liveEnd.getTime()+deltaMs);
   // Don't allow the live show to end before it started (would be nonsense).
-  if(newLiveEnd<=liveStart){
-    alert('Cannot shorten the show below 0 minutes.');return;
+  if(newLiveEnd<=liveStart)return{error:`"${liveShow.artist}" cannot be shortened by ${-minutes} min: it would end before it started.`};
+  const live={s:liveShow,from:[liveStart,liveEnd],to:[liveStart,newLiveEnd]};
+  const cascade=[live];
+  for(let i=idx+1;i<ordered.length;i++){
+    const s=ordered[i];
+    const sa=_showStartsAt(s),ea=_showEndsAt(s);
+    if(!sa||!ea)continue;
+    cascade.push({s,from:[sa,ea],to:[new Date(sa.getTime()+deltaMs),new Date(ea.getTime()+deltaMs)]});
   }
-  // Ask the operator: push the whole rest of the lineup back/forward, or only
-  // let the immediately following slot absorb the change?
-  //   OK     → cascade: shift every show after this one by delta
-  //   Cancel → only the next slot absorbs (its end stays fixed). Far rest
-  //            of the lineup keeps its original times.
-  const sign=minutes>=0?'+':'';
-  const cascade=confirm(
-    `Adjust live show "${liveShow.artist}" by ${sign}${minutes} min.\n\n`+
-    `Push the rest of the lineup by ${sign}${minutes} min too?\n\n`+
-    `OK = cascade through every following show\n`+
-    `Cancel = only the next slot absorbs the change (its end time stays fixed)`
-  );
-
-  if(cascade){
-    // Shift every following show on this stage/day by deltaMs.
-    for(let i=idx+1;i<ordered.length;i++){
-      const s=ordered[i];
-      const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      if(!sa||!ea)continue;
-      _writeShowTimes(s,new Date(sa.getTime()+deltaMs),new Date(ea.getTime()+deltaMs));
-    }
-  } else {
-    // Original "single-slot absorbs" behaviour: only the next show's START
-    // moves (if it was back-to-back); its END stays fixed.
-    const next=ordered[idx+1];
-    if(next){
-      const nextStart=_showStartsAt(next);
-      const nextEnd=_showEndsAt(next);
-      if(nextStart && nextEnd){
-        const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
-        if(wasBackToBack){
-          const newNextStart=new Date(nextStart.getTime()+deltaMs);
-          if(newNextStart>=nextEnd){
-            alert("That would make the next show's slot zero or negative. Aborted.");return;
-          }
-          _writeShowTimes(next,newNextStart,nextEnd);
-        }
+  let absorb={changes:[live],gap:true};
+  const next=ordered[idx+1];
+  if(next){
+    const nextStart=_showStartsAt(next);
+    const nextEnd=_showEndsAt(next);
+    if(nextStart&&nextEnd){
+      const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
+      if(wasBackToBack){
+        const newNextStart=new Date(nextStart.getTime()+deltaMs);
+        absorb=newNextStart>=nextEnd
+          ?{error:`"${next.artist}" would have no time left (its slot would be zero or negative).`}
+          :{changes:[live,{s:next,from:[nextStart,nextEnd],to:[newNextStart,nextEnd]}]};
       }
     }
   }
-  // Write the live show's new end time. Start stays the same.
-  _writeShowTimes(liveShow,liveStart,newLiveEnd);
+  return{live:liveShow,following:ordered.length-idx-1,cascade:{changes:cascade},absorb};
+}
+function _qaApply(changes){
+  changes.forEach(c=>_writeShowTimes(c.s,c.to[0],c.to[1]));
   // Immediate push - viewer screens see the new times within ~500ms instead
   // of waiting the full 300ms debounce + upsert + polling roundtrip.
   save({immediate:true});
@@ -6877,6 +6877,46 @@ function adjustLiveShow(minutes){
   if(document.getElementById('foh')?.classList.contains('open'))renderFOH();
   if(document.getElementById('bs')?.classList.contains('open'))renderBS();
   if(document.getElementById('tl')?.classList.contains('open'))renderTL();
+}
+// Preview rows: "Bravo  23:00–23:30 → 23:05–23:30", changed parts marked.
+function _qaListHTML(changes,max){
+  const t=d=>amsTimeStr(d.getTime());
+  const part=(a,b)=>t(a)===t(b)?`<b>${t(b)}</b>`:`<span class="st-dlg-chg"><b>${t(b)}</b></span>`;
+  const rows=changes.slice(0,max).map(c=>`<li><span class="st-dlg-k">${escH(c.s.artist||'Untitled')}</span><span class="st-dlg-v">${t(c.from[0])}–${t(c.from[1])} → ${part(c.from[0],c.to[0])}–${part(c.from[1],c.to[1])}</span></li>`);
+  if(changes.length>max)rows.push(`<li><span class="st-dlg-k" style="font-weight:500;">+ ${changes.length-max} more show${changes.length-max===1?'':'s'}, each moved the same way</span></li>`);
+  return`<ul class="st-dlg-list">${rows.join('')}</ul>`;
+}
+// Quick adjust: the operator chooses explicitly and sees the new times
+// before anything changes. Cancel (button, Escape) changes nothing.
+async function adjustLiveShow(minutes){
+  const p=_qaPlans(minutes);
+  if(p.error){await stDialog.alert(p.error,{title:'Cannot adjust the live show'});return;}
+  const sign=minutes>=0?'+':'−',amt=`${sign}${Math.abs(minutes)} min`;
+  const opt=(value,title,desc,body,disabled)=>`<button type="button" class="st-dlg-opt" data-st-value="${value}"${disabled?' disabled aria-disabled="true"':''}><span class="st-dlg-opt-t">${title}</span><span class="st-dlg-opt-d">${desc}</span>${body}</button>`;
+  let html='<div class="st-dlg-opts">';
+  if(!p.following){
+    html+=opt('cascade','Apply',`No shows follow on this stage. Only "${escH(p.live.artist)}" changes.`,_qaListHTML(p.cascade.changes,6));
+  }else{
+    html+=opt('cascade','Shift all following shows',`Every later show on this stage moves ${amt}.`,_qaListHTML(p.cascade.changes,6));
+    html+=p.absorb.error
+      ?opt('absorb','Only the next show absorbs it',escH(p.absorb.error)+' Not possible.','',true)
+      :opt('absorb','Only the next show absorbs it',p.absorb.gap
+        ?'There is a gap before the next show: the change fills the gap and no other show moves.'
+        :'The next show starts at the new time and keeps its end time. No other show moves.',_qaListHTML(p.absorb.changes,6));
+  }
+  html+='</div>';
+  const choice=await stDialog.open({title:`Adjust "${p.live.artist}" by ${amt}`,
+    message:'Choose how the schedule changes. The new times are shown below; nothing changes until you pick one.',
+    html,wide:true,initial:'.st-dlg-opt',
+    actions:[{label:'Cancel',value:null,kind:'secondary'}],cancelValue:null});
+  if(choice!=='cascade'&&choice!=='absorb')return;
+  // Re-plan at apply time (the clock moved while the dialog was open).
+  const q=_qaPlans(minutes);
+  if(q.error){await stDialog.alert(q.error,{title:'Cannot adjust the live show'});return;}
+  if(q.live.id!==p.live.id){await stDialog.alert('The live show changed while the dialog was open. Nothing was adjusted.',{title:'Nothing changed'});return;}
+  const plan=q[choice];
+  if(plan.error){await stDialog.alert(plan.error,{title:'Cannot adjust the live show'});return;}
+  _qaApply(plan.changes);
 }
 window.adjustLiveShow=adjustLiveShow;
 
@@ -6899,8 +6939,8 @@ function renderQuickAdjust(){
         const liveEnd=_showEndsAt(cur.s);
         const backToBack=nextStart && liveEnd && Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
         hint.textContent=backToBack
-          ? `Next show (${escH(next.artist)}) absorbs the change - its end time stays fixed.`
-          : `No back-to-back next show; the change extends into the gap.`;
+          ? `Each change asks first: shift all following shows, or let only the next show (${next.artist}) absorb it.`
+          : `The next show starts later: a change fills the gap first. You see the new times before anything changes.`;
       } else {
         hint.textContent='No following show on this stage.';
       }

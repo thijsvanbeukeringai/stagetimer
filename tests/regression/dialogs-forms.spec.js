@@ -170,3 +170,77 @@ test.describe('show editor', () => {
     await done(r);
   });
 });
+
+// Alpha 22:00-23:00 is live at 22:30, Bravo 23:00-23:30 is back-to-back,
+// Charlie 23:30-00:30 follows.
+const times = page => page.evaluate(() => Object.fromEntries(G.shows.filter(s => s.day === 'd1').map(s => [s.id, s.startsAt + '/' + s.endsAt])));
+const ORIG = {
+  a: '2026-06-19T22:00:00/2026-06-19T23:00:00',
+  b: '2026-06-19T23:00:00/2026-06-19T23:30:00',
+  c: '2026-06-19T23:30:00/2026-06-20T00:30:00',
+};
+test.describe('time correction', () => {
+  test('Cancel and Escape really cancel', async ({ browser }) => {
+    const r = await openOperator(browser);
+    const { page } = r;
+    const d = dlg(page);
+    await page.getByRole('button', { name: '+5 min' }).click();
+    await expect(d.locator('.st-dlg-title')).toHaveText('Adjust "Alpha" by +5 min');
+    await d.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(d).toHaveCount(0);
+    expect(await times(page)).toEqual(ORIG);
+    await page.getByRole('button', { name: '+5 min' }).click();
+    await expect(d).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(d).toHaveCount(0);
+    expect(await times(page)).toEqual(ORIG);
+    expect(r.st.patches.length).toBe(0); // nothing was saved
+    await done(r);
+  });
+  test('preview, then "Shift all following shows"', async ({ browser }) => {
+    const r = await openOperator(browser);
+    const { page } = r;
+    const d = dlg(page);
+    await page.getByRole('button', { name: '+5 min' }).click();
+    const shift = d.getByRole('button', { name: /Shift all following shows/ });
+    await expect(shift).toContainText('Bravo23:00–23:30 → 23:05–23:35');
+    await expect(shift).toContainText('Charlie23:30–00:30 → 23:35–00:35');
+    await expect(shift).toBeFocused();
+    expect(await times(page)).toEqual(ORIG); // preview only
+    await shift.click();
+    expect(await times(page)).toEqual({
+      a: '2026-06-19T22:00:00/2026-06-19T23:05:00',
+      b: '2026-06-19T23:05:00/2026-06-19T23:35:00',
+      c: '2026-06-19T23:35:00/2026-06-20T00:35:00',
+    });
+    await done(r);
+  });
+  test('preview, then "Only the next show absorbs it"', async ({ browser }) => {
+    const r = await openOperator(browser);
+    const { page } = r;
+    const d = dlg(page);
+    await page.getByRole('button', { name: '-1 min' }).click();
+    const absorb = d.getByRole('button', { name: /Only the next show absorbs it/ });
+    await expect(absorb).toContainText('Bravo23:00–23:30 → 22:59–23:30');
+    await expect(absorb).not.toContainText('Charlie');
+    await absorb.click();
+    expect(await times(page)).toEqual({
+      a: '2026-06-19T22:00:00/2026-06-19T22:59:00',
+      b: '2026-06-19T22:59:00/2026-06-19T23:30:00',
+      c: ORIG.c,
+    });
+    await done(r);
+  });
+  test('absorbing is offered as impossible when the next slot would vanish', async ({ browser }) => {
+    const r = await openOperator(browser);
+    const { page } = r;
+    const d = dlg(page);
+    await page.evaluate(() => { adjustLiveShow(30); });
+    const absorb = d.getByRole('button', { name: /Only the next show absorbs it/ });
+    await expect(absorb).toBeDisabled();
+    await expect(absorb).toContainText('"Bravo" would have no time left');
+    await page.keyboard.press('Escape');
+    expect(await times(page)).toEqual(ORIG);
+    await done(r);
+  });
+});
