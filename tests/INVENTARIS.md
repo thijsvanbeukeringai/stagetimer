@@ -106,6 +106,7 @@ Legenda testbestanden:
 
 |---|---|---|
 | FOH-notities (tijd, kleur, tekst) | `openFohnModal` 4326, `saveFohnNote` 4344, `delFohnNote` 4351, `fohNotesHTML` 4256 | operator: *FOH screen* (notitie zichtbaar; seed bevat `<script>` in notitie) |
+| FOH-cue-alerts (getimede notities: aankomend/bijna/nu/voorbij, aftellen, aria-live, scroll, optionele piep `st_foh_sound`) | `fohCueAtMs`, `fohCueState`, `fohCueCdText` (tijdmodule), `_fohCueTick`, `toggleFohSound`, `_fohBeep` | unit/foh-cue: tijd t.o.v. de show (normaal, over middernacht, 07:00-regel, legacy zonder datum, ongeldig), drempels; regression/foh-cue-alerts: statusovergangen + aftellen (1440/390, publiek), element blijft hetzelfde, aankondigingen, XSS, reduced motion, scroll-in-view (en niet tijdens scrollen), in-app + geluid |
 | Show-notitie | veld `note` in `saveShow` | operator: *show editor…* |
 | Artiestfoto (base64, compressie) | `previewPhoto` 4781, `_compressImage` 4764, `clearPhoto` 4803, `setTPPhoto` 4804 | seed bevat foto; verwijderen: gat (BOUWPLAN 1.5) |
 | Projectlogo | `handleLogoUpload` 8176, `removeProjectLogo` 8200, `applyLogo`/`refreshLogo` no-op | unit/sync-engine.test.js: *logo on a project that is not open* (`_saveProjectById`) |
