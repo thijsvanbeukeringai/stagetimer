@@ -3089,7 +3089,7 @@ function nxtShow(shows,at){
 // id, so a lineup update can no longer slide another show under the timer.
 function stageShowAt(stageId,dayId,at,mode){
   const shows=getShows(stageId,dayId);
-  if(mode==='manual'){const s=shows[M.idx];return{shows,cur:s?{s,manual:true}:null,nxt:null};}
+  if(mode==='manual'){const s=_mShow(shows);return{shows,cur:s?{s,manual:true}:null,nxt:null};}
   const n=at||nowMs();
   return{shows,cur:curShow(shows,n),nxt:nxtShow(shows,n)};
 }
@@ -3112,21 +3112,47 @@ function getDays(){return G.days||[];}
 function fmtDayShort(id){const d=(G.days||[]).find(x=>x.id===id);return d?d.name:id;}
 
 // ══ MANUAL TIMER
-let M={state:'idle',idx:0,remMs:0,durMs:0,startMs:0,nudge:0};
-const mRem=()=>M.state==='running'?M.remMs-(Date.now()-M.startMs)+M.nudge:M.remMs+M.nudge;
-function mReset(){const s=getShows(G.activeStage,G.activeDay)[M.idx];if(s){M.remMs=_showDurationSec(s)*1000;M.durMs=M.remMs;M.nudge=0;M.state='idle';}}
-function mPP(){if(M.state==='idle'){M.startMs=Date.now();M.state='running';}else if(M.state==='running'){M.remMs=mRem();M.state='paused';}else{M.startMs=Date.now();M.state='running';}renderTP();renderTbar();}
-function mStop(){M.nudge=0;mReset();renderTP();renderTbar();}
-function mPrev(){if(M.idx>0){M.idx--;mReset();renderAll();}}
-function mNext(){const sh=getShows(G.activeStage,G.activeDay);if(M.idx<sh.length-1){M.idx++;mReset();renderAll();}}
-function nudge(sec){M.nudge+=sec*1000;if(M.state==='paused')M.remMs+=sec*1000;renderTP();}
+// One model - mtIdle / mtToggle / mtAdjust / mtRemaining in the time module -
+// plus the id of the cued show. It belongs to this device: never saved,
+// never synced (there is no persisted shape to migrate).
+// Before: {idx,remMs,startMs,nudge} kept a correction both in `nudge` and in
+// `remMs`, so +1 min while paused added 2 min and pausing after a correction
+// counted it twice; and `idx` pointed at a list position, not a show.
+let M={showId:null,...mtIdle(0)};
+const _mShowsList=()=>getShows(G.activeStage,G.activeDay);
+const _mIdx=shows=>M.showId?shows.findIndex(s=>s.id===M.showId):-1;
+function _mShow(shows){return M.showId?(shows||_mShowsList()).find(s=>s.id===M.showId)||null:null;}
+const mRem=()=>mtRemaining(M,nowMs());
+// Cue a show: idle, loaded with its planned length.
+function _mCue(s){M={showId:s?s.id:null,...mtIdle(s?_showDurationSec(s)*1000:0)};}
+// Reset to idle. Keeps the cued show while it is still in the list,
+// otherwise cues the scheduled one: live, else next, else the first.
+function mReset(){
+  const shows=_mShowsList();
+  let s=_mShow(shows);
+  if(!s){
+    const live=shows.filter(x=>showAllowed(x,'live',false));
+    s=curShow(live)?.s||nxtShow(live)?.s||live[0]||null;
+  }
+  _mCue(s);
+}
+function mPP(){if(!_mShow())mReset();if(!M.showId)return;M=mtToggle(M,nowMs());renderTP();renderTbar();}
+function mStop(){mReset();renderTP();renderTbar();}
+// Prev / next cue in list order, skipping cancelled shows.
+function _mStep(dir){
+  const sh=_mShowsList();
+  for(let j=_mIdx(sh)+dir;j>=0&&j<sh.length;j+=dir){if(!sh[j].cancelled){_mCue(sh[j]);renderAll();return;}}
+}
+function mPrev(){_mStep(-1);}
+function mNext(){_mStep(1);}
+function nudge(sec){M=mtAdjust(M,sec*1000);renderTP();}
 function renderTbar(){
-  const sh=getShows(G.activeStage,G.activeDay),s=sh[M.idx];
+  const sh=_mShowsList(),i=_mIdx(sh),s=sh[i];
   const pb=document.getElementById('btn-pp');
   if(M.state==='running'){pb.textContent='⏸ Pause';pb.className='tb pau';}else{pb.textContent='▶ Start';pb.className='tb go';}
   document.getElementById('t-cs').textContent=s?s.start.slice(0,5):'-';
   document.getElementById('t-ce').textContent=s?s.end.slice(0,5):'-';
-  document.getElementById('t-cn').textContent=sh.length?`${M.idx+1}/${sh.length}`:'-';
+  document.getElementById('t-cn').textContent=sh.length?`${i>=0?i+1:'-'}/${sh.length}`:'-';
 }
 </script>
 
@@ -4232,9 +4258,12 @@ function renderTPManual(){
   const shows=getShows(G.activeStage,G.activeDay);
   const stage=activeStageObj();
   document.getElementById('tp-stage').textContent=stage.name;
-  const s=shows[M.idx];if(!s){document.getElementById('tp-artist').textContent='-';setTPPhoto('');return;}
+  // Nothing cued yet (manual mode switched on from another device, or the
+  // cued show left this list while idle): cue the scheduled show.
+  if(!_mShow(shows)&&M.state==='idle')mReset();
+  const i=_mIdx(shows),s=shows[i];if(!s){document.getElementById('tp-artist').textContent='-';setTPPhoto('');return;}
   setTPPhoto(s.photo||'');
-  const remMs=mRem(),remSec=remMs/1000,pct=Math.max(0,Math.min(100,(1-remMs/M.durMs)*100));
+  const remMs=mRem(),remSec=remMs/1000,pct=Math.max(0,Math.min(100,(1-remMs/M.durationMs)*100));
   const col=tColor(remSec);
   const bb=document.getElementById('tp-booth');
   const boothSepM=document.getElementById('tp-meta-dot-booth');
@@ -4246,7 +4275,7 @@ function renderTPManual(){
   document.getElementById('tp-artist').textContent=s.artist;document.getElementById('tp-genre').textContent=s.genre||'-';
   setCD(remSec,M.state==='idle'?'rgba(255,255,255,.4)':col,M.state==='idle'?'duration':remSec<0?'OVERTIME':'remaining');
   document.getElementById('tp-bar').style.width=pct+'%';document.getElementById('tp-bar').style.background=col;
-  const nx=shows[M.idx+1];
+  const nx=shows[i+1];
   document.getElementById('tp-na').textContent=nx?nx.artist:'- none -';
   document.getElementById('tp-nt').textContent=nx?nx.start.slice(0,5):'';
 }
@@ -4282,21 +4311,21 @@ function renderSched(){
     list.innerHTML=`<div id="empty"><div class="ei">📋</div><p style="font-size:13px;">${isMob?'No upcoming shows.':'No shows scheduled.<br>Click <strong>New show</strong>.'}</p></div>`;
     return;
   }
-  const now=nowMs();
+  const mIdx=_mIdx(shows),now=nowMs();
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
     const showIsToday=isShowToday(s); // still used downstream for "starts in" labels
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
     if(G.timerMode==='manual'){
-      isNow=i===M.idx&&M.state==='running';isPast=i<M.idx;
-      pct=isNow?Math.max(0,Math.min(100,(1-mRem()/M.durMs)*100)):0;
+      isNow=i===mIdx&&M.state==='running';isPast=mIdx>=0&&i<mIdx;
+      pct=isNow?Math.max(0,Math.min(100,(1-mRem()/M.durationMs)*100)):0;
     }else{
       // Timestamp-based isNow/isPast - robust around 07:00 festival-day boundary
       isNow=_showIsLive(s);isPast=_showIsPast(s);
       const dur=_showDurationSec(s);const elapsed=_showElapsedSec(s);
       pct=isNow&&dur>0?Math.min(100,Math.max(0,elapsed/dur*100)):0;
     }
-    const isSel=G.timerMode==='manual'&&i===M.idx;
+    const isSel=G.timerMode==='manual'&&i===mIdx;
     const bBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'';
     const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'';
     // Countdown to start - only meaningful when the show actually IS today
@@ -4338,7 +4367,7 @@ function renderSched(){
     </div>`;
   }).join('');
 }
-function selMCue(i){M.idx=i;mReset();renderTP();renderTbar();renderSched();}
+function selMCue(i){_mCue(getShows(G.activeStage,G.activeDay)[i]);renderTP();renderTbar();renderSched();}
 
 // Fast tick for schedule countdowns
 function tickSched(){
