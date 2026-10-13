@@ -4748,15 +4748,19 @@ function renderTbar(){
 
 <!-- DAY MODAL -->
 <div id="day-modal-ov" onclick="if(event.target===this)closeDayModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:360px;display:flex;flex-direction:column;gap:12px;">
+  <div role="dialog" aria-modal="true" aria-labelledby="day-modal-title" style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:360px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:800;">Manage days</div>
-      <button onclick="closeDayModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+      <h2 id="day-modal-title" style="font-size:14px;font-weight:800;">Manage days</h2>
+      <button onclick="closeDayModal()" aria-label="Close" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div id="day-list" style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto;"></div>
+    <div class="st-fld-err" id="day-list-err" role="alert" hidden></div>
     <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:7px;">
       <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);">New day</div>
-      <input class="fi" id="dm-name" type="text" placeholder="E.g. Friday June 20…" onkeydown="if(event.key==='Enter')addDay()">
+      <label class="st-sublbl" for="dm-name">Name</label>
+      <input class="fi" id="dm-name" type="text" placeholder="E.g. Friday June 20…" aria-describedby="dm-name-err" onkeydown="if(event.key==='Enter')addDay()" oninput="_drSetFieldErr('dm-name','dm-name-err','')">
+      <div class="st-fld-err" id="dm-name-err" hidden></div>
+      <label class="st-sublbl" for="dm-date">Date (optional)</label>
       <input class="fi" id="dm-date" type="date" title="Calendar date (optional - determines whether the countdowns run on that day)" style="font-size:12px;">
       <button class="btn-p" onclick="addDay()">+ Add</button>
       <div style="font-size:10px;color:var(--sub);line-height:1.4;">Without a date, this day runs every day as 'today'. Fill in a date to link it to an actual calendar day.</div>
@@ -5086,6 +5090,13 @@ const stDialog=(()=>{
   return{open,alert,confirm,prompt,form,choice,isOpen:()=>stack.length>0,closeAll:()=>{while(stack.length)stack[stack.length-1].close(stack[stack.length-1].cancelValue);}};
 })();
 window.stDialog=stDialog;
+// One date notation in dialogs and forms: "Fri, Jun 19, 2026" (calendar
+// date strings are read at noon so no time zone can shift the day).
+function _fmtDay(ymd){
+  if(!ymd)return'-';
+  const d=new Date(String(ymd).slice(0,10)+'T12:00:00');
+  return isNaN(d)?String(ymd):d.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
 // For the few code paths that may run before / without the dialog (node test
 // harness, very early boot): the dialog when it exists, else the browser one.
 function _stAlert(msg,o){return window.stDialog?window.stDialog.alert(msg,o):(alert(msg),Promise.resolve());}
@@ -7581,20 +7592,49 @@ function closeDayModal(){document.getElementById('day-modal-ov').style.display='
 function renderDayList(){
   document.getElementById('day-list').innerHTML=(G.days||[]).map((d,i)=>`
     <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--s3);border-radius:8px;">
-      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay(${_jsArg(d.id)},this.value)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
-      <input class="fi" type="date" value="${escH(d.date||'')}" onchange="setDayDate(${_jsArg(d.id)},this.value)" title="Calendar date for this day" style="width:130px;font-size:11px;padding:4px 6px;">
-      ${(G.days.length>1)?`<button onclick="delDay(${_jsArg(d.id)})" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Delete">×</button>`:''}
+      <input class="fi" value="${escH(d.name)}" aria-label="Name of day ${i+1}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay(${_jsArg(d.id)},this.value,this)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
+      <input class="fi" type="date" value="${escH(d.date||'')}" aria-label="Date of ${escH(d.name)}" onchange="setDayDate(${_jsArg(d.id)},this.value,this)" title="Calendar date for this day" style="width:130px;font-size:11px;padding:4px 6px;">
+      ${(G.days.length>1)?`<button onclick="delDay(${_jsArg(d.id)})" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Delete day" aria-label="Delete ${escH(d.name)}">×</button>`:''}
     </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">No days created yet.</div>`;
 }
-function renameDay(id,name){
-  name=name.trim();if(!name)return;
-  const d=G.days.find(x=>x.id===id);if(!d||d.name===name)return;
+function _drSetFieldErr(inputId,errId,msg){
+  const e=document.getElementById(errId),i=document.getElementById(inputId);
+  if(e){e.textContent=msg||'';e.hidden=!msg;}
+  if(i){if(msg)i.setAttribute('aria-invalid','true');else i.removeAttribute('aria-invalid');}
+}
+function renameDay(id,name,inp){
+  name=name.trim();
+  const d=G.days.find(x=>x.id===id);if(!d)return;
+  // An empty name is not saved, and the operator is told so (it used to
+  // look renamed until the next refresh).
+  if(!name){if(inp)inp.value=d.name;_drSetFieldErr('','day-list-err',`A day needs a name: "${d.name}" was kept.`);return;}
+  _drSetFieldErr('','day-list-err','');
+  if(d.name===name)return;
   d.name=name;save();renderAll();
 }
-function setDayDate(id,date){
+// Day date change: say first what happens to the day's shows
+// (dayDateChangeEffect), apply only after "Change date".
+async function setDayDate(id,date,inp){
   const d=G.days.find(x=>x.id===id);if(!d)return;
-  d.date=date||null;
+  date=date||null;
+  if((d.date||null)===date)return;
+  // Typing a year fires change at 0002, 0020, 0202...: wait for a real year.
+  if(date&&!/^(19|20)\d\d-\d\d-\d\d$/.test(date))return;
+  const eff=dayDateChangeEffect(id,date);
+  if(eff.moved.length||eff.keptOffDay.length){
+    const li=x=>`<li><span class="st-dlg-k">${escH(x.artist||'Untitled')}</span><span class="st-dlg-v">${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))}${x.date?' · '+escH(_fmtDay(x.date)):''}</span></li>`;
+    const list=(arr)=>`<ul class="st-dlg-list">${arr.slice(0,6).map(li).join('')}${arr.length>6?`<li><span class="st-dlg-k" style="font-weight:500;">+ ${arr.length-6} more</span></li>`:''}</ul>`;
+    let html='';
+    if(eff.moved.length)html+=`<p class="st-dlg-note"><b>${eff.moved.length} show${eff.moved.length===1?'':'s'}</b> ${date?`move${eff.moved.length===1?'s':''} to ${escH(_fmtDay(date))}`:`no longer ${eff.moved.length===1?'has':'have'} a date (${eff.moved.length===1?'it runs':'they run'} as "today")`}:</p>`+list(eff.moved);
+    if(eff.keptOffDay.length)html+=`<p class="st-dlg-note"><b>${eff.keptOffDay.length} show${eff.keptOffDay.length===1?'':'s'}</b> ${eff.keptOffDay.length===1?'has its':'have their'} own date and ${eff.keptOffDay.length===1?'stays':'stay'} where ${eff.keptOffDay.length===1?'it is':'they are'}, so ${eff.keptOffDay.length===1?'it is':'they are'} no longer on this day's date:</p>`+list(eff.keptOffDay);
+    const ok=await stDialog.open({title:`Change the date of "${d.name}"?`,
+      message:`From ${d.date?_fmtDay(d.date):'no date'} to ${date?_fmtDay(date):'no date'}.`,html,wide:true,
+      actions:[{label:'Cancel',value:false,kind:'secondary'},{label:'Change date',value:true,kind:'primary',submit:true}],cancelValue:false});
+    if(!ok){if(inp&&document.contains(inp))inp.value=d.date||'';return;}
+  }
+  d.date=date;
   save();renderAll();
+  if(document.getElementById('day-modal-ov').style.display==='flex')renderDayList();
 }
 // Try to parse a date out of an English day name like "Friday 3 April 2026" → "2026-04-03"
 function _parseDateFromName(name){
@@ -7607,7 +7647,9 @@ function _parseDateFromName(name){
   return `${yyyy}-${mm}-${String(m[1]).padStart(2,'0')}`;
 }
 function addDay(){
-  const name=document.getElementById('dm-name').value.trim();if(!name)return;
+  const name=document.getElementById('dm-name').value.trim();
+  if(!name){_drSetFieldErr('dm-name','dm-name-err','Enter a name for the day.');document.getElementById('dm-name').focus();return;}
+  _drSetFieldErr('dm-name','dm-name-err','');
   if(!G.days)G.days=[];
   const id=uid();
   const dateInput=document.getElementById('dm-date');
@@ -7619,11 +7661,30 @@ function addDay(){
   if(dateInput)dateInput.value='';
   document.getElementById('dm-name').focus();
 }
-function delDay(id){
-  if(G.days.length<=1){alert('You cannot delete the last day.');return;}
-  if(!confirm('Delete this day? Shows on this day will be kept but will no longer be visible.'))return;
-  _markIntentionalRemoval([],{days:[id]}); // so the save merge does not bring it back
-  G.days=G.days.filter(d=>d.id!==id);
+// Delete a day: its shows would otherwise stay behind as invisible orphans,
+// so they are named and deleted with it (moving them to another day is not
+// something the app does today).
+async function delDay(id){
+  const d=G.days.find(x=>x.id===id);if(!d)return;
+  if(G.days.length<=1){await stDialog.alert('A project needs at least one day. Add another day first, then delete this one.',{title:'Cannot delete the last day'});return;}
+  const shows=(G.shows||[]).filter(s=>s.day===id);
+  let ok;
+  if(!shows.length){
+    ok=await stDialog.confirm(`"${d.name}"${d.date?' ('+_fmtDay(d.date)+')':''} has no shows. This cannot be undone.`,{title:'Delete this day?',okLabel:'Delete day',danger:true});
+  }else{
+    const n=shows.length,label=`Delete day and its ${n} show${n===1?'':'s'}`;
+    const stName=sid=>(G.stages||[]).find(x=>x.id===sid)?.name||'';
+    const html=`<ul class="st-dlg-list">${[...shows].sort(_showOrder).slice(0,8).map(x=>`<li><span class="st-dlg-k">${escH(x.artist||'Untitled')}</span><span class="st-dlg-v">${escH(stName(x.stage))} · ${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))}</span></li>`).join('')}${n>8?`<li><span class="st-dlg-k" style="font-weight:500;">+ ${n-8} more</span></li>`:''}</ul>`;
+    ok=await stDialog.open({title:`Delete "${d.name}" and its shows?`,
+      message:`${n} show${n===1?' is':'s are'} planned on this day, on all stages. ${n===1?'It is':'They are'} deleted together with the day, with crew, notes and check-ins. This cannot be undone.`,
+      html,wide:true,initial:'cancel',
+      actions:[{label:'Cancel',value:false,kind:'secondary'},{label,value:true,kind:'danger',submit:true}],cancelValue:false});
+  }
+  if(!ok)return;
+  const ids=shows.map(s=>s.id);
+  _markIntentionalRemoval(ids,{days:[id]}); // so the save merge does not bring them back
+  G.shows=(G.shows||[]).filter(s=>s.day!==id);
+  G.days=G.days.filter(x=>x.id!==id);
   if(G.activeDay===id)G.activeDay=G.days[0].id;
   save();renderAll();renderDayList();
 }

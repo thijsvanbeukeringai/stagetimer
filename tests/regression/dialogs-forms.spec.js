@@ -288,3 +288,53 @@ test.describe('cues and manual mode (operator side)', () => {
     expect(await page.evaluate(() => M.state)).toBe('running');
   });
 });
+
+test.describe('day management', () => {
+  test('delete day names its shows and deletes them with it (no orphans)', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
+    const d = dlg(page);
+    await page.evaluate(() => openDayModal());
+    await page.getByRole('button', { name: 'Delete Friday' }).click();
+    await expect(d.locator('.st-dlg-title')).toHaveText('Delete "Friday" and its shows?');
+    await expect(d.locator('.st-dlg-list')).toContainText('Alpha');
+    await expect(d.getByRole('button', { name: 'Cancel' })).toBeFocused();
+    await d.getByRole('button', { name: 'Cancel' }).click();
+    expect(await page.evaluate(() => [G.days.length, G.shows.length])).toEqual([2, 4]);
+    await page.getByRole('button', { name: 'Delete Friday' }).click();
+    await d.getByRole('button', { name: 'Delete day and its 3 shows' }).click();
+    await expect(d).toHaveCount(0);
+    expect(await page.evaluate(() => [G.days.map(x => x.id), G.shows.map(x => x.id)])).toEqual([['d2'], ['e']]);
+    await expect.poll(() => (backend.project('proj-fest').data.shows || []).map(x => x.id)).toEqual(['e']);
+    // The last day cannot go.
+    await page.evaluate(() => { delDay('d2'); });
+    await expect(d.locator('.st-dlg-title')).toHaveText('Cannot delete the last day');
+  });
+  test('changing a day date shows the effect first; Cancel keeps the old date', async ({ page, st }) => {
+    await openOperator({ page, st });
+    const d = dlg(page);
+    await page.evaluate(() => { G.shows.push({ id: 'leg', stage: 's1', day: 'd1', artist: 'Legacy', start: '20:00:00', end: '21:00:00' }); openDayModal(); });
+    const dateInput = page.getByLabel('Date of Friday');
+    await dateInput.fill('2026-06-18');
+    await expect(d.locator('.st-dlg-title')).toHaveText('Change the date of "Friday"?');
+    await expect(d.locator('.st-dlg-msg')).toHaveText('From Fri, Jun 19, 2026 to Thu, Jun 18, 2026.');
+    await expect(d).toContainText('1 show moves to Thu, Jun 18, 2026');
+    await expect(d).toContainText('3 shows have their own date and stay where they are');
+    await d.getByRole('button', { name: 'Cancel' }).click();
+    expect(await page.evaluate(() => G.days[0].date)).toBe('2026-06-19');
+    await expect(dateInput).toHaveValue('2026-06-19');
+    await dateInput.fill('2026-06-18');
+    await d.getByRole('button', { name: 'Change date' }).click();
+    expect(await page.evaluate(() => G.days.find(x => x.id === 'd1').date)).toBe('2026-06-18');
+  });
+  test('empty day names are reported, not silently dropped', async ({ page, st }) => {
+    await openOperator({ page, st });
+    await page.evaluate(() => openDayModal());
+    await page.getByRole('button', { name: '+ Add' }).click();
+    await expect(page.locator('#dm-name-err')).toHaveText('Enter a name for the day.');
+    const name = page.getByLabel('Name of day 1');
+    await name.fill('');
+    await name.blur();
+    await expect(page.locator('#day-list-err')).toContainText('A day needs a name: "Friday" was kept.');
+    await expect(name).toHaveValue('Friday');
+  });
+});
