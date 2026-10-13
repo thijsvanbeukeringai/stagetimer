@@ -11,3 +11,4 @@ docs/
 push-secrets.sh
 push-smtp.sh
 .claude/
+.github/
