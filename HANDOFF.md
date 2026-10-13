@@ -21,6 +21,20 @@ Alles staat op dezelfde branch.
 - **Export per project** (JSON) en een CI-workflow (`.github/workflows/tests.yml`).
 - **Laatste volledige run:** 658 geslaagd, 0 gefaald (Chromium + WebKit).
 
+**Daarna toegevoegd (13-10, middag), op verzoek van Thijs:**
+- Knop "New stage" naast "New show".
+- Fullscreen is een keuze per apparaat (accountmenu). Kiosk-share-links staan standaard aan.
+- Projectlogo per project: uploaden vanaf de dashboard-rij, getoond op Backstage en FOH (aan/uit). Stagetimer.nl blijft zichtbaar.
+- FOH-cues vallen op als ze naderen: amber ≤60 s, rood en pulserend ≤10 s, NOW, daarna Done. Optioneel geluid.
+- Backstage toont geen FOH-cues meer.
+- Rider per show (drankjes en technische eisen): editor, import en export. Via share-links alleen naar check-in en stage manager.
+- Check-in-scherm in de app en een nieuw Stage manager-scherm (ook als share-link `mode=stagemanager`).
+- Laatste volledige run: 842 geslaagd, 0 gefaald.
+
+**Nog te bevestigen:**
+- Mag de stage manager-link aankomsten wijzigen? Nu wel. Read-only maken is één regel (`_SHARE_RW`).
+- Crew op de stage manager-share-link? Nu alleen in de app.
+
 **Voorwaarden van de iPad-app (Stagetimer Booth), vóór deze migraties:**
 - `rls_enable`
 - share-link PHASE B
