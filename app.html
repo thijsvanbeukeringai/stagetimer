@@ -7219,7 +7219,10 @@ async function _uploadMedia(pid,dataUrl){
   if(!ext||blob.size>1048576)return null;          // bucket limits: jpeg/png/webp, 1 MB
   const path=`${encodeURIComponent(pid)}/${_mediaName(ext)}`;
   try{
-    await _withAuthRetry(()=>_storageFetch(`object/${MEDIA_BUCKET}/${path}`,{method:'POST',body:blob,
+    // Raw bytes rather than the Blob: same request in every engine (WebKit
+    // drops Blob bodies when the request is intercepted, e.g. by our tests).
+    const bytes=await blob.arrayBuffer();
+    await _withAuthRetry(()=>_storageFetch(`object/${MEDIA_BUCKET}/${path}`,{method:'POST',body:bytes,
       headers:{'Content-Type':blob.type,'cache-control':'max-age=2592000','x-upsert':'false'}}));
     return _MEDIA_PUB+path;
   }catch(e){
