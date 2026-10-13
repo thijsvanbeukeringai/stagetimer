@@ -3010,7 +3010,7 @@ function renderTbar(){
       <div id="login-logo-sub" id="set-pw-sub">Set your password</div>
     </div>
     <div id="set-pw-err" style="display:none;padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
-    <input class="fi" id="new-pw" type="password" placeholder="New password (min. 6 characters)" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <input class="fi" id="new-pw" type="password" placeholder="New password (min. 8 characters)" onkeydown="if(event.key==='Enter')setNewPassword()">
     <input class="fi" id="new-pw2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter')setNewPassword()">
     <button class="btn-p" id="set-pw-btn" onclick="setNewPassword()">Set password</button>
   </div>
@@ -6822,10 +6822,10 @@ window.saveProfileName=saveProfileName;
 async function saveProfilePassword(){
   const pw=document.getElementById('ws-profile-pw')?.value||'';
   const pw2=document.getElementById('ws-profile-pw2')?.value||'';
-  if(pw.length<8)return alert('Password must be at least 8 characters.');
+  if(pw.length<PW_MIN)return alert(`Password must be at least ${PW_MIN} characters.`);
   if(pw!==pw2)return alert('Passwords do not match.');
-  const{error}=await supa.auth.updateUser({password:pw});
-  if(error)return alert('Password update failed: '+error.message);
+  try{await _authUpdateUser({password:pw});}
+  catch(e){return alert(_authErrorText(e,'Updating the password'));}
   document.getElementById('ws-profile-pw').value='';
   document.getElementById('ws-profile-pw2').value='';
   alert('Password updated.');
@@ -8278,7 +8278,7 @@ async function completeSignup(){
   const err=document.getElementById('su-fin-err');
   const btn=document.getElementById('su-fin-btn');
   err.style.display='none';
-  if(!pw1||pw1.length<8){err.textContent='Password must be at least 8 characters.';err.style.display='block';return;}
+  if(!pw1||pw1.length<PW_MIN){err.textContent=`Password must be at least ${PW_MIN} characters.`;err.style.display='block';return;}
   if(pw1!==pw2){err.textContent='Passwords do not match.';err.style.display='block';return;}
   btn.disabled=true;btn.textContent='Working…';
   try{
@@ -8288,11 +8288,25 @@ async function completeSignup(){
       body:JSON.stringify({companyId:SIGNUP_CID,token:SIGNUP_TOKEN,password:pw1}),
     });
     const data=await res.json().catch(()=>({}));
-    if(!res.ok||data.error){throw new Error(data.error||('HTTP '+res.status));}
+    if(!res.ok||data.error){const e=new Error(data.error||('HTTP '+res.status));e.status=res.status;e.serverMsg=data.error||'';throw e;}
     if(data.session?.access_token&&data.session?.refresh_token){
-      await supa.auth.setSession({access_token:data.session.access_token,refresh_token:data.session.refresh_token});
+      // Same path as a normal login: store the session, hand it to supa in
+      // the background, start the app. This used to await supa.setSession
+      // (which can hang) and then never started the app - the auth listener
+      // that once did was removed in auth init v2 - leaving a blank screen.
       history.replaceState({},'',location.pathname);
       document.getElementById('signup-setup').style.display='none';
+      const sess={access_token:data.session.access_token,refresh_token:data.session.refresh_token};
+      try{supa.auth.setSession(sess).catch(e=>console.warn('[signup] setSession bg warn:',e));}catch(e){}
+      const user=data.session.user||await _authProbe(sess.access_token);
+      if(_appStarted)return;
+      _appStarted=true;
+      saveAuthSession(sess);
+      document.documentElement.classList.remove('no-session');
+      document.getElementById('loader').style.display='flex';
+      _showLogoutBtn(true);
+      try{await _startApp({...sess,user});}
+      catch(e){console.error('[signup] _startApp failed:',e);_hideLoader();}
     }else if(data.requireVerification){
       // Show "check your email" message inside the same overlay
       history.replaceState({},'',location.pathname);
@@ -8312,7 +8326,7 @@ async function completeSignup(){
       alert('Account created. Please log in now with your new password.');
     }
   }catch(e){
-    err.textContent=(e.message||String(e));err.style.display='block';
+    err.textContent=e?.serverMsg||_friendlyError(e,'Creating your account');err.style.display='block';
     btn.disabled=false;btn.textContent='Create account & log in';
   }
 }
@@ -8781,14 +8795,37 @@ async function doLogin(){
     btn.textContent='Log in';btn.disabled=false;
   }
 }
-function doLogout(){
+// Sign out on the server FIRST (bounded), then forget the tokens. The old
+// fire-and-forget signOut() was cut off by the redirect, so the refresh
+// token often stayed valid. scope=local ends only THIS device's session:
+// booth screens that share the account stay logged in.
+async function _serverSignOut(){
+  const post=async tok=>{
+    const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),4000);
+    try{return await fetch(`${SUPA_URL}/auth/v1/logout?scope=local`,{method:'POST',signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${tok}`}});}
+    finally{clearTimeout(tmo);}
+  };
+  const st=_storedAuth();
+  if(st?.access_token){
+    try{
+      let res=await post(st.access_token);
+      if(res.status===401&&await _refreshAuthToken())res=await post(_jwt());
+      if(!res.ok&&res.status!==401&&res.status!==403&&res.status!==404)console.warn('[logout] server sign-out HTTP',res.status);
+    }catch(e){console.warn('[logout] server sign-out failed:',e?.message||e);}
+  }
+  // Let supa drop its own copy too (it makes the same call with its token).
+  try{await _withTimeout(supa.auth.signOut({scope:'local'}),3000);}catch(e){console.warn('[logout] supa signOut:',e?.message||e);}
+}
+async function doLogout(){
+  if(_authLoggingOut)return;
+  _authLoggingOut=true;
+  await _serverSignOut();
   saveAuthSession(null);
   localStorage.removeItem('st_active_proj');
   localStorage.removeItem('st_current_user');
   // Wipe Supabase session keys from localStorage directly so reload sees no session
   Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k);});
   try{if(window._OS?.logout)window._OS.logout();}catch(e){}
-  try{supa.auth.signOut();}catch(e){}
   location.href='/';
 }
 function _showLogoutBtn(session){
@@ -8824,14 +8861,75 @@ function showLoginForm(){
   document.getElementById('login-form').style.display='block';
   document.getElementById('reset-ok').style.display='none';
 }
+// Auth endpoints answer with {msg|error_description|message|error}; keep the
+// server's sentence when it is meant for people (422 "password too weak"),
+// otherwise fall back to _friendlyError.
+async function _authError(res){
+  const j=await res.json().catch(()=>({}));
+  const m=j.msg||j.error_description||j.message||j.error||'';
+  const e=new Error(m||('HTTP '+res.status));e.status=res.status;e.serverMsg=(res.status===400||res.status===422)?m:'';
+  return e;
+}
+function _authErrorText(e,action){
+  if(e?.status===429)return'Too many attempts. Wait a minute and try again.';
+  if(e?.serverMsg)return e.serverMsg.replace(/\.?$/,'.');
+  return _friendlyError(e,action);
+}
+const PW_MIN=8; // one rule everywhere: signup, set-password, profile
 async function sendReset(){
   const email=document.getElementById('li-reset-email').value.trim();
   const btn=document.getElementById('reset-btn');
-  if(!email)return;
+  const ok=document.getElementById('reset-ok');
+  const errEl=document.getElementById('login-err');
+  ok.style.display='none';errEl.style.display='none';
+  if(!email){errEl.textContent='Please enter your email address.';errEl.style.display='block';return;}
   btn.textContent='Working…';btn.disabled=true;
-  await supa.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
-  document.getElementById('reset-ok').style.display='block';
-  btn.textContent='Send reset link';btn.disabled=false;
+  // Direct REST with a ceiling, like doLogin. The old call ignored the
+  // result and always said "Email sent!", also when the request failed.
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),10000);
+  try{
+    const res=await fetch(`${SUPA_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(location.origin+location.pathname)}`,{
+      method:'POST',signal:ctrl.signal,
+      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
+      body:JSON.stringify({email}),
+    });
+    if(!res.ok)throw await _authError(res);
+    ok.style.display='block';
+  }catch(e){
+    errEl.textContent=_authErrorText(e,'Sending the reset link');errEl.style.display='block';
+  }finally{
+    clearTimeout(tmo);
+    btn.textContent='Send reset link';btn.disabled=false;
+  }
+}
+// PUT /auth/v1/user on the stored session (supa.auth.updateUser has hung).
+async function _authUpdateUser(body){
+  const put=async tok=>{
+    const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      return await fetch(`${SUPA_URL}/auth/v1/user`,{
+        method:'PUT',signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${tok}`},
+        body:JSON.stringify(body),
+      });
+    }finally{clearTimeout(tmo);}
+  };
+  const tok=_jwt();
+  if(tok===SUPA_KEY){const e=new Error('not signed in');e.status=401;throw e;}
+  let res=await put(tok);
+  if(res.status===401&&await _refreshAuthToken())res=await put(_jwt());
+  if(!res.ok)throw await _authError(res);
+  return await res.json().catch(()=>null);
+}
+// Opened by a recovery or invite link (see _handleAuthLink).
+function _openSetPw(){
+  _hideLoader();
+  document.documentElement.classList.remove('no-session');
+  document.getElementById('login').classList.remove('open');
+  document.getElementById('set-pw-err').style.display='none';
+  document.getElementById('set-pw').classList.add('open');
+  setTimeout(()=>document.getElementById('new-pw')?.focus(),120);
 }
 async function setNewPassword(){
   const pw=document.getElementById('new-pw').value;
@@ -8839,24 +8937,29 @@ async function setNewPassword(){
   const errEl=document.getElementById('set-pw-err');
   const btn=document.getElementById('set-pw-btn');
   errEl.style.display='none';
-  if(pw.length<6){errEl.textContent='Password must be at least 6 characters.';errEl.style.display='block';return;}
+  if(pw.length<PW_MIN){errEl.textContent=`Password must be at least ${PW_MIN} characters.`;errEl.style.display='block';return;}
   if(pw!==pw2){errEl.textContent='Passwords do not match.';errEl.style.display='block';return;}
   btn.textContent='Working…';btn.disabled=true;
-  const{error}=await supa.auth.updateUser({password:pw,data:{invited:false}});
-  if(error){
-    errEl.textContent='Error: '+error.message;errEl.style.display='block';
+  let user;
+  try{user=await _authUpdateUser({password:pw,data:{invited:false}});}
+  catch(e){
+    errEl.textContent=e?.status===401
+      ?'This link has expired. Go back to the login screen and request a new reset link.'
+      :_authErrorText(e,'Setting the password');
+    errEl.style.display='block';
     btn.textContent='Set password';btn.disabled=false;
     return;
   }
   document.getElementById('set-pw').classList.remove('open');
   document.getElementById('loader').style.display='flex';
-  // Force a token refresh so the cached JWT picks up invited:false; otherwise the
-  // next page reload re-triggers the set-password modal (cached JWT still says invited:true)
-  try{await supa.auth.refreshSession();}catch(e){console.warn('refreshSession after updateUser:',e);}
-  const{data:{session}}=await supa.auth.getSession();
-  if(session)saveAuthSession(session);
+  // Refresh so the stored JWT carries invited:false (bounded).
+  await _refreshAuthToken().catch(()=>false);
+  const st=_storedAuth()||{};
+  if(!user?.email)user=await _authProbe(st.access_token);
+  _appStarted=true;
   _showLogoutBtn(true);
-  await _startApp(session);
+  try{await _startApp({access_token:st.access_token,refresh_token:st.refresh_token,user});}
+  catch(e){console.error('[set-pw] _startApp failed:',e);_hideLoader();}
 }
 
 // ══ INIT
@@ -8950,6 +9053,53 @@ async function _authRefresh(refresh_token){
     return null;
   }catch(e){clearTimeout(tmo);return null;}
 }
+// ── Links from the auth emails (reset password, invite, confirm signup).
+// The templates link to {{ .ConfirmationURL }}: Supabase verifies the token
+// and redirects here with the session in the hash (implicit flow, which is
+// what this client and the edge functions use):
+//   #access_token=…&refresh_token=…&expires_in=…&token_type=bearer&type=recovery|invite|signup|magiclink
+// or, for a used/expired link:  #error=access_denied&error_code=otp_expired&error_description=…
+// supa runs with detectSessionInUrl:false, so nothing read these before and
+// reset / invite links just showed the login form. Returns true when it took
+// over the start-up.
+function _loginMessage(msg){
+  _hideLoader();_showLogin();
+  const el=document.getElementById('login-err');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+async function _handleAuthLink(){
+  const raw=(location.hash||'').replace(/^#/,'');
+  if(!raw)return false;
+  const h=new URLSearchParams(raw);
+  const access_token=h.get('access_token'),refresh_token=h.get('refresh_token');
+  const errCode=h.get('error_code')||h.get('error');
+  if(!access_token&&!errCode)return false;
+  // Tokens out of the address bar and history straight away.
+  try{history.replaceState(null,'',location.pathname+location.search);}catch(_){}
+  if(errCode){
+    _loginMessage(errCode==='otp_expired'
+      ?'This link has expired or was already used. Use "Forgot password?" to get a new one.'
+      :'This link could not be used'+(h.get('error_description')?': '+h.get('error_description'):'')+'. Request a new one, or log in.');
+    return true;
+  }
+  if(!refresh_token){_loginMessage('This link is incomplete. Request a new one, or log in.');return true;}
+  document.documentElement.classList.remove('no-session');
+  document.getElementById('login').classList.remove('open');
+  document.getElementById('loader').style.display='flex';
+  const user=await _authProbe(access_token);
+  if(!user){_loginMessage('This link has expired or was already used. Use "Forgot password?" to get a new one.');return true;}
+  saveAuthSession({access_token,refresh_token});
+  try{supa.auth.setSession({access_token,refresh_token}).catch(e=>console.warn('[auth-link] setSession bg warn:',e));}
+  catch(e){console.warn('[auth-link] setSession threw:',e);}
+  const type=h.get('type')||'';
+  if(type==='recovery'||type==='invite'){_openSetPw();return true;}
+  // signup confirmation / magic link: they are simply logged in now.
+  _appStarted=true;
+  _showLogoutBtn(true);
+  try{await _startApp({access_token,refresh_token,user});}
+  catch(e){console.error('[auth-link] _startApp failed:',e);_hideLoader();_appStarted=false;_showLogin();}
+  return true;
+}
 
 (async()=>{
   try{loadAPPCache();}catch(e){}
@@ -8969,6 +9119,8 @@ async function _authRefresh(refresh_token){
     try{await loadPublicView();}catch(e){console.error('publicView:',e);_hideLoader();}
     return;
   }
+  // Reset / invite / confirm links carry their own session in the hash.
+  if(await _handleAuthLink())return;
   // No stored session -> straight to login. Fast path for incognito.
   let stored=null;
   try{stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');}catch(_){}
