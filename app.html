@@ -6715,6 +6715,7 @@ function _updateDrFlagBtns(){
 }
 function openDrawer(id,booth=null){
   if(!document.getElementById('drawer').classList.contains('open'))_drTrigger=document.activeElement;
+  _photoDiscard();
   editId=id;prefillBooth=booth;
   _drFlags={cancelled:false,priority:false,hidden:false};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
@@ -6789,6 +6790,7 @@ async function closeDrawer(force){
       {title:'Discard changes?',okLabel:'Discard changes',cancelLabel:'Keep editing',danger:true});
     if(!ok)return false;
   }
+  _photoDiscard();   // uploads of this session that were not saved
   const dr=document.getElementById('drawer');
   document.getElementById('dov').classList.remove('open');dr.classList.remove('open');document.body.classList.remove('drawer-open');
   // Off-screen (translated), not display:none: keep it out of Tab order and
@@ -6942,6 +6944,125 @@ function _compressImage(dataUrl,maxDim=900,quality=.82,mime='image/jpeg'){
     img.src=dataUrl;
   });
 }
+// ── Photo storage (bucket project-media, migration 20261013150000_photo_storage)
+// show.photo / data.logo hold EITHER a data: URL (old, or fallback) OR the
+// object's public https URL. Both are plain <img src>, so every renderer and
+// every older client keeps working. Base64 in the blob rode along on every
+// save, realtime message, public poll and cache write; a URL is ~120 bytes.
+// Until the bucket exists every upload answers "Bucket not found" and the
+// app stores base64 exactly as before.
+const MEDIA_BUCKET='project-media';
+const _MEDIA_PUB=`${SUPA_URL}/storage/v1/object/public/${MEDIA_BUCKET}/`;
+const _MEDIA_TYPES={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+let _mediaOffUntil=0;   // bucket missing: stop trying for a while (it may get created mid-session)
+const _isMediaUrl=v=>typeof v==='string'&&v.startsWith(_MEDIA_PUB);
+const _mediaOff=()=>!!window.PUBLIC_MODE||_jwt()===SUPA_KEY||Date.now()<_mediaOffUntil;
+function _dataUrlBlob(d){
+  const m=/^data:([^;,]+);base64,(.*)$/.exec(d||'');if(!m)return null;
+  const bin=atob(m[2]),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+  return new Blob([u],{type:m[1]});
+}
+function _mediaName(ext){const b=new Uint8Array(16);crypto.getRandomValues(b);return[...b].map(x=>x.toString(16).padStart(2,'0')).join('')+'.'+ext;}
+// 404 (no Storage route) or Storage's 400 {"error":"Bucket not found"}.
+const _isBucketMissing=e=>_errStatus(e)===404||/bucket not found|NoSuchBucket/i.test(String(e&&e.message||''));
+async function _storageFetch(path,init,ms){
+  const ctrl=new AbortController(),tmo=setTimeout(()=>ctrl.abort(),ms||20000);
+  try{
+    const res=await fetch(`${SUPA_URL}/storage/v1/${path}`,{...init,signal:ctrl.signal,headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,...(init.headers||{})}});
+    const txt=await res.text().catch(()=>'');
+    // Storage answers an expired token with HTTP 400/403 and "jwt expired" in
+    // the body: report it as 401 so _withAuthRetry refreshes once.
+    if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt.slice(0,200):''));e.status=/jwt expired|invalid jwt|exp" claim/i.test(txt)?401:res.status;throw e;}
+    return txt;
+  }finally{clearTimeout(tmo);}
+}
+// Upload a data: URL under <pid>/. Resolves to the public URL, or null when
+// the caller must keep the data: URL (share link, signed out, bucket missing,
+// offline, refused). Never throws.
+async function _uploadMedia(pid,dataUrl){
+  if(!pid||_mediaOff())return null;
+  const blob=_dataUrlBlob(dataUrl),ext=blob&&_MEDIA_TYPES[blob.type];
+  if(!ext||blob.size>1048576)return null;          // bucket limits: jpeg/png/webp, 1 MB
+  const path=`${encodeURIComponent(pid)}/${_mediaName(ext)}`;
+  try{
+    await _withAuthRetry(()=>_storageFetch(`object/${MEDIA_BUCKET}/${path}`,{method:'POST',body:blob,
+      headers:{'Content-Type':blob.type,'cache-control':'max-age=2592000','x-upsert':'false'}}));
+    return _MEDIA_PUB+path;
+  }catch(e){
+    if(_isBucketMissing(e)){_mediaOffUntil=Date.now()+10*60*1000;console.info('[media] storage bucket not available, photos stay inline');}
+    else console.warn('[media] upload failed, photo stays inline:',e);
+    return null;
+  }
+}
+// Still referenced by any loaded project (duplicated shows share a URL)?
+function _mediaInUse(url){
+  for(const p of(APP&&APP.projects)||[]){const d=p.id===APP.activeProjectId?G:p.data;if(!d)continue;
+    if(d.logo===url||(d.shows||[]).some(s=>s.photo===url))return true;}
+  return false;
+}
+// Best effort: an object that fails to delete is only an orphan (see the
+// orphan query in the migration). Only objects under pid's own prefix: a
+// copied project still points at the original's files.
+function _deleteMedia(url,pid){
+  if(!_isMediaUrl(url)||window.PUBLIC_MODE||_jwt()===SUPA_KEY)return Promise.resolve(false);
+  const path=url.slice(_MEDIA_PUB.length);
+  if(pid&&!path.startsWith(encodeURIComponent(pid)+'/'))return Promise.resolve(false);
+  return _withAuthRetry(()=>_storageFetch(`object/${MEDIA_BUCKET}/${path}`,{method:'DELETE'},10000))
+    .then(()=>true,e=>{console.warn('[media] delete failed, object stays orphaned:',e);return false;});
+}
+// Delete a replaced / removed photo once the blob without it is saved (a
+// failed save keeps the server pointing at it) and nothing else uses it.
+function _dropMediaAfterSave(url,pid){
+  if(!_isMediaUrl(url))return;
+  _whenSaved(pid).then(ok=>{if(ok&&!_mediaInUse(url))_deleteMedia(url,pid);});
+}
+// Background conversion of the open project's base64 photos (and logo):
+// a few per run, every 20 s, only while uploads work. Idempotent: only
+// data: URLs are touched, and only when they are unchanged after the upload.
+// Tiny images (< 2 KB) are not worth an object; _STRIP_PX is never uploaded.
+const _mediaConvertible=v=>typeof v==='string'&&v.length>2048&&/^data:image\/(jpeg|png|webp);base64,/.test(v);
+let _mediaMoving=false;
+async function movePhotosToStorage(max=3){
+  if(_mediaMoving||_mediaOff()||typeof APP==='undefined'||!APP||!APP.activeProjectId||!G)return 0;
+  const pid=APP.activeProjectId;
+  const todo=(G.shows||[]).filter(s=>_mediaConvertible(s.photo)).slice(0,max).map(s=>['s',s.id,s.photo]);
+  if(todo.length<max&&_mediaConvertible(G.logo))todo.push(['logo','',G.logo]);
+  if(!todo.length)return 0;
+  _mediaMoving=true;let n=0;
+  try{
+    for(const[kind,id,old]of todo){
+      const url=await _uploadMedia(pid,old);
+      if(!url)break;
+      // G may have been replaced (realtime, project switch) during the upload.
+      const same=APP.activeProjectId===pid;
+      const s=same&&kind==='s'?(G.shows||[]).find(x=>x.id===id):null;
+      if(s&&s.photo===old){s.photo=url;n++;}
+      else if(same&&kind==='logo'&&G.logo===old){G.logo=url;n++;}
+      else _deleteMedia(url,pid);
+    }
+    if(n&&APP.activeProjectId===pid){save();console.info(`[media] moved ${n} photo${n===1?'':'s'} to storage`);}
+  }finally{_mediaMoving=false;}
+  return n;
+}
+setInterval(()=>{movePhotosToStorage().catch(e=>console.warn('[media] conversion failed:',e));},20000);
+// Drawer upload bookkeeping: _drSess changes per drawer session, so a late
+// upload result is dropped (and its object deleted) after the drawer closed
+// or another photo was picked. _photoTemp = uploaded, not yet saved.
+let _drSess=0,_photoUp=null,_photoTemp=[];
+function _photoUpload(d){
+  const sess=_drSess;
+  const p=_uploadMedia(APP.activeProjectId,d).then(url=>{
+    if(!url)return;
+    if(sess===_drSess&&_photoB64===d){_photoB64=url;_photoTemp.push(url);}
+    else _deleteMedia(url,APP.activeProjectId);
+  }).finally(()=>{if(_photoUp===p)_photoUp=null;});
+  _photoUp=p;
+}
+function _photoDiscard(){
+  _drSess++;
+  _photoTemp.forEach(u=>_deleteMedia(u,APP.activeProjectId));
+  _photoTemp=[];
+}
 async function previewPhoto(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
   if(!f.type.startsWith('image/')){inp.value='';stDialog.alert(`"${f.name}" is not an image. Choose a JPEG, PNG or WebP photo.`,{title:'Photo not added'});return;}
@@ -6955,9 +7076,11 @@ async function previewPhoto(inp){
     const raw=await new Promise((resolve,reject)=>{
       const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>reject(new Error('read failed'));r.readAsDataURL(f);
     });
-    _photoB64=await _compressImage(raw);_photoRemoved=false;
-    preview.src=_photoB64;preview.style.opacity='1';
+    const d=await _compressImage(raw);
+    _photoB64=d;_photoRemoved=false;
+    preview.src=d;preview.style.opacity='1';
     clearBtn.style.display='';
+    _photoUpload(d);   // preview keeps the local data: URL; the blob gets the URL
   }catch(e){
     console.error('photo upload failed:',e);
     stDialog.alert('The photo could not be processed ('+(e.message||e)+'). Try a JPEG or PNG file.',{title:'Photo not added'});
@@ -6974,6 +7097,9 @@ function setTPPhoto(src){
   if(src===_tpPhotoSrc)return;
   _tpPhotoSrc=src;
   const wrap=document.getElementById('tp-photo-wrap'),img=document.getElementById('tp-photo'),inner=document.getElementById('tinner');
+  // A Storage URL can fail (offline cold start, object deleted elsewhere):
+  // collapse the photo area instead of showing a broken-image box.
+  img.onerror=()=>{if(_tpPhotoSrc===src){wrap.classList.remove('has-photo');inner.classList.remove('has-photo');}};
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
   else{img.src='';wrap.classList.remove('has-photo');inner.classList.remove('has-photo');}
 }
@@ -7009,6 +7135,14 @@ async function saveShow(){
     }finally{_drSaving=false;}
     if(!go)return;
   }
+  // A photo still uploading: wait (bounded by the upload timeout), else the
+  // show would be saved with the old photo and the new one lost.
+  if(_photoUp){
+    const btn=document.getElementById('dr-save'),lbl=btn.textContent;
+    _drSaving=true;btn.disabled=true;btn.textContent='Uploading photo…';
+    try{await _photoUp;}finally{_drSaving=false;btn.disabled=false;btn.textContent=lbl;}
+    if(!_drIsOpen())return;
+  }
   // Resolve the show only now, after the dialog: a realtime update while it
   // was open runs loadG() and replaces every object in G, so a show looked up
   // before the await is an orphan and the edit would silently vanish.
@@ -7018,6 +7152,7 @@ async function saveShow(){
   // The old photo is only a fallback while a new upload is still compressing;
   // after an explicit ✕ the removal must stick.
   const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
+  const oldPhoto=existing?.photo||'';
   // Festival wall time (see _drSetDT), not the device's zone.
   const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
   const endDate=amsDateStr(ed.getTime()),endTime=amsTimeStr(ed.getTime(),true);
@@ -7040,7 +7175,10 @@ async function saveShow(){
     hidden:_drFlags.hidden||false,
   };
   if(existing)Object.assign(existing,obj);else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
-  save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer(true);
+  _photoTemp=_photoTemp.filter(u=>u!==photo);   // saved now: closeDrawer must not delete it
+  save();
+  if(oldPhoto&&oldPhoto!==photo)_dropMediaAfterSave(oldPhoto,APP.activeProjectId);
+  renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer(true);
 }
 async function delShow(id,e){
   e?.stopPropagation?.();
@@ -11264,8 +11402,9 @@ function triggerLogoUpload(projId){
   document.getElementById('logo-file-input').click();
 }
 
-// The logo lives as a data URL inside projects.data (and the local cache),
-// so it gets the same treatment as artist photos: max 600px, JPEG .85 -
+// The logo lives inside projects.data (and the local cache) as a data URL,
+// or as a Storage URL once uploaded (see _uploadMedia), so it gets the same
+// treatment as artist photos: max 600px, JPEG .85 -
 // or PNG for formats that may be transparent - keeping the smaller of the
 // result and the original.
 async function _compressLogo(dataUrl,type){
@@ -11285,9 +11424,11 @@ function handleLogoUpload(event){
     let logo;
     try{logo=await _compressLogo(e.target.result,file.type);}
     catch(err){console.error('logo compress failed:',err);stDialog.alert('The logo could not be processed. Try a PNG or JPEG file.',{title:'Logo not added'});return;}
+    logo=(await _uploadMedia(tgt,logo))||logo;   // Storage URL, or inline as before
     const proj=APP.projects.find(p=>p.id===tgt);
-    if(!proj)return;
+    if(!proj){_deleteMedia(logo,tgt);return;}
     if(!proj.data)proj.data={};
+    const old=tgt===APP.activeProjectId?G.logo:proj.data.logo;
     proj.data.logo=logo;
     // If this is the active project, update G too
     if(tgt===APP.activeProjectId)G.logo=logo;
@@ -11295,6 +11436,7 @@ function handleLogoUpload(event){
     // the save queue: quota-safe cache, and an edit sequence so a push that
     // is already out cannot mark the logo as saved.
     _saveProjectById(tgt);
+    if(old&&old!==logo)_dropMediaAfterSave(old,tgt);
     refreshLogo();
     renderDash();
   };
@@ -11305,10 +11447,12 @@ function handleLogoUpload(event){
 function removeProjectLogo(projId){
   const proj=APP.projects.find(p=>p.id===projId);
   if(!proj)return;
+  const old=projId===APP.activeProjectId?G.logo:proj.data?.logo;
   if(proj.data)proj.data.logo=null;
   if(projId===APP.activeProjectId)G.logo=null;
   // Persist + push THE SPECIFIC project (not just the active one)
   _saveProjectById(projId);
+  if(old)_dropMediaAfterSave(old,projId);
   refreshLogo();
   renderDash();
 }

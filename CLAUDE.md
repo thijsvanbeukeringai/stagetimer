@@ -74,4 +74,4 @@ npm run test:node                                       # tests/unit/*.test.js (
 - `sw.js`: bump `SW_VERSION` once per deploy that changes `app.html`, `vendor/`, `fonts/` or icons; add new shell files to `PRECACHE`.
 - Upgrading supabase-js: replace `vendor/supabase.js`, recompute the SRI hash on the `<script>` tag (instructions in the comment above it) and bump `SW_VERSION`.
 - Backend: follow `docs/MIGRATIES.md` step by step. App changes that depend on a migration must say which step they need.
-- Known limits, do not "fix" by surprise: photos are base64 in the JSONB blob; the GET-merge-PATCH save has a ~100 ms race until `save_project` (migration step 13) is wired in; share links are protected only by knowing the `pid`.
+- Known limits, do not "fix" by surprise: photos are base64 in the JSONB blob until migration step 16 (`photo_storage`) is applied, after that new ones are Storage URLs (`_uploadMedia`; `show.photo` may hold either form, keep every renderer accepting both); the GET-merge-PATCH save has a ~100 ms race until `save_project` (migration step 13) is wired in; share links are protected only by knowing the `pid`.

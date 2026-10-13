@@ -57,6 +57,7 @@ Dit document zet alles in één volgorde.
 | `20261013120000_project_history_soft_delete.sql` | `project_versions`, soft delete en de RPC's voor herstel | nieuw |
 | `20261013130000_plan_enforcement.sql` | trigger die het abonnement en de stage-limiet afdwingt; standaard **log**-modus | nieuw |
 | `20261013140000_signup_tokens.sql` | §S.5: tokens gehasht, met verloopdatum, eenmalig en met lockout (fase A); fase B als commentaar | nieuw |
+| `20261013150000_photo_storage.sql` | Storage-bucket `project-media` (publiek lezen, max. 1 MB, jpeg/png/webp), `can_edit_project_media`, policies op `storage.objects` | nieuw |
 | `supabase/functions/send-push/` | OneSignal via de server | nieuw, alleen broncode |
 
 ## Volgorde
@@ -257,6 +258,25 @@ Zie `supabase/functions/README.md`:
 - Zodra stap 1 tot en met 4 gedaan zijn, werkt het versturen weer, zonder nieuwe app-release.
 - Tegelijk is de oude bug gerepareerd: de app las `s.endTime` en `show.stageId` (bestaan niet) en rekende vanaf middernacht van het toestel. Nu gebruikt hij het echte eindtijdstip van de show (`endsAt`, of datum + `end`, ook over middernacht) in festivaltijd, en `show.stage`. Afgelaste shows krijgen geen melding.
 
+### Stap 16: `photo_storage`, foto's naar Storage (app: feature/photo-storage of later)
+
+- **Wat:** voer `20261013150000_photo_storage.sql` uit.
+- **Voorwaarden:**
+  - stap 2 (`rls_prep`); het bestand controleert dat zelf;
+  - Storage staat aan in het project (Dashboard → Storage). Het bestand breekt af als `storage.buckets` ontbreekt;
+  - **de iPad-app Stagetimer Booth.** Na deze stap krijgen nieuwe foto's in `show.photo` een https-URL in plaats van een `data:`-URL. Leest die app `photo` als base64, dan toont hij voor die shows geen foto (of erger). Stel eerst vast hoe hij `photo` gebruikt, net als bij de RLS-blokkade bovenaan.
+- **Timing:** altijd, ook tijdens een show. Er komt alleen een bucket met policies bij; bestaande rijen worden niet aangeraakt.
+- **Wat er daarna gebeurt (app):**
+  - een nieuwe artiestfoto of logo gaat na het verkleinen naar `project-media/<pid>/<random>.jpg`, met het JWT van de gebruiker. In de blob komt alleen de URL (~120 bytes in plaats van 30-150 kB per foto);
+  - bestaande base64-foto's van het **open** project verhuizen op de achtergrond, drie per 20 seconden, met een gewone save. Foto's onder 2 kB blijven inline. Een project verhuist dus pas als iemand het opent;
+  - zonder bucket (vóór deze stap), offline of bij een weigering blijft de app base64 opslaan, precies zoals nu. Na "Bucket not found" probeert een tabblad het tien minuten niet opnieuw;
+  - deellinks uploaden nooit en tonen beide vormen; oude app-versies ook (het is gewoon een `<img src>`). Wel laat een oude app bij het weghalen van een foto het object staan (wees-object);
+  - een vervangen of weggehaalde foto wordt na een geslaagde save uit de bucket verwijderd. Shows en projecten verwijderen laat de objecten staan, zodat herstellen uit `project_versions` blijft werken.
+- **Publiek of gesigneerd:** gekozen is publiek lezen. Deellinks zijn anoniem en pollen dagenlang; gesigneerde URL's verlopen, vragen een extra endpoint en veranderen bij elke poll. De afweging staat in de kop van het bestand. Gevolg: wie een foto-URL heeft, kan de foto zonder inloggen openen tot het object weg is (en de CDN-cache, max. 30 dagen, verlopen is). Anoniem een lijst opvragen, uploaden of verwijderen kan niet.
+- **Controle:** de queries in de kop. Voeg daarna in de app een foto toe aan een show, sla op en open de URL uit de blob in een privévenster. Meet na een paar dagen de blobgrootte met de query in de kop.
+- **Rollback:** zie de kop. Nieuwe uploads stoppen = de insert- en update-policy weghalen; de app valt dan vanzelf terug op base64. De bucket zelf pas weghalen als geen project er nog naar verwijst (wees-query in de kop).
+- **Lokaal getest (13-10-2026):** `supabase/postgres:17.6.1.167` met `storage-api` v1.72.1 in Docker (eigen netwerk, niets van productie), aangenomen schema plus de echte `rls_prep`. Het bestand twee keer achter elkaar gedraaid. Met echte JWT's via de Storage-API: lid uploadt in eigen project (200) en de publieke URL werkt zonder token; een lid van een andere workspace, anon en een losgekoppelde gebruiker worden geweigerd; een admin mag; geneste paden, niet-hex namen, `text/plain`, 1,1 MB en overschrijven worden geweigerd; anon en een vreemde gebruiker kunnen niet verwijderen of opsommen; het eigen object verwijderen werkt. Zonder bucket antwoordt Storage HTTP 400 `Bucket not found`; daar valt de app op terug.
+
 ## App-wijzigingen die bij deze migraties horen
 
 | Waarom | Wat in `app.html` | Uiterlijk vóór |
@@ -271,6 +291,7 @@ Zie `supabase/functions/README.md`:
 | Conflictdetectie | `save_project` en `patch_show` (zie de kop van het versioning-bestand); echo's met `version <=` de eigen versie negeren | stap 13 |
 | Soft delete | `soft_delete_project`; filter `&deleted_at=is.null` in `_restGet('projects')` en de peek; in realtime een UPDATE met `deleted_at` behandelen als DELETE | stap 13 |
 | Goedkoop pollen (§4.3) | publieke views pollen `get_shared_project_version` en halen het project alleen op als de versie verandert | optioneel |
+| Foto's uit de blob | **gedaan** (branch `feature/photo-storage`): upload naar `project-media` met terugval op base64 zolang de bucket ontbreekt, opruimen bij vervangen/weghalen, achtergrondconversie van het open project | stap 16 |
 | Push | **gedaan:** alleen nog `send-push`; `OS_REST_KEY` verwijderd; de `endTime`/`stageId`-bug in `scheduleProjectPushes` gerepareerd. Pushen werkt weer zodra stap 15 gedaan is | stap 15 |
 
 ## Niet verifieerbaar zonder het echte schema

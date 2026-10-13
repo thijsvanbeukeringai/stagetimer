@@ -125,3 +125,60 @@ for (const [vpName, viewport] of Object.entries(VIEWPORTS)) {
     });
   });
 }
+
+// Photos as Storage URLs (migration 20261013150000_photo_storage): the same
+// image the baseline embeds as base64 (m2 "DJ O'Neil", live in these states),
+// now served from the mocked bucket. Compared against the EXISTING base64
+// snapshots and fingerprints (no new snapshot names): the booth must be
+// pixel-identical whichever form show.photo takes.
+const { PHOTO_PNG } = require('../support/seed');
+const PHOTO_NAME = `${FESTIVAL.projectId}/${'0f'.repeat(16)}.png`;
+const PHOTO_URL = `https://bamjpsquhdzxvsymldpq.supabase.co/storage/v1/object/public/project-media/${PHOTO_NAME}`;
+const photoAsUrl = (mode) => ({
+  mutate(seed) {
+    if (mode) withMode(S.main, mode).mutate(seed);
+    seed.projects.find((x) => x.id === FESTIVAL.projectId).data.shows.find((s) => s.id === 'm2').photo = PHOTO_URL;
+    return seed;
+  },
+});
+const servePhoto = (backend) => backend.storage.objects.set(PHOTO_NAME, { buf: Buffer.from(PHOTO_PNG.split(',')[1], 'base64'), type: 'image/png' });
+
+test.describe('photo from a Storage URL 1920x1080', () => {
+  test.use({ viewport: VIEWPORTS['1920x1080'] });
+
+  test.describe(() => {
+    test.use({ stSeed: photoAsUrl('countdown') });
+    test('public countdown matches the base64 baseline', async ({ page, st, backend }) => {
+      servePhoto(backend);
+      await st.gotoPublic({ mode: 'stage', sid: S.main, at: LOAD_AT });
+      const fp = {};
+      for (const [label, at] of TIMES) {
+        await st.freezeAt(at);
+        await expect(page).toHaveScreenshot(`public-countdown-${label}-1920x1080.png`, shotOpts(label));
+        fp[label] = await fingerprint(page);
+      }
+      expect(JSON.stringify(fp, null, 2)).toMatchSnapshot('public-countdown-1920x1080.json');
+    });
+  });
+
+  test.describe(() => {
+    test.use({ stAuth: 'admin', stSeed: photoAsUrl(null) });
+    test('in-app countdown matches the base64 baseline (timer panel loads the URL)', async ({ page, st, backend }) => {
+      servePhoto(backend);
+      await st.gotoApp({ at: LOAD_AT });
+      await st.openProject('Zomerfeest 2026');
+      await page.getByRole('button', { name: /Stage View/ }).filter({ visible: true }).first().click();
+      await page.locator('#sv.open').waitFor();
+      const fp = {};
+      for (const [label, at] of TIMES) {
+        await st.freezeAt(at);
+        await expect(page).toHaveScreenshot(`inapp-countdown-${label}-1920x1080.png`, shotOpts(label));
+        fp[label] = await fingerprint(page);
+        // m2 is live: the timer panel behind the Stage View really loaded the photo from the bucket.
+        if (label === 'mid') expect(await page.evaluate(() => [document.getElementById('tp-photo').src, document.getElementById('tp-photo').naturalWidth])).toEqual([PHOTO_URL, 1]);
+      }
+      expect(JSON.stringify(fp, null, 2)).toMatchSnapshot('inapp-countdown-1920x1080.json');
+      expect(backend.calls({ method: 'GET', path: `/storage/v1/object/public/project-media/${PHOTO_NAME}` }).length).toBeGreaterThan(0);
+    });
+  });
+});
