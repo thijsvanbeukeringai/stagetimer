@@ -25,6 +25,11 @@ Achtergrond: zie `BOUWPLAN.md` (plan), `docs/MIGRATIES.md` (draaiboek), `CLAUDE.
 4. Nalopen op echte apparaten, want dat kon hier niet: iOS Safari, echte push, e-mail en Stripe.
 5. Deploy `send-push`. Zonder die functie gaan er geen crew-pushmeldingen uit.
 
+## Juridische concepten (niet gepubliceerd)
+- `privacy.html`, `voorwaarden.html` en `docs/VERWERKERSOVEREENKOMST-concept.md` staan klaar. Ze zijn gemarkeerd als CONCEPT en hebben lege plekken als `[KvK]` en `[adres]`.
+- Ze zitten in `.vercelignore` en de links in de footer van index.html staan uitgecommentarieerd.
+- Na het invullen en een juridische check: de pagina's uit `.vercelignore` halen, de footer-links aanzetten en in `tests/smoke/legal-pages.spec.js` `test.fixme` omzetten naar `test`.
+
 ## Open besluiten
 
 - Podium verwijderen: moeten de shows mee? Nu blijven ze onzichtbaar in de data staan, en de dialoog zegt dat.

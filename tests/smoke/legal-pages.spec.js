@@ -25,9 +25,18 @@ for (const [file, heading] of [['privacy.html', 'Privacyverklaring'], ['voorwaar
   }
 }
 
-test('landing page footer links to both legal pages', async ({ page }) => {
+// The footer links are commented out until the drafts are filled in and
+// reviewed (see .vercelignore). Flip test.fixme -> test when they go live.
+test.fixme('landing page footer links to both legal pages', async ({ page }) => {
   await page.goto('/index.html');
   const foot = page.locator('footer');
   await expect(foot.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy.html');
   await expect(foot.getByRole('link', { name: 'Voorwaarden' })).toHaveAttribute('href', '/voorwaarden.html');
+});
+
+test('draft legal pages stay unpublished until filled in', async () => {
+  const fs = require('fs'), path = require('path');
+  const ignore = fs.readFileSync(path.join(__dirname, '..', '..', '.vercelignore'), 'utf8');
+  const draft = /\[KvK\]|CONCEPT/.test(fs.readFileSync(path.join(__dirname, '..', '..', 'privacy.html'), 'utf8'));
+  if (draft) { expect(ignore).toMatch(/^privacy\.html$/m); expect(ignore).toMatch(/^voorwaarden\.html$/m); }
 });

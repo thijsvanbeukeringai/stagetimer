@@ -12,3 +12,7 @@ push-secrets.sh
 push-smtp.sh
 .claude/
 .github/
+
+# Legal page DRAFTS with placeholders - not published until filled in and reviewed
+privacy.html
+voorwaarden.html
