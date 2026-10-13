@@ -170,12 +170,35 @@ grant execute on function public.consume_signup_token(text, text)   to service_r
 --      where id::text = new.company_id;
 --     return null;
 --   end $f$;
+--   revoke all on function private.sync_setup_pending() from public, anon, authenticated;
 --   create trigger signup_tokens_sync after insert or update on private.signup_tokens
 --     for each row execute function private.sync_setup_pending();
 --   update public.companies set setup_token = null where setup_token is not null;
---   -- Re-run rls_enable block 4b + 4c (column grants / realtime list are a
---   -- snapshot and setup_pending was re-created).
+--   -- Column grants are per column: the re-created setup_pending has none,
+--   -- and app.html's COMPANY_COLS select would fail with "permission denied"
+--   -- for every logged-in user. Grant it inside this transaction.
+--   grant select (setup_pending) on public.companies to authenticated;
+--   -- Realtime: setup_pending is a plain column now. If the publication has
+--   -- a column list (hotfix 2d / rls_enable 4c applied one), add it there;
+--   -- a list only exists when the replica identity allows it, so re-adding
+--   -- with the longer list is safe. No list: nothing to do.
+--   do $p$
+--   declare cols text;
+--   begin
+--     if exists (select 1 from pg_publication_rel pr join pg_publication p on p.oid = pr.prpubid
+--                 where p.pubname = 'supabase_realtime' and pr.prrelid = 'public.companies'::regclass
+--                   and pr.prattrs is not null) then
+--       select string_agg(quote_ident(column_name), ', ' order by ordinal_position) into cols
+--         from information_schema.columns
+--        where table_schema = 'public' and table_name = 'companies'
+--          and column_name <> 'setup_token' and is_generated = 'NEVER';
+--       execute 'alter publication supabase_realtime drop table public.companies';
+--       execute format('alter publication supabase_realtime add table public.companies (%s)', cols);
+--     end if;
+--   end $p$;
 -- commit;
+-- Verify PHASE B: true, then the app's admin list still loads:
+--   select has_column_privilege('authenticated','public.companies','setup_pending','select');
 -- Expired-but-unused tokens leave setup_pending true until the next token
 -- write; the admin badge treats them as "awaiting activation", which is
 -- what they are. Later: drop column companies.setup_token.

@@ -80,6 +80,9 @@
 --          octet_length(public.get_shared_project('<pid>','stage')::text);  -- 2nd much smaller with photos
 --   -- arrived toggle, then toggle back (inside a transaction to leave no trace):
 --   begin; select public.set_show_arrived('<pid>','<show id>', true, null) -> 'shows' -> 0; rollback;
+--   -- helpers are not callable by clients (both false):
+--   select has_function_privilege('anon','public._strip_project_data(jsonb,text)','execute'),
+--          has_function_privilege('anon','public._project_is_live(text)','execute');
 --
 -- ROLLBACK
 --   drop function if exists public.get_shared_project(text, text);
@@ -117,7 +120,10 @@ begin
       as $b$ select exists (select 1 from public.projects p where p.id::text = p_id) $b$ $f$;
   end if;
 end $$;
-revoke all on function public._project_is_live(text) from public;
+-- Internal helpers: only called from the SECURITY DEFINER RPCs below.
+-- Supabase grants EXECUTE on new functions to anon/authenticated directly,
+-- so they are revoked by name, not only from public.
+revoke all on function public._project_is_live(text) from public, anon, authenticated;
 
 -- Strip what a public mode does not render. Pure function, no table access.
 create or replace function public._strip_project_data(p_data jsonb, p_mode text)
@@ -151,7 +157,7 @@ begin
   return out;
 end
 $$;
-revoke all on function public._strip_project_data(jsonb, text) from public;
+revoke all on function public._strip_project_data(jsonb, text) from public, anon, authenticated;
 
 -- ── Read path ──────────────────────────────────────────────────────────
 -- LEGACY: unchanged output, for app versions already out there. Knowing the
@@ -194,8 +200,8 @@ $$;
 comment on function public.get_shared_project(text, text) is
   'Share-link read for one public mode: only the fields that mode renders. Explicit output shape so future columns are not exposed by accident.';
 
-revoke all on function public.get_shared_project(text)       from public;
-revoke all on function public.get_shared_project(text, text) from public;
+revoke all on function public.get_shared_project(text)       from public, anon, authenticated;
+revoke all on function public.get_shared_project(text, text) from public, anon, authenticated;
 grant execute on function public.get_shared_project(text)       to anon, authenticated;
 grant execute on function public.get_shared_project(text, text) to anon, authenticated;
 
@@ -273,7 +279,7 @@ $$;
 comment on function public.set_show_arrived(text, text, boolean, bigint) is
   'Check-in share link: set shows[i].arrived/arrivedAt of one show. No-op when unchanged. Returns the checkin-mode data.';
 
-revoke all on function public.set_show_arrived(text, text, boolean, bigint) from public;
+revoke all on function public.set_show_arrived(text, text, boolean, bigint) from public, anon, authenticated;
 grant execute on function public.set_show_arrived(text, text, boolean, bigint) to anon, authenticated;
 
 

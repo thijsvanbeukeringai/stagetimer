@@ -69,6 +69,9 @@
 --   --   await _rpc('save_project',{p_id:APP.activeProjectId,p_expected_version:-1,p_data:G})
 --   --   -> {ok:false, conflict:true, version:N, ...}   (and nothing written)
 --   select id, version from public.projects order by version desc limit 5;
+--   select has_function_privilege('anon','public.save_project(text,bigint,jsonb,text,boolean)','execute'),  -- false
+--          has_function_privilege('authenticated','public._caller_can_write_project(text)','execute'),     -- false
+--          has_function_privilege('anon','public.get_shared_project_version(text)','execute');            -- true
 --
 -- ROLLBACK
 --   drop function if exists public.save_project(text, bigint, jsonb, text, boolean);
@@ -129,6 +132,8 @@ drop trigger if exists projects_version_bump on public.projects;
 create trigger projects_version_bump
   before update on public.projects
   for each row execute function public.projects_version_bump();
+-- Trigger functions need no EXECUTE grant to fire.
+revoke all on function public.projects_version_bump() from public, anon, authenticated;
 
 -- ── Access rule shared by the RPCs (mirrors the RLS policies) ──────────
 create or replace function public._caller_can_write_project(p_company_id text)
@@ -141,7 +146,7 @@ as $$
   select public.caller_role() in ('admin', 'super_admin')
       or (public.caller_company_id() is not null and nullif(p_company_id, '') = public.caller_company_id())
 $$;
-revoke all on function public._caller_can_write_project(text) from public;
+revoke all on function public._caller_can_write_project(text) from public, anon, authenticated;
 
 create or replace function public._json_array_len(p jsonb)
 returns int
@@ -150,6 +155,10 @@ immutable
 as $$
   select case when jsonb_typeof(p) = 'array' then jsonb_array_length(p) else 0 end
 $$;
+-- Internal helpers (also used by history / plan_enforcement): called only
+-- from SECURITY DEFINER functions and triggers. Supabase grants EXECUTE on
+-- new functions to anon/authenticated directly, hence revoked by name.
+revoke all on function public._json_array_len(jsonb) from public, anon, authenticated;
 
 -- ── save_project ───────────────────────────────────────────────────────
 create or replace function public.save_project(
@@ -279,9 +288,9 @@ as $$
   where p.id::text = p_id and public._project_is_live(p_id)
 $$;
 
-revoke all on function public.save_project(text, bigint, jsonb, text, boolean) from public;
-revoke all on function public.patch_show(text, text, jsonb)                     from public;
-revoke all on function public.get_shared_project_version(text)                  from public;
+revoke all on function public.save_project(text, bigint, jsonb, text, boolean) from public, anon, authenticated;
+revoke all on function public.patch_show(text, text, jsonb)                     from public, anon, authenticated;
+revoke all on function public.get_shared_project_version(text)                  from public, anon, authenticated;
 grant execute on function public.save_project(text, bigint, jsonb, text, boolean) to authenticated;
 grant execute on function public.patch_show(text, text, jsonb)                     to authenticated;
 grant execute on function public.get_shared_project_version(text)                  to anon, authenticated;

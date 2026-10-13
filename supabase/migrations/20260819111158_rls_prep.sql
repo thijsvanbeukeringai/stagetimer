@@ -38,6 +38,13 @@
 --     user JWT instead of the service_role key WILL BE REJECTED. Verify the
 --     function source first (see docs/MIGRATIES.md, "niet verifieerbaar").
 --   * An insert of a duplicate email (any case) into app_users now fails.
+--   * Clients can call admin_set_user_role / admin_delete_company (logged in)
+--     and caller_role / caller_company_id (logged in, needed by the RLS
+--     policies). Every other function in this file is not executable by
+--     anon or authenticated.
+--   * anon writes on app_users/companies are revoked by step 0
+--     (20261013080000_urgent_anon_write_lockdown.sql), not by this file; the
+--     guards here cover INSERT/UPDATE only, never DELETE.
 --
 -- PRECONDITIONS
 --   * Tables public.app_users(id, email, role, company_id, name),
@@ -65,6 +72,16 @@
 --   select proname from pg_proc where proname in
 --     ('current_app_user','caller_role','caller_company_id','_caller_is_machine',
 --      'admin_set_user_role','admin_delete_company');
+--   -- EXECUTE allowlist (Supabase grants EXECUTE on new functions to anon and
+--   -- authenticated directly; every file revokes that for internal helpers).
+--   -- After ALL files: anon may only run get_shared_project (both),
+--   -- set_show_arrived and get_shared_project_version. Functions in public
+--   -- that are not Stagetimer's (extensions etc.) may show up too.
+--   select p.oid::regprocedure from pg_proc p
+--    where p.pronamespace = 'public'::regnamespace
+--      and has_function_privilege('anon', p.oid, 'execute') order by 1;
+--   select has_function_privilege('authenticated','public.current_app_user()','execute'),   -- false
+--          has_function_privilege('authenticated','public.caller_role()','execute');        -- true (RLS policies)
 --   -- Guard smoke test (should FAIL with insufficient_privilege):
 --   begin;
 --     select set_config('request.jwt.claims','{"role":"authenticated","email":"nobody@example.invalid"}', true);
@@ -184,12 +201,19 @@ as $$
   select nullif((select u.company_id::text from public.current_app_user() u), '')
 $$;
 
-revoke all on function public.current_app_user()  from public;
-revoke all on function public.caller_role()       from public;
-revoke all on function public.caller_company_id() from public;
-grant execute on function public.current_app_user()  to authenticated;
-grant execute on function public.caller_role()       to anon, authenticated;
-grant execute on function public.caller_company_id() to anon, authenticated;
+-- EXECUTE: Supabase's default privileges grant EXECUTE on every new public
+-- function DIRECTLY to anon and authenticated, so `revoke ... from public`
+-- alone revokes nothing for them. Every file therefore revokes from all
+-- three and re-grants only what a client really calls.
+-- caller_role / caller_company_id are used inside the RLS policies of
+-- rls_enable, which are evaluated as `authenticated`: that role needs
+-- EXECUTE. Nested calls (caller_role -> current_app_user, guard triggers ->
+-- helpers) run as the SECURITY DEFINER owner and need no client grant.
+revoke all on function public.current_app_user()  from public, anon, authenticated;
+revoke all on function public.caller_role()       from public, anon, authenticated;
+revoke all on function public.caller_company_id() from public, anon, authenticated;
+grant execute on function public.caller_role()       to authenticated;
+grant execute on function public.caller_company_id() to authenticated;
 
 -- Machine callers manage billing/identity columns on purpose: no JWT at all
 -- (SQL editor, migrations, pg_cron) or the service_role key (edge functions,
@@ -219,6 +243,11 @@ as $$
     and not exists (select 1 from pg_attribute a
                      where a.attrelid = p_table and a.attname = k and a.attgenerated <> '')
 $$;
+
+-- Internal: only called from the SECURITY DEFINER guard triggers below and
+-- from projects_plan_guard (plan_enforcement), which run as the owner.
+revoke all on function public._caller_is_machine()                     from public, anon, authenticated;
+revoke all on function public._changed_columns(jsonb, jsonb, regclass) from public, anon, authenticated;
 
 -- ── 4. Column guards (allowlist) ───────────────────────────────────────
 -- RLS decides which ROWS you may touch, never which COLUMNS. Column grants
@@ -375,6 +404,11 @@ create trigger companies_guard_columns
   before insert or update on public.companies
   for each row execute function public.guard_companies_columns();
 
+-- Trigger functions: Postgres does not check EXECUTE when a trigger fires,
+-- so nobody needs it; revoked so they are not listed as client RPCs.
+revoke all on function public.guard_app_users_columns() from public, anon, authenticated;
+revoke all on function public.guard_companies_columns() from public, anon, authenticated;
+
 -- ── 5. Admin RPCs (needed once rls_enable grants only UPDATE(name)) ────
 -- Replaces app.html changeUserRole's direct PATCH of app_users.role.
 create or replace function public.admin_set_user_role(p_user_id text, p_role text)
@@ -438,7 +472,7 @@ begin
 end
 $$;
 
-revoke all on function public.admin_set_user_role(text, text) from public;
-revoke all on function public.admin_delete_company(text)      from public;
+revoke all on function public.admin_set_user_role(text, text) from public, anon, authenticated;
+revoke all on function public.admin_delete_company(text)      from public, anon, authenticated;
 grant execute on function public.admin_set_user_role(text, text) to authenticated;
 grant execute on function public.admin_delete_company(text)      to authenticated;
