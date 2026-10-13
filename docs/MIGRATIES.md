@@ -14,6 +14,12 @@ Elk SQL-bestand heeft bovenaan een kop met:
 
 Dit document zet alles in één volgorde.
 
+
+> **STAP 0, URGENT (kan meteen, los van alles hieronder):** `supabase/migrations/20261013080000_urgent_anon_write_lockdown.sql`.
+> Vandaag kan iedereen met de publieke anon-key alle gebruikers en workspaces verwijderen of rollen aanpassen.
+> Deze migratie trekt alleen anon-schrijfrechten op `app_users` en `companies` in. De live-app schrijft die tabellen nooit als anon, en `projects` blijft ongemoeid.
+> Lokaal getest: na de migratie geeft `delete` als anon "permission denied". Rollback staat in het bestand.
+
 ## Spelregels
 
 1. **Nooit `supabase db push`.** De bestandsnamen staan niet in de volgorde waarin ze moeten draaien, en de hotfix bestaat uit delen die je los moet uitvoeren. `db push` zou alles in één keer toepassen.

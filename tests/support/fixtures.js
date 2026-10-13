@@ -29,16 +29,35 @@ class AppDriver {
     this.backend = backend;
   }
 
-  /** Install the fake clock (must happen before the first navigation). */
-  async installClock(at) {
+  /**
+   * Install the fake clock (must happen before the first navigation).
+   * paused: the page starts with time frozen at exactly `at`; only
+   * runFor / fastForward / pauseAt move it, so countdowns do not drift with
+   * real (machine-load dependent) time between steps.
+   */
+  async installClock(at, { paused = false } = {}) {
     if (this._clock) return;
     this._clock = true;
-    await this.page.clock.install({ time: at || ams(FESTIVAL.dates.d1, '16:00') });
+    const t = new Date(at || ams(FESTIVAL.dates.d1, '16:00')).getTime();
+    if (!paused) { await this.page.clock.install({ time: t }); return; }
+    // pauseAt can only move forward, and the clock already runs in real time
+    // on the current (blank) document: install a minute early, then pause at
+    // `at`. A new document replays install + pauseAt and boots frozen at `at`.
+    await this.page.clock.install({ time: t - 60_000 });
+    await this.page.clock.pauseAt(t);
+  }
+
+  /**
+   * Answer the HEAD /rest/v1/ clock sync with the page's own (fake) clock,
+   * read when the request arrives - what a correctly synced server would say.
+   */
+  serverClockFollowsPage() {
+    this.backend.serverNow = () => this.page.evaluate(() => Date.now());
   }
 
   /** Open a public share view: /app.html?mode=..&pid=..[&sid=..] and wait until it rendered. */
-  async gotoPublic({ mode, pid = FESTIVAL.projectId, sid, at, extra = '' } = {}) {
-    await this.installClock(at);
+  async gotoPublic({ mode, pid = FESTIVAL.projectId, sid, at, paused = false, extra = '' } = {}) {
+    await this.installClock(at, { paused });
     const qs = new URLSearchParams({ mode, pid });
     if (sid) qs.set('sid', sid);
     await this.page.goto(`/app.html?${qs}${extra}`);

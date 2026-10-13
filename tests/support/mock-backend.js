@@ -238,7 +238,9 @@ class MockBackend {
       recover: { status: 200, json: {} },
       invalidTokens: new Set(),  // access tokens /auth/v1/user should reject (401)
     };
-    this.serverNow = null;       // Date|number for the HEAD /rest/v1/ date header (Wall clock sync)
+    this.serverNow = null;       // Date|number for the HEAD /rest/v1/ date header (Wall clock sync),
+                                 // or an (async) function returning one per request, e.g. the page's
+                                 // own fake clock (AppDriver.serverClockFollowsPage)
     this.realtimeJoinError = null;
     this.realtime = new RealtimeStub(this);
     this.onesignal = [];
@@ -394,10 +396,18 @@ class MockBackend {
     return this._violation(`unmocked external request ${method} ${url.href}`);
   }
 
+  async _serverDate() {
+    let v = this.serverNow;
+    if (typeof v === 'function') {
+      try { v = await v(); } catch { v = null; } // page gone / navigating: answer without a date
+    }
+    return v != null ? new Date(v) : null;
+  }
+
   async _supabase(url, method, body, rec) {
     const p = url.pathname;
     if (p === '/rest/v1/' || p === '/rest/v1') {
-      const now = this.serverNow != null ? new Date(this.serverNow) : null;
+      const now = await this._serverDate();
       return { status: 200, headers: now ? { date: now.toUTCString() } : {}, body: '' };
     }
     if (p.startsWith('/rest/v1/rpc/')) return this._rpc(p.slice('/rest/v1/rpc/'.length), body, rec);
