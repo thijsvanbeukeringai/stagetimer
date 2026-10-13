@@ -87,7 +87,7 @@ Alles van één project leeft in één rij in de tabel `projects`, als JSONB in 
 - **Companies**: de client leest een expliciete kolomlijst (`COMPANY_COLS`), nooit `select=*` en nooit `setup_token`. "Awaiting activation" komt uit de afgeleide kolom `setup_pending`. Bestaat die kolom nog niet (migratie niet toegepast), dan leest de app zonder die kolom verder.
 - **Versies en soft delete**: `projects.version` (met `save_project`/`patch_show`), `deleted_at` (soft delete) en `project_versions` (historie) staan in de migraties onder `supabase/migrations/` (stap 6 en 7 van `docs/MIGRATIES.md`). De app herkent ze zelf en gebruikt ze zodra ze bestaan; daarvoor werkt hij zoals voorheen. `patch_show` wordt nog niet gebruikt.
 
-Overige `localStorage`-sleutels: `st_app_v1` (offline kopie van projecten, companies en users), `st_auth_v1` (sessie), `st_active_proj`, `st_current_user`, `st_wall_theme`, `st_wall_day_override`.
+Overige `localStorage`-sleutels: `st_app_v1` (offline kopie van projecten, companies en users), `st_auth_v1` (sessie), `st_active_proj`, `st_current_user`, `st_wall_theme`, `st_wall_day_override`, `st_foh_sound` (FOH-piep bij getimede notities, per apparaat, standaard uit).
 
 ## Structuur
 
