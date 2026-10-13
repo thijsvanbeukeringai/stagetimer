@@ -2290,6 +2290,19 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .st-dlg-in{font-size:16px;} /* no iOS zoom-on-focus */
 }
 @media (prefers-reduced-motion:reduce){.st-dlg{animation:none;}}
+/* Forms that live outside the dialog (show editor, day list): field
+   messages next to the field, sub-labels for date / time / seconds. */
+.st-fset{border:0;padding:0;margin-left:0;margin-right:0;min-width:0;}
+.st-fset>legend{padding:0;}
+.st-sub{display:flex;flex-direction:column;min-width:0;}
+.st-sublbl{font-size:10.5px;font-weight:600;color:var(--sub);margin:0 0 3px;}
+.st-fld-err{font-size:11.5px;font-weight:600;color:#fca5a5;margin-top:6px;line-height:1.4;}
+.st-fld-warn{padding:8px 11px;border-radius:7px;font-size:11.5px;line-height:1.45;margin:-7px 0 15px;
+  background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);color:#fdba74;}
+.fi[aria-invalid="true"]{border-color:#ef4444;}
+#dur-prev .st-auto{color:#fbbf24;}
+button.booth-opt{font-family:inherit;min-width:32px;}
+#drawer :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
 /* ═══ end DIALOGS ═══ */
 </style>
 <script>
@@ -4149,10 +4162,10 @@ function renderTbar(){
 
 <!-- DRAWER -->
 <div id="dov" onclick="closeDrawer()"></div>
-<div id="drawer">
-  <div id="drhdr"><div id="drtitle">New show</div><button id="drclose" onclick="closeDrawer()">×</button></div>
+<div id="drawer" role="dialog" aria-modal="true" aria-labelledby="drtitle">
+  <div id="drhdr"><h2 id="drtitle">New show</h2><button id="drclose" onclick="closeDrawer()" aria-label="Close show editor">×</button></div>
   <div id="drbody">
-    <div class="fg"><label class="fl" for="f-a">Name / Artist</label><input class="fi" id="f-a" type="text" placeholder="e.g. Martin Garrix"></div>
+    <div class="fg"><label class="fl" for="f-a">Name / Artist</label><input class="fi" id="f-a" type="text" placeholder="e.g. Martin Garrix" aria-describedby="f-a-err" required><div class="st-fld-err" id="f-a-err" hidden></div></div>
     <div class="fg"><label class="fl">Artist photo</label>
       <div id="photo-preview-wrap" style="display:none;margin-bottom:7px;border-radius:8px;overflow:hidden;height:100px;background:var(--s3);">
         <img id="photo-preview" src="" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;">
@@ -4160,32 +4173,35 @@ function renderTbar(){
       <div style="display:flex;gap:6px;">
         <button type="button" class="btn-g" style="flex:1;text-align:center;cursor:pointer;margin:0;" onclick="document.getElementById('f-photo').click()">📷 Choose photo</button>
         <input id="f-photo" type="file" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" onchange="previewPhoto(this)">
-        <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
+        <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;" aria-label="Remove photo">✕</button>
       </div>
     </div>
-    <div class="fg">
-      <label class="fl">Start <span style="color:var(--sub);font-weight:500;">(date · time · seconds)</span></label>
+    <fieldset class="fg st-fset" aria-describedby="f-start-err">
+      <legend class="fl">Start</legend>
       <div class="frow">
-        <input class="fi" id="f-start-date" type="date" style="flex:2;min-width:0;">
-        <input class="fi" id="f-start-time" type="time" style="flex:1.4;min-width:0;">
-        <input class="fi" id="f-start-sec" type="number" min="0" max="59" inputmode="numeric" placeholder="ss" aria-label="Start seconds" style="flex:0.7;min-width:0;text-align:center;">
+        <div class="st-sub" style="flex:2;"><label class="st-sublbl" for="f-start-date">Date</label><input class="fi" id="f-start-date" type="date" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:1.4;"><label class="st-sublbl" for="f-start-time">Time</label><input class="fi" id="f-start-time" type="time" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:0.7;"><label class="st-sublbl" for="f-start-sec">Seconds</label><input class="fi" id="f-start-sec" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="00" style="min-width:0;text-align:center;"></div>
       </div>
-    </div>
-    <div class="fg">
-      <label class="fl">End <span style="color:var(--sub);font-weight:500;">(date · time · seconds)</span></label>
+      <div class="st-fld-err" id="f-start-err" hidden></div>
+    </fieldset>
+    <fieldset class="fg st-fset" aria-describedby="f-end-err">
+      <legend class="fl">End</legend>
       <div class="frow">
-        <input class="fi" id="f-end-date" type="date" style="flex:2;min-width:0;">
-        <input class="fi" id="f-end-time" type="time" style="flex:1.4;min-width:0;">
-        <input class="fi" id="f-end-sec" type="number" min="0" max="59" inputmode="numeric" placeholder="ss" aria-label="End seconds" style="flex:0.7;min-width:0;text-align:center;">
+        <div class="st-sub" style="flex:2;"><label class="st-sublbl" for="f-end-date">Date</label><input class="fi" id="f-end-date" type="date" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:1.4;"><label class="st-sublbl" for="f-end-time">Time</label><input class="fi" id="f-end-time" type="time" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:0.7;"><label class="st-sublbl" for="f-end-sec">Seconds</label><input class="fi" id="f-end-sec" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="00" style="min-width:0;text-align:center;"></div>
       </div>
-    </div>
+      <div class="st-fld-err" id="f-end-err" hidden></div>
+    </fieldset>
     <!-- Legacy hidden fields kept so any code that still reads them works. -->
     <input type="hidden" id="f-date">
     <input type="hidden" id="f-s">
     <input type="hidden" id="f-e">
     <input type="hidden" id="f-starts-at">
     <input type="hidden" id="f-ends-at">
-    <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
+    <div id="dur-prev" aria-live="polite"><svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
+    <div class="st-fld-warn" id="f-overlap" role="status" hidden></div>
     <!-- Genre is intentionally not surfaced in the UI; the data field is kept
          as a hidden input so existing reads/writes continue to work without
          touching downstream display code. -->
@@ -4203,7 +4219,7 @@ function renderTbar(){
           <option value="break">BREAK</option>
         </select>
       </div>
-      <div class="fg" style="flex:0 0 auto;"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-none" id="bo-none" onclick="selBooth('')">-</div><div class="booth-opt" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div></div></div>
+      <div class="fg" style="flex:0 0 auto;"><div class="fl" id="booth-lbl">Booth</div><div id="booth-sel" role="group" aria-labelledby="booth-lbl"><button type="button" class="booth-opt sel-none" id="bo-none" onclick="selBooth('')" aria-label="No booth" aria-pressed="true">-</button><button type="button" class="booth-opt" id="bo-A" onclick="selBooth('A')" aria-label="Booth A" aria-pressed="false">A</button><button type="button" class="booth-opt" id="bo-B" onclick="selBooth('B')" aria-label="Booth B" aria-pressed="false">B</button></div></div>
     </div>
     <div class="fg"><label class="fl" for="f-n">Note</label><textarea class="fi" id="f-n" placeholder="Internal note…"></textarea></div>
   </div>
@@ -4215,7 +4231,7 @@ function renderTbar(){
     </div>
     <div class="dr-actions">
       <button class="btn-p" id="dr-save" onclick="saveShow()">Save show</button>
-      <button class="btn-g" onclick="closeDrawer()">Cancel</button>
+      <button class="btn-g" id="dr-cancel" onclick="closeDrawer()">Cancel</button>
     </div>
   </div>
 </div>
@@ -5748,6 +5764,7 @@ let editId=null,prefillBooth='',_drFlags={cancelled:false,priority:false,hidden:
 function toggleDrFlag(flag){
   _drFlags[flag]=!_drFlags[flag];
   _updateDrFlagBtns();
+  if(flag==='cancelled')updDur(); // a cancelled show cannot overlap
 }
 function _updateDrFlagBtns(){
   const cb=document.getElementById('dr-cancel-btn');
@@ -5756,8 +5773,10 @@ function _updateDrFlagBtns(){
   if(cb)cb.className='dr-flag-btn'+(_drFlags.cancelled?' active-cancel':'');
   if(pb)pb.className='dr-flag-btn'+(_drFlags.priority?' active-priority':'');
   if(hb)hb.className='dr-flag-btn'+(_drFlags.hidden?' active-hidden':'');
+  [[cb,'cancelled'],[pb,'priority'],[hb,'hidden']].forEach(([b,f])=>{if(b)b.setAttribute('aria-pressed',_drFlags[f]?'true':'false');});
 }
 function openDrawer(id,booth=null){
+  if(!document.getElementById('drawer').classList.contains('open'))_drTrigger=document.activeElement;
   editId=id;prefillBooth=booth;
   _drFlags={cancelled:false,priority:false,hidden:false};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
@@ -5816,42 +5835,99 @@ function openDrawer(id,booth=null){
     document.getElementById('f-end-sec').value=_d2(endDt.getSeconds());
   }
   _updateDrFlagBtns();
+  _drAutoNote='';_drClearErrors();
   updDur();
+  _drSnap=_drState();
   document.getElementById('dov').classList.add('open');
   document.getElementById('drawer').classList.add('open');
   document.body.classList.add('drawer-open');
   setTimeout(()=>document.getElementById('f-a').focus(),240);
 }
-function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
+// ── Show editor: unsaved-changes guard, Escape, focus
+let _drSnap='',_drTrigger=null,_drAutoNote='';
+const _drVal=id=>document.getElementById(id)?.value||'';
+// Everything the form can change, to compare against the state at opening.
+function _drState(){
+  return JSON.stringify([_drVal('f-a'),_drVal('f-start-date'),_drVal('f-start-time'),_drVal('f-start-sec'),
+    _drVal('f-end-date'),_drVal('f-end-time'),_drVal('f-end-sec'),_drVal('f-type'),_drVal('f-n'),
+    curBooth,_drFlags,_photoB64,_photoRemoved]);
+}
+const _drIsOpen=()=>document.getElementById('drawer').classList.contains('open');
+function _drDirty(){return _drIsOpen()&&_drState()!==_drSnap;}
+// force=true: close without asking (after a save). Resolves false when the
+// operator chose to keep editing.
+async function closeDrawer(force){
+  if(!_drIsOpen())return true;
+  if(force!==true&&_drDirty()){
+    const ok=await stDialog.confirm('Your changes to this show have not been saved.',
+      {title:'Discard changes?',okLabel:'Discard changes',cancelLabel:'Keep editing',danger:true});
+    if(!ok)return false;
+  }
+  document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');
+  const t=_drTrigger;_drTrigger=null;
+  if(t&&t!==document.body&&document.contains(t)&&typeof t.focus==='function'){try{t.focus({preventScroll:true});}catch(_){}}
+  return true;
+}
+// Escape closes the editor (through the guard) and nothing else; Tab stays
+// inside it while it is open. Registered before the global Escape handler.
+document.addEventListener('keydown',e=>{
+  if(!_drIsOpen()||stDialog.isOpen())return;
+  const dr=document.getElementById('drawer');
+  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeDrawer();return;}
+  if(e.key==='Tab'){
+    const f=[...dr.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled])')].filter(el=>el.offsetWidth||el.offsetHeight);
+    if(!f.length)return;
+    const first=f[0],last=f[f.length-1],act=document.activeElement;
+    if(e.shiftKey&&(act===first||!dr.contains(act))){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&(act===last||!dr.contains(act))){e.preventDefault();first.focus();}
+  }
+});
 let curBooth='A';
-function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
-// Combine the six split inputs (start date+time+sec, end date+time+sec) into Date objects.
-function _readStartDate(){
-  const d=document.getElementById('f-start-date').value;
-  const t=document.getElementById('f-start-time').value;
-  const secRaw=(document.getElementById('f-start-sec').value||'0').trim();
-  if(!d||!t)return null;
-  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
+function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el){el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');el.setAttribute('aria-pressed',v===b?'true':'false');}});}
+// ── Field errors next to the field (no alert, no silent correction)
+const _DR_ERR={'f-a':'f-a-err','f-start-date':'f-start-err','f-start-time':'f-start-err','f-start-sec':'f-start-err','f-end-date':'f-end-err','f-end-time':'f-end-err','f-end-sec':'f-end-err'};
+function _drSetErr(field,msg){
+  const box=document.getElementById(_DR_ERR[field]);if(!box)return;
+  box.textContent=msg||'';box.hidden=!msg;
+  const el=document.getElementById(field);if(el){if(msg)el.setAttribute('aria-invalid','true');else el.removeAttribute('aria-invalid');}
+}
+function _drClearErrors(){Object.keys(_DR_ERR).forEach(f=>_drSetErr(f,''));}
+// Read one split date + time + seconds group. Returns {dt} or {err,field}.
+// Seconds: blank means 00; anything that is not a whole number 0-59 is an
+// error (it used to be clamped or zeroed without a word).
+function _drReadDT(which){
+  const L=which==='start'?'start':'end',id=k=>`f-${which}-${k}`;
+  const d=_drVal(id('date')),t=_drVal(id('time'));
+  const secEl=document.getElementById(id('sec')),secRaw=(secEl?.value||'').trim();
+  if(!d&&!t)return{err:`Set the ${L} date and time.`,field:id('date')};
+  if(!d)return{err:`Set the ${L} date.`,field:id('date')};
+  if(!t)return{err:`Set the ${L} time.`,field:id('time')};
+  if(secEl?.validity?.badInput||(secRaw!==''&&(!/^\d{1,2}$/.test(secRaw)||+secRaw>59)))
+    return{err:'Seconds must be a whole number from 0 to 59.',field:id('sec')};
+  const ss=secRaw===''?0:+secRaw;
   // t is HH:MM (native time picker drops seconds on iOS); some browsers return HH:MM:SS - both fine
   const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
   const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
-  return isNaN(dt)?null:dt;
+  if(isNaN(dt))return{err:`The ${L} date or time is not valid.`,field:id('date')};
+  return{dt};
 }
-function _readEndDate(){
-  const d=document.getElementById('f-end-date').value;
-  const t=document.getElementById('f-end-time').value;
-  const secRaw=(document.getElementById('f-end-sec').value||'0').trim();
-  if(!d||!t)return null;
-  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
-  const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
-  const dt=new Date(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
-  return isNaN(dt)?null:dt;
-}
+// Combine the six split inputs (start date+time+sec, end date+time+sec) into Date objects.
+function _readStartDate(){return _drReadDT('start').dt||null;}
+function _readEndDate(){return _drReadDT('end').dt||null;}
+const _d2=n=>String(n).padStart(2,'0');
+const _drIso=dt=>`${dt.getFullYear()}-${_d2(dt.getMonth()+1)}-${_d2(dt.getDate())}T${_d2(dt.getHours())}:${_d2(dt.getMinutes())}:${_d2(dt.getSeconds())}`;
 ['f-start-date','f-start-time','f-start-sec','f-end-date','f-end-time','f-end-sec'].forEach(id=>{
   const el=document.getElementById(id);
-  if(el)el.addEventListener('input',updDur);
+  if(!el)return;
+  el.addEventListener('input',()=>{
+    // Editing the end by hand replaces the automatic adjustment note.
+    if(id.startsWith('f-end'))_drAutoNote='';
+    _drSetErr(id,'');updDur();
+  });
 });
-// Auto-bump end to start+1h30m if user pushes start past end.
+document.getElementById('f-a').addEventListener('input',()=>_drSetErr('f-a',''));
+// Start pushed past the end: the end follows to start + 1h30m. That is an
+// automatic change, so the duration preview says so.
 document.getElementById('f-start-date').addEventListener('change',_maybeBumpEnd);
 document.getElementById('f-start-time').addEventListener('change',_maybeBumpEnd);
 document.getElementById('f-start-sec').addEventListener('change',_maybeBumpEnd);
@@ -5860,25 +5936,50 @@ function _maybeBumpEnd(){
   if(!sd||!ed)return;
   if(ed<=sd){
     const ne=new Date(sd.getTime()+90*60*1000);
-    const _d2=n=>String(n).padStart(2,'0');
     document.getElementById('f-end-date').value=`${ne.getFullYear()}-${_d2(ne.getMonth()+1)}-${_d2(ne.getDate())}`;
     document.getElementById('f-end-time').value=`${_d2(ne.getHours())}:${_d2(ne.getMinutes())}`;
     document.getElementById('f-end-sec').value=_d2(ne.getSeconds());
+    const nextDay=ne.getDate()!==sd.getDate();
+    _drAutoNote=`End moved to ${_d2(ne.getHours())}:${_d2(ne.getMinutes())}${nextDay?' the next day':''} (start + 1h 30m) because the start was after the end.`;
+    ['f-end-date','f-end-time','f-end-sec'].forEach(f=>_drSetErr(f,''));
     updDur();
   }
 }
+// Other shows on the same stage whose time overlaps [sd, ed). Cancelled
+// shows never count. Times are read the way they will be stored.
+function _drOverlaps(sd,ed){
+  if(!sd||!ed||ed<=sd||_drFlags.cancelled)return[];
+  const ex=editId?G.shows.find(x=>x.id===editId):null;
+  const stage=ex?ex.stage:G.activeStage,day=ex?ex.day:G.activeDay;
+  const iv=_showIv({stage,day,startsAt:_drIso(sd),endsAt:_drIso(ed)});
+  if(isNaN(iv.startMs)||isNaN(iv.endMs))return[];
+  return(G.shows||[]).filter(x=>x.id!==editId&&x.stage===stage&&!x.cancelled).filter(x=>{
+    const o=_showIv(x);return!isNaN(o.startMs)&&!isNaN(o.endMs)&&o.startMs<iv.endMs&&iv.startMs<o.endMs;
+  }).sort(_showOrder);
+}
+const _drShowSpan=x=>`${escH(x.artist||'Untitled')} (${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))})`;
 function updDur(){
   const el=document.getElementById('dur-txt');
   if(!el)return;
-  const sd=_readStartDate(),ed=_readEndDate();
-  if(!sd||!ed){el.textContent='-';el.style.color='';return;}
+  const warn=document.getElementById('f-overlap');
+  const a=_drReadDT('start'),b=_drReadDT('end');
+  const secErr=[a,b].find(r=>r.err&&/sec$/.test(r.field||''));
+  if(warn)warn.hidden=true;
+  if(secErr){el.textContent='⚠ '+secErr.err;el.style.color='#fca5a5';return;}
+  if(!a.dt||!b.dt){el.textContent='-';el.style.color='';return;}
+  const sd=a.dt,ed=b.dt;
   const diff=Math.round((ed-sd)/1000);
   if(diff<=0){el.textContent='⚠ End must be after start';el.style.color='#fca5a5';return;}
   el.style.color='';
   const sStr=document.getElementById('f-start-date').value;
   const eStr=document.getElementById('f-end-date').value;
   const sameDay=sStr===eStr;
-  el.textContent='Duration: '+fmtDur(diff)+(sameDay?'':' · ends next day');
+  el.innerHTML=escH('Duration: '+fmtDur(diff)+(sameDay?'':' · ends next day'))+(_drAutoNote?`<br><span class="st-auto">${escH(_drAutoNote)}</span>`:'');
+  const ov=_drOverlaps(sd,ed);
+  if(warn&&ov.length){
+    warn.innerHTML=`⚠ Overlaps with ${ov.slice(0,3).map(_drShowSpan).join(', ')}${ov.length>3?` and ${ov.length-3} more`:''} on this stage.`;
+    warn.hidden=false;
+  }
 }
 // ── Photo
 let _photoB64='';
@@ -5933,26 +6034,43 @@ function setTPPhoto(src){
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
   else{img.src='';wrap.classList.remove('has-photo');inner.classList.remove('has-photo');}
 }
-function saveShow(){
-  const artist=document.getElementById('f-a').value.trim();if(!artist){document.getElementById('f-a').focus();return;}
+let _drSaving=false;
+async function saveShow(){
+  if(_drSaving)return;
+  _drClearErrors();
+  // Every field is checked; each message sits next to its field and the
+  // first wrong field gets focus.
+  const artist=document.getElementById('f-a').value.trim();
+  const errs=[];
+  if(!artist)errs.push(['f-a','Enter a name or artist.']);
+  const a=_drReadDT('start'),b=_drReadDT('end');
+  if(a.err)errs.push([a.field,a.err]);
+  if(b.err)errs.push([b.field,b.err]);
+  const sd=a.dt,ed=b.dt;
+  if(sd&&ed&&ed<=sd)errs.push(['f-end-date','End must be after start. To run past midnight, pick the next day\'s date in End.']);
+  if(errs.length){
+    errs.forEach(([f,m])=>_drSetErr(f,m));
+    document.getElementById(errs[0][0])?.focus();
+    return;
+  }
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew=existing?.crew||{};
   // The old photo is only a fallback while a new upload is still compressing;
   // after an explicit ✕ the removal must stick.
   const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
-  // Source of truth: split start (date+time) and end (date+time) inputs.
-  // Each time input has step=1 so seconds are captured.
-  const sd=_readStartDate(),ed=_readEndDate();
-  if(!sd||!ed){
-    document.getElementById('f-start-date').focus();
-    alert('Please set both start and end (date + time).');return;
+  // Overlap on the same stage: a warning, the operator may save anyway.
+  const ov=_drOverlaps(sd,ed);
+  if(ov.length){
+    _drSaving=true;
+    let go;
+    try{
+      go=await stDialog.open({title:'This show overlaps another show',
+        message:`${artist} (${_d2(sd.getHours())}:${_d2(sd.getMinutes())}–${_d2(ed.getHours())}:${_d2(ed.getMinutes())}) overlaps on the same stage with:`,
+        html:`<ul class="st-dlg-list">${ov.map(x=>`<li><span class="st-dlg-k">${escH(x.artist||'Untitled')}</span><span class="st-dlg-v">${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))}</span></li>`).join('')}</ul>`,
+        actions:[{label:'Go back',value:false,kind:'secondary'},{label:'Save anyway',value:true,kind:'primary',submit:true}],cancelValue:false});
+    }finally{_drSaving=false;}
+    if(!go)return;
   }
-  if(ed<=sd){
-    document.getElementById('f-end-date').focus();
-    alert('End must be after start. To run past midnight, pick tomorrow\'s date in the End field.');
-    return;
-  }
-  const _d2=n=>String(n).padStart(2,'0');
   const startDate=`${sd.getFullYear()}-${_d2(sd.getMonth()+1)}-${_d2(sd.getDate())}`;
   const startTime=`${_d2(sd.getHours())}:${_d2(sd.getMinutes())}:${_d2(sd.getSeconds())}`;
   const endDate=`${ed.getFullYear()}-${_d2(ed.getMonth()+1)}-${_d2(ed.getDate())}`;
@@ -5976,9 +6094,17 @@ function saveShow(){
     hidden:_drFlags.hidden||false,
   };
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
-  save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
+  save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer(true);
 }
-function delShow(id,e){e.stopPropagation();if(!confirm('Delete this show?'))return;_markIntentionalRemoval([id]);G.shows=G.shows.filter(s=>s.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
+async function delShow(id,e){
+  e?.stopPropagation?.();
+  const s=G.shows.find(x=>x.id===id);if(!s)return;
+  const when=`${(s.start||'').slice(0,5)}–${(s.end||'').slice(0,5)}`;
+  const ok=await stDialog.confirm(`"${s.artist||'Untitled'}" (${when}) will be removed from the schedule, with its crew, notes and check-in. This cannot be undone.`,
+    {title:'Delete this show?',okLabel:'Delete show',danger:true});
+  if(!ok)return;
+  _markIntentionalRemoval([id]);G.shows=G.shows.filter(x=>x.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();
+}
 
 // ══ MODE
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
