@@ -8249,7 +8249,7 @@ function closeShareModal(){document.getElementById('share-ov').classList.remove(
 // ══ ARTIST CHECK-IN viewer (share-link mode=checkin).
 // Operator and check-in viewer share the same projects.data column.
 // A tap on the Arrived button flips show.arrived locally, repaints the
-// row, and pushes the updated data via direct REST PATCH. The 1-second
+// row, and persists only that show's arrived fields (see ciToggleArrived). The 1-second
 // polling + Realtime subscription on every other viewer fans the change
 // out across the operator dashboard and all share-link screens.
 function openCI(){document.getElementById('ci').classList.add('open');renderCI();}
@@ -8277,9 +8277,9 @@ function renderCI(){
       const past=_showIsPast(s);
       const arrTime=s.arrivedAt?_fmtArrivedTime(s.arrivedAt):'';
       return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}">
-        <div class="ci-time">${(s.start||'').slice(0,5)}</div>
+        <div class="ci-time">${escH((s.start||'').slice(0,5))}</div>
         <div class="ci-artist">${escH(s.artist||'(no name)')}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${arrTime}</span>`:''}</div>
-        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived('${s.id}')">
+        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived(${escH(JSON.stringify(String(s.id)))})">
           ${isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived'}
         </button>
       </div>`;
@@ -8300,14 +8300,33 @@ function renderCI(){
 function _fmtArrivedTime(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 // In-flight tracker so the 1s poll in checkin mode doesn't briefly overwrite
-// an optimistic toggle while the PATCH is still in flight.
+// an optimistic toggle while the write is still in flight.
 let _ciWriteInFlight=0;
+// Shows whose check-in write is still out: repeat taps are ignored meanwhile
+// (a double tap used to send two opposite writes racing each other).
+const _ciBusy=new Set();
+// Until the rls_prep migration is applied, set_show_arrived does not exist.
+// (PostgREST: 404 + PGRST202. A plain 404 can also be the RPC's own "show not found".)
+function _isMissingRpc(e){return /PGRST202|could not find the function/i.test(String((e&&e.message)||e||''));}
+// Pre-migration fallback: read the freshest row, flip only this show's
+// arrived fields, write it back. Never writes the (possibly stale) blob this
+// screen holds. A write landing between the read and the write can still be
+// lost - the RPC does this under a row lock and supersedes this path.
+async function _ciPatchFallback(showId,arrived,arrivedAt){
+  const row=await _fetchProjectRow(PUBLIC_PID,true);
+  const fresh=row&&row.data;
+  if(!_validData(fresh)||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
+  const t=fresh.shows.find(x=>x.id===showId);
+  if(!t){const e=new Error('Show not found in latest data');e.status=404;throw e;}
+  t.arrived=arrived;t.arrivedAt=arrivedAt;
+  await _patchProjectData(PUBLIC_PID,fresh,true);
+  return fresh;
+}
 // Toggle arrived for a show. Optimistic local update + immediate persist.
-// In public checkin mode there is no Supabase auth session, so we PATCH the
-// projects row directly with the anon key. RLS is OFF on projects.
 async function ciToggleArrived(showId){
+  if(_ciBusy.has(showId))return;
   const s=(G.shows||[]).find(x=>x.id===showId);if(!s)return;
-  const wasArrived=!!s.arrived;
+  const wasArrived=!!s.arrived,prevAt=s.arrivedAt;
   s.arrived=!wasArrived;
   s.arrivedAt=s.arrived?Date.now():null;
   // Immediate UI repaint - in checkin mode just repaint the list; in
@@ -8318,22 +8337,35 @@ async function ciToggleArrived(showId){
     if(document.getElementById('stov')?.classList.contains('open'))renderOV();
     if(document.getElementById('ci')?.classList.contains('open'))renderCI();
   }
-  // Persist - in operator mode, go through the regular save() so the
-  // syncDot, localStorage mirror and Realtime fanout all happen as usual.
-  if(!PUBLIC_MODE){save({immediate:true});return;}
-  // Public checkin mode: one RPC. This used to be a client-side
-  // read-modify-write of the entire `data` JSONB, which could clobber an
-  // operator edit that landed between the read and the write. set_show_arrived
-  // does the same mutation inside the database, under a row lock, and it is
-  // the ONLY write an anonymous visitor is granted - the lineup is not just
-  // untouched by convention any more, it is out of reach.
+  // Operator mode: the regular save queue. Its push merges per show and per
+  // field onto a fresh server copy, so only arrived/arrivedAt of this show is
+  // written over what other devices did; failures stay visible on the sync
+  // dot and are retried. Taps on this show are blocked until it settles.
+  if(!PUBLIC_MODE){
+    const pid=APP.activeProjectId;
+    save({immediate:true});
+    _ciBusy.add(showId);
+    _whenSaved(pid).then(()=>_ciBusy.delete(showId));
+    return;
+  }
+  // Public checkin mode: one RPC. set_show_arrived does the mutation inside
+  // the database, under a row lock, and it is the ONLY write an anonymous
+  // visitor is granted once RLS is on.
+  _ciBusy.add(showId);
   _ciWriteInFlight++;
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
   try{
-    const fresh=await _rpc('set_show_arrived',{
-      p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
-    });
+    let fresh;
+    try{
+      fresh=await _rpc('set_show_arrived',{
+        p_id:PUBLIC_PID,p_show_id:showId,p_arrived:newArrived,p_arrived_at:newArrivedAt,
+      });
+    }catch(e){
+      if(!_isMissingRpc(e))throw e;
+      console.warn('[ciToggleArrived] set_show_arrived not available yet, using read-merge-write fallback');
+      fresh=await _ciPatchFallback(showId,newArrived,newArrivedAt);
+    }
     if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
     // Adopt the returned snapshot locally so any operator edits that landed in
     // the meantime are visible immediately.
@@ -8345,12 +8377,13 @@ async function ciToggleArrived(showId){
   }catch(e){
     // Revert optimistic UI on failure
     const s2=(G.shows||[]).find(x=>x.id===showId);
-    if(s2){s2.arrived=wasArrived;s2.arrivedAt=wasArrived?s2.arrivedAt:null;}
+    if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
     renderCI();
     console.error('[ciToggleArrived]',e);
-    alert('Check-in save failed: '+(e?.message||String(e)));
+    alert('Check-in was not saved. '+humanError(e));
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
+    _ciBusy.delete(showId);
   }
 }
 
