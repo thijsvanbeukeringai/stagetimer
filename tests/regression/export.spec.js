@@ -32,6 +32,7 @@ for (const role of ['admin', 'operator']) {
       const shows = out.project.data.shows;
       expect(shows.length).toBe(15);
       expect(shows.find((s) => s.artist === "DJ O'Neil").photo).toMatch(/^data:image\/png;base64,/);
+      expect(shows.find((s) => s.artist === "DJ O'Neil").rider).toEqual({ drinks: '6x Club-Mate\nStill water, no ice', tech: '2x CDJ-3000 + DJM-900NXS2\nBooth monitor left' });
       expect(out.project.data.stages.map((s) => s.name)).toContain('The Tent');
       for (const secret of ['setup_token', 'SECRET-SETUP-TOKEN', 'stripe_', 'cus_mock', 'sub_mock', 'subscription_', 'company_id']) {
         expect(text).not.toContain(secret);
