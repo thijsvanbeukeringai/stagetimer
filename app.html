@@ -647,6 +647,41 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .fohn-color-swatch.active{border-color:#fff;transform:scale(1.2);}
 .foh-note-del{width:18px;height:18px;border-radius:4px;border:none;background:transparent;color:rgba(255,255,255,.2);font-size:12px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .foh-note-del:hover{background:rgba(239,68,68,.15);color:#ef4444;}
+/* FOH cue alerts (timed notes): upcoming as before, then approaching (amber),
+   imminent (red, pulsing), due (NOW, flash) and past (dimmed, struck through).
+   The state is also in text + icon (.foh-cue-st), never colour alone. Borders
+   override the note's own colour inline, hence !important. FOH only. */
+#foh .foh-note-item.foh-cue{transition:background-color .25s;}
+#foh .foh-cue-st{display:none;align-items:center;gap:4px;flex-shrink:0;padding:2px 7px;border-radius:4px;font-family:var(--ffm);font-size:11px;font-weight:800;letter-spacing:.02em;white-space:nowrap;font-variant-numeric:tabular-nums;}
+#foh .foh-note-item.cue-approaching{background:rgba(245,158,11,.16);border-left:6px solid #f59e0b!important;padding:8px 12px;}
+#foh .cue-approaching .foh-note-time{font-size:13px;}
+#foh .cue-approaching .foh-note-txt{font-size:14px;font-weight:700;color:#fff;}
+#foh .cue-approaching .foh-cue-st{display:inline-flex;background:#f59e0b;color:#1c1300;font-size:12px;}
+#foh .foh-note-item.cue-imminent{background:rgba(239,68,68,.22);border-left:8px solid #ef4444!important;padding:10px 14px;box-shadow:inset 0 0 0 2px rgba(239,68,68,.85);animation:fohCuePulse 1s ease-in-out infinite;}
+#foh .cue-imminent .foh-note-time{font-size:15px;color:#fff!important;}
+#foh .cue-imminent .foh-note-txt{font-size:17px;font-weight:800;color:#fff;}
+#foh .cue-imminent .foh-cue-st{display:inline-flex;background:#ef4444;color:#fff;font-size:14px;}
+#foh .foh-note-item.cue-due{background:#dc2626;border-left:8px solid #fff!important;padding:10px 14px;box-shadow:inset 0 0 0 2px #fff;animation:fohCueFlash .5s steps(1,end) 6;}
+#foh .cue-due .foh-note-time{font-size:15px;color:#fff!important;}
+#foh .cue-due .foh-note-txt{font-size:17px;font-weight:900;color:#fff;}
+#foh .cue-due .foh-cue-st{display:inline-flex;background:#fff;color:#b91c1c;font-size:14px;font-weight:900;}
+#foh .cue-due .foh-note-del{color:rgba(255,255,255,.75);}
+#foh .foh-note-item.cue-past{opacity:.55;}
+#foh .cue-past .foh-note-time{text-decoration:line-through;}
+#foh .cue-past .foh-cue-st{display:inline-flex;padding:0;color:rgba(255,255,255,.6);font-weight:700;}
+@keyframes fohCuePulse{0%,100%{background-color:rgba(239,68,68,.22);box-shadow:inset 0 0 0 2px rgba(239,68,68,.85);}50%{background-color:rgba(239,68,68,.42);box-shadow:inset 0 0 0 2px #fff;}}
+@keyframes fohCueFlash{0%{background-color:#dc2626;}50%{background-color:#7f1d1d;}}
+/* No pulse or flash with reduced motion: a static, even stronger highlight. */
+@media (prefers-reduced-motion:reduce){
+  #foh .foh-note-item.cue-imminent,#foh .foh-note-item.cue-due{animation:none!important;transition:none!important;}
+  #foh .foh-note-item.cue-imminent{background:rgba(239,68,68,.38);box-shadow:inset 0 0 0 3px #fff;}
+}
+#foh .foh-cue-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;}
+#foh .foh-up-hdr-snd{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#foh .foh-snd{padding:4px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(255,255,255,.6);font-family:var(--ff);font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:none;cursor:pointer;}
+#foh .foh-snd:hover{color:#fff;border-color:rgba(255,255,255,.3);}
+#foh .foh-snd[aria-pressed="true"]{color:#fbbf24;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08);}
+@media (pointer:coarse){#foh .foh-snd{min-height:var(--touch);}}
 .foh-add-note{display:flex;align-items:center;gap:5px;margin-top:6px;padding:4px 8px;border-radius:5px;border:1px dashed rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.25);font-family:var(--ff);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;width:auto;}
 .foh-add-note:hover{border-color:rgba(255,230,0,.3);color:rgba(255,230,0,.6);}
 .foh-sr-act{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s;}
@@ -4307,6 +4342,45 @@ function clockOffsetFromSample(cur,t0,t1,serverDateMs){
   if(lo<=0&&0<=hi)return 0;
   return Math.round((lo+hi)/2);
 }
+
+// ── FOH timed notes ("cues"). A note time is a festival wall time
+// ("HH:MM[:SS]") without a date; it belongs to its show, so it lands on the
+// date that puts it closest to the show's [start, end] (inside when it can):
+// 00:30 on a 23:00-01:30 set is the next night, 22:55 the same evening, and
+// 07:30 on a 06:00-08:00 sunrise set stays that morning, where the bare 07:00
+// rule would throw it a day back. With no known start the 07:00 rule on
+// dayISO applies (before 07:00 = next calendar day). Returns ms or NaN.
+const FOH_CUE_WARN_S=60,FOH_CUE_ALERT_S=10,FOH_CUE_NOW_S=15;
+function fohCueAtMs(time,iv,dayISO){
+  const m=/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(String(time||'').trim());
+  if(!m||+m[1]>23||+m[2]>59||+(m[3]||0)>59)return NaN;
+  const hms=`${_p2(+m[1])}:${m[2]}:${m[3]||'00'}`,st=iv?iv.startMs:NaN;
+  if(typeof st!=='number'||isNaN(st)){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dayISO||'')))return NaN;
+    return parseFestivalISO(`${+m[1]*60+(+m[2])<NIGHT_END_MIN?addDaysISO(dayISO,1):dayISO}T${hms}`);
+  }
+  const en=iv.endMs>=st?iv.endMs:st,d0=amsDateStr(st);
+  let best=NaN,bd=Infinity;
+  // Ties go to the later date: 02:00 on an 08:00-20:00 set is as far before
+  // its start as after its end, and the 07:00 rule says the night after.
+  for(const k of[-1,0,1]){
+    const t=parseFestivalISO(`${addDaysISO(d0,k)}T${hms}`);if(isNaN(t))continue;
+    const dist=t<st?st-t:t>en?t-en:0;
+    if(dist<=bd){bd=dist;best=t;}
+  }
+  return best;
+}
+// State of a cue at `now`: upcoming (> WARN s ahead), approaching (<= WARN),
+// imminent (<= ALERT), due (from the moment itself until NOW s after), past.
+// sec = whole seconds still to go (ceil), what the countdown shows.
+function fohCueState(cueMs,now){
+  if(typeof cueMs!=='number'||isNaN(cueMs)||isNaN(now))return{key:'',sec:NaN};
+  const ms=cueMs-now,sec=Math.ceil(ms/1000);
+  if(ms>0)return{key:sec>FOH_CUE_WARN_S?'upcoming':sec>FOH_CUE_ALERT_S?'approaching':'imminent',sec};
+  return{key:-ms<FOH_CUE_NOW_S*1000?'due':'past',sec};
+}
+// "in 0:45" / "in 12:05"
+function fohCueCdText(sec){const s=Math.max(0,Math.ceil(sec||0));return`in ${Math.floor(s/60)}:${_p2(s%60)}`;}
 // ══ PURE TIME MODULE ─ end ════════════════════════════════════════════════
 
 
@@ -6556,8 +6630,10 @@ function fohBoothBadge(booth){
 function fohNotesHTML(showId){
   const notes=(G.fohNotes[showId]||[]);
   if(!notes.length)return'';
-  return`<div class="foh-notes">${notes.map(n=>{const col=vwColor(n.color,'#ffe600');return`<div class="foh-note-item" style="border-left-color:${col}">
-    ${n.time?`<span class="foh-note-time" style="color:${col}">${escH(n.time)}</span>`:''}
+  // Timed notes carry their ids so _fohCueTick can patch the cue state in
+  // place every tick (no rebuild: focus, hover and scroll stay put).
+  return`<div class="foh-notes">${notes.map(n=>{const col=vwColor(n.color,'#ffe600');return`<div class="foh-note-item${n.time?' foh-cue':''}" style="border-left-color:${col}"${n.time?` data-sid="${escH(showId)}" data-nid="${escH(n.id)}"`:''}>
+    ${n.time?`<span class="foh-note-time" style="color:${col}">${escH(n.time)}</span><span class="foh-cue-st"><span class="foh-cue-ic" aria-hidden="true"></span><span class="foh-cue-tx"></span></span>`:''}
     <span class="foh-note-txt">${escH(n.text)}</span>
     <button class="foh-note-del" aria-label="Delete note" title="Delete note" onclick="delFohnNote(${_jsArg(showId)},${_jsArg(n.id)});event.stopPropagation()">×</button>
   </div>`;}).join('')}</div>`;
@@ -6632,7 +6708,10 @@ function renderFOH(){
     rest=kind?vwEmptyHTML(kind,{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!_isPublicView()})
       :`<div class="vw-empty vw-inline" role="status"><div class="vw-empty-sub">No more shows on this stage after ${escH(cur.s.artist)}.</div></div>`;
   }
-  body.innerHTML=liveHTML+`<div class="foh-up-hdr">Schedule</div>`+rest;
+  // The sound toggle only appears where there is something to beep for.
+  const timed=shows.some(s=>((G.fohNotes||{})[s.id]||[]).some(n=>n&&n.time));
+  body.innerHTML=liveHTML+`<div class="foh-up-hdr${timed?' foh-up-hdr-snd':''}"><span>Schedule</span>${timed?_fohSoundBtnHTML():''}</div>`+rest;
+  try{_fohCueTick(now);}catch(e){console.warn('[foh-cue] render:',e);}
 }
 
 // ══ FOH NOTES
@@ -6667,6 +6746,113 @@ function delFohnNote(showId,noteId){
   if(!G.fohNotes[showId])return;
   G.fohNotes[showId]=G.fohNotes[showId].filter(n=>n.id!==noteId);
   save({immediate:true});renderFOH();renderSched();if(document.getElementById('bs').classList.contains('open'))renderBS();
+}
+
+// ══ FOH CUE ALERTS - timed FOH notes count down and stand out as they near.
+// States and thresholds come from fohCueState (time module). The rows are
+// built by renderFOH; this only patches classes and text on them, every tick.
+// The state per note id survives a rebuild, so a re-render never repeats an
+// announcement, a scroll or a beep.
+const FOH_CUE_UI={approaching:['⏱',null],imminent:['⚠',null],due:['▶','NOW'],past:['✓','Done']};
+const _fohCueLast=new Map();               // note id → last state key
+const _fohAnn={polite:{at:0,q:[]},assertive:{at:0,q:[]}};
+let _fohUserAt=0;                          // last scroll / tap / key in the list
+function _fohCueRegions(){
+  const foh=document.getElementById('foh');if(!foh)return;
+  if(!document.getElementById('foh-cue-live')){
+    // Built here, not in the markup: two visually hidden live regions.
+    foh.insertAdjacentHTML('beforeend','<div id="foh-cue-live" class="foh-cue-sr" role="status" aria-live="polite"></div><div id="foh-cue-alert" class="foh-cue-sr" role="alert" aria-live="assertive"></div>');
+    const body=document.getElementById('foh-col-body');
+    if(body)['wheel','touchstart','pointerdown','keydown'].forEach(t=>body.addEventListener(t,()=>{_fohUserAt=Date.now();},{passive:true}));
+  }
+}
+// Rate-limited: at most one message per region every 3 s, later ones are
+// joined into the next. Cleared first so the same words are read again.
+function _fohAnnounce(kind,msg){if(msg)_fohAnn[kind].q.push(msg);}
+function _fohAnnFlush(){
+  for(const kind of['polite','assertive']){
+    const a=_fohAnn[kind],t=Date.now();
+    if(!a.q.length||t-a.at<3000)continue;
+    const el=document.getElementById(kind==='polite'?'foh-cue-live':'foh-cue-alert');if(!el){a.q=[];continue;}
+    const msg=a.q.join('. ');a.q=[];a.at=t;
+    el.textContent='';setTimeout(()=>{el.textContent=msg;},60);
+  }
+}
+// Never pull the list away from someone who is reading, scrolling or typing.
+function _fohUserBusy(){
+  if(Date.now()-_fohUserAt<8000)return true;
+  if(document.getElementById('fohn-ov')?.classList.contains('open'))return true;
+  const ae=document.activeElement;
+  return !!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
+}
+function _fohCueScroll(el){
+  const body=document.getElementById('foh-col-body');if(!body||_fohUserBusy())return;
+  const r=el.getBoundingClientRect(),b=body.getBoundingClientRect();
+  if(r.top>=b.top&&r.bottom<=b.bottom)return;
+  const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try{el.scrollIntoView({block:'nearest',behavior:calm?'auto':'smooth'});}catch(e){console.warn('[foh-cue] scroll:',e);}
+}
+function _fohCueTick(now){
+  const body=document.getElementById('foh-col-body');if(!body)return;
+  _fohCueRegions();
+  const at=now||nowMs();
+  body.querySelectorAll('.foh-cue').forEach(el=>{
+    const sid=el.dataset.sid,nid=el.dataset.nid;
+    const s=(G.shows||[]).find(x=>x.id===sid),n=((G.fohNotes||{})[sid]||[]).find(x=>x.id===nid);
+    if(!s||!n)return;
+    const{key,sec}=fohCueState(fohCueAtMs(n.time,_showIv(s),_showBaseDate(s)||festivalDayStr()),at);
+    const ui=FOH_CUE_UI[key],tx=ui?(ui[1]||fohCueCdText(sec)):'';
+    if(el._cueKey!==key){
+      if(el._cueKey)el.classList.remove('cue-'+el._cueKey);
+      if(key)el.classList.add('cue-'+key);
+      el._cueKey=key;
+      const ic=el.querySelector('.foh-cue-ic');if(ic)ic.textContent=ui?ui[0]:'';
+    }
+    const t=el.querySelector('.foh-cue-tx');if(t&&t.textContent!==tx)t.textContent=tx;
+    const prev=_fohCueLast.get(nid);
+    if(prev===key)return;
+    _fohCueLast.set(nid,key);
+    const what=`${n.text} (${n.time})`;
+    if(key==='approaching'||(key==='imminent'&&prev!=='approaching'))_fohAnnounce('polite',`Cue ${tx}: ${what}`);
+    if(key==='due')_fohAnnounce('assertive',`Cue now: ${what}`);
+    if(key==='imminent'||key==='due')_fohBeep(key);
+    if(key==='approaching'||key==='imminent'||key==='due')_fohCueScroll(el);
+  });
+  _fohAnnFlush();
+}
+
+// Optional beep (per device, default off, localStorage st_foh_sound). Audio
+// can only start from a user gesture: the toggle itself, or the first tap
+// after a reload while the setting is on. Until then it stays silent.
+let _fohAudio=null;
+function _fohSoundOn(){try{return localStorage.getItem('st_foh_sound')==='1';}catch(e){return false;}}
+function _fohSoundBtnHTML(){const on=_fohSoundOn();return`<button class="foh-snd" type="button" aria-pressed="${on}" onclick="toggleFohSound()">${on?'🔔 Sound alert: On':'🔕 Sound alert: Off'}</button>`;}
+function _fohAudioCtx(){
+  if(!_fohAudio){
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;
+    try{_fohAudio=new AC();}catch(e){console.warn('[foh-cue] audio:',e);return null;}
+  }
+  if(_fohAudio.state==='suspended')_fohAudio.resume().catch(e=>console.warn('[foh-cue] audio resume:',e));
+  return _fohAudio;
+}
+function toggleFohSound(){
+  const on=!_fohSoundOn();
+  try{on?localStorage.setItem('st_foh_sound','1'):localStorage.removeItem('st_foh_sound');}catch(e){console.warn('[foh-cue] sound setting:',e);}
+  document.querySelectorAll('#foh .foh-snd').forEach(b=>{b.setAttribute('aria-pressed',String(on));b.textContent=on?'🔔 Sound alert: On':'🔕 Sound alert: Off';});
+  if(on&&_fohAudioCtx())_fohBeep('test');
+}
+document.addEventListener('pointerdown',()=>{if(!_fohAudio&&_fohSoundOn()&&document.getElementById('foh')?.classList.contains('open'))_fohAudioCtx();},true);
+function _fohBeep(kind){
+  if(!_fohAudio||!_fohSoundOn())return;
+  try{
+    const ac=_fohAudio,t0=ac.currentTime,n=kind==='due'?2:1;
+    for(let i=0;i<n;i++){
+      const o=ac.createOscillator(),g=ac.createGain(),t=t0+i*0.22;
+      o.type='sine';o.frequency.value=kind==='due'?1046:880;
+      g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+0.16);
+      o.connect(g).connect(ac.destination);o.start(t);o.stop(t+0.18);
+    }
+  }catch(e){console.warn('[foh-cue] beep:',e);}
 }
 
 // ══ BACKSTAGE SCREEN
@@ -7630,6 +7816,8 @@ function tickFOH(){
     cd.textContent=s2cdH(Math.ceil(secUntil));
     cd.style.color=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
   });
+  // Timed notes: state classes + countdown text, patched in place.
+  try{_fohCueTick(nowMs);}catch(e){console.warn('[foh-cue] tick:',e);}
 }
 
 // ══ RENDER ALL
