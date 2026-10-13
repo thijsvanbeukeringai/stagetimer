@@ -3018,11 +3018,13 @@ async function _pushOnce(id){
     return;
   }
   let out=r.data;
-  // TODO(save_project RPC, BOUWPLAN §4.5 item 5): once the `version` column and
-  // save_project(p_id, p_expected_version, p_data) exist, send `out` through
-  // it with the version read above, and on a version conflict loop back to the
-  // GET + merge. That makes this read-merge-write atomic. Do not call it before
-  // the migration is applied.
+  // TODO(save_project, migration 20261013110000_project_versioning, runbook
+  // step 13): once applied, select `version` with the row above and send `out`
+  // via _rpc('save_project',{p_id,p_expected_version,p_data}). On
+  // {conflict:true} use the returned data as the new S, merge again and retry;
+  // on {error:'would_wipe'} handle like r.refused. That makes this
+  // read-merge-write atomic (and `version` can replace _rev for echoes).
+  // Do not call it before the migration is applied.
   if(_sameContent(out,S,true)){
     out=S;   // nothing new for the server (e.g. only this device's selection changed)
   }else{
