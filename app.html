@@ -2761,6 +2761,8 @@ function _errStatus(e){if(!e)return 0;if(e.status)return +e.status;const m=/HTTP
 function humanError(e,action){
   if(_isQuota(e)||/quota/i.test(String((e&&e.message)||'')))return'This device ran out of storage space. Changes still go to the server, but the offline copy on this device is incomplete.';
   if(typeof navigator!=='undefined'&&navigator.onLine===false)return'You are offline. Changes stay on this device and are saved when the connection is back.';
+  const pe=_planError(e);
+  if(pe)return pe.message||(pe.kind==='subscription_required'?'This workspace has no active subscription or event pass.':'Your plan does not include more live stages.');
   return _friendlyError(e,action||'Saving');
 }
 
@@ -2958,7 +2960,11 @@ async function _sbFetch(path,init,ms,anon){
     const res=await fetch(`${SUPA_URL}/rest/v1/${path}`,{...(init||{}),signal:ctrl.signal,
       headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${anon?SUPA_KEY:_jwt()}`,'Accept':'application/json',...((init&&init.headers)||{})}});
     const txt=await res.text().catch(()=>'');
-    if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt.slice(0,300):''));e.status=res.status;throw e;}
+    if(!res.ok){
+      const e=new Error('HTTP '+res.status+(txt?' - '+txt.slice(0,300):''));e.status=res.status;
+      try{e.body=txt?JSON.parse(txt):null;}catch(_){e.body=null;}   // PostgREST error: {code,message,details,hint}
+      throw e;
+    }
     try{return txt?JSON.parse(txt):null;}catch(_){return null;}
   }catch(e){
     if(e&&e.name==='AbortError'){const t=new Error('timeout');t.name='AbortError';throw t;}
@@ -2990,6 +2996,54 @@ async function _patchProjectData(id,data,anon){
   if(!Array.isArray(rows)||!rows.length){const e=new Error('No project row was updated');e.status=(!anon&&_jwt()===SUPA_KEY)?401:404;throw e;}
 }
 
+// ── Server plan enforcement (migration 20261013130000, 'enforce' mode).
+// A write that adds stages beyond the workspace's plan, or a project insert
+// without an active subscription / pass, is refused with SQLSTATE PT402:
+// HTTP 402 (HTTP 400 on a PostgREST without PT support) and the body
+// {code:'PT402', message, details:'stage_limit_exceeded'|'subscription_required',
+//  hint:'{"limit":2,"stages_before":2,"stages_after":3,...}'}.
+// Returns {kind, message, limit} or null for any other error.
+function _planError(e){
+  const b=e&&e.body;
+  if(!_isObj(b)||(b.code!=='PT402'&&_errStatus(e)!==402))return null;
+  const kind=b.details;
+  if(kind!=='stage_limit_exceeded'&&kind!=='subscription_required')return null;
+  let hint=null;try{hint=typeof b.hint==='string'?JSON.parse(b.hint):b.hint;}catch(_){}
+  const lim=hint&&hint.limit!=null?Number(hint.limit):NaN;
+  return{kind,message:typeof b.message==='string'?b.message:'',limit:Number.isFinite(lim)?lim:null};
+}
+// The server refused `out` because it has more stages than the plan allows.
+// It only checks growth: a save may keep the stage count the server already
+// has (S) or stay within the limit. Remove the newest stages that are not on
+// the server until the count fits, from the local copy (shows stay, exactly
+// like delStage), register them as intentional removals so the merge cannot
+// bring them back, and tell the operator. Returns false when there is
+// nothing of ours to remove (then the error stands).
+function _dropRefusedStages(id,S,out,pe){
+  const proj=APP.projects.find(p=>p.id===id);
+  if(!proj||!_isObj(proj.data)||!Array.isArray(proj.data.stages))return false;
+  const onServer=new Set((Array.isArray(S.stages)?S.stages:[]).map(x=>x&&x.id));
+  const sent=Array.isArray(out.stages)?out.stages:[];
+  const added=sent.filter(x=>x&&!onServer.has(x.id));
+  const allowed=pe.limit==null?onServer.size:Math.max(onServer.size,pe.limit);
+  const drop=added.slice(Math.max(0,added.length-Math.max(0,sent.length-allowed)));
+  if(!drop.length)return false;
+  const ids=new Set(drop.map(x=>x.id));
+  _markIntentionalRemoval([],{stages:[...ids]});
+  proj.data.stages=proj.data.stages.filter(x=>!(x&&ids.has(x.id)));
+  if(ids.has(proj.data.activeStage))proj.data.activeStage=proj.data.stages[0]?.id||null;
+  _editSeq[id]=(_editSeq[id]||0)+1;
+  _pendingPush[id]=true;
+  _cacheAPP();
+  if(id===APP.activeProjectId){loadG();_rerenderActive();}
+  const names=drop.map(x=>'"'+(x.name||'Stage')+'"').join(', ');
+  const msg=(pe.message||'Your plan does not include more live stages.')
+    +` ${drop.length===1?'Stage':'Stages'} ${names} ${drop.length===1?'was':'were'} removed again so your other changes can be saved. Upgrade the plan to add ${drop.length===1?'it':'them'}.`;
+  console.warn('[_pushProject] plan limit: removed stages the server refused:',[...ids],pe);
+  if(typeof _opNotice==='function')_opNotice(msg,{key:'plan-stage-limit',sticky:true});
+  return true;
+}
+
 function save(opts){
   // Share-link screens never write: their blob may be stripped per mode (no
   // photos / notes / crew), saving it would wipe those. Check-in has its own path.
@@ -3008,7 +3062,21 @@ function save(opts){
   _projSync[id]=setTimeout(()=>_pushProject(id),300);
 }
 
-// Queue entry point (also called directly by the logo upload code).
+// save() for any project, also one that is not open (logo upload / removal
+// from the dashboard): same cache, same queue, same bookkeeping.
+function _saveProjectById(id){
+  if(window.PUBLIC_MODE||!id)return;
+  if(id===APP.activeProjectId)return save();
+  _cacheAPP();
+  if(!APP.projects.some(p=>p.id===id))return;
+  _editSeq[id]=(_editSeq[id]||0)+1;
+  _pendingPush[id]=true;
+  _refreshSaveState();
+  clearTimeout(_projSync[id]);
+  _projSync[id]=setTimeout(()=>_pushProject(id),300);
+}
+
+// Queue entry point.
 function _pushProject(id){
   if(!id||window.PUBLIC_MODE)return;
   const st=_syncSt(id);
@@ -3071,7 +3139,15 @@ async function _pushOnce(id){
   }else{
     out._rev=_newRev();
     _sentRevs.add(out._rev);if(_sentRevs.size>50)_sentRevs.delete(_sentRevs.values().next().value);
-    await _withAuthRetry(()=>_patchProjectData(id,out));
+    try{await _withAuthRetry(()=>_patchProjectData(id,out));}
+    catch(e){
+      // Plan limit: drop the stage(s) the server refused and return without
+      // an ack. _pendingPush stays set, so _pushProject saves again at once
+      // (merged as usual) - the tab never gets stuck on the refused stage.
+      const pe=_planError(e);
+      if(pe&&pe.kind==='stage_limit_exceeded'&&_dropRefusedStages(id,S,out,pe))return;
+      throw e;
+    }
     st.ackRev=out._rev;
   }
   st.ackSeq++;
@@ -7864,6 +7940,15 @@ async function createProject(){
       const body=await res.text().catch(()=>'');
       console.error('[createProject] HTTP',res.status,body);
       const e=new Error('HTTP '+res.status);e.status=res.status;
+      try{e.body=JSON.parse(body);}catch(_){e.body=null;}
+      // Server plan check (PT402): the workspace cannot create projects.
+      const pe=_planError(e);
+      if(pe&&pe.kind==='subscription_required'){
+        closeProjModal();
+        showLimitModal({ok:false,action:'subscribe',company:APP.companies.find(c=>c.id===companyId)||null,
+          reason:(pe.message||'This workspace has no active subscription or event pass.')+' The project was not created.'});
+        return;
+      }
       alert(_friendlyError(e,'Creating the project'));
       return;
     }
@@ -9542,11 +9627,10 @@ function handleLogoUpload(event){
     proj.data.logo=logo;
     // If this is the active project, update G too
     if(tgt===APP.activeProjectId)G.logo=logo;
-    // Persist + push THE SPECIFIC project (not just the active one)
-    localStorage.setItem(AKEY,JSON.stringify(APP));
-    _pendingPush[tgt]=true;
-    clearTimeout(_projSync[tgt]);
-    _projSync[tgt]=setTimeout(()=>_pushProject(tgt),300);
+    // Persist + push THE SPECIFIC project (not just the active one), through
+    // the save queue: quota-safe cache, and an edit sequence so a push that
+    // is already out cannot mark the logo as saved.
+    _saveProjectById(tgt);
     refreshLogo();
     renderDash();
   };
@@ -9560,10 +9644,7 @@ function removeProjectLogo(projId){
   if(proj.data)proj.data.logo=null;
   if(projId===APP.activeProjectId)G.logo=null;
   // Persist + push THE SPECIFIC project (not just the active one)
-  localStorage.setItem(AKEY,JSON.stringify(APP));
-  _pendingPush[projId]=true;
-  clearTimeout(_projSync[projId]);
-  _projSync[projId]=setTimeout(()=>_pushProject(projId),300);
+  _saveProjectById(projId);
   refreshLogo();
   renderDash();
 }

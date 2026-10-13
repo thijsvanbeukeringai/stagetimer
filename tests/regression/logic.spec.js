@@ -157,6 +157,46 @@ test('timer panel photo: src only assigned when it changes', async ({ browser })
   await context.close();
 });
 
+test.describe('server plan enforcement (PT402)', () => {
+  test('project insert refused with subscription_required: clear message, nothing added', async ({ browser }) => {
+    const { page, context, st } = await openOperator(browser, {
+      at: '2026-06-19T20:00:00+02:00',
+      handle: async (route, req, u, st, json) => {
+        if (!(u.startsWith('https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/projects') && req.method() === 'POST')) return false;
+        await json(route, 402, { code: 'PT402', details: 'subscription_required', hint: '{"op": "INSERT"}', message: 'This workspace has no active subscription or event pass.' });
+        return true;
+      },
+    });
+    await page.evaluate(() => { goToDash?.(); openProjModal(); document.getElementById('pm-name').value = 'New fest'; });
+    await page.evaluate(() => createProject());
+    await expect(page.locator('#limit-modal-ov')).toHaveClass(/open/);
+    await expect(page.locator('#limit-modal-msg')).toHaveText('This workspace has no active subscription or event pass. The project was not created.');
+    expect(await page.evaluate(() => APP.projects.length)).toBe(1);
+    expect(st.dialogs || []).toEqual([]);
+    await context.close();
+  });
+  test('stage over the plan: removed again, notice on the control screen, saves continue', async ({ browser }) => {
+    const { page, context, st } = await openOperator(browser, {
+      at: '2026-06-19T20:00:00+02:00',
+      handle: async (route, req, u, st, json) => {
+        if (!(u.includes('/rest/v1/projects?id=eq.P1') && req.method() === 'PATCH')) return false;
+        const body = JSON.parse(req.postData());
+        if (body.data.stages.length > 1) { await json(route, 402, { code: 'PT402', details: 'stage_limit_exceeded', hint: '{"limit": 1}', message: 'Your plan includes 1 live stage(s). Remove a stage or upgrade to add more.' }); return true; }
+        return false;
+      },
+    });
+    await page.evaluate(() => { G.stages.push({ id: 's9', name: 'Club' }); G.shows[0].artist = 'Alpha!'; save(); });
+    await page.clock.runFor(2000);
+    expect(st.row.data.stages.map(s => s.id)).toEqual(['s1']);
+    expect(st.row.data.shows[0].artist).toBe('Alpha!');
+    expect(await page.evaluate(() => [G.stages.length, getSaveState().state])).toEqual([1, 'saved']);
+    await expect(page.locator('#op-notices')).toContainText('Your plan includes 1 live stage(s)');
+    await expect(page.locator('#op-notices')).toContainText('"Club"');
+    expect(st.errors).toEqual([]);
+    await context.close();
+  });
+});
+
 test.describe('crew pushes via send-push', () => {
   const data = {
     memberIds: ['u1', 'u2'],
