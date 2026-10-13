@@ -76,6 +76,12 @@ backend.serverNow = date                     // Date header for the Wall's serve
 backend.updateProject(id, (data) => { ... }, { broadcast: true })  // edit as "another device" + push realtime UPDATE
 backend.realtime.push({ table: 'projects', type: 'UPDATE', record, old_record })
 backend.realtime.subscriberCount('projects')
+backend.realtime.presenceOf('st-proj-proj-fest')                 // tracked presence metas [{key, role, stageId, ...}]
+backend.realtime.broadcastsOf('cue-ack')                         // client broadcasts {topic, event, payload, via}
+backend.realtime.sendBroadcast('st-proj-proj-fest', 'cue-ack', {...})  // inject a broadcast as "someone else"
+backend.realtime.restBroadcasts                                  // supabase-js REST fallback sends (should stay empty)
+backend.realtimeDown = true                                      // every realtime websocket is closed on connect
+await backend.attach(await browser.newContext({...}))            // a second context (e.g. an anonymous booth) on the same backend
 backend.onesignal                            // requests that would have gone to OneSignal
 ```
 Fake PostgREST supports `select` (column lists, aliases), `eq/neq/in/is/gt/gte/lt/lte/like/ilike/not.`, `order`, `limit`, `offset`, `Prefer: return=representation|count=exact|resolution=merge-duplicates`, single-object `Accept`, and returns 42703 / PGRST204 for unknown columns.
