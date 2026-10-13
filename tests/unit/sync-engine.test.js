@@ -42,7 +42,9 @@ function makeEnv(server,opts={}){
       return resp(200,JSON.stringify([{...server.row}]));
     }
     if(m==='PATCH'){
-      const body=JSON.parse(init.body);server.row.data=body.data;server.writes.push(JSON.parse(init.body));
+      const body=JSON.parse(init.body);
+      const refused=server.guard&&server.guard(body.data,server.row.data);if(refused)return resp(refused.status,JSON.stringify(refused.body));
+      server.row.data=body.data;server.writes.push(JSON.parse(init.body));
       server.onWrite&&server.onWrite(body);
       return resp(200,JSON.stringify([{id:server.row.id}]));
     }
@@ -62,6 +64,7 @@ function makeEnv(server,opts={}){
     renderAll:()=>{renders.all++;},refreshLogo:()=>{},renderFOH(){},renderBS(){},renderTL(){},renderCI(){},renderWV(){},renderDash(){},renderAdmin(){},renderOV(){},renderSV(){},
     CURRENT_USER:{id:'u1',companyId:'co1',role:'operator'},isAdmin:()=>false,PUBLIC_PID:opts.publicMode?'p1':null,PUBLIC_SID:null,PUBLIC_MODE:opts.publicMode||null,
     _refreshAuthToken:opts.refresh||undefined,renderSched(){},alert:m=>{server.alerts=(server.alerts||[]).concat([m]);},
+    _opNotice:m=>{server.notices=(server.notices||[]).concat([m]);},
     _rpc:async(fn,args)=>{server.rpcCalls=(server.rpcCalls||0)+1;if(!server.rpcExists){const e=new Error('HTTP 404 - {"code":"PGRST202","message":"Could not find the function public.set_show_arrived"}');e.status=404;throw e;}
       const t=server.row.data.shows.find(x=>x.id===args.p_show_id);t.arrived=args.p_arrived;t.arrivedAt=args.p_arrived_at;return JSON.parse(JSON.stringify(server.row.data));},AbortController,URL,JSON,Promise,Map,Set,Date,Math,console:opts.verbose?console:{log(){},warn(){},error(){}},
   };
@@ -69,7 +72,7 @@ function makeEnv(server,opts={}){
   const fn=new Function(...names,region+`
     return {get APP(){return APP},set APP(v){APP=v},get G(){return G},set G(v){G=v},
       loadAPPCache,loadAPPRemote,loadG,save,setupRealtime,_pendingPush,_sync,_base,_markIntentionalRemoval,
-      getSaveState,_selChanged,_whenSaved,_cacheAPP,humanError,ciToggleArrived};`);
+      getSaveState,_selChanged,_whenSaved,_cacheAPP,humanError,ciToggleArrived,_saveProjectById,_intentional};`);
   const app=fn(...names.map(k=>g[k]));
   return{app,g,dot,log,store,fire:(t)=>(listeners[t]||[]).forEach(f=>f()),rt:p=>rtHandler&&rtHandler(p),rtStatus:s=>rtStatus&&rtStatus(s),renders};
 }
@@ -244,6 +247,52 @@ await T('operator check-in: merged per field, taps blocked until saved',async()=
   sv.row.data.shows[0].note='set elsewhere';
   e.app.ciToggleArrived('a');e.app.ciToggleArrived('a');await settle(e);
   assert.equal(sv.row.data.shows[0].arrived,true);assert.equal(sv.row.data.shows[0].note,'set elsewhere');
+});
+// ── Plan enforcement (PT402) mocks: the server trigger refuses a stage-count
+// INCREASE beyond `limit` (migration 20261013130000 in 'enforce' mode).
+const planGuard=(limit,status=402)=>(next,cur)=>{
+  const a=(next.stages||[]).length,b=(cur.stages||[]).length;
+  if(a>b&&a>limit)return{status,body:{code:'PT402',details:'stage_limit_exceeded',
+    message:`Your plan includes ${limit} live stage(s). Remove a stage or upgrade to add more.`,
+    hint:JSON.stringify({op:'UPDATE',limit,stages_before:b,stages_after:a})}};
+  return null;
+};
+for(const status of [402,400])await T('plan limit (HTTP '+status+' PT402): refused stage removed locally, other edits saved, operator told',async()=>{
+  const sv=newServer();sv.guard=planGuard(1,status);const e=await boot(sv);
+  e.app.G.stages.push({id:'st2',name:'Club'});e.app.G.activeStage='st2';
+  e.app.G.shows[0].artist='timing fix';e.app.save();await settle(e,800);
+  assert.deepEqual(sv.row.data.stages.map(s=>s.id),['st1'],'server never got the extra stage');
+  assert.equal(sv.row.data.shows[0].artist,'timing fix','the other edit was saved');
+  assert.deepEqual(e.app.G.stages.map(s=>s.id),['st1'],'removed locally');assert.equal(e.app.G.activeStage,'st1');
+  assert(e.app._intentional.stages.has('st2'),'marked as intentional removal');
+  assert.equal(e.app._pendingPush.p1,false);assert.equal(e.app.getSaveState().state,'saved');
+  assert.equal(sv.notices.length,1);assert(/includes 1 live stage/.test(sv.notices[0])&&/"Club"/.test(sv.notices[0]),sv.notices[0]);
+  // The tab is not stuck: the next edit saves normally.
+  e.app.G.shows[1].artist='later';e.app.save();await settle(e);assert.equal(sv.row.data.shows[1].artist,'later');
+  const cached=JSON.parse(e.store.get('st_app_v1'));assert.equal(cached.projects[0].data.stages.length,1,'cache follows');
+});
+await T('plan limit 2: only the stage over the limit goes, newest first',async()=>{
+  const sv=newServer();sv.guard=planGuard(2);const e=await boot(sv);
+  e.app.G.stages.push({id:'st2',name:'Club'},{id:'st3',name:'Tent'});e.app.save();await settle(e,800);
+  assert.deepEqual(sv.row.data.stages.map(s=>s.id),['st1','st2']);assert.deepEqual(e.app.G.stages.map(s=>s.id),['st1','st2']);
+  assert(/"Tent"/.test(sv.notices[0])&&!/"Club"/.test(sv.notices[0]));
+});
+await T('a 402 that is not a plan refusal keeps the normal retry path',async()=>{
+  const sv=newServer();const e=await boot(sv);sv.failNext.push(null,{status:402,body:'{"message":"Payment Required"}'});
+  e.app.G.stages.push({id:'st2',name:'Club'});e.app.save({immediate:true});await sleep(15);
+  assert.equal(e.app.G.stages.length,2,'nothing removed');assert.equal(e.app._pendingPush.p1,true);assert.equal(e.app.getSaveState().state,'unsaved');
+  assert(!sv.notices);await settle(e,1500);assert.equal(sv.row.data.stages.length,2);
+});
+await T('logo on a project that is not open: queued save, quota-safe cache, not lost to a push in flight',async()=>{
+  const sv=newServer();const e=await boot(sv,{quota:6000});sv.delay=20;
+  e.app.G.shows[0].artist='in flight';e.app.save({immediate:true});await sleep(5); // a push is out
+  e.app.APP.activeProjectId=null;                         // dashboard: no project open
+  e.app.APP.projects[0].data.logo='data:image/png;base64,'+'L'.repeat(8000);
+  e.app._saveProjectById('p1');                           // must not throw on the full cache
+  await settle(e,1500);
+  assert.equal(sv.row.data.shows[0].artist,'in flight');assert(sv.row.data.logo&&sv.row.data.logo.length>8000,'logo reached the server');
+  assert.equal(e.app._pendingPush.p1,false);
+  assert(JSON.parse(e.store.get('st_app_v1')).projects[0].data.logo.startsWith('data:image/gif'),'stripped cache instead of a throw');
 });
 console.log(n,'e2e tests passed');process.exit(0);
 })().catch(e=>{console.error(e);process.exit(1);});

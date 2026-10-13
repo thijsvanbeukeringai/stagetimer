@@ -208,23 +208,28 @@ Zie `supabase/functions/README.md`:
 2. Zet de secrets.
 3. Deploy de functie.
 4. Test.
-5. Zet de app-vlag om en haal `OS_REST_KEY` uit `app.html`.
+
+**De app is al omgezet** (branch `fix/logic-batch-2026-10-13`): `OS_REST_KEY` staat niet meer in `app.html` en `scheduleProjectPushes` stuurt alleen nog via `functions/v1/send-push`, met het JWT van de gebruiker. Er is geen vlag meer. Gevolg:
+
+- **Tot `send-push` gedeployed is en de key geroteerd is, worden er geen crew-pushmeldingen verstuurd.** De functie antwoordt dan 404. De operator ziet één keer de melding "Push is not configured yet" en de app probeert het die sessie niet opnieuw.
+- Zodra stap 1 tot en met 4 gedaan zijn, werkt het versturen weer, zonder nieuwe app-release.
+- Tegelijk is de oude bug gerepareerd: de app las `s.endTime` en `show.stageId` (bestaan niet) en rekende vanaf middernacht van het toestel. Nu gebruikt hij het echte eindtijdstip van de show (`endsAt`, of datum + `end`, ook over middernacht) in festivaltijd, en `show.stage`. Afgelaste shows krijgen geen melding.
 
 ## App-wijzigingen die bij deze migraties horen
 
 | Waarom | Wat in `app.html` | Uiterlijk vóór |
 |---|---|---|
 | Token verloopt na een uur | 1.1h: `onAuthStateChange` → `saveAuthSession`, en bij een 401 verversen en opnieuw proberen | stap 10 |
-| Alleen `UPDATE(name)` op app_users | `changeUserRole` → `_rpc('admin_set_user_role',{p_user_id:id,p_role:newRole})` | stap 10 |
-| Detach via een RPC | `delCompany` → `_rpc('admin_delete_company',{p_company_id:id})`; de RPC is alleen voor super_admin, net als de bestaande delete-policy | stap 10 |
-| Companies hernoemen alleen door company_admin en admins | operators krijgen het naamveld in de workspace-instellingen alleen-lezen te zien, of een duidelijke fout | stap 10 |
+| Alleen `UPDATE(name)` op app_users | **gedaan:** `changeUserRole` → `_rpc('admin_set_user_role',{p_user_id:id,p_role:newRole})`; alleen als de RPC nog niet bestaat (404/PGRST202) de oude directe update. Een company_admin mag, net als nu in de app, binnen de eigen workspace rollen wisselen tussen operator en company_admin (afgedwongen door de guard-trigger); admin/super_admin blijven voorbehouden aan admins | stap 10 |
+| Detach via een RPC | **gedaan:** `delCompany` → `_rpc('admin_delete_company',{p_company_id:id})`, met dezelfde terugval; de RPC is alleen voor super_admin, net als de bestaande delete-policy | stap 10 |
+| Companies hernoemen alleen door company_admin en admins | **gedaan:** operators zien het naamveld in de workspace-instellingen alleen-lezen, zonder opslaan-knop | stap 10 |
 | Gestripte deellinkdata | `save()` en `_pushProject` doen niets in `PUBLIC_MODE`; daarna `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de 7 polls | stap 11 |
 | Abonnement in trial | `_effectiveStageLimit`: `trialing` gelijk aan `active` (B2); eventueel in `canCreateProject` ook pass en `past_due` gelijktrekken met de server | stap 12 |
-| Plan-limiet van de server | HTTP 402: `details` is `stage_limit_exceeded` of `subscription_required`; toon `message` en verwijder bij een stage-limiet de afgewezen stage lokaal | stap 12 |
+| Plan-limiet van de server | **gedaan:** HTTP 402 (of 400) met `PT402`: bij `stage_limit_exceeded` haalt de app de nieuwste stage(s) die de server nog niet had lokaal weg (tot het aantal past), markeert ze als bewust verwijderd, toont `message` aan de operator en slaat direct opnieuw op. Bij `subscription_required` op een nieuw project legt het limietvenster uit dat het project niet is aangemaakt | stap 12 |
 | Conflictdetectie | `save_project` en `patch_show` (zie de kop van het versioning-bestand); echo's met `version <=` de eigen versie negeren | stap 13 |
 | Soft delete | `soft_delete_project`; filter `&deleted_at=is.null` in `_restGet('projects')` en de peek; in realtime een UPDATE met `deleted_at` behandelen als DELETE | stap 13 |
 | Goedkoop pollen (§4.3) | publieke views pollen `get_shared_project_version` en halen het project alleen op als de versie verandert | optioneel |
-| Push | `send-push` achter een vlag; `OS_REST_KEY` verwijderen; de `endTime`/`stageId`-bug in `scheduleProjectPushes` repareren | stap 15 |
+| Push | **gedaan:** alleen nog `send-push`; `OS_REST_KEY` verwijderd; de `endTime`/`stageId`-bug in `scheduleProjectPushes` gerepareerd. Pushen werkt weer zodra stap 15 gedaan is | stap 15 |
 
 ## Niet verifieerbaar zonder het echte schema
 

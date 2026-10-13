@@ -116,7 +116,7 @@ test.describe('desktop 1440x900', () => {
   test('schedule cards: status in words, actions without hover', async ({ page, st }) => {
     await open(st);
     const live = page.locator('#slist .scard', { hasText: "DJ O'Neil" }).first();
-    await expect(live.locator('.sc-status')).toHaveText('Now');
+    await expect(live.locator('.sc-status')).toHaveText('Live');   // VW_STATUS vocabulary
     await expect(live.locator('.scard-cd')).toContainText('ends in');
     const edit = live.getByRole('button', { name: /^Edit / });
     expect(Number(await edit.evaluate((b) => getComputedStyle(b.parentElement).opacity))).toBeGreaterThan(0.5);
