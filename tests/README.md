@@ -14,6 +14,8 @@ npx playwright test tests/unit --project=chromium   # any subset
 ```
 
 Env: `ST_PORT` (default 5599; give each parallel worktree its own port, a busy port fails loudly instead of testing another tree), `ST_BROWSERS=chromium` (skip webkit), `BASE_ROOT` (serve another directory, used by the baseline script).
+CI: `.github/workflows/tests.yml` runs `npm run test:node` and `npx playwright test` (all projects, chromium + webkit, incl. booth) on every push and pull request, on `macos-latest` because the booth baseline is `-darwin`. It deploys nothing and needs no secrets. On failure the `playwright-report` artifact holds the HTML report and traces. A booth diff that only shows up on CI can be a runner font/rasteriser difference: investigate, never regenerate the baseline to make it pass.
+
 If the shared browser cache is locked by another install, put browsers in `~/Library/Caches/ms-playwright-st` (`PLAYWRIGHT_BROWSERS_PATH=~/Library/Caches/ms-playwright-st npx playwright install chromium webkit`); `playwright.config.js` picks that up automatically.
 
 ## Layout

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Algemene voorwaarden · Stagetimer</title>
+<meta name="description" content="Algemene voorwaarden van Stagetimer (concept).">
+<!-- CONCEPT: niet laten indexeren tot een jurist de tekst heeft gecontroleerd. -->
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#09090B">
+<link rel="canonical" href="https://stagetimer.nl/voorwaarden.html">
+<link rel="icon" type="image/svg+xml" href="/app-icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<!-- Self-hosted fonts, same as index.html -->
+<link href="/fonts/fonts.css" rel="stylesheet">
+<style>
+/* Same design tokens as index.html (light article on the dark brand frame). */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#FAFAFA;--bg-soft:#F4F4F5;--bg-dark:#09090B;
+  --border:rgba(9,9,11,.08);--border-strong:rgba(9,9,11,.16);--border-dark:rgba(255,255,255,.08);
+  --ink:#09090B;--ink-soft:#3F3F46;--ink-mute:#71717A;--ink-faint:#A1A1AA;
+  --on-dark:#FAFAFA;--on-dark-soft:rgba(250,250,250,.7);--on-dark-mute:rgba(250,250,250,.45);--on-dark-faint:rgba(250,250,250,.22);
+  --accent:#2563EB;--warn:#F59E0B;
+  --ff:'Geist',-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;
+  --ffm:'Geist Mono','SF Mono',ui-monospace,monospace;
+}
+html{-webkit-text-size-adjust:100%;}
+body{background:var(--bg);color:var(--ink);font-family:var(--ff);font-size:16px;line-height:1.6;
+  font-feature-settings:'ss01','cv11';-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden;}
+::selection{background:var(--accent);color:#fff;}
+a{color:var(--accent);}
+.lg-nav{background:var(--bg-dark);padding:16px 32px;border-bottom:1px solid var(--border-dark);display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.lg-logo{display:inline-flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid var(--border-dark);}
+.lg-logo img:first-child{height:28px;width:28px;border-radius:6px;display:block;}
+.lg-logo img:last-child{height:18px;width:auto;display:block;filter:brightness(0) invert(1);}
+.lg-back{font-size:13px;font-weight:600;color:var(--on-dark-soft);text-decoration:none;}
+.lg-back:hover{color:var(--on-dark);}
+.lg-head{background:var(--bg-dark);color:var(--on-dark);padding:56px 32px 64px;}
+.lg-head-in,.lg-main{max-width:760px;margin:0 auto;}
+.lg-label{font-family:var(--ffm);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--on-dark-mute);margin-bottom:14px;}
+h1{font-size:clamp(36px,6vw,60px);font-weight:900;letter-spacing:-.035em;line-height:1;}
+.lg-meta{margin-top:16px;font-family:var(--ffm);font-size:12px;color:var(--on-dark-mute);}
+.lg-draft{margin:0 auto;max-width:760px;transform:translateY(-28px);background:#FFFBEB;border:1px solid var(--warn);border-radius:12px;padding:16px 20px;color:#78350F;font-size:14.5px;}
+.lg-draft strong{display:block;font-family:var(--ffm);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;}
+.lg-main{padding:8px 32px 96px;}
+.lg-main h2{font-size:clamp(22px,2.6vw,28px);font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:44px 0 12px;}
+.lg-main h3{font-size:17px;font-weight:700;margin:24px 0 8px;}
+.lg-main p,.lg-main li{color:var(--ink-soft);}
+.lg-main p{margin-bottom:12px;}
+.lg-main ul{margin:0 0 12px 22px;}
+.lg-main li{margin-bottom:6px;}
+.lg-main code{font-family:var(--ffm);font-size:.88em;background:var(--bg-soft);border:1px solid var(--border);border-radius:5px;padding:1px 5px;word-break:break-all;}
+.ph{background:#FEF3C7;color:#78350F;border-radius:4px;padding:0 4px;font-family:var(--ffm);font-size:.9em;-webkit-box-decoration-break:clone;box-decoration-break:clone;overflow-wrap:anywhere;}
+.lg-table{width:100%;border-collapse:collapse;margin:8px 0 16px;font-size:14.5px;}
+.lg-table th,.lg-table td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--border);}
+.lg-table th{font-family:var(--ffm);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute);border-bottom-color:var(--border-strong);}
+.lg-table td{color:var(--ink-soft);}
+.lg-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+footer{background:var(--bg-dark);color:var(--on-dark-faint);padding:28px 32px;font-family:var(--ffm);font-size:11px;letter-spacing:.06em;text-transform:uppercase;}
+.lg-foot{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;}
+footer a{color:var(--on-dark-soft);text-decoration:none;}
+footer a:hover{color:var(--on-dark);}
+@media (max-width:720px){
+  .lg-nav{padding:14px 16px;}
+  .lg-head{padding:40px 16px 56px;}
+  .lg-draft{margin:0 16px;}
+  .lg-main{padding:8px 16px 72px;}
+  footer{padding:24px 16px;}
+  /* Stack table rows so nothing scrolls sideways on a phone. */
+  .lg-table thead{display:none;}
+  .lg-table,.lg-table tbody,.lg-table tr,.lg-table td{display:block;width:100%;}
+  .lg-table tr{border-bottom:1px solid var(--border-strong);padding:8px 0;}
+  .lg-table td{border:none;padding:4px 0;}
+  .lg-table td[data-label]::before{content:attr(data-label);display:block;font-family:var(--ffm);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute);}
+}
+</style>
+</head>
+<body>
+
+<header class="lg-nav">
+  <a class="lg-logo" href="/" aria-label="Stagetimer home">
+    <img src="/app-icon.svg" alt="">
+    <img src="/stagetimer-wordmark.png" alt="Stagetimer">
+  </a>
+  <a class="lg-back" href="/">Terug naar stagetimer.nl</a>
+</header>
+
+<section class="lg-head">
+  <div class="lg-head-in">
+    <div class="lg-label">Juridisch</div>
+    <h1>Algemene voorwaarden</h1>
+    <div class="lg-meta">Versie: concept · laatst bijgewerkt: <span class="ph">[datum]</span></div>
+  </div>
+</section>
+
+<div class="lg-draft" role="note">
+  <strong>CONCEPT — laat controleren door een jurist</strong>
+  Dit is een opzet (skelet) en nog geen geldende voorwaarden. Alles tussen [vierkante haken] moet nog worden ingevuld of geverifieerd. Stem ook af of deze voorwaarden alleen voor zakelijke klanten gelden.
+</div>
+
+<main class="lg-main">
+
+  <h2>1. Wie wij zijn</h2>
+  <p>Deze voorwaarden gelden voor Stagetimer, een online dienst van TEAM FIFTEEN B.V., gevestigd aan <span class="ph">[adres]</span>, KvK <span class="ph">[KvK]</span>, btw-nummer <span class="ph">[btw-nummer]</span>, bereikbaar via <span class="ph">[contact-email]</span> ("wij").</p>
+
+  <h2>2. Begrippen</h2>
+  <ul>
+    <li><strong>Dienst:</strong> de webapplicatie Stagetimer, inclusief deellinks en weergaven, zoals aangeboden via stagetimer.nl.</li>
+    <li><strong>Klant:</strong> de organisatie of persoon die een account, abonnement of event pass afneemt.</li>
+    <li><strong>Gebruiker:</strong> iedereen die de dienst namens de klant gebruikt, zoals teamleden en operators.</li>
+    <li><strong>Klantdata:</strong> alle gegevens die de klant of gebruikers in de dienst invoeren, zoals lineups, crewnamen, foto's en notities.</li>
+    <li><strong>Abonnement:</strong> een doorlopende overeenkomst per maand of per jaar.</li>
+    <li><strong>Event pass:</strong> eenmalige toegang voor een vaste periode die daarna vanzelf afloopt.</li>
+  </ul>
+
+  <h2>3. Toepasselijkheid</h2>
+  <p>Deze voorwaarden gelden voor elk gebruik van de dienst en elke overeenkomst met ons. Algemene voorwaarden van de klant zijn niet van toepassing. <span class="ph">[afstemmen: alleen zakelijke klanten (B2B) of ook consumenten; bij consumenten gelden aanvullende regels, zoals het herroepingsrecht]</span></p>
+
+  <h2>4. Account</h2>
+  <ul>
+    <li>De klant zorgt voor juiste gegevens bij aanmelding en houdt inloggegevens geheim.</li>
+    <li>De klant is verantwoordelijk voor wat gebruikers binnen zijn workspace doen en voor met wie deellinks worden gedeeld. Een deellink werkt voor iedereen die de link heeft.</li>
+  </ul>
+
+  <h2>5. Abonnement en event pass</h2>
+  <ul>
+    <li>Een abonnement loopt per maand of per jaar en wordt telkens stilzwijgend verlengd met dezelfde periode, tot het wordt opgezegd. <span class="ph">[verifiëren met de instellingen in Stripe]</span></li>
+    <li>Een event pass geeft toegang voor de gekozen periode en loopt daarna automatisch af. Opzeggen is niet nodig.</li>
+    <li>Wat bij elk abonnement of elke pass hoort (zoals het aantal podia of teamleden) staat op de prijzenpagina op het moment van afsluiten. <span class="ph">[proefperiode: voorwaarden beschrijven]</span></li>
+  </ul>
+
+  <h2>6. Prijzen en betaling</h2>
+  <ul>
+    <li>Prijzen zijn in euro en exclusief btw, tenzij anders vermeld.</li>
+    <li>Betaling verloopt via onze betaaldienst Stripe, vooraf per periode. Daarvoor gelden ook de voorwaarden van Stripe.</li>
+    <li>Bij een mislukte betaling kunnen wij de toegang tot de dienst beperken of opschorten nadat wij de klant daarover hebben geïnformeerd. <span class="ph">[termijn en procedure]</span></li>
+    <li>Prijswijzigingen voor lopende abonnementen kondigen wij minimaal <span class="ph">[termijn]</span> vooraf aan.</li>
+    <li><span class="ph">[restitutiebeleid]</span></li>
+  </ul>
+
+  <h2>7. Beschikbaarheid en ondersteuning</h2>
+  <ul>
+    <li>Wij spannen ons in om de dienst zo goed mogelijk beschikbaar te houden, maar garanderen geen ononderbroken of foutloze werking. Er geldt geen service level agreement (SLA), tenzij schriftelijk anders is afgesproken.</li>
+    <li>De dienst is afhankelijk van internet, de apparatuur van de klant en diensten van derden (zoals hosting en database). Wij raden aan bij live producties een terugvaloptie achter de hand te houden.</li>
+    <li>Gepland onderhoud kondigen wij zo mogelijk vooraf aan.</li>
+    <li>Wij mogen de dienst verbeteren en aanpassen. Wezenlijke verslechteringen voor lopende abonnementen kondigen wij vooraf aan.</li>
+    <li>Ondersteuning: <span class="ph">[kanalen en reactietijden]</span></li>
+  </ul>
+
+  <h2>8. Klantdata en privacy</h2>
+  <ul>
+    <li>Klantdata blijft van de klant. Wij gebruiken klantdata alleen om de dienst te leveren.</li>
+    <li>Voor persoonsgegevens in klantdata is de klant verwerkingsverantwoordelijke en zijn wij verwerker. Een verwerkersovereenkomst is op verzoek beschikbaar.</li>
+    <li>De klant kan een project op elk moment exporteren via <em>Project settings &gt; Export project (JSON)</em>.</li>
+    <li>Hoe wij zelf met persoonsgegevens omgaan, staat in onze <a href="/privacy.html">privacyverklaring</a>.</li>
+    <li>De klant zorgt dat hij gegevens en foto's mag invoeren, bijvoorbeeld toestemming of een andere grondslag voor foto's van artiesten.</li>
+  </ul>
+
+  <h2>9. Gebruik van de dienst</h2>
+  <p>Het is niet toegestaan de dienst te gebruiken in strijd met de wet of deze voorwaarden, de beveiliging te omzeilen of de dienst te overbelasten. Bij misbruik mogen wij de toegang opschorten.</p>
+
+  <h2>10. Intellectueel eigendom</h2>
+  <p>Alle rechten op de dienst, de software en het merk Stagetimer blijven bij ons of onze licentiegevers. De klant krijgt voor de duur van de overeenkomst een niet-exclusief, niet-overdraagbaar recht om de dienst te gebruiken.</p>
+
+  <h2>11. Aansprakelijkheid</h2>
+  <ul>
+    <li>Onze totale aansprakelijkheid is beperkt tot <span class="ph">[bedrag, bijv. de vergoeding die de klant in de 12 maanden voor de schade heeft betaald]</span>.</li>
+    <li>Wij zijn niet aansprakelijk voor indirecte schade, zoals gevolgschade, gederfde winst, gemiste besparingen, schade door vertraging van een productie of verlies van data, tenzij sprake is van opzet of bewuste roekeloosheid van onze leiding.</li>
+    <li>Schade moet binnen <span class="ph">[termijn]</span> na ontdekking schriftelijk bij ons worden gemeld.</li>
+    <li>Wij zijn niet aansprakelijk bij overmacht, waaronder storingen bij diensten van derden waar wij van afhankelijk zijn.</li>
+  </ul>
+
+  <h2>12. Duur en opzegging</h2>
+  <ul>
+    <li>De klant kan een abonnement opzeggen tegen het einde van de lopende periode, via <span class="ph">[het klantportaal / e-mail]</span>. Al betaalde periodes worden niet terugbetaald, tenzij <span class="ph">[uitzonderingen]</span>.</li>
+    <li>Wij kunnen een abonnement opzeggen met inachtneming van <span class="ph">[termijn]</span>, of direct bij ernstig misbruik of wanbetaling.</li>
+    <li>Na afloop kan de klant zijn projecten nog <span class="ph">[termijn]</span> exporteren. Daarna verwijderen wij de klantdata, met uitzondering van gegevens die wij wettelijk moeten bewaren.</li>
+  </ul>
+
+  <h2>13. Wijzigingen van deze voorwaarden</h2>
+  <p>Wij kunnen deze voorwaarden wijzigen. Wezenlijke wijzigingen kondigen wij minimaal <span class="ph">[termijn]</span> vooraf aan. Gaat de klant niet akkoord, dan kan hij opzeggen tegen de datum waarop de wijziging ingaat.</p>
+
+  <h2>14. Toepasselijk recht en geschillen</h2>
+  <p>Op deze voorwaarden en elke overeenkomst met ons is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de bevoegde rechter in <span class="ph">[arrondissement]</span>.</p>
+
+  <h2>15. Contact</h2>
+  <p>TEAM FIFTEEN B.V.<br><span class="ph">[adres]</span><br>KvK <span class="ph">[KvK]</span> · btw <span class="ph">[btw-nummer]</span><br><span class="ph">[contact-email]</span></p>
+
+</main>
+
+<footer>
+  <div class="lg-foot">
+    <span>© 2026 TEAM FIFTEEN B.V.</span>
+    <span><a href="/privacy.html">Privacyverklaring</a> · <a href="/voorwaarden.html">Algemene voorwaarden</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
