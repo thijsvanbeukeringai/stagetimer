@@ -380,6 +380,98 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
 .ci-toggle.busy{border-style:dashed;}
 .ci-err{grid-column:1/-1;font-size:12px;font-weight:600;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);
   border-radius:8px;padding:8px 10px;}
+/* Check-in: stage filter + artist search, status/booth tags, rider, 56 px toggle */
+#ci-tools{flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px max(22px,calc((100% - 980px) / 2));border-bottom:1px solid rgba(255,255,255,.06);}
+#ci-ssel{min-height:44px;min-width:170px;font-size:14px;color:#fff;background-color:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);}
+#ci-search{flex:1 1 auto;max-width:420px;min-height:44px;font-size:15px;color:#fff;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.14);}
+.ci-toggle{min-height:56px;}
+.ci-artist-name{display:block;overflow:hidden;text-overflow:ellipsis;}
+.ci-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:5px;}
+.ci-booth{font-family:var(--ffm);font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:99px;
+  color:#c7d2fe;background:rgba(99,102,241,.14);border:1px solid rgba(99,102,241,.4);white-space:nowrap;}
+.ci-rider{grid-column:2/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
+.ci-rider-blk{padding:9px 12px;border-radius:9px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);min-width:0;}
+.ci-rider-k{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px;}
+.ci-rider-v{font-size:14px;line-height:1.45;color:rgba(255,255,255,.92);white-space:pre-wrap;overflow-wrap:anywhere;}
+@media (max-width:700px){
+  #ci-head{flex:1 1 calc(100% - 60px);min-width:0;}
+  #ci-close-btn{min-height:44px;min-width:44px;justify-content:center;}
+  #ci-dtabs{order:3;flex:1 1 auto;min-width:0;}
+  #ci-summary{order:4;}
+  #ci-hdr .vw-sync{order:5;}
+  #ci-tools{padding:10px 14px;flex-wrap:wrap;}
+  #ci-ssel{flex:1 1 100%;min-height:48px;font-size:16px;}
+  #ci-search{flex:1 1 100%;max-width:none;min-height:48px;font-size:16px;}
+  .ci-rider{grid-column:1/-1;grid-template-columns:minmax(0,1fr);}
+}
+/* ══ STAGE MANAGER (#smv): one stage - now / next, arrivals, rider, crew.
+   Dark production style like Backstage; sized to read from 1-2 m. ══ */
+#smv{position:fixed;inset:0;z-index:200;background:#050508;display:none;flex-direction:column;color:#fff;}
+#smv.open{display:flex;}
+#smv-hdr{flex-shrink:0;min-height:56px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:8px 24px;border-bottom:1px solid rgba(255,255,255,.06);}
+#smv-title{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+#smv-ssel{min-height:36px;color:rgba(255,255,255,.85);background-color:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);}
+#smv-ssel[hidden],#smv-dtabs[hidden]{display:none;}
+#smv-clock{margin-left:auto;font-family:var(--ffm);font-size:22px;font-weight:700;color:rgba(255,255,255,.9);font-variant-numeric:tabular-nums;}
+#smv-hdr .vw-sync{margin-left:auto;}
+body.public-mode #smv-close-btn{display:none!important;}
+#smv-body{flex:1;overflow-y:auto;padding:18px 24px 32px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start;align-content:start;}
+#smv-body.smv-one,#smv-body:has(> .vw-empty){grid-template-columns:minmax(0,1fr);}
+.smv-col{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.smv-h{margin:0;font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+.smv-idle{padding:20px 22px;border:1px dashed rgba(255,255,255,.18);border-radius:14px;font-size:18px;font-weight:700;color:rgba(255,255,255,.75);}
+.smv-card{display:flex;flex-direction:column;gap:14px;min-width:0;padding:18px 20px;border-radius:16px;border:2px solid rgba(255,255,255,.09);background:rgba(255,255,255,.025);}
+.smv-card.smv-now{background:rgba(255,255,255,.045);}
+.smv-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.smv-main{flex:1;min-width:0;}
+.smv-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px;font-family:var(--ffm);font-size:15px;font-weight:700;color:rgba(255,255,255,.75);}
+.smv-booth{font-size:12px;font-weight:800;letter-spacing:.04em;padding:2px 9px;border-radius:99px;color:#c7d2fe;background:rgba(99,102,241,.16);border:1px solid rgba(99,102,241,.45);}
+.smv-artist{font-size:clamp(22px,2.4vw,34px);font-weight:900;letter-spacing:-.5px;line-height:1.1;overflow-wrap:anywhere;}
+.smv-now .smv-artist{font-size:clamp(28px,3.4vw,52px);}
+.smv-cdw{flex-shrink:0;text-align:right;}
+.smv-cd-lbl{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:4px;white-space:nowrap;}
+.smv-cd{font-family:var(--ffm);font-size:clamp(30px,3.2vw,46px);font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.88);white-space:nowrap;}
+.smv-now .smv-cd{font-size:clamp(44px,5.6vw,84px);}
+.smv-arr-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;}
+.smv-arr{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:9px 14px;border-radius:10px;font-size:19px;font-weight:800;
+  color:rgba(255,255,255,.82);background:rgba(255,255,255,.05);border:2px solid rgba(255,255,255,.2);}
+.smv-arr-why{font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;}
+.smv-arr-why:empty{display:none;}
+.smv-card.smv-lvl-ok .smv-arr{color:#86efac;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.55);}
+.smv-card.smv-lvl-warn{border-color:rgba(245,158,11,.8);}
+.smv-card.smv-lvl-warn .smv-arr{color:#fcd34d;background:rgba(245,158,11,.16);border-color:#f59e0b;}
+.smv-card.smv-lvl-late{border-color:#ef4444;background:rgba(239,68,68,.07);}
+.smv-card.smv-lvl-late .smv-arr{color:#fff;background:rgba(239,68,68,.38);border-color:#ef4444;}
+.smv-toggle{margin-left:auto;min-width:170px;font-size:16px;}
+.smv-rider{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+.smv-rider-blk{min-width:0;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);}
+.smv-rider-k,.smv-sub-k{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:6px;}
+.smv-rider-v{font-size:clamp(17px,1.35vw,21px);font-weight:600;line-height:1.4;color:#fff;white-space:pre-wrap;overflow-wrap:anywhere;}
+.smv-rider-v.none{font-weight:500;font-style:italic;color:rgba(255,255,255,.45);}
+.smv-crew-list{display:flex;flex-wrap:wrap;gap:8px;}
+.smv-crew-i{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;font-size:15px;color:rgba(255,255,255,.88);
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+.smv-crew-i b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+@media (max-width:1000px){#smv-body{grid-template-columns:minmax(0,1fr);}}
+@media (max-width:700px){
+  #smv-hdr{padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;gap:8px;}
+  #st-brand-smv{display:inline-flex;}
+  #smv-title{flex:1 1 0;display:flex;flex-direction:column;gap:2px;font-size:17px;line-height:1.15;}
+  #smv-title .smv-title-k{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);}
+  #smv-title .smv-title-dot{display:none;}
+  #smv-sname{overflow:hidden;text-overflow:ellipsis;}
+  #st-brand-smv .st-brand-mark{display:none;}
+  #smv-clock{margin-left:0;font-size:18px;}
+  #smv-hdr .vw-sync{order:5;margin-left:0;}
+  #smv-close-btn{min-height:44px;min-width:44px;font-size:16px;}
+  #smv-ssel{order:6;flex:1 1 100%;min-height:48px;font-size:15px;font-weight:700;}
+  #smv-dtabs{order:7;flex:1 1 100%;min-width:0;}
+  #smv-body{padding:12px 12px 24px;gap:16px;}
+  .smv-card{padding:14px;gap:12px;}
+  .smv-arr{font-size:17px;}
+  .smv-toggle{flex:1 1 100%;margin-left:0;min-width:0;width:100%;}
+  .smv-rider{grid-template-columns:minmax(0,1fr);}
+}
 /* Share dialog */
 .share-intro{font-size:12px;line-height:1.5;color:var(--sub);}
 .share-link-row{flex-wrap:wrap;}
@@ -1726,6 +1818,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #day-dd > .hbtn > svg:first-child{display:none;}
   #admin-dd > .hbtn .hbtn-lbl,#admin-dd > .hbtn .dd-caret{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
   #tpanel{width:300px;}
+}
+/* Narrow tablets: seven view buttons with labels no longer fit row 2, so they
+   show their icon (name in the tooltip and for screen readers). */
+@media (min-width:701px) and (max-width:900px){
+  #hdr .hbtn.hv{padding:0 9px;}
+  #hdr .hbtn.hv .hbtn-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 }
 /* Very short screens beside the timer (landscape phone, 1024x600): one header row. */
 @media (min-width:701px) and (max-height:520px){
@@ -4016,7 +4114,7 @@ function _rerenderActive(){
     renderAll();refreshLogo();
     const open=id=>document.getElementById(id)?.classList.contains('open');
     if(open('foh'))renderFOH();if(open('bs'))renderBS();if(open('tl'))renderTL();
-    if(open('ci'))renderCI();if(open('wv'))renderWV();
+    if(open('ci'))renderCI();if(open('wv'))renderWV();if(open('smv'))renderSM();
   }catch(e){console.warn('[sync] re-render failed:',e);}
 }
 function _rerenderDash(){const el=document.getElementById('dash');if(!window.PUBLIC_MODE&&el&&el.classList.contains('open'))renderDash();}
@@ -4138,13 +4236,14 @@ function _onProjectChange(payload){
     const keepDay=G&&G.activeDay;
     loadG();
     if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-    if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
+    if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage'||PUBLIC_MODE==='stagemanager')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
     if(PUBLIC_MODE==='overview'){renderOV();}
     else if(PUBLIC_MODE==='timeline'){renderTL();}
     else if(PUBLIC_MODE==='backstage'){renderBS();}
     else if(PUBLIC_MODE==='foh'){renderFOH();}
     else if(PUBLIC_MODE==='stage'){renderSV();}
     else if(PUBLIC_MODE==='checkin'){renderCI();}
+    else if(PUBLIC_MODE==='stagemanager'){renderSM();}
     else if(PUBLIC_MODE==='wall'){renderWV();}
     return;
   }
@@ -4749,7 +4848,7 @@ function renderTbar(){
       <div style="font-size:14px;font-weight:800;" id="share-modal-title">Shareable links</div>
       <button onclick="closeShareModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;">×</button>
     </div>
-    <div class="share-intro">Anyone with a link opens that view without logging in. <strong>Read-only</strong> links can only look at the programme. The <strong>Artist check-in</strong> link can also mark artists as arrived - share it only with the check-in desk.</div>
+    <div class="share-intro">Anyone with a link opens that view without logging in. <strong>Read-only</strong> links can only look at the programme. The <strong>Artist check-in</strong> and <strong>Stage manager</strong> links can also mark artists as arrived - share them only with the check-in desk and the stage managers.</div>
     <div id="share-stage-list"></div>
   </div>
 </div>
@@ -4944,6 +5043,14 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
           Overview (all stages)
         </button>
+        <button class="dd-item mob-only" onclick="closeAllDD();openSM()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg>
+          Stage manager
+        </button>
+        <button class="dd-item mob-only" onclick="closeAllDD();openCI()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><polyline points="8.5 12 11 14.5 15.5 9.5"/></svg>
+          Artist check-in
+        </button>
         <div class="dd-sep mob-only"></div>
         <div class="dd-head mob-only">Account</div>
         <button class="dd-item mob-only" data-fs="toggle" onclick="closeAllDD();stFullscreen.toggle()">
@@ -5018,6 +5125,8 @@ function renderTbar(){
       <button class="hbtn hv" onclick="openSV()" id="hdr-sv-btn" title="Stage View (booth screen)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg><span class="hbtn-lbl">Stage View</span></button>
       <button class="hbtn hv" onclick="openTL()" id="hdr-tl-btn" title="Timeline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="7" height="5" rx="1"/><rect x="12" y="5" width="9" height="5" rx="1"/><rect x="3" y="14" width="10" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/></svg><span class="hbtn-lbl">Timeline</span></button>
       <button class="hbtn hv" onclick="openOV()" id="hdr-ov-btn" title="Overview of all stages"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="hbtn-lbl">Overview</span></button>
+      <button class="hbtn hv" onclick="openCI()" id="hdr-ci-btn" title="Artist check-in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><polyline points="8.5 12 11 14.5 15.5 9.5"/></svg><span class="hbtn-lbl">Check-in</span></button>
+      <button class="hbtn hv" onclick="openSM()" id="hdr-sm-btn" title="Stage manager: current and next show, arrivals and riders"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg><span class="hbtn-lbl">Stage manager</span></button>
     </nav>
     <button type="button" class="hbtn" id="hdr-msg-btn" onclick="openCrewMsg(this)" title="Send a message to the booth screens" aria-label="Message booth" aria-haspopup="dialog"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="hbtn-lbl">Message booth</span></button>
     <div id="mob-hdr-cd"></div>
@@ -5048,6 +5157,10 @@ function renderTbar(){
     <button class="mob-nav-btn" data-nav="tl" onclick="openTL()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="7" height="5" rx="1"/><rect x="12" y="5" width="9" height="5" rx="1"/><rect x="3" y="14" width="10" height="5" rx="1"/><rect x="15" y="14" width="6" height="5" rx="1"/></svg>
       <span>Timeline</span>
+    </button>
+    <button class="mob-nav-btn" data-nav="ci" onclick="openCI()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><polyline points="8.5 12 11 14.5 15.5 9.5"/></svg>
+      <span>Check-in</span>
     </button>
     <button class="mob-nav-btn" data-nav="dash" onclick="goToDash()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -5899,7 +6012,7 @@ function renderTbar(){
 <div id="ci">
   <div id="ci-hdr">
     <a class="st-brand" id="st-brand-ci" href="#" onclick="closeCI();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
-    <div>
+    <div id="ci-head">
       <div id="ci-title">Artist check-in</div>
       <div id="ci-sub" style="margin-top:2px;">Changes are saved for everyone</div>
     </div>
@@ -5907,9 +6020,27 @@ function renderTbar(){
     <span class="vw-sync" hidden></span>
     <div id="ci-clock"></div>
     <div id="ci-summary"><strong id="ci-arr">0</strong> / <span id="ci-tot">0</span> arrived</div>
-    <button class="fhbtn" id="ci-close-btn" onclick="closeCI()">✕</button>
+    <button class="fhbtn" id="ci-close-btn" onclick="closeCI()" aria-label="Close check-in">✕</button>
+  </div>
+  <div id="ci-tools">
+    <select id="ci-ssel" class="hsel" aria-label="Stage" onchange="_pickStageCI(this.value)"></select>
+    <input id="ci-search" class="fi" type="search" placeholder="Search artist" aria-label="Search artist" autocomplete="off" spellcheck="false" oninput="renderCI()">
   </div>
   <div id="ci-body"><div id="ci-grid"></div></div>
+</div>
+
+<!-- STAGE MANAGER (in-app + share-link mode=stagemanager) -->
+<div id="smv">
+  <div id="smv-hdr">
+    <a class="st-brand" id="st-brand-smv" href="#" onclick="closeSM();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
+    <div id="smv-title"><span class="smv-title-k">Stage manager</span><span class="smv-title-dot"> · </span><span id="smv-sname">-</span></div>
+    <select id="smv-ssel" class="hsel" aria-label="Stage" onchange="_pickStageSM(this.value)"></select>
+    <div id="smv-dtabs"></div>
+    <span class="vw-sync" hidden></span>
+    <div id="smv-clock"></div>
+    <button class="bshbtn" id="smv-close-btn" onclick="closeSM()" aria-label="Close Stage manager">✕</button>
+  </div>
+  <div id="smv-body"></div>
 </div>
 
 <!-- BACKSTAGE -->
@@ -7774,12 +7905,12 @@ async function delShow(id,e){
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('mb-live').setAttribute('aria-pressed',m==='live');document.getElementById('mb-man').setAttribute('aria-pressed',m==='manual');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
 
 // ══ OPEN/CLOSE screens
-function _closeAllScreens(){['foh','bs','sv','tl','stov'].forEach(id=>document.getElementById(id)?.classList.remove('open'));_svZoomLock(false);}
+function _closeAllScreens(){['foh','bs','sv','tl','stov','ci','smv'].forEach(id=>document.getElementById(id)?.classList.remove('open'));_svZoomLock(false);}
 // Sync the bottom-nav active state with whichever overlay is currently open.
 // Called from open/close + goToDash so the highlighted tab always reflects
 // the view the user is on.
 function _syncMobNavActive(){
-  const map={bs:'bs',foh:'foh',sv:'sv',tl:'tl'};
+  const map={bs:'bs',foh:'foh',sv:'sv',tl:'tl',ci:'ci'};
   let active='';   // the control screen itself has no tab (it is not "Projects")
   for(const id of Object.keys(map)){
     if(document.getElementById(id)?.classList.contains('open')){active=map[id];break;}
@@ -7889,7 +8020,7 @@ function _svZoomLock(on){
 // used to be Backstage + Stage View only). Wake Lock is a best-effort (no
 // support on old iOS Safari, fails silently). The lock is released as soon
 // as all of these views are closed.
-const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv'];
+const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv','smv'];
 let _wakeLock=null;
 async function _acquireWakeLock(){
   if(!('wakeLock' in navigator))return;
@@ -7911,7 +8042,7 @@ document.addEventListener('visibilitychange',()=>{
   const needLock=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='wall')closeWV();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='stagemanager')closeSM();if(PUBLIC_MODE!=='wall')closeWV();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -7923,6 +8054,9 @@ function updateClock(){
   const svH=document.getElementById('sv-hdr-clock');if(svH)svH.textContent=t;
   document.getElementById('tl-clock').textContent=t;
   const otvc=document.getElementById('otv-clock');if(otvc)otvc.textContent=t;
+  const smc=document.getElementById('smv-clock');if(smc)smc.textContent=t;
+  // The check-in share link runs its own (minute) clock; in the app it ticks here.
+  if(!PUBLIC_MODE){const cic=document.getElementById('ci-clock');if(cic)cic.textContent=t;}
 }
 
 // ══ FOH tick (update live countdown + row countdowns)
@@ -9174,6 +9308,7 @@ function tick(){
   tickSched();
   tickOTV();
   tickOV();
+  tickSM();
   vwTickSync();
   // Booth link (receipts / presence): last, so a failure there can never
   // keep a screen from rendering.
@@ -11798,8 +11933,9 @@ async function scheduleProjectPushes(){
 // ══ SHARE LINKS
 const _shareBase=()=>location.origin+location.pathname;
 // What a share link lets its holder do. Every link is view-only, except
-// Check-in, which can save arrivals (and nothing else).
-const _SHARE_RW={checkin:true};
+// Check-in and Stage manager, which can save arrivals (and nothing else:
+// set_show_arrived is the only write an anonymous visitor has).
+const _SHARE_RW={checkin:true,stagemanager:true};
 function _shareRowHTML(label,mode,url){
   const rw=!!_SHARE_RW[mode];
   const tip=rw?'Anyone with this link can mark artists as arrived. It cannot change anything else.':'Anyone with this link can only look. Nothing can be changed through it.';
@@ -11840,6 +11976,7 @@ function openShareModal(projId){
       ${_shareRowHTML('Stage View','stage',`${base}?mode=stage&pid=${pid}&sid=${sid}`)}
       ${_shareRowHTML('Backstage','backstage',`${base}?mode=backstage&pid=${pid}&sid=${sid}`)}
       ${_shareRowHTML('FOH','foh',`${base}?mode=foh&pid=${pid}&sid=${sid}`)}
+      ${_shareRowHTML('Stage manager','stagemanager',`${base}?mode=stagemanager&pid=${pid}&sid=${sid}`)}
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">No stages created in this project.</div>`;
   document.getElementById('share-stage-list').innerHTML=tlBlock+stageBlocks;
@@ -11853,9 +11990,22 @@ function closeShareModal(){document.getElementById('share-ov').classList.remove(
 // row, and persists only that show's arrived fields (see ciToggleArrived). The 1-second
 // polling + Realtime subscription on every other viewer fans the change
 // out across the operator dashboard and all share-link screens.
-function openCI(){document.getElementById('ci').classList.add('open');renderCI();}
-function closeCI(){if(PUBLIC_MODE==='checkin')return;document.getElementById('ci').classList.remove('open');}
-function _pickDayCI(id){G.activeDay=id;renderCI();}
+// In the app the screen opens on the operator's stage and day; the share
+// link starts on all stages. '' = all stages (a filter of this screen only).
+let _ciStage='';
+function openCI(){
+  if(!PUBLIC_MODE){_closeAllScreens();_ciStage=(G&&G.activeStage)||'';}
+  document.getElementById('ci').classList.add('open');renderCI();_syncMobNavActive();
+}
+function closeCI(){if(PUBLIC_MODE==='checkin')return;document.getElementById('ci').classList.remove('open');_syncMobNavActive();}
+// A day picked on the share link sticks (_pvDayPinned); without the pin the
+// next poll put the screen straight back on today.
+function _pickDayCI(id){if(PUBLIC_MODE){_pvDayPinned=id;G.activeDay=id;}else setDay(id);renderCI();}
+function _pickStageCI(id){
+  _ciStage=id||'';
+  if(_ciStage&&!PUBLIC_MODE&&_ciStage!==G.activeStage){G.activeStage=_ciStage;_selChanged('stage');renderAll();}
+  renderCI();
+}
 function renderCI(){
   const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
   const titleEl=document.getElementById('ci-title');
@@ -11863,30 +12013,42 @@ function renderCI(){
   // Day picker
   const dtabs=document.getElementById('ci-dtabs');
   if(dtabs&&!vwSame(dtabs,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayCI');
+  const allStages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  if(_ciStage&&!allStages.some(st=>st.id===_ciStage))_ciStage='';
+  const ssel=document.getElementById('ci-ssel');
+  if(ssel){
+    if(!vwSame(ssel,JSON.stringify(allStages.map(st=>[st.id,st.name]))))ssel.innerHTML=`<option value="">All stages</option>`+allStages.map(st=>`<option value="${escH(st.id)}">${escH(st.name)}</option>`).join('');
+    if(ssel.value!==_ciStage)ssel.value=_ciStage;
+  }
   const grid=document.getElementById('ci-grid');if(!grid)return;
-  const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  const stages=_ciStage?allStages.filter(st=>st.id===_ciStage):allStages;
+  const q=(document.getElementById('ci-search')?.value||'').trim().toLowerCase();
   // Never cancelled; never hidden on the share link (same rule as every view).
   const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay&&showAllowed(s,'live',_isPublicView()));
-  let total=0,arrived=0;
+  const now=nowMs();
+  let total=0,arrived=0,unfiltered=0;
   const blocks=stages.map(st=>{
-    const shows=dayShows.filter(s=>s.stage===st.id).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+    const stageShows=dayShows.filter(s=>s.stage===st.id);
+    unfiltered+=stageShows.length;
+    const shows=stageShows.filter(s=>!q||String(s.artist||'').toLowerCase().includes(q)).sort(_showOrder); // festival-night order: 00:30 after 23:00
     if(!shows.length)return'';
     let stageArr=0;
     const rows=shows.map(s=>{
       total++;
       const isArr=!!s.arrived;
       if(isArr){arrived++;stageArr++;}
-      const past=_showIsPast(s);
+      const past=_showIsPast(s,now);
       const arrTime=s.arrivedAt?_fmtArrivedTime(s.arrivedAt):'';
       // While this show's write is out the button is disabled and says so:
       // repeat taps are ignored (_ciBusy) and now visibly so.
       const busy=_ciBusy.has(s.id),err=_ciErr.get(s.id);
       const label=busy?'Saving…':isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived';
-      return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}">
+      return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}" data-show="${escH(s.id)}">
         <div class="ci-time">${escH((s.start||'').slice(0,5))}</div>
-        <div class="ci-artist">${escH(s.artist||'(no name)')}${s.hidden?' '+vwChip('hidden'):''}${past?' '+vwChip('done'):''}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${escH(arrTime)}</span>`:''}${!isArr&&!busy?`<span class="ci-arrived-meta" style="color:rgba(255,255,255,.5);">Not arrived yet</span>`:''}</div>
+        <div class="ci-artist"><span class="ci-artist-name">${escH(s.artist||'(no name)')}</span><span class="ci-tags">${vwChips(s,now)}${s.booth?`<span class="ci-booth">Booth ${escH(s.booth)}</span>`:''}</span>${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${escH(arrTime)}</span>`:''}${!isArr&&!busy?`<span class="ci-arrived-meta" style="color:rgba(255,255,255,.5);">Not arrived yet</span>`:''}</div>
         <button class="ci-toggle ${isArr?'on':''}${busy?' busy':''}"${busy?' disabled aria-busy="true"':''} aria-pressed="${isArr}" onclick="ciToggleArrived(${_jsArg(s.id)})">${label}</button>
         ${err?`<div class="ci-err" role="alert">${escH(err)}</div>`:''}
+        ${_riderHTML(s,'ci-rider')}
       </div>`;
     }).join('');
     return`<div class="ci-stage">
@@ -11899,7 +12061,8 @@ function renderCI(){
   }).filter(Boolean).join('');
   const legend=`<div class="ci-legend"><span><span class="ci-lg-dot on"></span><b>Arrived</b> - the artist is on site</span><span><span class="ci-lg-dot"></span><b>Not arrived yet</b> - tap “Mark arrived” when they report</span><span>Saved for every screen straight away.</span></div>`;
   const ids=stages.map(st=>st.id);
-  const html=blocks?legend+blocks:vwEmptyHTML(vwEmptyKind(ids,G.activeDay)||'none',{dayId:G.activeDay,stageIds:ids,canPickDay:true});
+  const noMatch=q&&unfiltered?`<div class="vw-empty vw-inline" role="status"><div class="vw-empty-title">No artist matches “${escH(q)}”</div><div class="vw-empty-sub">Clear the search to see all ${unfiltered} shows.</div></div>`:'';
+  const html=blocks?legend+blocks:(noMatch||vwEmptyHTML(vwEmptyKind(ids,G.activeDay)||'none',{dayId:G.activeDay,stageIds:ids,canPickDay:true}));
   if(!vwSame(grid,html))grid.innerHTML=html;
   const arrEl=document.getElementById('ci-arr'),totEl=document.getElementById('ci-tot');
   if(arrEl)arrEl.textContent=arrived;
@@ -11919,9 +12082,11 @@ const _ciErr=new Map();
 // Repaint whatever shows check-in state after a change.
 function _ciRepaint(){
   if(PUBLIC_MODE==='checkin'){renderCI();return;}
+  if(PUBLIC_MODE==='stagemanager'){renderSM();return;}
   try{renderSched();}catch(e){}
   if(document.getElementById('stov')?.classList.contains('open'))renderOV();
   if(document.getElementById('ci')?.classList.contains('open'))renderCI();
+  if(document.getElementById('smv')?.classList.contains('open'))renderSM();
 }
 // Until the rls_prep migration is applied, set_show_arrived does not exist.
 // (PostgREST: 404 + PGRST202. A plain 404 can also be the RPC's own "show not found".)
@@ -11988,11 +12153,19 @@ async function ciToggleArrived(showId){
     if(!fresh||!Array.isArray(fresh.shows))throw new Error('Server data missing or invalid');
     // Adopt the returned snapshot locally so any operator edits that landed in
     // the meantime are visible immediately.
-    const proj=APP.projects.find(p=>p.id===PUBLIC_PID);if(proj)proj.data=fresh;
-    const keepDay=G.activeDay;
-    G=fresh;
-    if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-    renderCI(); // repaint - may now also show other operator edits
+    if(PUBLIC_MODE==='checkin'){
+      const proj=APP.projects.find(p=>p.id===PUBLIC_PID);if(proj)proj.data=fresh;
+      const keepDay=G.activeDay;
+      G=fresh;
+      if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
+    }else{
+      // Stage manager link: the RPC answers with the check-in cut of the
+      // project, which can lack what this screen shows (crew). Take only this
+      // show's arrival from it; the 1 s poll brings everything else.
+      const t=fresh.shows.find(x=>x&&x.id===showId),s3=(G.shows||[]).find(x=>x.id===showId);
+      if(t&&s3){s3.arrived=!!t.arrived;s3.arrivedAt=t.arrivedAt==null?null:t.arrivedAt;}
+    }
+    _ciRepaint(); // repaint - may now also show other operator edits
   }catch(e){
     // Revert optimistic UI on failure
     const s2=(G.shows||[]).find(x=>x.id===showId);
@@ -12003,7 +12176,7 @@ async function ciToggleArrived(showId){
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
     _ciBusy.delete(showId);
-    renderCI(); // busy state off; success or the error message
+    _ciRepaint(); // busy state off; success or the error message
   }
 }
 
@@ -12035,6 +12208,142 @@ function copyLink(btn,url){
     if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(()=>show(true),fallback);return;}
   }catch(e){}
   fallback();
+}
+
+// Rider blocks (see RIDER) for Check-in and Stage manager: escaped text in a
+// pre-wrap block, so the rider keeps its line breaks. empty: also draw a
+// part that has no text ("Not specified").
+function _riderHTML(s,cls,{empty=false}={}){
+  const r=riderOf(s);
+  const h=RIDER_KEYS.map(k=>r[k]||empty?`<div class="${cls}-blk ${cls}-${k}"><div class="${cls}-k">${escH(RIDER_LABEL[k])}</div><div class="${cls}-v${r[k]?'':' none'}">${r[k]?escH(r[k]):'Not specified'}</div></div>`:'').join('');
+  return h?`<div class="${cls}">${h}</div>`:'';
+}
+
+// ══ STAGE MANAGER - one stage, what its stage manager needs right now: the
+// show on stage (ends in), the next shows (start in), whether each artist has
+// arrived (amber from 60 min before the start, red from 15 min), the rider
+// and the crew. In the app, and as share link mode=stagemanager&sid=<stage>.
+// Arrivals go through the check-in write path (ciToggleArrived): the save
+// queue in the app, set_show_arrived on the share link.
+const SM_WARN_SEC=3600,SM_LATE_SEC=900;
+function openSM(){
+  if(!PUBLIC_MODE)_closeAllScreens();
+  document.getElementById('smv').classList.add('open');renderSM();_acquireWakeLock();_syncMobNavActive();
+}
+function closeSM(){
+  if(PUBLIC_MODE==='stagemanager')return;
+  const el=document.getElementById('smv');if(!el||!el.classList.contains('open'))return;
+  el.classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();
+}
+function _pickStageSM(id){if(PUBLIC_MODE||!id)return;G.activeStage=id;_selChanged('stage');renderAll();renderSM();}
+function _pickDaySM(id){setDay(id);renderSM();}
+// The app can always mark arrivals; a share link only when its mode may (_SHARE_RW).
+const _smCanMark=()=>!PUBLIC_MODE||!!_SHARE_RW[PUBLIC_MODE];
+// Same list as Backstage: this stage and day, never cancelled, never hidden on a share link.
+function _smShows(){return getShows(G.activeStage,G.activeDay,!isActiveDayToday()).filter(s=>showAllowed(s,'live',_isPublicView()));}
+// ok = arrived; late = not arrived and starting within 15 min (or already on);
+// warn = within 60 min; wait = later.
+function _smArrLevel(s,n){
+  if(s.arrived)return'ok';
+  const st=_showIv(s).startMs;if(isNaN(st))return'wait';
+  const sec=(st-n)/1000;
+  return sec<=SM_LATE_SEC?'late':sec<=SM_WARN_SEC?'warn':'wait';
+}
+// Words next to the colour, so the warning does not rely on colour alone.
+function _smArrWhy(s,lvl,n){
+  if(lvl==='late')return _showIv(s).startMs<=n?'Show has started':'Starts within 15 min';
+  return lvl==='warn'?'Starts within 60 min':'';
+}
+function _smCdText(s,kind,n){
+  const iv=_showIv(s);
+  if(kind==='end'){const rem=Math.round((iv.endMs-n)/1000);return s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));}
+  return s2cdH(Math.max(0,Math.round((iv.startMs-n)/1000)));
+}
+// Crew in the app only: the stagemanager share link does not receive
+// shows[].crew (field matrix), so it would differ between feeds.
+function _smCrewHTML(s){
+  const crew=s.crew&&typeof s.crew==='object'?s.crew:{};
+  const items=CREW_ROLES.filter(r=>crew[r.id]&&crew[r.id].name).map(r=>{
+    const st=crew[r.id].status||'';
+    return`<span class="smv-crew-i"><b>${escH(r.label)}</b> ${escH(crew[r.id].name)} <span class="foh-crew-stl ${CREW_STATUS[st]?st:''}">${CREW_STATUS[st]||'No status'}</span></span>`;
+  });
+  return items.length?`<div class="smv-crew"><div class="smv-sub-k">Crew</div><div class="smv-crew-list">${items.join('')}</div></div>`:'';
+}
+function _smCardHTML(s,n,isNow){
+  const lvl=_smArrLevel(s,n),today=isShowToday(s);
+  const kind=isNow?'end':today?'start':'';
+  const cdLbl=isNow?'Ends in':today?'Starts in':(vwDateLabel(showDate(s))||'Date unknown');
+  const busy=_ciBusy.has(s.id),err=_ciErr.get(s.id);
+  const arr=s.arrived?'Arrived'+(s.arrivedAt?' '+_fmtArrivedTime(s.arrivedAt):''):'Not arrived';
+  const btn=_smCanMark()?`<button class="ci-toggle smv-toggle ${s.arrived?'on':''}${busy?' busy':''}"${busy?' disabled aria-busy="true"':''} aria-pressed="${!!s.arrived}" onclick="ciToggleArrived(${_jsArg(s.id)})">${busy?'Saving…':s.arrived?'✓ Arrived':'Mark arrived'}</button>`:'';
+  return`<article class="smv-card${isNow?' smv-now':''} smv-lvl-${lvl}" data-sm-show="${escH(s.id)}" data-lvl="${lvl}">
+    <div class="smv-top">
+      <div class="smv-main">
+        <div class="smv-meta">${vwChips(s,n)}<span class="smv-time">${vwTime(s.start)}–${vwTime(s.end)}</span>${s.booth?`<span class="smv-booth">Booth ${escH(s.booth)}</span>`:''}</div>
+        <div class="smv-artist">${escH(s.artist||'(no name)')}</div>
+      </div>
+      <div class="smv-cdw"><div class="smv-cd-lbl">${escH(cdLbl)}</div><div class="smv-cd" data-cd="${kind}">${kind?_smCdText(s,kind,n):vwTime(s.start)}</div></div>
+    </div>
+    <div class="smv-arr-row">
+      <div class="smv-arr"><span class="smv-arr-txt">${escH(arr)}</span><span class="smv-arr-why">${escH(_smArrWhy(s,lvl,n))}</span></div>
+      ${btn}
+    </div>
+    ${err?`<div class="ci-err" role="alert">${escH(err)}</div>`:''}
+    ${_riderHTML(s,'smv-rider',{empty:true})}
+    ${PUBLIC_MODE?'':_smCrewHTML(s)}
+  </article>`;
+}
+function renderSM(){
+  const root=document.getElementById('smv');if(!root||!root.classList.contains('open')||!G)return;
+  const pub=!!PUBLIC_MODE,stage=activeStageObj();
+  document.getElementById('smv-sname').textContent=stage.name;
+  // A share link is fixed to its stage (sid) and to today's festival day.
+  const ssel=document.getElementById('smv-ssel'),dt=document.getElementById('smv-dtabs');
+  ssel.hidden=pub;dt.hidden=pub;
+  if(!pub){
+    if(!vwSame(ssel,JSON.stringify((G.stages||[]).map(st=>[st.id,st.name]))))ssel.innerHTML=(G.stages||[]).map(st=>`<option value="${escH(st.id)}">${escH(st.name)}</option>`).join('');
+    if(ssel.value!==G.activeStage)ssel.value=G.activeStage;
+    if(!vwSame(dt,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dt.innerHTML=_dayPickerHTML(G.activeDay,'_pickDaySM','bshbtn');
+  }
+  const n=nowMs(),today=isActiveDayToday();
+  const shows=_smShows().filter(s=>!_showIsPast(s,n));
+  const cur=shows.find(s=>_showIsLive(s,n))||null;
+  const next=shows.filter(s=>s!==cur);
+  const body=document.getElementById('smv-body');
+  // Rebuild only when what is drawn changed; tickSM moves the countdowns and
+  // the arrival warnings in place.
+  const sig=JSON.stringify([G.activeStage,G.activeDay,stage.name,_smCanMark(),today,
+    shows.map(s=>[s.id,s.artist,s.start,s.end,s.startsAt,s.endsAt,s.date,s.booth,s.hidden,!!s.arrived,s.arrivedAt||null,s.rider||null,s.crew||null,vwStatusKey(s,n),isShowToday(s),_ciBusy.has(s.id),_ciErr.get(s.id)||''])]);
+  if(vwSame(body,sig))return;
+  if(!shows.length){
+    body.innerHTML=vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!pub});
+    return;
+  }
+  const nowCol=cur||today?`<section class="smv-col smv-col-now" aria-label="On stage now"><h2 class="smv-h">On stage now</h2>${cur?_smCardHTML(cur,n,true):'<div class="smv-idle">No show on stage right now</div>'}</section>`:'';
+  const nextCol=`<section class="smv-col smv-col-next" aria-label="Next up"><h2 class="smv-h">${cur||today?'Next up':'Shows on '+escH(vwDayById(G.activeDay)||'this day')}</h2>${next.map(s=>_smCardHTML(s,n,false)).join('')||'<div class="smv-idle">No more shows on this stage today</div>'}</section>`;
+  body.classList.toggle('smv-one',!nowCol);
+  body.innerHTML=nowCol+nextCol;
+}
+// 250 ms: countdowns, overtime colour and the arrival warning levels, in place.
+function tickSM(){
+  const root=document.getElementById('smv');if(!root||!root.classList.contains('open')||!G)return;
+  renderSM();
+  const n=nowMs();
+  root.querySelectorAll('[data-sm-show]').forEach(card=>{
+    const s=(G.shows||[]).find(x=>x.id===card.dataset.smShow);if(!s)return;
+    const cd=card.querySelector('.smv-cd'),kind=cd&&cd.dataset.cd;
+    if(kind){
+      const txt=_smCdText(s,kind,n);if(cd.textContent!==txt)cd.textContent=txt;
+      if(kind==='end'){const rem=Math.round((_showIv(s).endMs-n)/1000);cd.style.color=tColor(rem);cd.classList.toggle('ot',rem<0);}
+    }
+    const lvl=_smArrLevel(s,n);
+    if(card.dataset.lvl!==lvl){
+      card.classList.remove('smv-lvl-'+card.dataset.lvl);card.classList.add('smv-lvl-'+lvl);card.dataset.lvl=lvl;
+      const why=card.querySelector('.smv-arr-why');if(why)why.textContent=_smArrWhy(s,lvl,n);
+    }else if(lvl==='late'){
+      const why=card.querySelector('.smv-arr-why'),w=_smArrWhy(s,lvl,n);if(why&&why.textContent!==w)why.textContent=w;
+    }
+  });
 }
 
 // ══ PUBLIC VIEW MODE (no login needed)
@@ -12467,6 +12776,14 @@ async function loadPublicView(){
     // the optimistic local state would otherwise flicker back to the server's
     // prior value for a beat before the PATCH lands.
     _pvStartPolling(renderCI,()=>_ciWriteInFlight>0);
+    setupRealtime();
+  } else if(PUBLIC_MODE==='stagemanager'){
+    // Stage manager for one stage (sid), today's festival day. Like check-in
+    // it may mark arrivals (set_show_arrived), so the poll holds its repaint
+    // while such a write is out. tickSM (global tick) runs the countdowns.
+    document.getElementById('app').style.display='none';
+    openSM();
+    _pvStartPolling(renderSM,()=>_ciWriteInFlight>0);
     setupRealtime();
   }
   // No setInterval(tick) here: the global one at the bottom of the script
@@ -13447,6 +13764,7 @@ setInterval(()=>{
   if(document.getElementById('foh').classList.contains('open'))renderFOH();
   if(document.getElementById('bs').classList.contains('open'))renderBS();
   if(document.getElementById('tl').classList.contains('open'))renderTL();
+  if(document.getElementById('ci').classList.contains('open'))renderCI();
   if(document.getElementById('dash').classList.contains('open'))renderOTSection();
 },8000);
 </script>

@@ -24,10 +24,9 @@ const AT = ams(FESTIVAL.dates.d1, '16:00');   // DJ O'Neil (note, crew, photo, F
 const RPC = '/rest/v1/rpc/get_shared_project';
 const VER = '/rest/v1/rpc/get_shared_project_version';
 const SID = { stage: S.main, backstage: S.main, foh: S.main, stagemanager: S.main };
-const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci' };
-// Modes with a screen in this build. A mode the server already knows but whose
-// screen is not here yet (stagemanager on feature/rider-data) is checked on
-// the RPC alone; add it to VIEW together with its screen.
+const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci', stagemanager: '#smv' };
+// Modes with a screen in this build. A mode the server knows without a screen
+// here is checked on the RPC alone; add it to VIEW together with its screen.
 const VIEW_MODES = SHARE_MODES.filter((m) => VIEW[m]);
 const RIDER_MODES = SHARE_FIELD_MATRIX['shows[].rider'].filter((m) => m !== 'legacy');
 const SQL_FILE = path.join(__dirname, '..', '..', 'supabase', 'migrations', '20261013100000_share_link_rpcs.sql');
