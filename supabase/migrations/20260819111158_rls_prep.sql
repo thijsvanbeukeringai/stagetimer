@@ -276,7 +276,14 @@ begin
         raise exception 'you may only rename yourself' using errcode = 'insufficient_privilege';
       end if;
     elsif col = 'role' then
-      if caller_role not in ('admin', 'super_admin') then
+      -- Same RBAC as app.html changeUserRole: admins anywhere; a company_admin
+      -- only inside their own workspace and only between operator and
+      -- company_admin (never to or from admin/super_admin).
+      if not (caller_role in ('admin', 'super_admin')
+              or (caller_role = 'company_admin' and caller_company is not null
+                  and old.company_id::text = caller_company
+                  and old.role in ('operator', 'company_admin')
+                  and new.role in ('operator', 'company_admin'))) then
         raise exception 'insufficient privileges to change a user role' using errcode = 'insufficient_privilege';
       end if;
       if (new.role = 'super_admin' or old.role = 'super_admin') and caller_role <> 'super_admin' then
@@ -381,7 +388,10 @@ declare
   v_role text := public.caller_role();
   n int;
 begin
-  if v_role not in ('admin', 'super_admin') then
+  -- company_admin is allowed through here; the guard trigger on app_users
+  -- limits them to operator <-> company_admin inside their own workspace,
+  -- matching the existing admin UI.
+  if v_role not in ('admin', 'super_admin', 'company_admin') then
     raise exception 'insufficient privileges to change a user role' using errcode = 'insufficient_privilege';
   end if;
   if p_role is null or p_role not in ('operator', 'company_admin', 'admin', 'super_admin') then

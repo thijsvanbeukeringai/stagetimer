@@ -220,7 +220,7 @@ Zie `supabase/functions/README.md`:
 | Waarom | Wat in `app.html` | Uiterlijk vóór |
 |---|---|---|
 | Token verloopt na een uur | 1.1h: `onAuthStateChange` → `saveAuthSession`, en bij een 401 verversen en opnieuw proberen | stap 10 |
-| Alleen `UPDATE(name)` op app_users | **gedaan:** `changeUserRole` → `_rpc('admin_set_user_role',{p_user_id:id,p_role:newRole})`; alleen als de RPC nog niet bestaat (404/PGRST202) de oude directe update. Let op: de RPC staat alleen admin/super_admin toe, dus een company_admin kan na stap 2 geen rollen meer wijzigen (melding "no permission") | stap 10 |
+| Alleen `UPDATE(name)` op app_users | **gedaan:** `changeUserRole` → `_rpc('admin_set_user_role',{p_user_id:id,p_role:newRole})`; alleen als de RPC nog niet bestaat (404/PGRST202) de oude directe update. Een company_admin mag, net als nu in de app, binnen de eigen workspace rollen wisselen tussen operator en company_admin (afgedwongen door de guard-trigger); admin/super_admin blijven voorbehouden aan admins | stap 10 |
 | Detach via een RPC | **gedaan:** `delCompany` → `_rpc('admin_delete_company',{p_company_id:id})`, met dezelfde terugval; de RPC is alleen voor super_admin, net als de bestaande delete-policy | stap 10 |
 | Companies hernoemen alleen door company_admin en admins | **gedaan:** operators zien het naamveld in de workspace-instellingen alleen-lezen, zonder opslaan-knop | stap 10 |
 | Gestripte deellinkdata | `save()` en `_pushProject` doen niets in `PUBLIC_MODE`; daarna `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de 7 polls | stap 11 |
