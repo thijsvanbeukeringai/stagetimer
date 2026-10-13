@@ -5959,8 +5959,8 @@ function _syncMobNavActive(){
     b.classList.toggle('active',b.dataset.nav===active);
   });
 }
-function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();_syncMobNavActive();}
-function closeFOH(){document.getElementById('foh').classList.remove('open');_syncMobNavActive();}
+function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();_acquireWakeLock();_syncMobNavActive();}
+function closeFOH(){document.getElementById('foh').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();_syncMobNavActive();}
 function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();_syncMobNavActive();}
@@ -6010,10 +6010,13 @@ function closeSV(){document.getElementById('sv').classList.remove('open');_relea
 })();
 
 // ── Wake Lock: prevent the screen from sleeping during live show views.
-// Backstage and Stage View are designed to stay on a dedicated monitor /
-// phone during a set - without this, the OS dims and locks the display
-// mid-countdown. Wake Lock is a best-effort (no support on old iOS Safari,
-// fails silently). The lock is released as soon as both views are closed.
+// Stage View, Backstage, FOH, Timeline, Overview and the Control Wall are
+// designed to stay on a dedicated monitor / phone during a set - without
+// this, the OS dims and locks the display mid-countdown (BOUWPLAN B3: it
+// used to be Backstage + Stage View only). Wake Lock is a best-effort (no
+// support on old iOS Safari, fails silently). The lock is released as soon
+// as all of these views are closed.
+const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv'];
 let _wakeLock=null;
 async function _acquireWakeLock(){
   if(!('wakeLock' in navigator))return;
@@ -6025,14 +6028,14 @@ async function _acquireWakeLock(){
 }
 function _releaseWakeLockIfIdle(){
   // Keep it if any other live view is still open
-  const stillOpen=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  const stillOpen=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(stillOpen)return;
   if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}
 }
 // Reacquire on visibility-return (browsers drop wake lock when tab is hidden).
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible')return;
-  const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  const needLock=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='wall')closeWV();}});
@@ -6087,8 +6090,9 @@ function openOV(){
   const el=document.getElementById('stov');
   el.classList.add('open');
   renderOV();
+  _acquireWakeLock();
 }
-function closeOV(){document.getElementById('stov').classList.remove('open');}
+function closeOV(){document.getElementById('stov').classList.remove('open');_releaseWakeLockIfIdle();}
 
 // Pick the day_id of the earliest still-upcoming (or currently-running) show for a stage.
 // Looks across ALL days and returns null when no future show exists.
@@ -6270,15 +6274,11 @@ function tickOV(){
 // huge countdown, current + next artist with start times, nothing else.
 // Same data sources as Stage Overview but a totally different layout
 // optimised for "what eist mijn aandacht NU?" at distance.
-function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');wvApplyTheme();renderWV();}
-function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').classList.remove('open');}
-function _wvDayLabel(d){
-  if(!d)return '';
-  if(d.name&&d.date){
-    try{const dt=new Date(d.date);const day=dt.getDate();const mo=dt.toLocaleString('nl-NL',{month:'long'});return `Geplande tijden ${d.name.toLowerCase()} — ${day} ${mo}`;}catch(_){return `Geplande tijden ${d.name.toLowerCase()}`;}
-  }
-  return d.name?`Geplande tijden ${d.name.toLowerCase()}`:'';
-}
+function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');wvApplyTheme();renderWV();_acquireWakeLock();}
+function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').classList.remove('open');_releaseWakeLockIfIdle();}
+// Same day label as every other view ("Friday · Fri 19 Jun"); it used to be
+// a Dutch sentence on an otherwise English screen.
+function _wvDayLabel(d){return vwDayLabel(d);}
 // Light/dark theme - persisted in localStorage so the same wall display
 // keeps its preference across page reloads / SW updates.
 const WV_THEME_KEY='st_wall_theme';
@@ -8731,6 +8731,7 @@ function openTL(){
   _closeAllScreens();
   document.getElementById('tl').classList.add('open');
   renderTL();
+  _acquireWakeLock();
   requestAnimationFrame(()=>{
     const c=document.getElementById('tl-content');
     const minSec=Number(c.dataset.minSec||0);
@@ -8741,7 +8742,7 @@ function openTL(){
   });
   _syncMobNavActive();
 }
-function closeTL(){document.getElementById('tl').classList.remove('open');_syncMobNavActive();}
+function closeTL(){document.getElementById('tl').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 
 function renderTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
