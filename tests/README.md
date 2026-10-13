@@ -55,10 +55,10 @@ Prefer role/text selectors; use ids only where the app has no accessible name.
 - `backend` (automatic): a fresh `MockBackend` seeded with `festivalSeed()` per test. **Every non-localhost request is mocked or aborted**; an aborted one is a *violation* and fails the test. Real Supabase/OneSignal/Stripe can never be reached.
 - `stAuth`: pre-seeds `localStorage.st_auth_v1` with a valid-looking JWT for that seed user, exactly like a returning user.
 - `stSeed`: replace the seed (`test.use({ stSeed: mySeed })`) or tweak it: `test.use({ stSeed: { mutate(seed) { seed.projects[0].data.blackout = true; } } })`.
-- `st`: `installClock(at)`, `gotoPublic({mode,pid,sid,at})`, `gotoApp({at})`, `openProject(name)`, `advance(ms)`, `freezeAt(date)`.
+- `st`: `installClock(at, {paused})`, `gotoPublic({mode,pid,sid,at,paused})`, `gotoApp({at})`, `openProject(name)`, `advance(ms)`, `freezeAt(date)`, `serverClockFollowsPage()`.
 
 ### Clock
-`page.clock` is installed before load. Time runs normally until you call `st.freezeAt(t)` (pause at t-1 s, run 1 s of timers, wait for CSS transitions). `st.advance(ms)` runs timers, including the 250 ms tick and the 1 s public poll. Use a `.400` ms offset when you assert rounded countdowns (see booth spec).
+`page.clock` is installed before load. Time runs normally until you call `st.freezeAt(t)` (pause at t-1 s, run 1 s of timers, wait for CSS transitions). `st.advance(ms)` runs timers, including the 250 ms tick and the 1 s public poll. For exact countdowns at arbitrary steps, boot frozen instead: `gotoPublic({ ..., paused: true })` starts the page at exactly `at` and only `runFor`/`fastForward` move it (see `tests/regression/timer.spec.js`); wait for network effects with `expect.poll`, never a sleep. Use a `.400` ms offset when you assert rounded countdowns (see booth spec).
 
 ### Backend controls
 ```js
@@ -71,7 +71,7 @@ backend.setRpc('get_shared_project', (body) => ({ json: null }))
 backend.auth.loginError = { status: 400, error: 'invalid_grant', error_description: 'x' }
 backend.auth.refreshFails = true; backend.auth.invalidTokens.add(token); backend.auth.recover = { status: 500, json: {...} }
 backend.schema.companies = backend.schema.companies.filter(c => c !== 'setup_pending')  // simulate pre-migration DB -> 42703
-backend.serverNow = date                     // Date header for the Wall's server-clock sync
+backend.serverNow = date                     // Date header for the Wall's server-clock sync (or a function; st.serverClockFollowsPage() answers with the page's fake clock)
 backend.updateProject(id, (data) => { ... }, { broadcast: true })  // edit as "another device" + push realtime UPDATE
 backend.realtime.push({ table: 'projects', type: 'UPDATE', record, old_record })
 backend.realtime.subscriberCount('projects')
