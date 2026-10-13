@@ -2249,23 +2249,11 @@ if(window._OS_ENABLED){
 <script>
 // ══ UTILS
 const uid=()=>Math.random().toString(36).slice(2,9);
-const t2s=t=>{if(!t)return 0;const p=t.split(':').map(Number);return p[0]*3600+p[1]*60+(p[2]||0);};
-const t2m=t=>t2s(t)/60;
-const nowSec=()=>{const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();};
-const nowMin=()=>nowSec()/60;
-// Festival-day adjusted "now in seconds": after midnight (< 07:00 clock time) we
-// add 86400 so we stay continuous with the previous evening's adjusted endSec.
-// CRITICAL: every remaining-time countdown that uses (endSec - now) must use
-// this instead of raw nowSec(), otherwise the second the clock crosses 00:00
-// the countdown for a still-running overnight show jumps by ~24 hours.
-const nowSecAdj=()=>{const n=nowSec();return n<7*3600?n+86400:n;};
+// Time helpers (t2s, t2m, durSec, nowSec, nowMin, nowSecAdj, todayStr,
+// festivalDayStr, ...) live in the PURE TIME MODULE further down this script.
 const s2cd=s=>{const neg=s<0,a=Math.abs(s)|0,m=Math.floor(a/60),sc=a%60;return(neg?'-':'')+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0');};
 const s2cdH=s=>{const neg=s<0,a=Math.abs(s)|0,h=Math.floor(a/3600),m=Math.floor((a%3600)/60),sc=a%60;return(neg?'-':'')+(h>0?h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'):String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'));};
-const durSec=(s,e)=>{let sm=t2s(s),em=t2s(e);if(em<=sm)em+=86400;return em-sm;};
 const fmtDur=s=>{const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;if(h>0)return sc>0?`${h}h ${m}m ${sc}s`:`${h}h ${m>0?m+'m':''}`;return sc>0?`${m}m ${sc}s`:`${m}m`;};
-const todayStr=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-// Festival day runs 07:00–07:00: before 07:00 we're still in the previous calendar day
-const festivalDayStr=()=>{const d=new Date();if(d.getHours()<7)d.setDate(d.getDate()-1);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 // Colour values coming from stored project data land inside style="" attributes.
 // Allow only literal hex / plain keywords so a crafted value cannot close the
@@ -2653,102 +2641,354 @@ function setupRealtime(){
     .subscribe();
 }
 
-// ── Overnight day boundary: 07:00. Shows before this time are treated as "same night" as the previous day.
-const NIGHT_END_MIN = 7 * 60; // 07:00 in minutes
-const adjM = m => m < NIGHT_END_MIN ? m + 1440 : m; // times before 07:00 → push to after midnight
-const nowMinAdj = () => { const n=nowMin(); return n<NIGHT_END_MIN?n+1440:n; };
+// ══════════════════════════════════════════════════════════════════════════
+// ══ PURE TIME MODULE ─ begin ══════════════════════════════════════════════
+// Everything between this "begin" marker and the "end" marker below is pure:
+// no DOM, no G / APP, no network. The functions stay global declarations
+// (classic script, no build step) so every existing caller keeps working,
+// and tests/unit/time.spec.js lifts this block out of app.html by its two
+// markers and runs it in node. Kept inline rather than in /js/time.js on
+// purpose: a second file would need its own service-worker shell entry and
+// cache headers, and a booth screen that ends up with a new app.html next to
+// an old time.js (or the other way round) is a worse failure than a long file.
+//
+// The model, in short:
+//  * Clock. nowMs() = device clock + server offset. The offset comes from
+//    syncServerTime() (below the module) and stays 0 for as long as the device
+//    clock agrees with the server, so a correctly set device sees no change.
+//  * Time zone. Festival wall times ("2026-06-20T23:00:00", "23:00:00") are
+//    Europe/Amsterdam wall-clock times, whatever zone the device is set to.
+//    festivalTZ() is the one place that says so.
+//  * Festival day. 07:00 to 07:00, Amsterdam time (festivalDayOf).
+//  * Show interval (showIntervalMs), first rule that applies wins:
+//      1. explicit startsAt / endsAt;
+//      2. a date (show.date, else its day's date) + start / end, where an end
+//         at or before the start is on the next calendar day;
+//      3. a project without any date at all (old imports): anchored to
+//         today's festival day, times before 07:00 on the next calendar day.
+//         That is the classic 07:00 rule; without it such shows were never live.
+//  * DST. A wall time that occurs twice (last Sunday of October, 02:00-03:00)
+//    is the first one; a wall time that doesn't exist (last Sunday of March,
+//    02:00-03:00) is pushed one hour forward. That is exactly what
+//    new Date('YYYY-MM-DDTHH:MM') did on a device set to Amsterdam, so Dutch
+//    devices get the same timestamps as before. Countdowns are real elapsed
+//    time: a 01:00-04:00 set lasts 4h in the October night and 2h in March.
+//    The 07:00 festival-day boundary is far from both transitions.
+// ══════════════════════════════════════════════════════════════════════════
+function festivalTZ(){return 'Europe/Amsterdam';}
+const NIGHT_END_MIN = 7 * 60; // 07:00 in minutes: festival day boundary
+// Server clock offset in ms (server minus device). Only syncServerTime writes it.
+var _clockOffsetMs=0;
+function nowMs(){return Date.now()+_clockOffsetMs;}
+
+// "HH:MM[:SS]" → seconds / minutes of the day.
+function t2s(t){if(!t)return 0;const p=String(t).split(':').map(Number);return p[0]*3600+p[1]*60+(p[2]||0);}
+function t2m(t){return t2s(t)/60;}
+// Length of a start→end slot in seconds; end at or before start = next day.
+function durSec(s,e){let sm=t2s(s),em=t2s(e);if(em<=sm)em+=86400;return em-sm;}
+// Times before 07:00 are pushed past midnight (+24h) for festival-night ordering.
+function adjM(m){return m<NIGHT_END_MIN?m+1440:m;}
+
+// ── Time zone (Intl, cached per UTC hour: Amsterdam's offset only ever
+// changes on a whole UTC hour, 01:00Z on the DST Sundays).
+var _tzFmt=null,_tzBroken=false,_tzOffCache=null;
+function tzOffsetMs(ms){
+  const hour=Math.floor(ms/3600000);
+  if(!_tzOffCache)_tzOffCache=new Map();
+  const hit=_tzOffCache.get(hour);if(hit!==undefined)return hit;
+  let off;
+  try{
+    if(_tzBroken)throw new Error('no Intl time zone support');
+    if(!_tzFmt)_tzFmt=new Intl.DateTimeFormat('en-GB',{timeZone:festivalTZ(),hourCycle:'h23',
+      year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const p={};for(const x of _tzFmt.formatToParts(new Date(hour*3600000)))p[x.type]=x.value;
+    off=Date.UTC(+p.year,+p.month-1,+p.day,(+p.hour)%24,+p.minute,+p.second)-hour*3600000;
+    if(isNaN(off))throw new Error('unparseable Intl output');
+  }catch(e){
+    // Very old browser without time-zone data: fall back to the device's zone.
+    _tzBroken=true;off=-new Date(hour*3600000).getTimezoneOffset()*60000;
+  }
+  if(_tzOffCache.size>4096)_tzOffCache.clear();
+  _tzOffCache.set(hour,off);
+  return off;
+}
+// Wall-clock parts of an instant in festival time. Mo is 0-based (Date style).
+function amsParts(ms){
+  const d=new Date(ms+tzOffsetMs(ms));
+  return{Y:d.getUTCFullYear(),Mo:d.getUTCMonth(),Da:d.getUTCDate(),h:d.getUTCHours(),m:d.getUTCMinutes(),s:d.getUTCSeconds()};
+}
+function _p2(n){return String(n).padStart(2,'0');}
+function amsDateStr(ms){const p=amsParts(ms);return`${p.Y}-${_p2(p.Mo+1)}-${_p2(p.Da)}`;}
+function amsTimeStr(ms,withSec){const p=amsParts(ms);return _p2(p.h)+':'+_p2(p.m)+(withSec?':'+_p2(p.s):'');}
+// Seconds since festival-time midnight.
+function amsSecOfDay(ms){const p=amsParts(ms);return p.h*3600+p.m*60+p.s;}
+// Festival wall time → epoch ms. Mo is 0-based. See the DST note above.
+function amsWallToMs(Y,Mo,Da,h,mi,s){
+  const t=Date.UTC(Y,Mo,Da,h,mi,s||0);
+  if(isNaN(t))return NaN;
+  const oE=tzOffsetMs(t-43200000),oL=tzOffsetMs(t+43200000);
+  const rE=t-oE;
+  if(oE===oL)return rE;
+  const rL=t-oL;
+  const vE=tzOffsetMs(rE)===oE,vL=tzOffsetMs(rL)===oL;
+  if(vE&&vL)return Math.min(rE,rL); // happens twice: the first one
+  if(vE)return rE;
+  if(vL)return rL;
+  return rE;                        // doesn't exist: one hour later
+}
+// "YYYY-MM-DDTHH:MM[:SS]" (no zone) = festival wall time. Strings that carry
+// their own zone ("Z", "+02:00") are honoured as such. Returns ms or NaN.
+var _isoCache=null;
+function parseFestivalISO(str){
+  if(!str)return NaN;
+  if(!_isoCache)_isoCache=new Map();
+  let v=_isoCache.get(str);if(v!==undefined)return v;
+  const m=/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/.exec(str);
+  v=m?amsWallToMs(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0)):Date.parse(str);
+  if(m&&(+m[4]>23||+m[5]>59||+(m[6]||0)>59))v=NaN;
+  if(_isoCache.size>8192)_isoCache.clear();
+  _isoCache.set(str,v);
+  return v;
+}
+// Calendar arithmetic on "YYYY-MM-DD" (time-zone free).
+function addDaysISO(iso,delta){
+  const[y,m,d]=String(iso).split('-').map(Number);
+  const dt=new Date(Date.UTC(y,m-1,d+delta));
+  return`${dt.getUTCFullYear()}-${_p2(dt.getUTCMonth()+1)}-${_p2(dt.getUTCDate())}`;
+}
+// Festival day (07:00-07:00) that an instant belongs to, as "YYYY-MM-DD".
+function festivalDayOf(ms){
+  const p=amsParts(ms);
+  const date=`${p.Y}-${_p2(p.Mo+1)}-${_p2(p.Da)}`;
+  return p.h*60+p.m<NIGHT_END_MIN?addDaysISO(date,-1):date;
+}
+
+// ── Clock helpers on top of nowMs() (all festival time).
+function nowSec(){return amsSecOfDay(nowMs());}
+function nowMin(){return nowSec()/60;}
+// Festival-night "now in seconds": before 07:00 add 86400 so it stays
+// continuous with the previous evening (timeline now-line, legacy ordering).
+function nowSecAdj(){const n=nowSec();return n<NIGHT_END_MIN*60?n+86400:n;}
+function nowMinAdj(){const n=nowMin();return n<NIGHT_END_MIN?n+1440:n;}
+function todayStr(){return amsDateStr(nowMs());}
+function festivalDayStr(){return festivalDayOf(nowMs());}
+
+// ── Shows
+// [startMs,endMs) of a show; NaN where it can't be known. baseDate is the
+// show's own date or its day's date; legacyAnchor is today's festival day,
+// passed only for projects that carry no dates at all (rule 3 above).
+function showIntervalMs(s,baseDate,legacyAnchor){
+  let startMs=NaN,endMs=NaN;
+  if(!s)return{startMs,endMs};
+  if(s.startsAt)startMs=parseFestivalISO(s.startsAt);
+  if(s.endsAt)endMs=parseFestivalISO(s.endsAt);
+  if(isNaN(startMs)||isNaN(endMs)){
+    let d=baseDate||null;
+    if(!d&&legacyAnchor&&s.start)d=t2s(s.start)<NIGHT_END_MIN*60?addDaysISO(legacyAnchor,1):legacyAnchor;
+    if(d){
+      if(isNaN(startMs)&&s.start)startMs=parseFestivalISO(`${d}T${s.start}`);
+      if(isNaN(endMs)&&s.end){
+        const overnight=s.endsNextDay===true||(s.endsNextDay===undefined&&t2s(s.end)<=t2s(s.start));
+        endMs=parseFestivalISO(`${overnight?addDaysISO(d,1):d}T${s.end}`);
+      }
+    }
+  }
+  return{startMs,endMs};
+}
+// THE show filter (one rule for every screen):
+//  'list' - what a screen may list. Share-link screens never see hidden shows;
+//           operators see everything so it stays editable.
+//  'live' - what may count as live / up next / a fallback "next show": the
+//           same, and never a cancelled show.
+function showAllowed(s,purpose,isPublic){
+  if(!s)return false;
+  if(isPublic&&s.hidden)return false;
+  if(purpose==='live'&&s.cancelled)return false;
+  return true;
+}
+// First show in `shows` that is live at `now`. ivOf(s) → {startMs,endMs}.
+function pickLiveShow(shows,ivOf,now){
+  for(const s of shows){const iv=ivOf(s);if(now>=iv.startMs&&now<iv.endMs)return{s,iv};}
+  return null;
+}
+// Show in `shows` that starts soonest after `now`.
+function pickNextShow(shows,ivOf,now){
+  let best=null;
+  for(const s of shows){const iv=ivOf(s);const dt=iv.startMs-now;if(!(dt>0))continue;if(!best||dt<best.dt)best={s,iv,dt};}
+  return best;
+}
+
+// ── One-off timers ({date,start,end}): the same overnight model as a dated
+// show, so 23:00-01:00 is still live at 00:30.
+function otIntervalMs(t){return showIntervalMs(t?{start:t.start,end:t.end}:null,t?.date||null,null);}
+
+// ── Manual timer model. One shape, one source of truth:
+//   {state:'idle'|'running'|'paused', deadlineMs (running only),
+//    remainingMs (idle/paused only), durationMs (planned + corrections)}
+// A correction moves the deadline while running and the remaining time
+// otherwise, exactly once; pausing freezes deadline-now; resuming sets a
+// fresh deadline from what was left.
+function mtIdle(durationMs){return{state:'idle',deadlineMs:null,remainingMs:durationMs,durationMs};}
+function mtRemaining(t,now){return t.state==='running'?t.deadlineMs-now:t.remainingMs;}
+function mtToggle(t,now){
+  if(t.state==='running')return{...t,state:'paused',remainingMs:t.deadlineMs-now,deadlineMs:null};
+  return{...t,state:'running',deadlineMs:now+t.remainingMs,remainingMs:null};
+}
+function mtAdjust(t,deltaMs){
+  const durationMs=Math.max(1000,t.durationMs+deltaMs);
+  if(t.state==='running')return{...t,deadlineMs:t.deadlineMs+deltaMs,durationMs};
+  return{...t,remainingMs:t.remainingMs+deltaMs,durationMs};
+}
+
+// ── Public polling: at most one request in flight, and a response older
+// than one already applied is dropped.
+function makePollGate(){
+  let inFlight=false,seq=0,applied=0;
+  return{
+    begin(){if(inFlight)return 0;inFlight=true;return ++seq;},
+    end(){inFlight=false;},
+    accept(n){if(!n||n<=applied)return false;applied=n;return true;},
+    get busy(){return inFlight;},
+  };
+}
+
+// ── Server clock offset from one HEAD sample. t0/t1 = device clock before
+// and after the request, serverDateMs = its Date header (whole seconds).
+// The true offset lies in [serverDate-t1, serverDate+1000-t0]. Keep the
+// current offset while it fits (no jitter), prefer 0 when the device clock
+// fits, otherwise take the middle of the window.
+function clockOffsetFromSample(cur,t0,t1,serverDateMs){
+  if(isNaN(serverDateMs)||!(t1>=t0))return cur;
+  const lo=serverDateMs-t1,hi=serverDateMs+1000-t0;
+  if(cur>=lo&&cur<=hi)return cur;
+  if(lo<=0&&0<=hi)return 0;
+  return Math.round((lo+hi)/2);
+}
+// ══ PURE TIME MODULE ─ end ════════════════════════════════════════════════
+
+
+// ── Show helpers on top of the module: these know about G (days, flags).
+const _isPublicView=()=>!!window.PUBLIC_MODE;
+// Does the project carry any date at all? If not, undated shows run on the
+// legacy 07:00 rule (see the module). Asked per show per tick, so memoised
+// for a second per G object.
+let _datesMemo={g:null,at:0,v:false};
+function _projectHasDates(){
+  const t=Date.now();
+  if(_datesMemo.g===G&&t-_datesMemo.at<1000)return _datesMemo.v;
+  const v=(G?.days||[]).some(d=>d.date)||(G?.shows||[]).some(s=>s.date||s.startsAt);
+  _datesMemo={g:G,at:t,v};
+  return v;
+}
+// [startMs,endMs) of a show in this project (NaN where unknown).
+function _showIv(s){
+  const base=_showBaseDate(s);
+  return showIntervalMs(s,base,(!base&&s&&!_projectHasDates())?festivalDayStr():null);
+}
+// Chronological order: real start time where both shows have one, else the
+// festival-night clock order (times before 07:00 after the evening).
+function _showOrder(a,b){
+  const A=_showIv(a).startMs,B=_showIv(b).startMs;
+  if(!isNaN(A)&&!isNaN(B)&&A!==B)return A-B;
+  return adjM(t2m(a.start))-adjM(t2m(b.start));
+}
 
 // getShows: returns shows for a stage+day. When strict=false (default), also includes
 // next-day shows starting before 07:00 (overnight festival expansion). When strict=true,
 // returns ONLY shows belonging to that exact day - used by overview when not viewing today.
+// Share-link views never get hidden shows (showAllowed 'list'); operators see everything.
+// A next-day show with a real timestamp is only pulled in when it actually falls in this
+// day's festival night, so a Saturday-night 01:00 show no longer shows up under Friday too.
 const getShows=(stage,day,strict=false)=>{
-  let base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day);
+  const isPub=_isPublicView();
+  let base=(G.shows||[]).filter(s=>s.stage===stage&&s.day===day&&showAllowed(s,'list',isPub));
   if(!strict){
-    const dayIdx=(G.days||[]).findIndex(d=>d.id===day);
-    const nextDay=(G.days||[])[dayIdx+1];
+    const days=G.days||[];
+    const dayIdx=days.findIndex(d=>d.id===day);
+    const dayObj=days[dayIdx],nextDay=days[dayIdx+1];
     if(nextDay){
-      const overnight=(G.shows||[]).filter(s=>s.stage===stage&&s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN);
+      const overnight=(G.shows||[]).filter(s=>{
+        if(s.stage!==stage||s.day!==nextDay.id||t2m(s.start)>=NIGHT_END_MIN||!showAllowed(s,'list',isPub))return false;
+        const st=_showIv(s).startMs;
+        if(dayObj?.date&&!isNaN(st))return festivalDayOf(st)===dayObj.date;
+        return true;
+      });
       base.push(...overnight);
     }
   }
-  // Public share-link views (PUBLIC_MODE set) hide shows flagged as hidden.
-  // Operator dashboard always sees everything so the show stays editable.
-  if(window.PUBLIC_MODE){
-    base=base.filter(s=>!s.hidden);
-  }
-  return base.sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
+  return base.sort(_showOrder);
 };
 const activeStageObj=()=>G.stages.find(s=>s.id===G.activeStage)||G.stages[0]||{id:'',name:'-',emoji:''};
 // Resolve the effective date of a show: explicit show.date wins, otherwise inherit from its day.
 const showDate=s=>s?.date||(G.days||[]).find(d=>d.id===s?.day)?.date||'';
 // ── ISO timestamp model for shows ────────────────────────────────
 // New shows store explicit startsAt / endsAt as ISO datetime strings
-// (e.g. "2026-05-22T23:00:00") so overnight handling never depends on
-// heuristics. Legacy shows have only `start` / `end` (HH:MM:SS) plus
-// a `day` (and sometimes `date`). Helpers below provide a unified
-// view so renderers don't need to care which model is in use.
+// (e.g. "2026-05-22T23:00:00", festival time) so overnight handling never
+// depends on heuristics. Legacy shows have only `start` / `end` (HH:MM:SS)
+// plus a `day` (and sometimes `date`). showIntervalMs (module) gives one
+// view of both; the helpers below keep their old names and Date returns.
+//
+// Changing a day's date (setDayDate) moves only the shows that inherit it
+// (no show.date / startsAt). Shows saved through the editor carry their own
+// date, keep their timestamps and stay listed under that day: explicit wins
+// everywhere (live detection, countdowns, the "next show" fallback). The
+// UI phase should show this before the change is applied - see
+// dayDateChangeEffect() below.
 function _showBaseDate(s){
   if(!s)return null;
   if(s.date)return s.date;
   const d=(G.days||[]).find(x=>x.id===s.day);
   return d?.date||null;
 }
-function _addDaysISO(iso,delta){
-  const[y,m,d]=iso.split('-').map(Number);
-  const dt=new Date(y,m-1,d+delta);
-  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-}
-function _showStartsAt(s){
-  if(!s)return null;
-  if(s.startsAt){const d=new Date(s.startsAt);if(!isNaN(d))return d;}
-  const base=_showBaseDate(s);
-  if(!base||!s.start)return null;
-  const d=new Date(`${base}T${s.start}`);
-  return isNaN(d)?null:d;
-}
-function _showEndsAt(s){
-  if(!s)return null;
-  if(s.endsAt){const d=new Date(s.endsAt);if(!isNaN(d))return d;}
-  const base=_showBaseDate(s);
-  if(!base||!s.end)return null;
-  // Detect overnight: end <= start → end is the next day
-  const overnight=s.endsNextDay===true||(s.endsNextDay===undefined&&t2s(s.end)<=t2s(s.start));
-  const endBase=overnight?_addDaysISO(base,1):base;
-  const d=new Date(`${endBase}T${s.end}`);
-  return isNaN(d)?null:d;
-}
+function _addDaysISO(iso,delta){return addDaysISO(iso,delta);}
+function _showStartsAt(s){const v=_showIv(s).startMs;return isNaN(v)?null:new Date(v);}
+function _showEndsAt(s){const v=_showIv(s).endMs;return isNaN(v)?null:new Date(v);}
 // Timestamp-based liveness - robust against the festival-day boundary at 07:00.
 // Used by curShow / nxtShow / renderBS / renderFOH / renderTP so a show at
 // 01:00-02:30 on a calendar day is correctly seen as LIVE at 01:02 instead of
 // being filtered out by the legacy "isShowToday" heuristic.
-function _showIsLive(s,nowMs){
-  const sa=_showStartsAt(s),ea=_showEndsAt(s);
-  if(!sa||!ea)return false;
-  const n=nowMs||Date.now();
-  return n>=sa.getTime()&&n<ea.getTime();
+// A cancelled show is never live (showAllowed 'live').
+function _showIsLive(s,at){
+  if(!showAllowed(s,'live',false))return false;
+  const iv=_showIv(s),n=at||nowMs();
+  return n>=iv.startMs&&n<iv.endMs;
 }
-function _showIsFuture(s,nowMs){
-  const sa=_showStartsAt(s);
-  if(!sa)return false;
-  return (nowMs||Date.now())<sa.getTime();
+function _showIsFuture(s,at){
+  const st=_showIv(s).startMs;
+  return !isNaN(st)&&(at||nowMs())<st;
 }
-function _showIsPast(s,nowMs){
-  const ea=_showEndsAt(s);
-  if(!ea)return false;
-  return (nowMs||Date.now())>=ea.getTime();
+function _showIsPast(s,at){
+  const en=_showIv(s).endMs;
+  return !isNaN(en)&&(at||nowMs())>=en;
 }
-function _showRemainingSec(s,nowMs){
-  const ea=_showEndsAt(s);if(!ea)return 0;
-  return Math.round((ea.getTime()-(nowMs||Date.now()))/1000);
+function _showRemainingSec(s,at){
+  const en=_showIv(s).endMs;if(isNaN(en))return 0;
+  return Math.round((en-(at||nowMs()))/1000);
 }
-function _showElapsedSec(s,nowMs){
-  const sa=_showStartsAt(s);if(!sa)return 0;
-  return Math.round(((nowMs||Date.now())-sa.getTime())/1000);
+function _showElapsedSec(s,at){
+  const st=_showIv(s).startMs;if(isNaN(st))return 0;
+  return Math.round(((at||nowMs())-st)/1000);
 }
 function _showDurationSec(s){
-  const sa=_showStartsAt(s),ea=_showEndsAt(s);
-  if(sa&&ea)return Math.max(0,Math.round((ea-sa)/1000));
+  const iv=_showIv(s);
+  if(!isNaN(iv.startMs)&&!isNaN(iv.endMs))return Math.max(0,Math.round((iv.endMs-iv.startMs)/1000));
   return durSec(s.start,s.end); // legacy fallback when no base date
+}
+// What changing day `dayId` from its current date to `newDate` would do,
+// for the UI phase to show before applying it. Calculation only, no UI:
+//  moved - shows that inherit the day's date (they move with it);
+//  kept  - shows with their own date / startsAt (they stay where they are,
+//          and will no longer be on the day's date unless it is the same).
+function dayDateChangeEffect(dayId,newDate){
+  const day=(G.days||[]).find(d=>d.id===dayId);
+  const shows=(G.shows||[]).filter(s=>s.day===dayId);
+  const own=s=>!!(s.date||s.startsAt);
+  return{
+    oldDate:day?.date||null,newDate:newDate||null,
+    moved:shows.filter(s=>!own(s)),
+    kept:shows.filter(own),
+    keptOffDay:shows.filter(s=>own(s)&&showDate(s)!==newDate),
+  };
 }
 // Compute startsAt + endsAt for the form values + active day context.
 // Used when saving a show, so we persist canonical ISO timestamps.
@@ -2762,13 +3002,12 @@ function _computeShowTimestamps(start,end,dayId,explicitDate){
   const endISO=`${endsNextDay?_addDaysISO(base,1):base}T${end}`;
   return{startsAt:startISO,endsAt:endISO,endsNextDay};
 }
-// Format a Date object as datetime-local string "YYYY-MM-DDTHH:MM:SS" (local
-// time, no Z). Seconds included so the input shows them with step="1".
+// Format a Date object as datetime-local string "YYYY-MM-DDTHH:MM:SS" in
+// festival time (no Z). Seconds included so the input shows them with step="1".
 function _toLocalDatetime(d){
   if(!d||isNaN(d))return'';
-  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');
-  const h=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0'),se=String(d.getSeconds()).padStart(2,'0');
-  return `${y}-${m}-${da}T${h}:${mi}:${se}`;
+  const ms=d.getTime();
+  return amsDateStr(ms)+'T'+amsTimeStr(ms,true);
 }
 // Derive datetime-local input values from a show, preferring canonical ISO
 // fields and falling back to legacy date/start/end when missing.
@@ -2801,67 +3040,73 @@ const isActiveDayToday=()=>{
   const datedShows=showsOnDay.filter(s=>s.date);
   if(datedShows.length){return datedShows.some(s=>s.date===today);}
   // Nothing dated on this day - only treat as today if no dates exist anywhere (legacy mode)
-  const anyDated=(G.days||[]).some(d=>d.date)||(G.shows||[]).some(s=>s.date);
-  return !anyDated;
+  return !_projectHasDates();
 };
-// Is this specific show on today's festival day? Uses show.date if present, else day.date.
+// Is this specific show on today's festival day? By its real start time when
+// it has one (so 00:30 on the 21st counts for festival day the 20th - the
+// calendar-date compare called it "not today"), else by show.date / day.date.
 // Falls back to legacy mode (treat as today) only if no date info exists anywhere.
 const isShowToday=s=>{
+  const st=_showIv(s).startMs;
+  if(!isNaN(st))return festivalDayOf(st)===festivalDayStr();
   const d=showDate(s);
   if(d)return d===festivalDayStr();
-  const anyDated=(G.days||[]).some(x=>x.date)||(G.shows||[]).some(x=>x.date);
-  return !anyDated;
+  return !_projectHasDates();
 };
-// curShow/nxtShow with overnight-aware time comparison
-// Timestamp-based now playing detection. Robust around festival-day boundary
-// - a show at 01:00-02:30 is correctly seen as LIVE at 01:02 regardless of
-// what "festival day" the clock is in.
-function curShow(shows){
-  const nowMs=Date.now();
-  for(const s of shows){
-    if(!_showIsLive(s,nowMs))continue;
-    const sa=_showStartsAt(s),ea=_showEndsAt(s);
-    // Return both ms timestamps (preferred - used by renderers for remaining)
-    // and seconds-of-day for backwards-compat with code that still does the
-    // legacy adjM math. Renderers should compute rem = (endMs - Date.now())/1000
-    // so the festival-day +86400 bump never produces a negative "OVERTIME".
-    const startSec=t2s(s.start);
-    const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
-    return{s,startSec,endSec,startMs:sa?.getTime()||0,endMs:ea?.getTime()||0};
-  }
-  return null;
+// curShow/nxtShow: timestamp-based, robust around the festival-day boundary -
+// a show at 01:00-02:30 is correctly seen as LIVE at 01:02 regardless of
+// what "festival day" the clock is in. Cancelled shows never count (and on
+// share-link screens neither do hidden ones): showAllowed 'live'.
+function curShow(shows,at){
+  const hit=pickLiveShow(shows.filter(s=>showAllowed(s,'live',_isPublicView())),_showIv,at||nowMs());
+  if(!hit)return null;
+  const s=hit.s;
+  // Return both ms timestamps (preferred - used by renderers for remaining)
+  // and seconds-of-day for backwards-compat with code that still does the
+  // legacy adjM math. Renderers should compute rem = (endMs - nowMs())/1000
+  // so the festival-day +86400 bump never produces a negative "OVERTIME".
+  const startSec=t2s(s.start);
+  const endSec=t2s(s.end)<=t2s(s.start)?t2s(s.end)+86400:t2s(s.end);
+  return{s,startSec,endSec,startMs:hit.iv.startMs,endMs:hit.iv.endMs};
 }
-function nxtShow(shows){
-  const nowMs=Date.now();
-  let best=null;
-  for(const s of shows){
-    const sa=_showStartsAt(s);
-    if(!sa)continue;
-    const dt=sa.getTime()-nowMs;
-    if(dt<=0)continue;
-    if(!best||dt<best.dt)best={s,dt,sa};
-  }
+function nxtShow(shows,at){
+  const best=pickNextShow(shows.filter(s=>showAllowed(s,'live',_isPublicView())),_showIv,at||nowMs());
   if(!best)return null;
   return{s:best.s,startsIn:Math.round(best.dt/1000)};
 }
-// Earliest upcoming non-cancelled show for a stage across ALL days. Returns {s,secUntil,sameToday,date} or null.
+// ── THE "current show" decision: which show does a timer for stage X show
+// at time T under mode Y? Every timer asks this one function.
+//  'live'   → the schedule: the live show (curShow) and the next one (nxtShow).
+//  'manual' → the show cued on this device's manual timer (M.showId).
+// Stage View, FOH, Backstage, Overview, Wall, Timeline and every share link
+// always ask for 'live'. Why: the manual timer only exists in the tab that
+// runs it - M is never saved or synced (G.timerMode is in the project, M is
+// not) - so no other screen could follow it, and the Stage View on the
+// operator's laptop must not disagree with the Stage View on the booth.
+// Having screens follow a manual timer would mean syncing M: a new feature.
+// What manual mode does now: it cues the scheduled show (live, else next)
+// instead of always the first show of the day, and holds its cue by show
+// id, so a lineup update can no longer slide another show under the timer.
+function stageShowAt(stageId,dayId,at,mode){
+  const shows=getShows(stageId,dayId);
+  if(mode==='manual'){const s=shows[M.idx];return{shows,cur:s?{s,manual:true}:null,nxt:null};}
+  const n=at||nowMs();
+  return{shows,cur:curShow(shows,n),nxt:nxtShow(shows,n)};
+}
+// Earliest upcoming show for a stage across ALL days (never cancelled, never
+// hidden on a share link). Returns {s,secUntil,sameToday,date} or null.
 function nextUpcomingAnyDay(stageId){
-  const today=festivalDayStr();
-  const now=new Date();
-  const list=(G.shows||[])
-    .filter(s=>s.stage===stageId&&!s.cancelled)
-    .map(s=>{
-      const d=showDate(s)||today;
-      const startDT=new Date(d+'T'+s.start);
-      let endDT=new Date(d+'T'+s.end);
-      if(t2s(s.end)<=t2s(s.start))endDT=new Date(endDT.getTime()+86400000);
-      return{s,date:d,startDT,endDT};
-    })
-    .filter(o=>o.startDT>now)
-    .sort((a,b)=>a.startDT-b.startDT);
-  if(!list.length)return null;
-  const f=list[0];
-  return{s:f.s,secUntil:Math.max(0,Math.floor((f.startDT-now)/1000)),sameToday:f.date===today,date:f.date};
+  const n=nowMs(),today=festivalDayOf(n),isPub=_isPublicView();
+  let best=null;
+  for(const s of (G.shows||[])){
+    if(s.stage!==stageId||!showAllowed(s,'live',isPub))continue;
+    const st=_showIv(s).startMs;
+    if(!(st>n))continue;
+    if(!best||st<best.st)best={s,st};
+  }
+  if(!best)return null;
+  const date=showDate(best.s)||amsDateStr(best.st);
+  return{s:best.s,secUntil:Math.max(0,Math.floor((best.st-n)/1000)),sameToday:date===today,date};
 }
 function getDays(){return G.days||[];}
 function fmtDayShort(id){const d=(G.days||[]).find(x=>x.id===id);return d?d.name:id;}
@@ -3948,15 +4193,15 @@ function renderTP(){
   renderTPLive();
 }
 function renderTPLive(){
-  const shows=getShows(G.activeStage,G.activeDay);
-  const cur=curShow(shows),nxt=nxtShow(shows);
+  const now=nowMs();
+  const{cur,nxt}=stageShowAt(G.activeStage,G.activeDay,now,'live');
   const stage=activeStageObj();
   document.getElementById('tp-stage').textContent=stage.name;
   setTPPhoto(cur?.s?.photo||'');
   const bb=document.getElementById('tp-booth');bb.style.display='none';
   const boothSep=document.getElementById('tp-meta-dot-booth');if(boothSep)boothSep.style.display='none';
   if(cur){
-    const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-now)/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
     setDot(col,true);
     document.getElementById('tp-st').textContent=rem<0?'OVERTIME':'Running';
@@ -4037,6 +4282,7 @@ function renderSched(){
     list.innerHTML=`<div id="empty"><div class="ei">📋</div><p style="font-size:13px;">${isMob?'No upcoming shows.':'No shows scheduled.<br>Click <strong>New show</strong>.'}</p></div>`;
     return;
   }
+  const now=nowMs();
   list.innerHTML=shows.map((s,i)=>{
     let isNow,isPast,pct;
     const showIsToday=isShowToday(s); // still used downstream for "starts in" labels
@@ -4054,7 +4300,7 @@ function renderSched(){
     const bBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'';
     const bCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'';
     // Countdown to start - only meaningful when the show actually IS today
-    const _sa=_showStartsAt(s);const secUntil=(G.timerMode==='live'&&_sa)?Math.max(0,Math.round((_sa.getTime()-Date.now())/1000)):0;
+    const _sa=_showStartsAt(s);const secUntil=(G.timerMode==='live'&&_sa)?Math.max(0,Math.round((_sa.getTime()-now)/1000)):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.25)';
     // FOH notes
     const notes=G.fohNotes[s.id]||[];
@@ -4098,7 +4344,7 @@ function selMCue(i){M.idx=i;mReset();renderTP();renderTbar();renderSched();}
 function tickSched(){
   if(G.timerMode!=='live')return;
   const shows=getShows(G.activeStage,G.activeDay);
-  const nowMs=Date.now();
+  const nowMs=window.nowMs(); // festival clock (server-corrected)
   shows.forEach(s=>{
     const cd=document.getElementById('scd-'+s.id);if(!cd)return;
     const sa=_showStartsAt(s),ea=_showEndsAt(s);
@@ -4120,16 +4366,16 @@ function tickSched(){
   });
   // Update mobile header mini-countdown
   const mobCd=document.getElementById('mob-hdr-cd');
-  const cur=curShow(shows);
+  const cur=curShow(shows,nowMs);
   if(mobCd){
     if(cur){
-      const remSec=Math.round((cur.endMs-Date.now())/1000);
+      const remSec=Math.round((cur.endMs-nowMs)/1000);
       mobCd.textContent=s2cd(remSec>0?remSec:0);
       mobCd.style.background='rgba(99,102,241,.15)';
       mobCd.style.borderColor='rgba(99,102,241,.3)';
       mobCd.style.color='#a5b4fc';
     } else {
-      const nxt=nxtShow(shows);
+      const nxt=nxtShow(shows,nowMs);
       if(nxt){
         mobCd.textContent=s2cd(nxt.startsIn);
         mobCd.style.background='rgba(255,255,255,.06)';
@@ -4265,12 +4511,14 @@ function fohNotesHTML(showId){
 function renderFOH(){
   if(!document.getElementById('foh').classList.contains('open'))return;
   document.getElementById('foh-sname').textContent=activeStageObj().name;
-  const shows=getShows(G.activeStage,G.activeDay);
-  const cur=curShow(shows),nxt=nxtShow(shows);
+  const now=nowMs();
+  const{shows:all,cur,nxt}=stageShowAt(G.activeStage,G.activeDay,now,'live');
+  // The FOH list never shows cancelled shows (same rule as the live pick).
+  const shows=all.filter(s=>showAllowed(s,'live',_isPublicView()));
   const n=nowSecAdj(),nm=nowMinAdj();
   let liveHTML='';
   if(cur){
-    const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-now)/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const tc=tColor(rem);
     liveHTML=`<div class="foh-now">
       <div class="foh-now-lbl" style="color:${tc};"><span class="foh-now-dot lp" style="background:${tc};"></span>Now Playing ${itemTypeBadge(cur.s)} ${fohBoothBadge(cur.s.booth)}</div>
@@ -4292,7 +4540,7 @@ function renderFOH(){
   const rows=upcoming.map(s=>{
     const showIsToday=isShowToday(s);
     const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=_showIsLive(s);
-    const _sa=_showStartsAt(s);const secUntil=_sa?Math.max(0,Math.round((_sa.getTime()-Date.now())/1000)):0;
+    const _sa=_showStartsAt(s);const secUntil=_sa?Math.max(0,Math.round((_sa.getTime()-now)/1000)):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
     return`<div class="foh-srow${isNow?' live':''}">
       <div class="foh-sr-t">${s.start.slice(0,5)}</div>
@@ -4358,7 +4606,8 @@ function delFohnNote(showId,noteId){
 function renderBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
   document.getElementById('bs-sname').textContent=activeStageObj().name;
-  const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
+  const shows=_bsShows();
+  const now=nowMs();
   const n=nowSecAdj(),nm=nowMinAdj();
   const body=document.getElementById('bs-body');
 
@@ -4389,7 +4638,7 @@ function renderBS(){
     if(isNow){
       // LIVE: bar = set progress, countdown = remaining - timestamp-based
       const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      const rem=Math.round((ea.getTime()-Date.now())/1000);
+      const rem=Math.round((ea.getTime()-now)/1000);
       const dur=Math.round((ea.getTime()-sa.getTime())/1000);
       const pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
@@ -4438,12 +4687,12 @@ function renderBS(){
       const sa=_showStartsAt(s);
       const prevShow=shows[i-1];
       const prevEa=prevShow?_showEndsAt(prevShow):null;
-      const timeUntilStart=sa?Math.max(0,Math.round((sa.getTime()-Date.now())/1000)):(sm-nm)*60;
+      const timeUntilStart=sa?Math.max(0,Math.round((sa.getTime()-now)/1000)):(sm-nm)*60;
       const gapSec=(sa&&prevEa)?Math.max(1,Math.round((sa.getTime()-prevEa.getTime())/1000)):Math.max(1,(sm-(prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60)))*60);
       const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
       // Color: close = green (about to go on), far = muted blue
       const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
-      const rank=i-(shows.findIndex(x=>{const ea2=_showEndsAt(x);return ea2?Date.now()<ea2.getTime():true;}));
+      const rank=i-(shows.findIndex(x=>{const ea2=_showEndsAt(x);return ea2?now<ea2.getTime():true;}));
 
       return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.06);">
         <div class="bs-row-top">
@@ -4469,11 +4718,17 @@ function renderBS(){
   }).join('');
 }
 
+// Backstage list: renderBS and tickBS address rows by index, so both must
+// use exactly this list. Cancelled shows are left out (same rule as the live
+// pick): there is no cancelled styling here, they would read as upcoming.
+function _bsShows(){
+  return getShows(G.activeStage,G.activeDay,!isActiveDayToday()).filter(s=>showAllowed(s,'live',_isPublicView()));
+}
 // Fast tick for backstage (update just countdowns & bars without full re-render)
 function tickBS(){
   if(!document.getElementById('bs').classList.contains('open'))return;
-  const shows=getShows(G.activeStage,G.activeDay,!isActiveDayToday());
-  const nowMs=Date.now();
+  const shows=_bsShows();
+  const nowMs=window.nowMs(); // festival clock (server-corrected)
   shows.forEach((s,i)=>{
     const isNow=_showIsLive(s,nowMs),isPast=_showIsPast(s,nowMs);
     const cdEl=document.getElementById('bs-cd-'+i);
@@ -4512,8 +4767,10 @@ function tickBS(){
 // ══ STAGE VIEW
 function renderSV(){
   if(!document.getElementById('sv').classList.contains('open'))return;
-  const shows=getShows(G.activeStage,G.activeDay);
-  const cur=curShow(shows),nxt=nxtShow(shows);
+  // Data only: Stage View always runs on the schedule ('live'), see stageShowAt.
+  // Markup, styles and display modes below are frozen.
+  const now=nowMs();
+  const{cur,nxt}=stageShowAt(G.activeStage,G.activeDay,now,'live');
   const stage=activeStageObj();
   document.getElementById('sv-top').textContent=stage.name;
   // Per-stage display mode (Countdown / Clock / Count Up / Blank). The operator
@@ -4532,8 +4789,7 @@ function renderSV(){
   }
   if(svMode==='clock'){
     // Show the wall clock big, keep artist visible if there's a live show.
-    const d=new Date();
-    const t=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    const t=amsTimeStr(now,true);
     const showRef=cur?cur.s:(nxt?nxt.s:null);
     document.getElementById('sv-artist').textContent=showRef?showRef.artist:'';
     document.getElementById('sv-genre').textContent=showRef?(showRef.genre||''):'';
@@ -4548,7 +4804,7 @@ function renderSV(){
   }
   if(svMode==='countup'&&cur){
     // Time elapsed since the live show started.
-    const elapsed=Math.max(0,Math.round((Date.now()-cur.startMs)/1000));
+    const elapsed=Math.max(0,Math.round((now-cur.startMs)/1000));
     document.getElementById('sv-artist').textContent=cur.s.artist;
     document.getElementById('sv-genre').textContent=cur.s.genre||'';
     const cd=document.getElementById('sv-cd');
@@ -4565,7 +4821,7 @@ function renderSV(){
   }
   // Default mode: countdown (existing behaviour below).
   if(cur){
-    const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+    const rem=Math.round((cur.endMs-now)/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const col=tColor(rem);
     document.getElementById('sv-artist').textContent=cur.s.artist;
     document.getElementById('sv-genre').textContent=cur.s.genre||'';
@@ -4949,8 +5205,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();cl
 
 // ══ CLOCK
 function updateClock(){
-  const d=new Date();
-  const t=`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  const t=amsTimeStr(nowMs(),true); // festival time, server-corrected
   document.getElementById('clock-hdr').textContent=t;
   document.getElementById('foh-clock').textContent=t;
   document.getElementById('bs-clock').textContent=t;
@@ -4963,13 +5218,13 @@ function updateClock(){
 // ══ FOH tick (update live countdown + row countdowns)
 function tickFOH(){
   if(!document.getElementById('foh').classList.contains('open'))return;
-  const shows=getShows(G.activeStage,G.activeDay);
-  const cur=curShow(shows);
+  const nowMs=window.nowMs(); // festival clock (server-corrected)
+  const{shows,cur}=stageShowAt(G.activeStage,G.activeDay,nowMs,'live');
   const nm=nowMin();
   // Live card countdown
   const el=document.getElementById('foh-cd');
   if(el&&cur){
-    const rem=Math.round((cur.endMs-Date.now())/1000),tc=tColor(rem);
+    const rem=Math.round((cur.endMs-nowMs)/1000),tc=tColor(rem);
     const dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     el.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
     el.style.color=tc;
@@ -4978,7 +5233,6 @@ function tickFOH(){
     if(bar){bar.style.width=pct.toFixed(1)+'%';bar.style.background=tc;}
   }
   // Per-row countdowns
-  const nowMs=Date.now();
   shows.forEach(s=>{
     const cd=document.getElementById('foh-sr-cd-'+s.id);if(!cd)return;
     const sa=_showStartsAt(s);
@@ -5004,20 +5258,18 @@ function closeOV(){document.getElementById('stov').classList.remove('open');}
 
 // Pick the day_id of the earliest still-upcoming (or currently-running) show for a stage.
 // Looks across ALL days and returns null when no future show exists.
+// Timestamp-based (the old date-string + clock-minute version lost overnight
+// shows after midnight); same show filter as the live pick.
 function pickStageBestDay(stageId){
-  const today=festivalDayStr();
-  const candidates=(G.shows||[])
-    .filter(s=>s.stage===stageId&&!s.cancelled)
-    .map(s=>({s,date:showDate(s)||today}))
-    .filter(o=>{
-      // Include if show is on a future date, or today and end-time still ahead
-      if(o.date>today)return true;
-      if(o.date<today)return false;
-      const em=adjM(t2m(o.s.end));
-      return em>nowMinAdj();
-    })
-    .sort((a,b)=>a.date!==b.date?(a.date<b.date?-1:1):t2m(a.s.start)-t2m(b.s.start));
-  return candidates[0]?.s.day||null;
+  const n=nowMs(),isPub=_isPublicView();
+  let best=null;
+  for(const s of (G.shows||[])){
+    if(s.stage!==stageId||!showAllowed(s,'live',isPub))continue;
+    const iv=_showIv(s);
+    if(!(iv.endMs>n))continue;
+    if(!best||iv.startMs<best.st)best={s,st:iv.startMs};
+  }
+  return best?.s.day||null;
 }
 // Public overview uses per-stage best day instead of single G.activeDay
 const _OV_PER_STAGE_DAY=()=>PUBLIC_MODE==='overview';
@@ -5034,7 +5286,7 @@ function renderOV(){
     const dayId=perStage?stageDay[st.id]:G.activeDay;
     const dayObj=(G.days||[]).find(d=>d.id===dayId);
     const dIsToday=dayObj?.date?dayObj.date===festivalDayStr():dayToday;
-    const shows=getShows(st.id,dayId,!dIsToday).filter(s=>!s.cancelled);
+    const shows=getShows(st.id,dayId,!dIsToday).filter(s=>showAllowed(s,'live',_isPublicView()));
     if(!shows.length)return false;
     if(!dIsToday)return true; // non-today: show all
     // hide stage if last show already ended (timestamp-based, robust around midnight)
@@ -5063,7 +5315,7 @@ function renderOV(){
 
 function tickOV(){
   if(!document.getElementById('stov').classList.contains('open'))return;
-  const cl=document.getElementById('stov-clock');if(cl){const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');}
+  const cl=document.getElementById('stov-clock');if(cl){cl.textContent=amsTimeStr(nowMs(),true);}
   const stages=G.stages||[];
   const dayToday=isActiveDayToday();
   const perStageDay=window._stovStageDay||null;
@@ -5071,7 +5323,7 @@ function tickOV(){
     const stageDayId=perStageDay?perStageDay[st.id]:G.activeDay;
     const stageDayObj=(G.days||[]).find(d=>d.id===stageDayId);
     const dayIsToday=stageDayObj?.date?stageDayObj.date===festivalDayStr():dayToday;
-    const shows=getShows(st.id,stageDayId,!dayIsToday).filter(s=>!s.cancelled);
+    const shows=getShows(st.id,stageDayId,!dayIsToday).filter(s=>showAllowed(s,'live',_isPublicView()));
     const card=document.getElementById('stovc-'+st.id);
     const dotEl=document.getElementById('stovdot-'+st.id);
     const stEl=document.getElementById('stovst-'+st.id);
@@ -5082,24 +5334,10 @@ function tickOV(){
     if(!card||!cdEl)return;
     const nameEl=document.getElementById('stovname-'+st.id);
     // Timestamp-based cur/nxt detection - works across the 07:00 boundary, overnight shows, any timezone
-    const nowMs=Date.now();
-    let cur=null,nxtObj=null;
-    for(const s of shows){
-      if(!_showIsLive(s,nowMs))continue;
-      const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      cur={s,startMs:sa?.getTime()||0,endMs:ea?.getTime()||0};break;
-    }
-    if(!cur){
-      let bestDt=Infinity,bestS=null;
-      for(const s of shows){
-        const sa=_showStartsAt(s);if(!sa)continue;
-        const dt=sa.getTime()-nowMs;
-        if(dt>0&&dt<bestDt){bestDt=dt;bestS=s;}
-      }
-      if(bestS)nxtObj={s:bestS,startsIn:Math.round(bestDt/1000)};
-    }
+    const nowMs=window.nowMs(); // festival clock (server-corrected)
+    const cur=curShow(shows,nowMs),nxtObj=cur?null:nxtShow(shows,nowMs);
     if(cur){
-      const rem=Math.round((cur.endMs-Date.now())/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
+      const rem=Math.round((cur.endMs-nowMs)/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
       const col=tColor(rem);
       const nx=shows[shows.indexOf(cur.s)+1];
       const nxPrio=nx&&!!nx.priority;
@@ -5207,65 +5445,48 @@ function wvToggleTheme(){
   localStorage.setItem(WV_THEME_KEY,cur==='light'?'dark':'light');
   wvApplyTheme();
 }
-// ═══ WALL TIME SYNC ═══════════════════════════════════════════════════════
-// Control room PCs are often locked-down with broken or drifting system
-// clocks. Pull the authoritative time from Supabase's HTTP Date header
-// once on init and every 60s after, then add the offset to every clock,
-// countdown and festival-day calculation inside the Wall view. The rest
-// of the app keeps using local time - this only affects mode=wall.
-let WV_TIME_OFFSET=0;
-async function wvSyncTime(){
+// ═══ SERVER TIME SYNC ═════════════════════════════════════════════════════
+// Control room PCs, booth tablets and FOH laptops are often locked down with
+// broken or drifting system clocks. Pull the authoritative time from
+// Supabase's HTTP Date header on start and every 60s after; nowMs() (time
+// module) adds the offset, so every clock, countdown and festival-day
+// calculation - Wall, Stage View, FOH, Backstage, Overview, Timeline,
+// schedule, one-off timers - runs on the same corrected clock. Started for
+// every route at the bottom of the script (it used to run for mode=wall only).
+// clockOffsetFromSample keeps the offset at 0 while the device clock agrees
+// with the server (within the header's 1-second resolution), so a correctly
+// set device never sees a jump.
+let _clockSyncBusy=false;
+async function syncServerTime(){
+  if(_clockSyncBusy)return;
+  _clockSyncBusy=true;
+  const ctrl=new AbortController();
+  const tmo=setTimeout(()=>ctrl.abort(),5000);
   try{
-    const ctrl=new AbortController();
-    const tmo=setTimeout(()=>ctrl.abort(),5000);
+    const t0=Date.now();
     const r=await fetch(`${SUPA_URL}/rest/v1/`,{
       method:'HEAD',
       signal:ctrl.signal,
       headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
       cache:'no-store',
     });
-    clearTimeout(tmo);
+    const t1=Date.now();
     const dateHdr=r.headers.get('date');
-    if(dateHdr){
-      const serverMs=new Date(dateHdr).getTime();
-      if(!isNaN(serverMs)){
-        const localMs=Date.now();
-        const offset=serverMs-localMs;
-        WV_TIME_OFFSET=offset;
-        if(Math.abs(offset)>5000)console.warn('[wv] client clock off by',Math.round(offset/1000),'s - using server time');
-      }
+    const serverMs=dateHdr?new Date(dateHdr).getTime():NaN;
+    if(!isNaN(serverMs)){
+      const prev=_clockOffsetMs;
+      _clockOffsetMs=clockOffsetFromSample(prev,t0,t1,serverMs);
+      if(_clockOffsetMs!==prev&&Math.abs(_clockOffsetMs)>5000)console.warn('[clock] device clock off by',Math.round(_clockOffsetMs/1000),'s - using server time');
     }
-  }catch(e){console.warn('[wv] time sync failed:',e?.message||e);}
+  }catch(e){console.warn('[clock] time sync failed:',e?.message||e);}
+  finally{clearTimeout(tmo);_clockSyncBusy=false;}
 }
-function _wvNow(){return Date.now()+WV_TIME_OFFSET;}
-// Force Europe/Amsterdam regardless of the client's timezone setting.
-// Belt-and-braces: even if a control room PC has its timezone wrong
-// (set to UTC or somewhere else), the wall reads correctly.
-function _wvAmsParts(ms){
-  const d=new Date(ms);
-  try{
-    const parts=new Intl.DateTimeFormat('en-GB',{
-      timeZone:'Europe/Amsterdam',
-      year:'numeric',month:'2-digit',day:'2-digit',
-      hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
-    }).formatToParts(d);
-    const g=t=>parts.find(p=>p.type===t).value;
-    return{Y:+g('year'),Mo:+g('month')-1,Da:+g('day'),h:+g('hour'),m:+g('minute'),s:+g('second')};
-  }catch(e){
-    // Intl unsupported (very old browser) - fall back to local
-    return{Y:d.getFullYear(),Mo:d.getMonth(),Da:d.getDate(),h:d.getHours(),m:d.getMinutes(),s:d.getSeconds()};
-  }
-}
-function _wvFestivalDayStr(){
-  const p=_wvAmsParts(_wvNow());
-  let Y=p.Y,Mo=p.Mo,Da=p.Da;
-  if(p.h<7){
-    // Roll back one day in Amsterdam local terms
-    const back=new Date(Date.UTC(Y,Mo,Da-1));
-    Y=back.getUTCFullYear();Mo=back.getUTCMonth();Da=back.getUTCDate();
-  }
-  return `${Y}-${String(Mo+1).padStart(2,'0')}-${String(Da).padStart(2,'0')}`;
-}
+// Old Wall names, kept for existing callers.
+function wvSyncTime(){return syncServerTime();}
+function _wvNow(){return nowMs();}
+// Europe/Amsterdam regardless of the client's timezone setting (time module).
+function _wvAmsParts(ms){return amsParts(ms);}
+function _wvFestivalDayStr(){return festivalDayStr();}
 
 // Wall day override - null/empty = follow today's festival day,
 // otherwise pin to a specific day_id. Persists per-device so a
@@ -5438,7 +5659,7 @@ function tickWV(){
   stages.forEach(st=>{
     const cell=document.getElementById('wvc-'+st.id);if(!cell)return;
     if(blackoutOn){cell.className='wv-cell blackout';return;}
-    const shows=getShows(st.id,dayId).filter(s=>!s.cancelled);
+    const shows=getShows(st.id,dayId).filter(s=>showAllowed(s,'live',_isPublicView()));
     const artEl=document.getElementById('wva-'+st.id);
     const tEl=document.getElementById('wvt-'+st.id);
     const cdEl=document.getElementById('wvcd-'+st.id);
@@ -5447,16 +5668,8 @@ function tickWV(){
     const stEl=document.getElementById('wvp-'+st.id);
     // Find the show for the NOW block: the live one, else the soonest
     // upcoming one. Everything after it feeds the Next-up list.
-    let cur=null,nxt=null;
-    for(const s of shows){if(_showIsLive(s,nowMs)){cur=s;break;}}
-    if(!cur){
-      let bestDt=Infinity;
-      for(const s of shows){
-        const sa=_showStartsAt(s);if(!sa)continue;
-        const dt=sa.getTime()-nowMs;
-        if(dt>0&&dt<bestDt){bestDt=dt;nxt=s;}
-      }
-    }
+    const cur=curShow(shows,nowMs)?.s||null;
+    const nxt=cur?null:(nxtShow(shows,nowMs)?.s||null);
     let cls='wv-cell';
     if(cur){
       const ea=_showEndsAt(cur);
@@ -5578,24 +5791,20 @@ function renderDisplayModeBar(){
 // and don't touch anything else.
 // ══════════════════════════════════════════════════════════════════════════
 function _showsInOrder(){
-  // Same stage & day as the currently active one, sorted by real start ts.
-  return (G.shows||[])
-    .filter(s=>s.stage===G.activeStage && s.day===G.activeDay && !s.cancelled)
-    .sort((a,b)=>{
-      const A=_showStartsAt(a), B=_showStartsAt(b);
-      if(!A||!B)return 0;
-      return A.getTime()-B.getTime();
-    });
+  // The same list curShow picks the live show from (stage + day, including
+  // the next day's shows before 07:00), minus cancelled ones, in real start
+  // order. It used to be "this day only", so a live show after midnight that
+  // belongs to the next day was not found ("Could not locate the live show").
+  return getShows(G.activeStage,G.activeDay).filter(s=>showAllowed(s,'live',false));
 }
 function _writeShowTimes(s, newStart, newEnd){
-  // newStart / newEnd are Date objects in local time. We must update both
+  // newStart / newEnd are instants (Date objects). We must update both
   // the legacy fields (date/start/end) and the canonical (startsAt/endsAt)
-  // so every render path keeps working.
-  const _d2=n=>String(n).padStart(2,'0');
-  const startDate=`${newStart.getFullYear()}-${_d2(newStart.getMonth()+1)}-${_d2(newStart.getDate())}`;
-  const startTime=`${_d2(newStart.getHours())}:${_d2(newStart.getMinutes())}:${_d2(newStart.getSeconds())}`;
-  const endDate=`${newEnd.getFullYear()}-${_d2(newEnd.getMonth()+1)}-${_d2(newEnd.getDate())}`;
-  const endTime=`${_d2(newEnd.getHours())}:${_d2(newEnd.getMinutes())}:${_d2(newEnd.getSeconds())}`;
+  // so every render path keeps working. Written as festival (Amsterdam)
+  // wall time - the device's own time zone no longer leaks into the data.
+  const sMs=newStart.getTime(),eMs=newEnd.getTime();
+  const startDate=amsDateStr(sMs),startTime=amsTimeStr(sMs,true);
+  const endDate=amsDateStr(eMs),endTime=amsTimeStr(eMs,true);
   s.date=startDate;
   s.start=startTime;
   s.end=endTime;
@@ -5741,7 +5950,7 @@ function renderBlackout(){
 function sendCue(text,color,durationMs){
   const t=String(text||'').trim();if(!t)return;
   G.cue={text:t,color:color||'amber',stageId:G.activeStage||null,
-         sentAt:Date.now(),
+         sentAt:nowMs(),   // server-corrected: receivers compare against their own nowMs()
          // null = stay until cleared (default for preset + custom cues)
          durationMs:(durationMs&&durationMs>0)?durationMs:null};
   save({immediate:true});            // fire-and-forget realtime push
@@ -5762,15 +5971,15 @@ function _cueActive(c){
   if(!c||!c.text)return false;
   if(!c.durationMs)return true;     // persistent until cleared
   const expiresAt=(c.sentAt||0)+c.durationMs;
-  return Date.now()<expiresAt;
+  return nowMs()<expiresAt;
 }
 function renderCueStatus(){
   const el=document.getElementById('cue-status');if(!el)return;
   const c=G&&G.cue;
   if(!_cueActive(c)){el.textContent='No active cue';return;}
-  const ageSec=Math.max(0,Math.round((Date.now()-c.sentAt)/1000));
+  const ageSec=Math.max(0,Math.round((nowMs()-c.sentAt)/1000));
   if(c.durationMs){
-    const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-Date.now())/1000));
+    const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-nowMs())/1000));
     el.innerHTML=`Sent <strong>${escH(c.text)}</strong> · ${ageSec}s ago · clears in ${remain}s`;
   }else{
     el.innerHTML=`On air: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · <em style="color:var(--sub);">hit Clear to stop</em>`;
@@ -7391,14 +7600,16 @@ function closeTL(){document.getElementById('tl').classList.remove('open');_syncM
 function renderTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
   const stages=G.stages||[];
-  // Include overnight shows ONLY when viewing today's festival day; otherwise stay strict
-  const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay);
+  // Include overnight shows ONLY when viewing today's festival day; otherwise stay strict.
+  // Share links never see hidden shows (showAllowed 'list'); cancelled ones stay, struck through.
+  const tlIsPub=_isPublicView();
+  const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay&&showAllowed(s,'list',tlIsPub));
   const tlDayToday=isActiveDayToday();
   let overnightShows=[];
   if(tlDayToday){
     const dayIdx=(G.days||[]).findIndex(d=>d.id===G.activeDay);
     const nextDay=(G.days||[])[dayIdx+1];
-    overnightShows=nextDay?(G.shows||[]).filter(s=>s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN):[];
+    overnightShows=nextDay?(G.shows||[]).filter(s=>s.day===nextDay.id&&t2m(s.start)<NIGHT_END_MIN&&showAllowed(s,'list',tlIsPub)):[];
   }
   const shows=[...dayShows,...overnightShows];
   // Adjusted seconds for a show: overnight shows (start before 07:00) get +86400
@@ -7442,7 +7653,7 @@ function renderTL(){
       const stShows=shows.filter(s=>s.stage===stage.id).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
       // If this stage has shows on OTHER days, hint that to the user so they
       // don't think the stage is broken/empty.
-      const otherDayCount=(G.shows||[]).filter(s=>s.stage===stage.id&&s.day!==G.activeDay).length;
+      const otherDayCount=(G.shows||[]).filter(s=>s.stage===stage.id&&s.day!==G.activeDay&&showAllowed(s,'list',tlIsPub)).length;
       const emptyHint=!stShows.length
         ?`<div style="padding:14px;color:rgba(255,255,255,.35);font-size:12px;font-style:italic;">${otherDayCount>0?`${otherDayCount} show${otherDayCount===1?'':'s'} scheduled on other days - switch day above`:'No shows scheduled yet for this stage.'}</div>`
         :'';
@@ -7551,8 +7762,7 @@ function renderTL(){
 
   // Now line - only on today
   const nowX=TL_LW+(nowSecA-minSec)/3600*TL_PX;
-  const d=new Date();
-  const nowLbl=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const nowLbl=amsTimeStr(nowMs(),false);
   const nowLine=tlDayIsToday?`<div id="tl-now-line" style="position:absolute;top:${TL_RH}px;bottom:0;left:${nowX}px;width:2px;background:rgba(239,68,68,.75);pointer-events:none;z-index:8;transform:translateX(-50%);">
     <div style="position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.6);"></div>
     <div id="tl-now-lbl" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-family:var(--ffm);font-size:9px;font-weight:700;color:#ef4444;white-space:nowrap;background:#08080e;padding:1px 5px;border-radius:3px;">${nowLbl}</div>
@@ -7576,7 +7786,7 @@ function tickTL(){
   const nowX=TL_LW+(nsAdj-minSec)/3600*TL_PX;
   line.style.left=nowX+'px';
   const lbl=document.getElementById('tl-now-lbl');
-  if(lbl){const d=new Date();lbl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+  if(lbl){lbl.textContent=amsTimeStr(nowMs(),false);}
 }
 
 // Back to dashboard button (in header)
@@ -7838,7 +8048,7 @@ function renderCI(){
   if(arrEl)arrEl.textContent=arrived;
   if(totEl)totEl.textContent=total;
 }
-function _fmtArrivedTime(ms){const d=new Date(ms);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function _fmtArrivedTime(ms){return amsTimeStr(ms,false);} // festival time
 
 // In-flight tracker so the 1s poll in checkin mode doesn't briefly overwrite
 // an optimistic toggle while the PATCH is still in flight.
@@ -8128,7 +8338,7 @@ async function loadPublicView(){
     // Clock
     setInterval(()=>{
       const cl=document.getElementById('ci-clock');if(!cl)return;
-      const d=new Date();cl.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+      cl.textContent=amsTimeStr(nowMs(),false);
     },1000);
     // Poll for updates (operator marked someone arrived, other device etc).
     // Skip the polling repaint if the user is mid-toggle (request in flight) -
@@ -8656,6 +8866,9 @@ async function _authRefresh(refresh_token){
 })();
 updateClock();
 setInterval(tick,250);
+// Server clock for nowMs(): every route, on start and every minute.
+syncServerTime();
+setInterval(syncServerTime,60000);
 
 // ── Register service worker for offline-resilient PWA install.
 // Deferred until after the initial paint so it never blocks active users.
