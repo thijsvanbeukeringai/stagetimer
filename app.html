@@ -8616,9 +8616,11 @@ window.completeSignup=completeSignup;
 // Every share-link screen polls get_shared_project once a second: once RLS
 // is on, Realtime delivers nothing to an anonymous viewer, so this poll is
 // the only sync signal. The feed:
-//  * _rpcPublic always travels on the anon key. A user JWT left behind by an
-//    earlier login on the same device expires after an hour and used to
-//    freeze the screen.
+//  * Public calls travel on the anon key (_rpc does that for share views): a
+//    user JWT left behind by an earlier login expires after an hour and used
+//    to freeze the screen. The poll itself reads the raw response text
+//    (_rpcPublicRaw) so "nothing changed" is a string compare instead of
+//    re-serialising a project that can hold megabytes of photos.
 //  * One request at a time (makePollGate); an answer older than one already
 //    applied is dropped.
 //  * Failures are not swallowed: window.__stLastSyncOk holds the time
@@ -8644,11 +8646,8 @@ async function _rpcPublicRaw(fn,args,timeoutMs){
     return text;
   }finally{clearTimeout(tmo);}
 }
-async function _rpcPublic(fn,args,timeoutMs){
-  const text=await _rpcPublicRaw(fn,args,timeoutMs);
-  return text?JSON.parse(text):null;
-}
-window._rpcPublic=_rpcPublic;
+// Kept as a name for share-view callers; _rpc already uses the anon key there.
+function _rpcPublic(fn,args,timeoutMs){return _rpc(fn,args,timeoutMs);}
 
 window.__stLastSyncOk=null;
 let _pvFailStreak=0;
