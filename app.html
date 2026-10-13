@@ -10166,7 +10166,8 @@ async function _startApp(session){
 //   3. Stored token -> probe /auth/v1/user (5s timeout).
 //      ok    -> start app.
 //      401   -> refresh via /auth/v1/token?grant_type=refresh_token.
-//      other -> wipe token, show login.
+//      rejected -> wipe token, show login.
+//      unreachable (network/timeout/5xx) -> keep token, start offline from cache.
 // Every network call has an AbortController. supa.auth is touched
 // fire-and-forget for Realtime only; the UI never waits on it.
 async function _authProbe(access_token){
@@ -10179,8 +10180,9 @@ async function _authProbe(access_token){
     });
     clearTimeout(tmo);
     if(res.ok)return await res.json();
+    if(res.status>=500)_authNetFail=true;
     return null;
-  }catch(e){clearTimeout(tmo);console.warn('[auth] session probe failed (network/timeout):',e?.name||'',e?.message||e);return null;}
+  }catch(e){clearTimeout(tmo);_authNetFail=true;console.warn('[auth] session probe failed (network/timeout):',e?.name||'',e?.message||e);return null;}
 }
 async function _authRefresh(refresh_token){
   const ctrl=new AbortController();
@@ -10194,8 +10196,17 @@ async function _authRefresh(refresh_token){
     });
     clearTimeout(tmo);
     if(res.ok)return await res.json();
+    if(res.status>=500)_authNetFail=true;
     return null;
-  }catch(e){clearTimeout(tmo);console.warn('[auth] token refresh failed (network/timeout):',e?.name||'',e?.message||e);return null;}
+  }catch(e){clearTimeout(tmo);_authNetFail=true;console.warn('[auth] token refresh failed (network/timeout):',e?.name||'',e?.message||e);return null;}
+}
+// Set by _authProbe/_authRefresh when the auth server could not be reached
+// (network error, timeout, 5xx) - as opposed to an answer saying the token is
+// invalid. Boot must never throw a stored login away just because the venue
+// wifi is down: that locks the operator out exactly when they need the app.
+let _authNetFail=false;
+function _jwtClaims(t){
+  try{return JSON.parse(atob(String(t).split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch(_){return null;}
 }
 // ── Links from the auth emails (reset password, invite, confirm signup).
 // The templates link to {{ .ConfirmationURL }}: Supabase verifies the token
@@ -10278,6 +10289,7 @@ async function _handleAuthLink(){
   document.documentElement.classList.remove('no-session');
   document.getElementById('login').classList.remove('open');
   document.getElementById('loader').style.display='flex';
+  _authNetFail=false;
   let user=await _authProbe(stored.access_token);
   let access_token=stored.access_token;
   let refresh_token=stored.refresh_token;
@@ -10290,8 +10302,27 @@ async function _handleAuthLink(){
       user=await _authProbe(access_token);
     }
   }
+  if(!user&&_authNetFail){
+    // Auth server unreachable (offline / wifi down / Supabase hiccup). Keep the
+    // stored login and start from the local cache; loadAPPRemote keeps cached
+    // projects on failure and the save queue retries on 'online'. Once the
+    // network is back we refresh the token and hand it to supa for Realtime.
+    const c=_jwtClaims(access_token)||{};
+    user={id:c.sub||null,email:c.email||'',offline:true};
+    console.warn('[init] auth server unreachable - starting offline from cache, keeping the stored login');
+    window.addEventListener('online',async function _reauth(){
+      window.removeEventListener('online',_reauth);
+      try{
+        if(typeof _refreshAuthToken==='function'&&await _refreshAuthToken()){
+          const st=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
+          if(st?.access_token)supa.auth.setSession({access_token:st.access_token,refresh_token:st.refresh_token}).catch(e=>console.warn('[init] setSession after reconnect:',e));
+          try{await loadAPPRemote();loadG();renderAll();setupRealtime();}catch(e){console.warn('[init] reload after reconnect failed:',e);}
+        }
+      }catch(e){console.warn('[init] re-auth after reconnect failed:',e);}
+    });
+  }
   if(!user){
-    // Token dead. Wipe it and bounce to login.
+    // Token rejected by the auth server. Wipe it and bounce to login.
     saveAuthSession(null);
     _hideLoader();
     _showLogin();
