@@ -6752,8 +6752,12 @@ async function saveWorkspaceName(id){
   if(!newName)return alert('Name cannot be empty.');
   const co=APP.companies.find(c=>c.id===id);
   if(!co||newName===co.name)return;
-  const{error}=await supa.from('companies').update({name:newName}).eq('id',id);
-  if(error)return alert('Save failed: '+error.message);
+  // Direct REST (bounded, refreshes an expired session) instead of
+  // supa.from(), which can hang on a stale auth refresh.
+  try{
+    const n=await _restWrite('companies','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:newName});
+    if(!n){const e=new Error('no rows');e.status=403;throw e;}
+  }catch(e){return alert(_friendlyError(e,'Saving the workspace name'));}
   co.name=newName;saveAPP();
   _updateWsSidebar();renderSettingsPage();
 }
@@ -6811,8 +6815,10 @@ async function saveProfileName(){
   const newName=(input?.value||'').trim();
   if(!newName)return alert('Name cannot be empty.');
   if(newName===CURRENT_USER.name)return;
-  const{error}=await supa.from('app_users').update({name:newName}).eq('id',CURRENT_USER.id);
-  if(error)return alert('Save failed: '+error.message);
+  try{
+    const n=await _restWrite('app_users','PATCH',`id=eq.${encodeURIComponent(CURRENT_USER.id)}`,{name:newName});
+    if(!n){const e=new Error('no rows');e.status=403;throw e;}
+  }catch(e){return alert(_friendlyError(e,'Saving your name'));}
   CURRENT_USER.name=newName;
   localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
   _updateWsSidebar();
@@ -6858,28 +6864,36 @@ async function removeMember(userId){
   if(!u){alert('User not found.');return;}
   if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
   try{
-    const{data:{session}}=await supa.auth.getSession();
-    if(!session?.access_token)throw new Error('Not authenticated.');
-    const res=await fetch(`${SUPA_URL}/functions/v1/remove-member`,{
+    // st_auth_v1 token (kept fresh) instead of supa.auth.getSession(), which
+    // has hung; one refresh-and-retry on 401.
+    if(_jwt()===SUPA_KEY){const e=new Error('not signed in');e.status=401;throw e;}
+    const post=()=>fetch(`${SUPA_URL}/functions/v1/remove-member`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${_jwt()}`,'apikey':SUPA_KEY},
       body:JSON.stringify({userId})
     });
-    const data=await res.json().catch(()=>({error:'Invalid response.'}));
-    if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
-    // Refresh
-    const[uRes,cRes]=await Promise.all([
-      supa.from('app_users').select('*'),
-      _supaCompanies(),
-    ]);
-    if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
+    let res=await post();
+    if(res.status===401&&await _refreshAuthToken())res=await post();
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||`HTTP ${res.status}`);e.status=res.status;throw e;}
+    // Refresh (bounded: the member is already removed, a slow reload must
+    // not hide that).
+    try{
+      const[uRes,cRes]=await _withTimeout(Promise.all([
+        supa.from('app_users').select('*'),
+        _supaCompanies(),
+      ]),10000);
+      if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
+      if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
+    }catch(e){console.warn('[removeMember] refresh failed:',e?.message||e);}
     saveAPP();
     renderSubscriptionPage();
     renderAdmin?.();
     alert(data.seatDecremented?'Member removed. Seat released.':'Member removed.');
   }catch(e){
-    alert('Failed to remove: '+(e.message||e));
+    // The edge function's own `error` text is written for people; HTTP
+    // codes and network failures get the generic wording.
+    alert(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not remove the member: '+e.message:_friendlyError(e,'Removing the member'));
   }
 }
 window.removeMember=removeMember;
@@ -6895,14 +6909,22 @@ function openProject(id){
 // Direct REST on the user's token + row-count check. Under RLS a request
 // that matches no rows returns 200 with an empty body, so "did nothing" and
 // "succeeded" look identical unless we ask for the representation back.
+// 10s ceiling and one refresh-and-retry on 401 (expired session).
 async function _restWrite(table,method,filter,body){
-  const res=await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`,{
-    method,
-    headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Prefer':'return=representation'},
-    ...(body?{body:JSON.stringify(body)}:{}),
-  });
+  const go=async()=>{
+    const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),10000);
+    try{
+      return await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`,{
+        method,signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Prefer':'return=representation'},
+        ...(body?{body:JSON.stringify(body)}:{}),
+      });
+    }finally{clearTimeout(tmo);}
+  };
+  let res=await go();
+  if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await go();
   const txt=await res.text().catch(()=>'');
-  if(!res.ok)throw new Error('HTTP '+res.status+(txt?' - '+txt:''));
+  if(!res.ok){const e=new Error('HTTP '+res.status+(txt?' - '+txt:''));e.status=res.status;throw e;}
   let rows=[];try{rows=JSON.parse(txt||'[]');}catch(_){}
   return Array.isArray(rows)?rows.length:0;
 }
@@ -6911,7 +6933,7 @@ async function deleteProject(id){
   try{
     const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
     if(!n){alert('Nothing was deleted - you may not have permission for this project.');return;}
-  }catch(e){alert('Error deleting: '+(e.message||e));return;}
+  }catch(e){alert(_friendlyError(e,'Deleting the project'));return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
   saveAPP();renderDash();
@@ -6919,11 +6941,18 @@ async function deleteProject(id){
 async function renameProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   const newName=prompt('Rename project:',proj.name);
-  if(!newName||newName.trim()===proj.name)return;
+  if(!newName||!newName.trim()||newName.trim()===proj.name)return;
+  const oldName=proj.name;
   proj.name=newName.trim();
   saveAPP();
-  try{await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});}
-  catch(e){alert('Rename failed: '+(e.message||e));}
+  try{
+    const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});
+    if(!n){const e=new Error('no rows');e.status=403;throw e;}
+  }catch(e){
+    // Put the old name back - it used to stay renamed locally only.
+    proj.name=oldName;saveAPP();
+    alert(_friendlyError(e,'Renaming the project'));
+  }
   const lnEl=document.getElementById('logo-name');
   if(APP.activeProjectId===id&&lnEl)lnEl.textContent=proj.name;
   renderDash();
@@ -7047,35 +7076,38 @@ async function createProject(){
     // source: it can stall on a stale refresh token even though the fetch
     // below is already protected by AbortController). AbortController
     // gives us a hard 8s ceiling no matter what happens internally.
-    const ctrl=new AbortController();
-    const tmo=setTimeout(()=>ctrl.abort(),8000);
+    const insert=async()=>{
+      const ctrl=new AbortController();
+      const tmo=setTimeout(()=>ctrl.abort(),8000);
+      try{
+        return await fetch(`${SUPA_URL}/rest/v1/projects`,{
+          method:'POST',
+          signal:ctrl.signal,
+          headers:{
+            'Content-Type':'application/json',
+            'apikey':SUPA_KEY,
+            'Authorization':`Bearer ${_jwt()}`,
+            'Prefer':'return=minimal',
+          },
+          body:JSON.stringify(row),
+        });
+      }finally{clearTimeout(tmo);}
+    };
     let res;
     try{
-      res=await fetch(`${SUPA_URL}/rest/v1/projects`,{
-        method:'POST',
-        signal:ctrl.signal,
-        headers:{
-          'Content-Type':'application/json',
-          'apikey':SUPA_KEY,
-          'Authorization':`Bearer ${_jwt()}`,
-          'Prefer':'return=minimal',
-        },
-        body:JSON.stringify(row),
-      });
+      res=await insert();
+      // Expired session: refresh once and retry (same row id, so no duplicate).
+      if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await insert();
     }catch(e){
-      clearTimeout(tmo);
-      if(e?.name==='AbortError'){
-        console.error('[createProject] timed out after 8s');
-        alert('Project creation timed out. Check your internet connection and try again.');
-        return;
-      }
-      throw e;
+      if(e?.name==='AbortError')console.error('[createProject] timed out after 8s');
+      alert(_friendlyError(e,'Creating the project'));
+      return;
     }
-    clearTimeout(tmo);
     if(!res.ok){
       const body=await res.text().catch(()=>'');
       console.error('[createProject] HTTP',res.status,body);
-      alert('Failed to create project: HTTP '+res.status+(body?' - '+body:''));
+      const e=new Error('HTTP '+res.status);e.status=res.status;
+      alert(_friendlyError(e,'Creating the project'));
       return;
     }
     APP.projects.push(proj);
@@ -7083,7 +7115,7 @@ async function createProject(){
     closeProjModal();renderDash();
   }catch(e){
     console.error('[createProject] threw',e);
-    alert('Failed to create project: '+(e?.message||String(e)));
+    alert(_friendlyError(e,'Creating the project'));
   }finally{
     if(btn){btn.disabled=false;btn.textContent='Create';}
   }
