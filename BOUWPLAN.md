@@ -372,6 +372,53 @@ De **OneSignal REST API-key** staat hardcoded in de code (`OS_REST_KEY`, regel 7
 
 ---
 
+## FASE 5 — iPhone-app, berichten naar de booth, en werken zonder internet (NIEUW, na deze ronde)
+
+Toegevoegd op 13-10-2026 op verzoek van Thijs. Dit zijn nieuwe productfuncties, dus deze fase valt buiten de voorwaarde "geen nieuwe functies" van fase 1–4. Ook hier geldt: Stage View blijft visueel identiek, alleen de gegevensaanvoer mag veranderen.
+
+### Wat er nu al kan
+- Vanaf een telefoon in de web-app een bericht naar het scherm van een podium sturen: custom cue (`sendCustomCue`), presets, wissen en blackout. De cue staat in het project (`G.cue`, met `stageId`) en gaat via Supabase Realtime naar Stage View.
+- Dat werkt alleen als **zowel de telefoon als het boothscherm internet hebben**. Ze hoeven niet op hetzelfde netwerk te zitten: een telefoon op 4G werkt ook.
+- Zonder internet blijft het boothscherm lokaal doortellen. De service worker cachet de app en de klok rekent vanuit de tijden. Nieuwe cues en planningswijzigingen komen dan niet meer aan.
+
+### 5A. iPhone als bedieningsapp, zonder App Store (eerst doen: dagen werk)
+- Een PWA "op het beginscherm" (iOS 16.4+): de app opent fullscreen en krijgt **web-push** via OneSignal. Dat werkt alleen voor geïnstalleerde PWA's op iOS.
+- Een compact scherm "Bericht naar booth": podium kiezen, presets, vrije tekst, duur, blackout, en een bevestiging dat het scherm het bericht ontving (zie 5D).
+- De mobiele layout uit fase 2 is hiervoor de basis.
+
+### 5B. Robuust zonder internet: lokale "Stagetimer Hub" (2–4 weken)
+Op een gewone festivalwifi kunnen browsers niet rechtstreeks met elkaar praten. Een webpagina kan geen verbindingen ontvangen. Daarom is er één kastje op het lokale netwerk nodig.
+- **Hub:** een klein programma op een laptop bij FOH of een Raspberry Pi. Het levert de app, houdt een lokale kopie van het project bij, stuurt cues, timerstatus en planningswijzigingen via WebSocket door en dient als tijdbron.
+- Zodra er internet is, synchroniseert de hub met Supabase. De samenvoeglogica uit fase 1 (`_mergeData`) is daarvoor de basis.
+- **Telefoons en boothschermen** verbinden met de hub. Dat gaat via een QR-code of `stagetimer.local` (mDNS). De app kiest automatisch: hub bereikbaar → lokaal, anders → cloud.
+- **Technische valkuil:** een pagina van `https://stagetimer.nl` mag niet met `ws://192.168.x.x` praten (mixed content en Private Network Access). Een pagina via gewone `http://` naar het LAN-adres verliest wake lock, service worker en klembord. Die zijn alleen beschikbaar in een "secure context".
+  - Oplossing: geef elke hub een eigen HTTPS-adres, bijvoorbeeld `<hub-id>.hub.stagetimer.nl`. Dat adres wijst naar het LAN-IP en heeft een geldig certificaat. Plex werkt op deze manier met `*.plex.direct`.
+  - Alternatief: draai het boothscherm in een kleine kiosk-wrapper (Electron of Tauri) met dezelfde HTML. Daar gelden die beperkingen niet.
+- **Inloggen offline:** koppel een apparaat één keer online aan de hub. Daarna geeft de hub het apparaat lokaal toegang met een koppelcode. Stagetimer heeft geen account-check meer nodig tijdens de show.
+- **Beveiliging:** iedereen op dezelfde wifi zou anders cues kunnen sturen. Daarom: koppelcode per apparaat en rollen (operator of alleen lezen).
+
+### 5C. Echte iOS-app in de App Store (1–2 weken plus review, na 5A)
+- **Capacitor-wrapper** rond de bestaande app. De code wordt hergebruikt; een volledige herschrijving in Swift raad ik niet aan.
+- **Wat de echte app toevoegt:**
+  - native push via APNs, betrouwbaarder dan web-push;
+  - Bonjour/mDNS om de hub automatisch te vinden (iOS vraagt daarbij "Lokaal netwerk"-toestemming);
+  - werken op de achtergrond, haptische feedback bij cues en zichtbaarheid in de App Store.
+- **Nodig:** een Apple Developer-account (€99/jaar), privacy-labels en App Review. Push via APNs kan via OneSignal, dat al gebruikt wordt.
+
+### 5D. Bevestiging "aangekomen op het scherm" (hoort bij 5A/5B)
+- Stage View stuurt een stille ontvangstbevestiging terug: alleen gegevens, geen zichtbare wijziging.
+- De telefoon toont "Gezien door booth Main Stage om 22:41:05". Komt er geen bevestiging binnen 3 seconden, dan volgt een waarschuwing.
+
+### Advies over de volgorde
+1. **Snelste winst, zonder bouwwerk:** geef elk boothscherm een 4G/5G-router of hotspot als back-up van de festivalwifi. De huidige cloudversie werkt dan ook als de wifi van de locatie hapert.
+2. **5A plus 5D:** de telefoon als bedieningsapp, met ontvangstbevestiging.
+3. **5B:** alleen als klanten echt shows draaien zonder betrouwbaar internet. Dit is het grootste stuk.
+4. **5C:** als App Store-aanwezigheid of betrouwbare push commercieel nodig is. 5C bouwt voort op 5A en past goed bij 5B (hub automatisch vinden).
+
+### Testen
+- Uitbreiding van het harnas: een gesimuleerde hub naast de gesimuleerde Supabase. Te testen: wisselen tussen cloud en lokaal, de klok van de hub als tijdbron, conflicten bij het terugsynchroniseren.
+- De booth-suite blijft de norm: Stage View pixel-identiek met data uit de hub.
+
 ## Buiten de scope van deze ronde (advies, actie voor Thijs)
 - **De backend in git zetten:** `supabase db pull` plus `supabase functions download` voor de 7 functies en de Stripe-webhook. Zonder die broncode kunnen we finalize-signup, invites en betalingen niet controleren.
 - **Staging:** een tweede Supabase-project, Vercel-previews daarop laten wijzen, en een beveiligde `main`.
