@@ -17,7 +17,9 @@ const SUPA_STUB = `window.supabase={createClient(){const ch={on(){return ch},sub
   auth:{onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}},getSession:async()=>({data:{session:null}}),
         setSession:async()=>({data:{session:null}}),signOut:async()=>({}),refreshSession:async()=>({data:{session:null}})},
   channel(){return ch},removeChannel(){},
-  from(){const q={select(){return q},eq(){return q},then(r){r({data:[],error:null})}};return q}}}};`;
+  from(t){const q={select(){return q},eq(c,v){q.w&&(q.w.eq=[c,v]);return q},
+    update(b){q.w={t,op:'update',b};(window.__supaWrites=window.__supaWrites||[]).push(q.w);return q},
+    then(r){r({data:[],error:null})}};return q}}}};`;
 
 function projectRow(data) {
   return {
@@ -195,6 +197,64 @@ test.describe('server plan enforcement (PT402)', () => {
     expect(st.errors).toEqual([]);
     await context.close();
   });
+});
+
+test.describe('admin writes before RLS (rls_prep RPCs)', () => {
+  const users = [
+    { id: 'u1', name: 'Boss', email: 'op@example.test', role: 'super_admin', company_id: 'C1' },
+    { id: 'u2', name: 'Crew', email: 'crew@example.test', role: 'operator', company_id: 'C1' },
+  ];
+  // rpc: 'ok' | 'missing' | 'refused'
+  const rpcHandler = (rpc, log) => async (route, req, u, st, json) => {
+    const m = /\/rest\/v1\/rpc\/(admin_[a-z_]+)/.exec(u);
+    if (m) {
+      log.push({ fn: m[1], body: JSON.parse(req.postData()) });
+      if (rpc === 'missing') return json(route, 404, { code: 'PGRST202', message: `Could not find the function public.${m[1]} in the schema cache` }).then(() => true);
+      if (rpc === 'refused') return json(route, 403, { code: '42501', message: 'insufficient privileges to change a user role' }).then(() => true);
+      return json(route, 200, m[1] === 'admin_delete_company' ? { ok: true, users_detached: 0, projects_detached: 0, deleted: 1 } : { ok: true, id: 'u2', role: 'company_admin' }).then(() => true);
+    }
+    if (/\/rest\/v1\/(app_users|projects|companies)\?.*company_id=eq\.C2|\/rest\/v1\/companies\?id=eq\.C2/.test(u) && req.method() !== 'GET') {
+      log.push({ rest: req.method() + ' ' + u.replace(/^.*\/rest\/v1\//, '') });
+      return json(route, 200, [{ id: 'x' }]).then(() => true);
+    }
+    return false;
+  };
+  for (const rpc of ['ok', 'missing', 'refused']) {
+    test(`changeUserRole: RPC ${rpc}`, async ({ browser }) => {
+      const log = [];
+      const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', role: 'super_admin', users, handle: rpcHandler(rpc, log) });
+      await page.evaluate(() => changeUserRole('u2', 'company_admin'));
+      expect(log).toEqual([{ fn: 'admin_set_user_role', body: { p_user_id: 'u2', p_role: 'company_admin' } }]);
+      const writes = await page.evaluate(() => window.__supaWrites || []);
+      const role = await page.evaluate(() => APP.users.find(u => u.id === 'u2').role);
+      if (rpc === 'ok') { expect(writes).toEqual([]); expect(role).toBe('company_admin'); }
+      if (rpc === 'missing') { expect(writes).toEqual([{ t: 'app_users', op: 'update', b: { role: 'company_admin' }, eq: ['id', 'u2'] }]); expect(role).toBe('company_admin'); }
+      if (rpc === 'refused') { expect(writes).toEqual([]); expect(role).toBe('operator'); expect(st.dialogs).toEqual(["Changing the role failed: you don't have permission for this."]); }
+      expect(st.errors).toEqual([]);
+      await context.close();
+    });
+  }
+  for (const rpc of ['ok', 'missing']) {
+    test(`delCompany: RPC ${rpc}`, async ({ browser }) => {
+      const log = [];
+      const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', role: 'super_admin', users, handle: rpcHandler(rpc, log) });
+      await page.evaluate(() => { APP.companies.push({ id: 'C2', name: 'Old', subscriptionStatus: 'inactive' }); return delCompany('C2'); });
+      if (rpc === 'ok') expect(log).toEqual([{ fn: 'admin_delete_company', body: { p_company_id: 'C2' } }]);
+      else expect(log.slice(1).map(l => l.rest).sort()).toEqual(['DELETE companies?id=eq.C2', 'PATCH app_users?company_id=eq.C2', 'PATCH projects?company_id=eq.C2']);
+      expect(await page.evaluate(() => APP.companies.some(c => c.id === 'C2'))).toBe(false);
+      expect(st.errors).toEqual([]);
+      await context.close();
+    });
+  }
+  for (const role of ['operator', 'company_admin']) {
+    test(`workspace name is ${role === 'operator' ? 'read-only' : 'editable'} for ${role}`, async ({ browser }) => {
+      const { page, context } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', role });
+      await page.evaluate(() => { const d = document.createElement('div'); d.id = 'ws-settings-body'; if (!document.getElementById('ws-settings-body')) document.body.appendChild(d); renderSettingsPage(); });
+      const r = await page.evaluate(() => [document.getElementById('ws-settings-name').disabled, !!document.querySelector('#ws-settings-body .ws-btn-primary')]);
+      expect(r).toEqual(role === 'operator' ? [true, false] : [false, true]);
+      await context.close();
+    });
+  }
 });
 
 test.describe('crew pushes via send-push', () => {

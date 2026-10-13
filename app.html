@@ -2333,6 +2333,14 @@ async function _rpc(fn,args,timeoutMs){
   }
   return await res.json().catch(()=>null);
 }
+// Did _rpc fail because the function does not exist (migration not applied
+// yet)? PostgREST answers 404 + PGRST202; a bare 404 without a body is
+// treated the same. A function that exists and refuses (403, its own
+// errors) is NOT missing: callers must not fall back to a direct write then.
+function _rpcFnMissing(e){
+  const m=String((e&&e.message)||e||'');
+  return /PGRST202|could not find the function/i.test(m)||((e&&e.status)===404&&/^HTTP 404$/.test(m.trim()));
+}
 function saveAuthSession(sess){
   if(sess)localStorage.setItem(ST_AUTH,JSON.stringify({access_token:sess.access_token,refresh_token:sess.refresh_token}));
   else localStorage.removeItem(ST_AUTH);
@@ -7559,17 +7567,20 @@ function renderSettingsPage(){
   _updateWsSidebar();
   const co=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
   if(!co){body.innerHTML='<div class="ws-card"><div class="ws-card-meta">You are not linked to a workspace.</div></div>';return;}
+  // Renaming is for the workspace admin and platform admins (same rule as
+  // the companies_update policy); operators see the name read-only.
+  const canRename=isCompanyAdmin();
   body.innerHTML=`
     <div class="ws-card">
       <div class="ws-card-title">Workspace</div>
       <div class="ws-field">
         <label class="ws-field-label">Name</label>
-        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}">
-        <div class="ws-field-help">The name your team and customers see across Stagetimer.</div>
+        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}"${canRename?'':' disabled style="background:#F5F5F4;color:#78716C;"'}>
+        <div class="ws-field-help">${canRename?'The name your team and customers see across Stagetimer.':'Only a workspace admin can change the name.'}</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      ${canRename?`<div style="display:flex;gap:8px;">
         <button class="ws-btn-primary" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
-      </div>
+      </div>`:''}
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Workspace ID</div>
@@ -7580,6 +7591,7 @@ function renderSettingsPage(){
 }
 
 async function saveWorkspaceName(id){
+  if(!isCompanyAdmin())return alert('Only a workspace admin can change the workspace name.');
   const input=document.getElementById('ws-settings-name');
   const newName=(input?.value||'').trim();
   if(!newName)return alert('Name cannot be empty.');
@@ -8460,15 +8472,24 @@ async function delCompany(id){
   let msg=`Delete "${c.name}"?`;
   if(userCount||projCount){msg+=`\n\n${userCount} user(s) and ${projCount} project(s) will also be detached.`;}
   if(!confirm(msg))return;
-  // Cascade: detach users and projects (set company_id = '')
+  // Cascade: detach users and projects (set company_id = '') and delete, in
+  // one atomic server call (rls_prep). Until that migration is applied the
+  // RPC does not exist and the three direct requests below do the same.
   try{
-    await Promise.all([
-      _restWrite('app_users','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
-      _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
-    ]);
-    const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
-    if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
-  }catch(e){alert('Delete failed: '+(e.message||e));return;}
+    let r=null,viaRpc=true;
+    try{r=await _rpc('admin_delete_company',{p_company_id:id});}
+    catch(e){if(!_rpcFnMissing(e))throw e;viaRpc=false;console.warn('[delCompany] admin_delete_company not available yet, using direct writes:',e.message);}
+    if(viaRpc){
+      if(!r||!r.ok){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+    }else{
+      await Promise.all([
+        _restWrite('app_users','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
+        _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
+      ]);
+      const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
+      if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+    }
+  }catch(e){alert(_friendlyError(e,'Deleting the workspace'));return;}
   APP.users.forEach(u=>{if(u.companyId===id)u.companyId='';});
   APP.projects.forEach(p=>{if(p.companyId===id)p.companyId='';});
   APP.companies=APP.companies.filter(c=>c.id!==id);
@@ -8539,8 +8560,18 @@ async function changeUserRole(id,newRole){
   if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){alert('Only Super Admin may grant Super Admin.');renderAdmin();return;}
   if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){alert('No permission.');renderAdmin();return;}
   if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!confirm('Lowering your role may prevent you from accessing Admin. Continue?')){renderAdmin();return;}}
-  const{error}=await supa.from('app_users').update({role:newRole}).eq('id',id);
-  if(error){alert('Failed to change role: '+error.message);renderAdmin();return;}
+  // Server-side role change (rls_prep): once RLS is on, clients may only
+  // update their own name on app_users. The direct write is the fallback
+  // for as long as the RPC does not exist yet - never for a refusal.
+  let error=null;
+  try{await _rpc('admin_set_user_role',{p_user_id:id,p_role:newRole});}
+  catch(e){
+    if(_rpcFnMissing(e)){
+      console.warn('[changeUserRole] admin_set_user_role not available yet, using a direct update:',e.message);
+      try{({error}=await supa.from('app_users').update({role:newRole}).eq('id',id));}catch(e2){error=e2;}
+    }else error=e;
+  }
+  if(error){alert(error.status?_friendlyError(error,'Changing the role'):'Failed to change role: '+(error.message||error));renderAdmin();return;}
   u.role=newRole;
   saveAPP();
   if(u.id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
