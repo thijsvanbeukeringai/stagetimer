@@ -2294,24 +2294,137 @@ function _jwt(){
 }
 // POST to a Postgres function. Public share views use these instead of table
 // reads: anonymous visitors have no table access once RLS is on.
+// Public share views ALWAYS go out on the anon key: a kiosk that was once
+// logged in still has an (expired) user token in st_auth_v1, and sending that
+// along made PostgREST answer 401 and froze the public screen. Logged-in
+// callers get one refresh-and-retry on a 401.
+function _isPublicShareView(){
+  try{return!!(window.PUBLIC_MODE&&new URLSearchParams(location.search).get('pid'));}catch(_){return false;}
+}
 async function _rpc(fn,args,timeoutMs){
-  const ctrl=new AbortController();
-  const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
-  try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{
-      method:'POST',signal:ctrl.signal,
-      headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`},
-      body:JSON.stringify(args||{}),
-    });
-    clearTimeout(tmo);
-    if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+(t?' - '+t:''));}
-    return await res.json().catch(()=>null);
-  }catch(e){clearTimeout(tmo);throw e;}
+  const pub=_isPublicShareView();
+  const call=async bearer=>{
+    const ctrl=new AbortController();
+    const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
+    try{
+      const res=await fetch(`${SUPA_URL}/rest/v1/rpc/${fn}`,{
+        method:'POST',signal:ctrl.signal,
+        headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${bearer}`},
+        body:JSON.stringify(args||{}),
+      });
+      clearTimeout(tmo);
+      return res;
+    }catch(e){clearTimeout(tmo);throw e;}
+  };
+  let res=await call(pub?SUPA_KEY:_jwt());
+  if(res.status===401&&!pub&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await call(_jwt());
+  if(!res.ok){
+    const t=await res.text().catch(()=>'');
+    const err=new Error('HTTP '+res.status+(t?' - '+t:''));err.status=res.status;throw err;
+  }
+  return await res.json().catch(()=>null);
 }
 function saveAuthSession(sess){
   if(sess)localStorage.setItem(ST_AUTH,JSON.stringify({access_token:sess.access_token,refresh_token:sess.refresh_token}));
   else localStorage.removeItem(ST_AUTH);
 }
+function _storedAuth(){try{return JSON.parse(localStorage.getItem(ST_AUTH)||'null');}catch(_){return null;}}
+// `exp` claim of an access token (seconds), 0 when unreadable.
+function _jwtExp(t){
+  try{const p=String(t).split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(atob(p+'==='.slice((p.length+3)%4))).exp||0;}
+  catch(_){return 0;}
+}
+// Resolve with `p`, or reject after `ms`. supa.auth.* calls have hung in
+// production (navigator-lock deadlocks), so nothing may wait on them unbounded.
+function _withTimeout(p,ms){
+  let t;
+  return Promise.race([Promise.resolve(p),new Promise((_,rej)=>{t=setTimeout(()=>{const e=new Error('timed out');e.name='TimeoutError';rej(e);},ms);})])
+    .finally(()=>clearTimeout(t));
+}
+// ── Keep st_auth_v1 in step with supabase-js.
+// _jwt() reads st_auth_v1, but supabase-js refreshes ITS OWN copy of the
+// session about every hour. Without this, every REST call 401s an hour after
+// login. Deliberately NOT the pre-v2 listener: it only copies tokens, never
+// touches the UI, never awaits anything (supa holds its auth lock while it
+// calls us, so calling supa.auth.* from here would deadlock), and it only
+// moves st_auth_v1 FORWARD - a SIGNED_IN replayed from supa's own, older
+// storage (e.g. on tab focus) cannot overwrite a fresher token that auth
+// init v2 fetched over REST.
+let _supaLastRT=null;   // refresh token supa last reported as its own
+let _authLoggingOut=false;
+try{
+  supa.auth.onAuthStateChange((event,sess)=>{
+    try{
+      if(sess?.refresh_token)_supaLastRT=sess.refresh_token;
+      if(event==='TOKEN_REFRESHED'||event==='SIGNED_IN'||event==='USER_UPDATED'){
+        if(!sess?.access_token||!sess?.refresh_token)return;
+        const st=_storedAuth();
+        if(st?.access_token===sess.access_token&&st?.refresh_token===sess.refresh_token)return;
+        if(!st?.access_token||_jwtExp(sess.access_token)>=_jwtExp(st.access_token))saveAuthSession(sess);
+      }else if(event==='SIGNED_OUT'){
+        // Only drop our copy when it IS the session supa just ended. supa can
+        // emit SIGNED_OUT for its own stale storage while st_auth_v1 holds a
+        // newer, valid session - wiping that was the old logout race.
+        const st=_storedAuth();
+        if(st&&(_authLoggingOut||(_supaLastRT&&st.refresh_token===_supaLastRT)))saveAuthSession(null);
+      }
+    }catch(e){console.warn('[auth] token sync failed:',e);}
+  });
+}catch(e){console.warn('[auth] onAuthStateChange unavailable:',e);}
+// Refresh the user session once, store it in st_auth_v1, report success.
+// Callers use this after a 401: `if(await _refreshAuthToken()) retry()`.
+// Concurrent callers share one refresh (refresh tokens are single-use).
+let _refreshInFlight=null;
+async function _refreshAuthToken(){
+  if(_refreshInFlight)return _refreshInFlight;
+  _refreshInFlight=(async()=>{
+    const before=_storedAuth();
+    const rt=before?.refresh_token;
+    if(!rt)return false;
+    // 1. Through supa, so its own session and Realtime move along. Bounded.
+    try{
+      const{data,error}=await _withTimeout(supa.auth.refreshSession({refresh_token:rt}),6000);
+      if(data?.session?.access_token){saveAuthSession(data.session);return true;}
+      if(error)console.warn('[auth] refreshSession:',error.message);
+    }catch(e){console.warn('[auth] refreshSession failed:',e?.message||e);}
+    // supa may have refreshed in the background meanwhile (listener above).
+    const now=_storedAuth();
+    if(now?.access_token&&now.access_token!==before.access_token)return true;
+    // 2. Direct REST (auth init v2 helper) when supa hung or threw.
+    const s=await _authRefresh(rt);
+    if(s?.access_token){
+      saveAuthSession(s);
+      try{supa.auth.setSession({access_token:s.access_token,refresh_token:s.refresh_token}).catch(()=>{});}catch(_){}
+      return true;
+    }
+    return false;
+  })().finally(()=>{_refreshInFlight=null;});
+  return _refreshInFlight;
+}
+// One place that turns a failed request into a sentence an operator can act
+// on, instead of "HTTP 400 - {...}". `action` reads like "Saving", "Rename".
+function _friendlyError(e,action){
+  const msg=String((e&&e.message)||e||'');
+  const st=(e&&e.status)||Number((msg.match(/HTTP (\d{3})/)||[])[1])||0;
+  const what=action||'This action';
+  if(e&&(e.name==='AbortError'||e.name==='TimeoutError')||/timed out/i.test(msg))return`${what} timed out. Check your internet connection and try again.`;
+  if(/Failed to fetch|NetworkError|Load failed/i.test(msg))return`${what} failed: no connection to the server. Check your internet connection and try again.`;
+  if(st===401)return`${what} failed: your session has expired. Log out and log in again.`;
+  if(st===403)return`${what} failed: you don't have permission for this.`;
+  if(st===404)return`${what} failed: it no longer exists. Reload the page and try again.`;
+  if(st===409)return`${what} failed: it conflicts with a change made elsewhere. Reload the page and try again.`;
+  if(st===413)return`${what} failed: the data is too large. Try smaller photos.`;
+  if(st===429)return'Too many attempts. Wait a minute and try again.';
+  if(st>=500)return`${what} failed: the server had a problem. Try again in a moment.`;
+  if(st>=400)return`${what} failed: the server did not accept the request. Reload the page and try again.`;
+  return`${what} failed${msg?': '+msg.replace(/^Error:\s*/,''):''}.`;
+}
+// A value as a JS string literal that is safe inside a double-quoted inline
+// handler: onclick="fn(${_jsArg(x)})". JSON covers quotes and backslashes for
+// JS, escH keeps the HTML parser from ending the attribute. '${escH(x)}' is
+// not enough: the parser decodes &#39; back to ' before the handler compiles,
+// so O'Neil still broke it.
+function _jsArg(v){return escH(JSON.stringify(String(v??'')));}
 async function restoreAuthSession(){
   try{
     const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');
