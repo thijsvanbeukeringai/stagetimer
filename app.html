@@ -4798,6 +4798,14 @@ function renderTbar(){
         </button>
         <div class="dd-sep mob-only"></div>
         <div class="dd-head mob-only">Account</div>
+        <button class="dd-item mob-only" data-fs="toggle" onclick="closeAllDD();stFullscreen.toggle()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          <span class="fs-lbl">Enter fullscreen</span>
+        </button>
+        <button class="dd-item mob-only" data-fs="auto" role="menuitemcheckbox" aria-checked="false" onclick="stFullscreen.setAuto(!stFullscreen.auto())">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline class="fs-chk" points="8 12 11 15 16 9"/></svg>
+          <span class="fs-lbl">Auto fullscreen: Off</span>
+        </button>
         <button class="dd-item mob-only" onclick="closeAllDD();goToDash()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           All projects
@@ -4835,6 +4843,15 @@ function renderTbar(){
         <button class="dd-item super-admin-only" style="display:none;" onclick="closeAllDD();openAdmin()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
           Platform admin
+        </button>
+        <div class="dd-sep"></div>
+        <button class="dd-item" data-fs="toggle" onclick="closeAllDD();stFullscreen.toggle()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+          <span class="fs-lbl">Enter fullscreen</span>
+        </button>
+        <button class="dd-item" data-fs="auto" role="menuitemcheckbox" aria-checked="false" onclick="stFullscreen.setAuto(!stFullscreen.auto())">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline class="fs-chk" points="8 12 11 15 16 9"/></svg>
+          <span class="fs-lbl">Auto fullscreen: Off</span>
         </button>
         <div class="dd-sep"></div>
         <button class="dd-item danger" onclick="closeAllDD();doLogout()">
@@ -5008,6 +5025,10 @@ function renderTbar(){
         <h2>Schedule</h2>
         <span class="cpill" id="show-cnt">0 shows</span>
         <div style="flex:1;"></div>
+        <button class="btn-g" id="new-stage-btn" onclick="openStageModal();setTimeout(()=>document.getElementById('sm-name')?.focus(),60)">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          New stage
+        </button>
         <button class="btn-p" id="new-show-btn" onclick="openDrawer(null)">
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9M1 5.5h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
           New show
@@ -7471,6 +7492,7 @@ function _svZoomLock(on){
 //   - skip if already in fullscreen, or already running as installed PWA
 //   - require a user gesture (Fullscreen API will reject otherwise)
 //   - one-shot per page load - we don't re-trigger after the user exits
+//   - only when "Auto fullscreen" is on for this device (stFullscreen)
 (function _setupFullscreen(){
   function _isStandalone(){
     return window.matchMedia?.('(display-mode: fullscreen)').matches ||
@@ -7488,16 +7510,49 @@ function _svZoomLock(on){
     const isDesktop=!/Android|iPhone|iPad|iPod|Mobile/i.test(ua);
     return isIpad || isAndroidTablet || isDesktop;
   }
-  let _tried=false;
-  function _goFullscreen(){
-    if(_tried)return;
-    if(_isStandalone())return;
-    if(!_isTabletOrDesktopBrowser())return;
-    _tried=true;
+  // Auto fullscreen is a per-device choice (account menu). Default: off in the
+  // operator app, on for kiosk share links (Stage View, Control Wall) where
+  // nobody is around to open a menu.
+  const FS_KEY='st_fs_auto';
+  function _autoPref(){
+    try{const v=localStorage.getItem(FS_KEY);if(v==='on')return true;if(v==='off')return false;}catch(_){}
+    return ['stage','wall'].includes(window.PUBLIC_MODE);
+  }
+  const _fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+  function _syncMenu(){
+    const on=!!_fsEl(),auto=_autoPref();
+    document.querySelectorAll('[data-fs="toggle"] .fs-lbl').forEach(el=>{el.textContent=on?'Exit fullscreen':'Enter fullscreen';});
+    document.querySelectorAll('[data-fs="auto"]').forEach(el=>{
+      el.setAttribute('aria-checked',auto?'true':'false');
+      const l=el.querySelector('.fs-lbl');if(l)l.textContent='Auto fullscreen: '+(auto?'On':'Off');
+      const c=el.querySelector('.fs-chk');if(c)c.style.visibility=auto?'visible':'hidden';
+    });
+  }
+  function _enter(){
     const el=document.documentElement;
     const fn=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen||el.msRequestFullscreen;
     if(!fn)return;
     try{const p=fn.call(el);if(p&&p.catch)p.catch(()=>{});}catch(e){}
+  }
+  function _exit(){
+    const fn=document.exitFullscreen||document.webkitExitFullscreen;
+    if(fn&&_fsEl()){try{const p=fn.call(document);if(p&&p.catch)p.catch(()=>{});}catch(e){}}
+  }
+  window.stFullscreen={
+    toggle(){_fsEl()?_exit():_enter();},
+    auto:_autoPref,
+    setAuto(on){try{localStorage.setItem(FS_KEY,on?'on':'off');}catch(_){}_syncMenu();},
+  };
+  ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,_syncMenu));
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_syncMenu);else _syncMenu();
+  let _tried=false;
+  function _goFullscreen(){
+    if(_tried)return;
+    if(!_autoPref())return;
+    if(_isStandalone())return;
+    if(!_isTabletOrDesktopBrowser())return;
+    _tried=true;
+    _enter();
   }
   // Wire to the very first user interaction
   ['pointerdown','touchstart','keydown'].forEach(ev=>{
