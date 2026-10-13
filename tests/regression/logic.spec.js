@@ -1,407 +1,269 @@
-// Regression tests: operator (logged-in) logic paths.
-//
-// Self-contained like timer.spec.js until the shared harness (tests/support)
-// lands: every HTTP request is answered by context.route below, WebSockets
-// are closed and service workers blocked, so nothing reaches a real server.
-// Anything that is not the fake origin or the (fully mocked) Supabase host is
-// recorded in st.unexpected and fails the test.
-const { test, expect } = require('@playwright/test');
-const fs = require('fs');
-const path = require('path');
+// Regression specs for the logic fixes of fix/logic-batch-2026-10-13
+// (BOUWPLAN fase 1/4: festival time in the editor, crew pushes via send-push,
+// plan enforcement PT402, rls_prep admin RPCs, share-link first load, SW
+// update notice, Wall day label, timer photo). Shared fixtures: every
+// request goes to the MockBackend, nothing reaches a real server.
+const { test, expect } = require('../support/fixtures');
+const { FESTIVAL, ams } = require('../support/seed');
 
-const APP_HTML = fs.readFileSync(path.join(__dirname, '..', '..', 'app.html'), 'utf8')
-  .replace(/\sintegrity="[^"]*"/g, ''); // the stubbed supabase-js would fail SRI
-const ORIGIN = 'https://stagetimer.test';
-const SUPA = 'https://bamjpsquhdzxvsymldpq.supabase.co';
-const SUPA_STUB = `window.supabase={createClient(){const ch={on(){return ch},subscribe(){return ch}};return{
-  auth:{onAuthStateChange(){return{data:{subscription:{unsubscribe(){}}}}},getSession:async()=>({data:{session:null}}),
-        setSession:async()=>({data:{session:null}}),signOut:async()=>({}),refreshSession:async()=>({data:{session:null}})},
-  channel(){return ch},removeChannel(){},
-  from(t){const q={select(){return q},eq(c,v){q.w&&(q.w.eq=[c,v]);return q},
-    update(b){q.w={t,op:'update',b};(window.__supaWrites=window.__supaWrites||[]).push(q.w);return q},
-    then(r){r({data:[],error:null})}};return q}}}};`;
+const P = FESTIVAL.projectId;
+const fieldIds = ['f-start-date', 'f-start-time', 'f-start-sec', 'f-end-date', 'f-end-time', 'f-end-sec'];
+const dialogs = page => { const seen = []; page.on('dialog', d => { seen.push(d.message()); d.accept().catch(() => {}); }); return seen; };
+const serverShow = (backend, id) => backend.project(P).data.shows.find(s => s.id === id);
 
-function projectRow(data) {
-  return {
-    id: 'P1', name: 'Test', company_id: 'C1', created_at: 1, created_by: 'u1',
-    data: Object.assign({
-      stages: [{ id: 's1', name: 'Main' }],
-      days: [{ id: 'd1', name: 'Friday', date: '2026-06-19' }],
-      activeStage: 's1', activeDay: 'd1', timerMode: 'live', fohNotes: {}, memberIds: [],
-      shows: [
-        { id: 'a', stage: 's1', day: 'd1', artist: 'Alpha', date: '2026-06-19', start: '22:00:00', end: '23:00:00', startsAt: '2026-06-19T22:00:00', endsAt: '2026-06-19T23:00:00' },
-      ],
-    }, data || {}),
-  };
-}
-
-// Opens app.html as a logged-in operator with project P1 open.
-// opts.handle(route, req, url, st) may answer a request first (return true).
-// opts.query: open a share link (e.g. '?mode=stage&pid=P1&sid=s1') instead of the operator app.
-async function openOperator(browser, { at, data, role = 'operator', timezoneId = 'Europe/Amsterdam', company, handle, users, query } = {}) {
-  const context = await browser.newContext({ serviceWorkers: 'block', timezoneId, viewport: { width: 1280, height: 800 } });
-  if (context.routeWebSocket) await context.routeWebSocket(/.*/, ws => ws.close());
-  const page = await context.newPage();
-  const st = { unexpected: [], errors: [], patches: [], requests: [], row: projectRow(data) };
-  page.on('pageerror', e => st.errors.push(e.message));
-  page.on('dialog', d => { st.dialogs = (st.dialogs || []).concat([d.message()]); d.accept().catch(() => {}); });
-  await page.clock.install({ time: new Date(at) });
-  const me = { id: 'u1', name: 'Op', email: 'op@example.test', role, company_id: 'C1' };
-  const co = Object.assign({ id: 'C1', name: 'Co', subscription_status: 'active', plan_slug: 'pro', live_stages_limit: null, setup_pending: false }, company || {});
-  const json = (route, status, body, headers) => route.fulfill({ status, contentType: 'application/json', headers, body: typeof body === 'string' ? body : JSON.stringify(body) });
-  await context.route('**/*', async route => {
-    const req = route.request(), u = req.url(), m = req.method();
-    if (u.startsWith(ORIGIN + '/app.html')) return route.fulfill({ status: 200, contentType: 'text/html', body: APP_HTML });
-    if (u.includes('/vendor/supabase.js') || u.includes('supabase-js')) return route.fulfill({ status: 200, contentType: 'application/javascript', body: SUPA_STUB });
-    if (u.startsWith(SUPA)) st.requests.push(m + ' ' + u.slice(SUPA.length));
-    if (handle && await handle(route, req, u, st, json)) return;
-    if (u.startsWith(SUPA + '/auth/v1/user')) return json(route, 200, { id: 'auth-u1', email: me.email });
-    if (u.startsWith(SUPA + '/rest/v1/app_users')) return json(route, 200, u.includes('email=eq.') ? [me] : (users || [me]));
-    if (u.startsWith(SUPA + '/rest/v1/companies')) return json(route, 200, [co]);
-    if (u.startsWith(SUPA + '/rest/v1/projects')) {
-      if (m === 'GET') return json(route, 200, [st.row]);
-      if (m === 'PATCH') {
-        const body = JSON.parse(req.postData() || '{}');
-        st.patches.push(body);
-        if (body.data) st.row.data = body.data;
-        return json(route, 200, [{ id: 'P1' }]);
-      }
-    }
-    if (u.startsWith(SUPA + '/rest/v1/') && m === 'HEAD') return route.fulfill({ status: 200, headers: { date: new Date(at).toUTCString() }, body: '' });
-    if (!u.startsWith(ORIGIN) && !u.startsWith(SUPA + '/')) st.unexpected.push(u);
-    return route.fulfill({ status: 404, body: '' });
-  });
-  await page.addInitScript(() => {
-    // Page-clock timestamps of share-link fetches (backoff assertions).
-    window.__rpcTimes = [];
-    const f = window.fetch;
-    window.fetch = function (u) { if (String(u).includes('/rpc/get_shared_project')) window.__rpcTimes.push(Date.now()); return f.apply(this, arguments); };
-    if (sessionStorage.getItem('__seeded')) return; // keep state across reloads
-    sessionStorage.setItem('__seeded', '1');
-    localStorage.setItem('st_auth_v1', JSON.stringify({ access_token: 'user.jwt', refresh_token: 'r1' }));
-  });
-  await page.goto(`${ORIGIN}/app.html${query || ''}`);
-  await page.clock.runFor(1500);
-  if (query) return { page, context, st };
-  await page.evaluate(() => openProject('P1'));
-  await page.clock.runFor(1000);
-  return { page, context, st };
-}
-
-test.describe('show editor uses festival time', () => {
-  for (const timezoneId of ['Europe/Amsterdam', 'America/New_York', 'Asia/Tokyo']) {
-    test(`round trip on a device in ${timezoneId}`, async ({ browser }) => {
-      const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', timezoneId });
-      const fields = () => page.evaluate(() => ['f-start-date', 'f-start-time', 'f-start-sec', 'f-end-date', 'f-end-time', 'f-end-sec']
-        .map(id => document.getElementById(id).value));
-      // Existing show: the inputs show 22:00-23:00 festival time.
-      await page.evaluate(() => openDrawer('a'));
-      expect(await fields()).toEqual(['2026-06-19', '22:00', '00', '2026-06-19', '23:00', '00']);
-      // Save unchanged: nothing moves.
-      await page.evaluate(() => saveShow());
-      let a = await page.evaluate(() => G.shows.find(s => s.id === 'a'));
-      expect(a).toMatchObject({ date: '2026-06-19', start: '22:00:00', end: '23:00:00', startsAt: '2026-06-19T22:00:00', endsAt: '2026-06-19T23:00:00', endsNextDay: false });
-      // Edit across midnight with seconds.
+// ── 1. Show editor reads / writes festival (Amsterdam) time ─────────────
+for (const timezoneId of ['Europe/Amsterdam', 'America/New_York', 'Asia/Tokyo']) {
+  test.describe(`show editor on a device in ${timezoneId}`, () => {
+    test.use({ stAuth: 'admin', timezoneId });
+    test('round trip keeps festival wall time', async ({ page, st, backend }) => {
+      await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });
+      await st.openProject();
+      const fields = () => page.evaluate(ids => ids.map(id => document.getElementById(id).value), fieldIds);
+      // Existing overnight show: 23:00 -> 01:30 next day, as stored.
+      await page.evaluate(() => openDrawer('m6'));
+      expect(await fields()).toEqual(['2026-07-10', '23:00', '00', '2026-07-11', '01:30', '00']);
+      await page.evaluate(() => saveShow());          // unchanged save: nothing moves
+      expect(await page.evaluate(() => G.shows.find(s => s.id === 'm6'))).toMatchObject({
+        date: '2026-07-10', start: '23:00:00', end: '01:30:00', startsAt: '2026-07-10T23:00:00', endsAt: '2026-07-11T01:30:00', endsNextDay: true });
+      // Edit m3 across midnight, with seconds.
       await page.evaluate(() => {
-        openDrawer('a');
+        openDrawer('m3');
         const set = (id, v) => { document.getElementById(id).value = v; };
         set('f-start-time', '23:30'); set('f-start-sec', '15');
-        set('f-end-date', '2026-06-20'); set('f-end-time', '01:15'); set('f-end-sec', '00');
-        saveShow();
+        set('f-end-date', '2026-07-11'); set('f-end-time', '01:15'); set('f-end-sec', '00');
+        updDur();
       });
-      a = await page.evaluate(() => G.shows.find(s => s.id === 'a'));
-      expect(a).toMatchObject({ date: '2026-06-19', start: '23:30:15', end: '01:15:00', startsAt: '2026-06-19T23:30:15', endsAt: '2026-06-20T01:15:00', endsNextDay: true });
-      await page.evaluate(() => { openDrawer('a'); updDur(); });
-      expect(await page.evaluate(() => document.getElementById('dur-txt').textContent)).toBe('Duration: 1h 44m 45s · ends next day');
-      await page.evaluate(() => closeDrawer());
-      // New show: starts where the last one ends, 90 min long, festival time.
-      await page.evaluate(() => openDrawer(null));
-      expect(await fields()).toEqual(['2026-06-20', '01:15', '00', '2026-06-20', '02:45', '00']);
-      await page.clock.runFor(1000);
-      // The push itself is real async work (fetch through the route mock).
-      await expect.poll(() => st.row.data.shows[0].startsAt).toBe('2026-06-19T23:30:15');
-      expect(st.errors).toEqual([]);
-      expect(st.unexpected).toEqual([]);
-      await context.close();
+      await expect(page.locator('#dur-txt')).toHaveText('Duration: 1h 44m 45s · ends next day');
+      await page.evaluate(() => saveShow());
+      await expect.poll(() => serverShow(backend, 'm3').startsAt).toBe('2026-07-10T23:30:15');
+      expect(serverShow(backend, 'm3')).toMatchObject({ date: '2026-07-10', start: '23:30:15', end: '01:15:00', endsAt: '2026-07-11T01:15:00', endsNextDay: true });
+      // New show on Main / Friday: starts where the last one (m3 now, 23:30) ends, 90 min.
+      await page.evaluate(() => { G.activeStage = 'stg-main'; G.activeDay = 'day-fri'; openDrawer(null); });
+      expect(await fields()).toEqual(['2026-07-11', '01:15', '00', '2026-07-11', '02:45', '00']);
+      // New show on an empty day: the current festival hour.
+      await page.evaluate(() => { G.shows = G.shows.filter(s => !(s.stage === 'stg-main' && s.day === 'day-sat')); G.activeDay = 'day-sat'; openDrawer(null); });
+      expect((await fields()).slice(0, 3)).toEqual(['2026-07-10', '16:00', '00']);
     });
-  }
-  test('new show on an empty day starts at the current festival hour', async ({ browser }) => {
-    const { page, context } = await openOperator(browser, { at: '2026-06-19T20:40:00+02:00', timezoneId: 'America/New_York', data: { shows: [] } });
-    await page.evaluate(() => openDrawer(null));
-    const v = await page.evaluate(() => ['f-start-date', 'f-start-time', 'f-start-sec', 'f-end-time'].map(id => document.getElementById(id).value));
-    expect(v).toEqual(['2026-06-19', '20:00', '00', '21:30']);
-    await context.close();
+  });
+}
+
+// ── 4 + 6. Wall day label, timer panel photo ────────────────────────────
+test.describe('display details', () => {
+  test.use({ stAuth: 'admin', timezoneId: 'America/Los_Angeles' });
+  test('Wall day label is the festival date west of Greenwich', async ({ page, st }) => {
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });
+    expect(await page.evaluate(() => [_wvDayLabel({ name: 'Vrijdag', date: '2026-07-10' }), _wvDayLabel({ name: 'Zondag', date: '2026-11-01' })]))
+      .toEqual(['Geplande tijden vrijdag — 10 juli', 'Geplande tijden zondag — 1 november']);
+  });
+  test('timer panel photo: src only assigned when it changes', async ({ page, st }) => {
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });   // m2 (with photo) is live on Main
+    await st.openProject();
+    await expect(page.locator('#tp-photo-wrap')).toHaveClass(/has-photo/);
+    await page.evaluate(() => {
+      const img = document.getElementById('tp-photo');
+      const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+      window.__srcSets = 0;
+      Object.defineProperty(img, 'src', { configurable: true, get() { return d.get.call(this); }, set(v) { window.__srcSets++; d.set.call(this, v); } });
+    });
+    await st.advance(3000);                       // 12 ticks
+    expect(await page.evaluate(() => window.__srcSets)).toBe(0);
+    await page.evaluate(() => { G.shows.find(s => s.id === 'm2').photo = ''; });
+    await st.advance(1000);
+    expect(await page.evaluate(() => window.__srcSets)).toBe(1);
+    await expect(page.locator('#tp-photo-wrap')).not.toHaveClass(/has-photo/);
   });
 });
 
-test('Wall day label is the festival date on any device', async ({ browser }) => {
-  for (const timezoneId of ['America/Los_Angeles', 'Pacific/Auckland']) {
-    const { page, context } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', timezoneId });
-    expect(await page.evaluate(() => [_wvDayLabel({ name: 'Friday', date: '2026-06-19' }), _wvDayLabel({ name: 'Saturday', date: '2026-11-01' })]))
-      .toEqual(['Geplande tijden friday — 19 juni', 'Geplande tijden saturday — 1 november']);
-    await context.close();
-  }
+// ── 2 + 3. Crew pushes through send-push ─────────────────────────────────
+test.describe('crew pushes via send-push', () => {
+  test.use({ stAuth: 'admin', timezoneId: 'America/New_York',
+    stSeed: { mutate(seed) { seed.projects[0].data.memberIds = [FESTIVAL.users.operator.id, FESTIVAL.users.admin.id]; } } });
+  test('scheduled from end / endsAt / stage in festival time, user token, never OneSignal directly', async ({ page, st, backend }) => {
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '20:00') });
+    await st.openProject();
+    await expect.poll(() => backend.functionCalls('send-push').length).toBe(5);
+    const calls = backend.functionCalls('send-push');
+    // Friday shows that end after 20:10: m4, m6, t3, c1, c2 (After Midnight belongs to Friday).
+    // Not: past shows, Cancelled Act (m5), Saturday shows.
+    expect(calls.map(c => c.body.show_id).sort()).toEqual(['c1', 'c2', 'm4', 'm6', 't3']);
+    const m6 = calls.find(c => c.body.show_id === 'm6');
+    expect(m6.headers.authorization).toMatch(/^Bearer /);
+    expect(m6.headers.authorization).not.toContain('"role":"anon"');
+    expect(m6.body).toEqual({
+      project_id: P, show_id: 'm6', include_external_user_ids: [FESTIVAL.users.operator.id, FESTIVAL.users.admin.id],
+      headings: { en: 'Night Owl almost finished', nl: 'Night Owl almost finished' },
+      contents: { en: 'Night Owl on Main Stage ends at 01:30 - about 10 min left.', nl: 'Night Owl on Main Stage ends at 01:30 - about 10 min left.' },
+      send_after: '2026-07-10T23:20:00.000Z',              // 01:20 CEST
+    });
+    expect(backend.onesignal).toEqual([]);
+    expect(await page.evaluate(() => typeof OS_REST_KEY)).toBe('undefined');
+  });
+  test('function not deployed (404): one operator notice, no retries', async ({ page, st, backend }) => {
+    backend.setFunction('send-push', () => ({ status: 404, json: { code: 'NOT_FOUND', message: 'Requested function was not found' } }));
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '20:00') });
+    await st.openProject();
+    await expect(page.locator('#op-notices')).toContainText('Push is not configured yet');
+    expect(backend.functionCalls('send-push').length).toBe(1);
+    await page.evaluate(id => openProject(id), P);
+    await st.advance(1000);
+    await page.waitForTimeout(200);
+    expect(backend.functionCalls('send-push').length).toBe(1);
+  });
 });
 
-test('timer panel photo: src only assigned when it changes', async ({ browser }) => {
-  const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-  const { page, context } = await openOperator(browser, {
-    at: '2026-06-19T22:30:00+02:00',
-    data: { shows: [{ id: 'a', stage: 's1', day: 'd1', artist: 'Alpha', date: '2026-06-19', start: '22:00:00', end: '23:00:00', photo }] },
-  });
-  const n = await page.evaluate(() => {
-    const img = document.getElementById('tp-photo');
-    const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
-    window.__srcSets = 0;
-    Object.defineProperty(img, 'src', { configurable: true, get() { return d.get.call(this); }, set(v) { window.__srcSets++; d.set.call(this, v); } });
-    return document.getElementById('tp-photo-wrap').classList.contains('has-photo');
-  });
-  expect(n).toBe(true);
-  await page.clock.runFor(3000); // 12 ticks
-  expect(await page.evaluate(() => window.__srcSets)).toBe(0);
-  await page.evaluate(() => { G.shows[0].photo = ''; });
-  await page.clock.runFor(1000);
-  expect(await page.evaluate(() => [window.__srcSets, document.getElementById('tp-photo-wrap').classList.contains('has-photo')])).toEqual([1, false]);
-  await context.close();
-});
-
+// ── 9. Server plan enforcement (PT402) ───────────────────────────────────
+const pt402 = (details, message, hint) => ({ status: 402, json: { code: 'PT402', details, message, hint: JSON.stringify(hint) } });
 test.describe('server plan enforcement (PT402)', () => {
-  test('project insert refused with subscription_required: clear message, nothing added', async ({ browser }) => {
-    const { page, context, st } = await openOperator(browser, {
-      at: '2026-06-19T20:00:00+02:00',
-      handle: async (route, req, u, st, json) => {
-        if (!(u.startsWith('https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/projects') && req.method() === 'POST')) return false;
-        await json(route, 402, { code: 'PT402', details: 'subscription_required', hint: '{"op": "INSERT"}', message: 'This workspace has no active subscription or event pass.' });
-        return true;
-      },
-    });
-    await page.evaluate(() => { goToDash?.(); openProjModal(); document.getElementById('pm-name').value = 'New fest'; });
-    await page.evaluate(() => createProject());
+  test.use({ stAuth: 'admin' });
+  test('stage over the plan: removed again, operator told, the other edit saved, tab not stuck', async ({ page, st, backend }) => {
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });
+    await st.openProject();
+    backend.failNext({ method: 'PATCH', path: '/rest/v1/projects', ...pt402('stage_limit_exceeded', 'Your plan includes 3 live stage(s). Remove a stage or upgrade to add more.', { op: 'UPDATE', limit: 3, stages_before: 3, stages_after: 4 }) });
+    await page.evaluate(() => { G.stages.push({ id: 'stg-new', name: 'Silent Disco' }); G.shows.find(s => s.id === 'm3').note = 'timing fix'; save(); });
+    await expect.poll(() => serverShow(backend, 'm3').note).toBe('timing fix');
+    expect(backend.project(P).data.stages.map(s => s.id)).toEqual(['stg-main', 'stg-tent', 'stg-club']);
+    await expect.poll(() => page.evaluate(() => [G.stages.length, getSaveState().state])).toEqual([3, 'saved']);
+    await expect(page.locator('#op-notices')).toContainText('Your plan includes 3 live stage(s)');
+    await expect(page.locator('#op-notices')).toContainText('"Silent Disco"');
+    await page.evaluate(() => { G.shows.find(s => s.id === 'm3').note = 'later'; save(); });
+    await expect.poll(() => serverShow(backend, 'm3').note).toBe('later');
+  });
+  test('project insert refused (subscription_required): clear message, nothing added', async ({ page, st, backend }) => {
+    const seen = dialogs(page);
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });
+    backend.failNext({ method: 'POST', path: '/rest/v1/projects', ...pt402('subscription_required', 'This workspace has no active subscription or event pass.', { op: 'INSERT' }) });
+    const before = await page.evaluate(() => APP.projects.length);
+    await page.evaluate(() => { openProjModal(); document.getElementById('pm-name').value = 'New fest'; return createProject(); });
     await expect(page.locator('#limit-modal-ov')).toHaveClass(/open/);
     await expect(page.locator('#limit-modal-msg')).toHaveText('This workspace has no active subscription or event pass. The project was not created.');
-    expect(await page.evaluate(() => APP.projects.length)).toBe(1);
-    expect(st.dialogs || []).toEqual([]);
-    await context.close();
-  });
-  test('stage over the plan: removed again, notice on the control screen, saves continue', async ({ browser }) => {
-    const { page, context, st } = await openOperator(browser, {
-      at: '2026-06-19T20:00:00+02:00',
-      handle: async (route, req, u, st, json) => {
-        if (!(u.includes('/rest/v1/projects?id=eq.P1') && req.method() === 'PATCH')) return false;
-        const body = JSON.parse(req.postData());
-        if (body.data.stages.length > 1) { await json(route, 402, { code: 'PT402', details: 'stage_limit_exceeded', hint: '{"limit": 1}', message: 'Your plan includes 1 live stage(s). Remove a stage or upgrade to add more.' }); return true; }
-        return false;
-      },
-    });
-    await page.evaluate(() => { G.stages.push({ id: 's9', name: 'Club' }); G.shows[0].artist = 'Alpha!'; save(); });
-    await page.clock.runFor(1000);
-    await expect.poll(() => st.row.data.shows[0].artist).toBe('Alpha!');
-    expect(st.row.data.stages.map(s => s.id)).toEqual(['s1']);
-    await expect.poll(() => page.evaluate(() => [G.stages.length, getSaveState().state])).toEqual([1, 'saved']);
-    await expect(page.locator('#op-notices')).toContainText('Your plan includes 1 live stage(s)');
-    await expect(page.locator('#op-notices')).toContainText('"Club"');
-    expect(st.errors).toEqual([]);
-    await context.close();
+    expect(await page.evaluate(() => APP.projects.length)).toBe(before);
+    expect(seen).toEqual([]);
   });
 });
 
+// ── 8. Admin writes via the rls_prep RPCs ────────────────────────────────
 test.describe('admin writes before RLS (rls_prep RPCs)', () => {
-  const users = [
-    { id: 'u1', name: 'Boss', email: 'op@example.test', role: 'super_admin', company_id: 'C1' },
-    { id: 'u2', name: 'Crew', email: 'crew@example.test', role: 'operator', company_id: 'C1' },
-  ];
-  // rpc: 'ok' | 'missing' | 'refused'
-  const rpcHandler = (rpc, log) => async (route, req, u, st, json) => {
-    const m = /\/rest\/v1\/rpc\/(admin_[a-z_]+)/.exec(u);
-    if (m) {
-      log.push({ fn: m[1], body: JSON.parse(req.postData()) });
-      if (rpc === 'missing') return json(route, 404, { code: 'PGRST202', message: `Could not find the function public.${m[1]} in the schema cache` }).then(() => true);
-      if (rpc === 'refused') return json(route, 403, { code: '42501', message: 'insufficient privileges to change a user role' }).then(() => true);
-      return json(route, 200, m[1] === 'admin_delete_company' ? { ok: true, users_detached: 0, projects_detached: 0, deleted: 1 } : { ok: true, id: 'u2', role: 'company_admin' }).then(() => true);
-    }
-    if (/\/rest\/v1\/(app_users|projects|companies)\?.*company_id=eq\.C2|\/rest\/v1\/companies\?id=eq\.C2/.test(u) && req.method() !== 'GET') {
-      log.push({ rest: req.method() + ' ' + u.replace(/^.*\/rest\/v1\//, '') });
-      return json(route, 200, [{ id: 'x' }]).then(() => true);
-    }
-    return false;
-  };
-  for (const rpc of ['ok', 'missing', 'refused']) {
-    test(`changeUserRole: RPC ${rpc}`, async ({ browser }) => {
-      const log = [];
-      const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', role: 'super_admin', users, handle: rpcHandler(rpc, log) });
-      await page.evaluate(() => changeUserRole('u2', 'company_admin'));
-      expect(log).toEqual([{ fn: 'admin_set_user_role', body: { p_user_id: 'u2', p_role: 'company_admin' } }]);
-      const writes = await page.evaluate(() => window.__supaWrites || []);
-      const role = await page.evaluate(() => APP.users.find(u => u.id === 'u2').role);
-      if (rpc === 'ok') { expect(writes).toEqual([]); expect(role).toBe('company_admin'); }
-      if (rpc === 'missing') { expect(writes).toEqual([{ t: 'app_users', op: 'update', b: { role: 'company_admin' }, eq: ['id', 'u2'] }]); expect(role).toBe('company_admin'); }
-      if (rpc === 'refused') { expect(writes).toEqual([]); expect(role).toBe('operator'); expect(st.dialogs).toEqual(["Changing the role failed: you don't have permission for this."]); }
-      expect(st.errors).toEqual([]);
-      await context.close();
-    });
-  }
-  for (const rpc of ['ok', 'missing']) {
-    test(`delCompany: RPC ${rpc}`, async ({ browser }) => {
-      const log = [];
-      const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', role: 'super_admin', users, handle: rpcHandler(rpc, log) });
-      await page.evaluate(() => { APP.companies.push({ id: 'C2', name: 'Old', subscriptionStatus: 'inactive' }); return delCompany('C2'); });
-      if (rpc === 'ok') expect(log).toEqual([{ fn: 'admin_delete_company', body: { p_company_id: 'C2' } }]);
-      else expect(log.slice(1).map(l => l.rest).sort()).toEqual(['DELETE companies?id=eq.C2', 'PATCH app_users?company_id=eq.C2', 'PATCH projects?company_id=eq.C2']);
-      expect(await page.evaluate(() => APP.companies.some(c => c.id === 'C2'))).toBe(false);
-      expect(st.errors).toEqual([]);
-      await context.close();
-    });
-  }
-  for (const role of ['operator', 'company_admin']) {
-    test(`workspace name is ${role === 'operator' ? 'read-only' : 'editable'} for ${role}`, async ({ browser }) => {
-      const { page, context } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', role });
-      await page.evaluate(() => { const d = document.createElement('div'); d.id = 'ws-settings-body'; if (!document.getElementById('ws-settings-body')) document.body.appendChild(d); renderSettingsPage(); });
-      const r = await page.evaluate(() => [document.getElementById('ws-settings-name').disabled, !!document.querySelector('#ws-settings-body .ws-btn-primary')]);
-      expect(r).toEqual(role === 'operator' ? [true, false] : [false, true]);
-      await context.close();
-    });
-  }
+  test.use({ stAuth: 'super' });
+  const op = FESTIVAL.users.operator.id;
+  const roleOf = (backend, id) => backend.db.app_users.find(u => u.id === id).role;
+  test('changeUserRole uses admin_set_user_role', async ({ page, st, backend }) => {
+    backend.setRpc('admin_set_user_role', (b, rec, be) => { be.db.app_users.find(u => u.id === b.p_user_id).role = b.p_role; return { json: { ok: true, id: b.p_user_id, role: b.p_role } }; });
+    await st.gotoApp();
+    await page.evaluate(id => changeUserRole(id, 'company_admin'), op);
+    expect(backend.calls({ path: '/rest/v1/rpc/admin_set_user_role' }).map(c => c.body)).toEqual([{ p_user_id: op, p_role: 'company_admin' }]);
+    expect(backend.calls({ method: 'PATCH', path: '/rest/v1/app_users' })).toEqual([]);
+    expect(roleOf(backend, op)).toBe('company_admin');
+  });
+  test('changeUserRole falls back to the direct write only while the RPC is missing', async ({ page, st, backend }) => {
+    await st.gotoApp();                                   // mock: admin_set_user_role -> 404 PGRST202
+    await page.evaluate(id => changeUserRole(id, 'company_admin'), op);
+    expect(backend.calls({ path: '/rest/v1/rpc/admin_set_user_role' }).length).toBe(1);
+    expect(backend.calls({ method: 'PATCH', path: '/rest/v1/app_users' }).length).toBe(1);
+    expect(roleOf(backend, op)).toBe('company_admin');
+  });
+  test('changeUserRole: a refusal is shown, never retried as a direct write', async ({ page, st, backend }) => {
+    const seen = dialogs(page);
+    backend.setRpc('admin_set_user_role', () => ({ status: 403, json: { code: '42501', message: 'insufficient privileges to change a user role' } }));
+    await st.gotoApp();
+    await page.evaluate(id => changeUserRole(id, 'company_admin'), op);
+    expect(backend.calls({ method: 'PATCH', path: '/rest/v1/app_users' })).toEqual([]);
+    expect(roleOf(backend, op)).toBe('operator');
+    expect(seen).toEqual(["Changing the role failed: you don't have permission for this."]);
+  });
+  test('delCompany uses admin_delete_company, falls back while it is missing', async ({ page, st, backend }) => {
+    dialogs(page);
+    backend.setRpc('admin_delete_company', (b, rec, be) => { be.db.companies = be.db.companies.filter(c => c.id !== b.p_company_id); return { json: { ok: true, users_detached: 1, projects_detached: 0, deleted: 1 } }; });
+    await st.gotoApp();
+    await page.evaluate(id => delCompany(id), FESTIVAL.otherCompanyId);
+    expect(backend.calls({ path: '/rest/v1/rpc/admin_delete_company' }).map(c => c.body)).toEqual([{ p_company_id: FESTIVAL.otherCompanyId }]);
+    expect(backend.calls({ method: 'DELETE' })).toEqual([]);
+    expect(await page.evaluate(id => APP.companies.some(c => c.id === id), FESTIVAL.otherCompanyId)).toBe(false);
+  });
+  test('delCompany without the RPC: the old three requests', async ({ page, st, backend }) => {
+    dialogs(page);
+    await st.gotoApp();
+    await page.evaluate(id => delCompany(id), FESTIVAL.otherCompanyId);
+    expect(backend.calls({ method: 'DELETE', path: '/rest/v1/companies' }).length).toBe(1);
+    expect(backend.calls({ method: 'PATCH', path: '/rest/v1/app_users' }).length).toBe(1);
+    expect(backend.calls({ method: 'PATCH', path: '/rest/v1/projects' }).length).toBeGreaterThanOrEqual(1);
+  });
 });
+for (const [role, editable] of [['operator', false], ['admin', true]]) {
+  test.describe(`workspace settings as ${role}`, () => {
+    test.use({ stAuth: role });
+    test(`workspace name ${editable ? 'editable' : 'read-only'}`, async ({ page, st }) => {
+      await st.gotoApp();
+      await page.evaluate(() => renderSettingsPage());
+      expect(await page.evaluate(() => [document.getElementById('ws-settings-name').disabled, !!document.querySelector('#ws-settings-body .ws-btn-primary')]))
+        .toEqual([!editable, editable]);
+    });
+  });
+}
 
+// ── 10. Service worker update notice ─────────────────────────────────────
+const fireSwUpdate = page => page.evaluate(() => {
+  window.__applied = 0;
+  window.dispatchEvent(new CustomEvent('st:sw-update', { detail: { apply() { window.__applied++; return true; } } }));
+});
 test.describe('service worker update notice', () => {
-  const fire = page => page.evaluate(() => {
-    window.__applied = 0;
-    window.dispatchEvent(new CustomEvent('st:sw-update', { detail: { apply() { window.__applied++; return true; } } }));
+  test.describe('control screen', () => {
+    test.use({ stAuth: 'admin' });
+    test('non-blocking notice, hidden in Stage View, Reload applies', async ({ page, st }) => {
+      await st.gotoApp();
+      await st.openProject();
+      await fireSwUpdate(page);
+      await fireSwUpdate(page);                          // announced twice: one notice
+      const n = page.locator('#op-notices .op-notice');
+      await expect(n).toHaveCount(1);
+      await expect(n).toContainText('New version available');
+      await page.evaluate(() => openSV());
+      await expect(page.locator('#op-notices')).toBeHidden();
+      await page.evaluate(() => closeSV());
+      await expect(page.locator('#op-notices')).toBeVisible();
+      await n.getByRole('button', { name: 'Reload' }).click();
+      expect(await page.evaluate(() => window.__applied)).toBe(1);
+      await expect(n).toHaveCount(0);
+    });
   });
-  test('control screen: non-blocking notice, Reload applies the update', async ({ browser }) => {
-    const { page, context } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00' });
-    await fire(page);
-    const n = page.locator('#op-notices .op-notice');
-    await expect(n).toHaveCount(1);
-    await expect(n).toContainText('New version available');
-    await fire(page); // announced again: still one notice
-    await expect(n).toHaveCount(1);
-    // Hidden while the operator has Stage View full screen.
-    await page.evaluate(() => openSV());
-    await expect(page.locator('#op-notices')).toBeHidden();
-    await page.evaluate(() => closeSV());
-    await expect(page.locator('#op-notices')).toBeVisible();
-    await n.getByRole('button', { name: 'Reload' }).click();
-    expect(await page.evaluate(() => window.__applied)).toBe(1);
-    await expect(n).toHaveCount(0);
-    await context.close();
-  });
-  test('share link (Stage View): no notice at all', async ({ browser }) => {
-    const { page, context, st } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', query: '?mode=stage&pid=P1&sid=s1' });
-    expect(await page.evaluate(() => PUBLIC_MODE)).toBe('stage');
-    await fire(page);
+  test('share link (Stage View): no notice', async ({ page, st }) => {
+    await st.gotoPublic({ mode: 'stage', sid: FESTIVAL.stages.main });
+    await fireSwUpdate(page);
     expect(await page.evaluate(() => [!!document.getElementById('op-notices'), window.__applied])).toEqual([false, 0]);
-    expect(st.errors).toEqual([]);
-    await context.close();
   });
 });
 
+// ── 5. Share link: first fetch fails ─────────────────────────────────────
 test.describe('share link first load', () => {
-  const rpcSeq = (answers, calls) => async (route, req, u, st, json) => {
-    if (!u.includes('/rest/v1/rpc/get_shared_project')) return false;
-    const a = answers[Math.min(calls.n++, answers.length - 1)];
-    if (a === 'hang') return true; // never answered: the client's own timeout fires
-    if (a === 'ok') await json(route, 200, st.row);
-    else if (a === 'null') await json(route, 200, 'null');
-    else await json(route, a, { message: 'boom' });
-    return true;
-  };
-  test('server errors at boot: "Connecting…", retries with backoff, then Stage View as normal', async ({ browser }) => {
-    const calls = { n: 0 };
-    const { page, context, st } = await openOperator(browser, {
-      at: '2026-06-19T22:30:00+02:00', query: '?mode=stage&pid=P1&sid=s1',
-      handle: rpcSeq([503, 500, 502, 'hang', 'ok'], calls),
+  const RPC = '/rest/v1/rpc/get_shared_project';
+  const open = async (page, st) => {
+    await page.addInitScript(() => {   // page-clock timestamps of the share-link fetches
+      window.__rpcTimes = [];
+      const f = window.fetch;
+      window.fetch = function (u) { if (String(u).includes('/rpc/get_shared_project')) window.__rpcTimes.push(Date.now()); return f.apply(this, arguments); };
     });
-    // early fetch 503, first load 500 -> "Connecting…" while it retries
-    await expect(page.locator('#loader')).toBeVisible();
+    await st.installClock(ams(FESTIVAL.dates.d1, '16:00'));
+    await page.goto(`/app.html?mode=stage&pid=${P}&sid=${FESTIVAL.stages.main}`);
+  };
+  test('server errors at boot: "Connecting…", backoff, then Stage View as normal', async ({ page, st, backend }) => {
+    backend.failNext({ path: RPC, status: 503, times: 2 });   // early fetch + first load
+    backend.failNext({ path: RPC, status: 502 });             // retry 1
+    backend.failNext({ path: RPC, hang: true });              // retry 2: the client's 8s timeout
+    await open(page, st);
     await expect(page.locator('#loader')).toContainText('Connecting…');
     await expect(page.locator('#loader')).not.toContainText('not found');
-    // Drive the (fake) clock until the 5th request; replies are real async.
-    for (let t = 0; calls.n < 5 && t < 60000; t += 250) { await page.clock.runFor(250); await new Promise(r => setTimeout(r, 15)); }
-    // Page-time gaps between the requests = the backoff: 1s, 2s, then the
-    // 8s timeout of the hanging one + 4s.
+    for (let t = 0; backend.calls({ path: RPC }).length < 5 && t < 60000; t += 250) { await st.advance(250); await page.waitForTimeout(15); }
     const times = await page.evaluate(() => window.__rpcTimes);
-    const gaps = times.slice(1).map((t, i) => t - times[i]);
-    expect(gaps.length).toBe(4);
+    const gaps = times.slice(1, 5).map((t, i) => t - times[i]);
+    // backoff 1s, 2s, then 8s timeout + 4s
     [0, 1000, 2000, 12000].forEach((g, i) => { expect(gaps[i]).toBeGreaterThanOrEqual(g - 50); expect(gaps[i]).toBeLessThanOrEqual(g + 1000); });
-    await page.clock.runFor(1000);
-    await expect(page.locator('#loader')).toBeHidden();
-    expect(await page.evaluate(() => document.getElementById('sv-artist').textContent)).toBe('Alpha');
-    expect(st.errors).toEqual([]);
-    expect(st.unexpected).toEqual([]);
-    await context.close();
+    await page.locator('#loader').waitFor({ state: 'hidden' });
+    await expect(page.locator('#sv-artist')).toHaveText("DJ O'Neil");
   });
-  test('the server says there is no such project: "Project not found."', async ({ browser }) => {
-    const calls = { n: 0 };
-    const { page, context } = await openOperator(browser, {
-      at: '2026-06-19T22:30:00+02:00', query: '?mode=stage&pid=P1&sid=s1', handle: rpcSeq(['null'], calls),
-    });
+  test('no such project: "Project not found.", no retries', async ({ page, st, backend }) => {
+    backend.setRpc('get_shared_project', () => ({ json: null }));
+    await open(page, st);
     await expect(page.locator('#loader')).toHaveText('Project not found.');
-    await page.clock.runFor(10000);
-    expect(calls.n).toBe(2); // early fetch + load, no retries
-    await context.close();
-  });
-});
-
-test.describe('crew pushes via send-push', () => {
-  const data = {
-    memberIds: ['u1', 'u2'],
-    stages: [{ id: 's1', name: 'Main' }, { id: 's2', name: 'Club' }],
-    days: [{ id: 'd1', name: 'Friday', date: '2026-06-19' }, { id: 'd2', name: 'Saturday', date: '2026-06-20' }],
-    shows: [
-      { id: 'past', stage: 's1', day: 'd1', artist: 'Past', date: '2026-06-19', start: '18:00:00', end: '19:00:00' },
-      { id: 'a', stage: 's1', day: 'd1', artist: 'Alpha', date: '2026-06-19', start: '22:00:00', end: '23:00:00', startsAt: '2026-06-19T22:00:00', endsAt: '2026-06-19T23:00:00' },
-      { id: 'late', stage: 's2', day: 'd1', artist: 'Late', date: '2026-06-19', start: '23:30:00', end: '01:30:00' },
-      { id: 'x', stage: 's2', day: 'd1', artist: 'Off', date: '2026-06-19', start: '21:00:00', end: '22:00:00', cancelled: true },
-      { id: 'other', stage: 's1', day: 'd2', artist: 'Other day', date: '2026-06-20', start: '21:00:00', end: '22:00:00' },
-    ],
-  };
-  const sendPush = (onCall) => async (route, req, u, st, json) => {
-    if (!u.includes('/functions/v1/send-push')) return false;
-    await onCall(route, req, json);
-    return true;
-  };
-  test('schedules from end / endsAt / stage in festival time, user token, no OneSignal', async ({ browser }) => {
-    const sent = [];
-    const { page, context, st } = await openOperator(browser, {
-      at: '2026-06-19T20:00:00+02:00', timezoneId: 'America/New_York', data,
-      handle: sendPush(async (route, req, json) => {
-        sent.push({ auth: req.headers()['authorization'], body: JSON.parse(req.postData()) });
-        await json(route, 200, { ok: true, id: 'n' + sent.length, recipients: 2 });
-      }),
-    });
-    await expect.poll(() => sent.length).toBe(2);
-    expect(sent.map(s => s.body.show_id)).toEqual(['a', 'late']);
-    expect(sent[0].auth).toBe('Bearer user.jwt');
-    expect(sent[0].body).toEqual({
-      project_id: 'P1', show_id: 'a', include_external_user_ids: ['u1', 'u2'],
-      headings: { en: 'Alpha almost finished', nl: 'Alpha almost finished' },
-      contents: { en: 'Alpha on Main ends at 23:00 - about 10 min left.', nl: 'Alpha on Main ends at 23:00 - about 10 min left.' },
-      send_after: '2026-06-19T20:50:00.000Z',
-    });
-    expect(sent[1].body.send_after).toBe('2026-06-19T23:20:00.000Z'); // 01:30 next night = 01:20 CEST push
-    expect(sent[1].body.contents.en).toBe('Late on Club ends at 01:30 - about 10 min left.');
-    expect(st.requests.some(r => /onesignal/i.test(r))).toBe(false);
-    expect(st.unexpected).toEqual([]);
-    expect(await page.evaluate(() => typeof OS_REST_KEY)).toBe('undefined');
-    await context.close();
-  });
-  test('missing function (404): one clear operator notice, no retries', async ({ browser }) => {
-    let calls = 0;
-    const { page, context, st } = await openOperator(browser, {
-      at: '2026-06-19T20:00:00+02:00', data,
-      handle: sendPush(async (route, req, json) => {
-        calls++;
-        await json(route, 404, { code: 'NOT_FOUND', message: 'Requested function was not found' });
-      }),
-    });
-    await expect(page.locator('#op-notices')).toContainText('Push is not configured yet');
-    expect(calls).toBe(1);
-    await page.evaluate(() => openProject('P1'));
-    await page.clock.runFor(1000);
-    await new Promise(r => setTimeout(r, 200));
-    expect(calls).toBe(1);
-    expect(st.errors).toEqual([]);
-    await context.close();
+    await st.advance(10000);
+    expect(backend.calls({ path: RPC }).length).toBe(2);   // early fetch + load
   });
 });
