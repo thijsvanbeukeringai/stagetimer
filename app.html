@@ -37,24 +37,26 @@
     const base='https://bamjpsquhdzxvsymldpq.supabase.co/rest/v1/';
     const key='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhbWpwc3F1aGR6eHZzeW1sZHBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTQ2ODUsImV4cCI6MjA5MDUzMDY4NX0.657ty4HprURSCfdwfORQejBjXCcj6nK81rN9WoOOwiQ';
     const hdr={apikey:key,Authorization:'Bearer '+key};
-    // get_shared_project may not be deployed yet: only when the function
-    // itself is missing (404 / PGRST202) read the row the legacy way, and
-    // tell loadPublicView (window._sharedProjectLegacy) to keep doing so.
-    window._earlyPublicFetch=fetch(base+'rpc/get_shared_project',{
-        method:'POST',
-        headers:Object.assign({'Content-Type':'application/json'},hdr),
-        body:JSON.stringify({p_id:pid}),
-      })
-      .then(async r=>{
-        if(r.ok)return r.json();
-        const t=await r.text().catch(()=>'');
-        if(r.status!==404&&t.indexOf('PGRST202')<0)return null;
-        window._sharedProjectLegacy=true;
-        const l=await fetch(base+'projects?id=eq.'+encodeURIComponent(pid)+'&select=id,name,company_id,data',{headers:hdr});
-        const rows=l.ok?await l.json():null;
-        return Array.isArray(rows)?rows[0]||null:null;
-      })
-      .then(row=>row||null).catch(e=>{console.warn('[public] early fetch failed, loadPublicView retries:',e&&e.message||e);return null;});
+    // Fallback chain, same as _fetchSharedProjectRaw: get_shared_project(p_id,
+    // p_mode) (only what this mode renders) -> get_shared_project(p_id) (full
+    // blob, backend without the 2-arg variant) -> direct row read (backend
+    // without either). Only "function missing" (404 / PGRST202) moves down
+    // the chain; any other failure returns null and loadPublicView retries.
+    // window._sharedProjectVia tells the data feed which variant answered.
+    const rpc=args=>fetch(base+'rpc/get_shared_project',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},hdr),body:JSON.stringify(args)});
+    const missing=async r=>{const t=await r.text().catch(()=>'');return r.status===404||t.indexOf('PGRST202')>=0;};
+    window._earlyPublicFetch=(async()=>{
+      let r=await rpc({p_id:pid,p_mode:mode});
+      if(r.ok){window._sharedProjectVia='mode';return r.json();}
+      if(!await missing(r))return null;
+      r=await rpc({p_id:pid});
+      if(r.ok){window._sharedProjectVia='pid';return r.json();}
+      if(!await missing(r))return null;
+      window._sharedProjectVia='table';
+      const l=await fetch(base+'projects?id=eq.'+encodeURIComponent(pid)+'&select=id,name,company_id,data',{headers:hdr});
+      const rows=l.ok?await l.json():null;
+      return Array.isArray(rows)?rows[0]||null:null;
+    })().then(row=>row||null).catch(e=>{console.warn('[public] early fetch failed, loadPublicView retries:',e&&e.message||e);return null;});
   }catch(e){console.warn('[public] early fetch not started:',e&&e.message||e);}
 })();
 // EARLY NO-SESSION DETECTION (CSS-driven, no DOM, no network).
@@ -10892,9 +10894,12 @@ async function completeSignup(){
 window.completeSignup=completeSignup;
 
 // ══ PUBLIC VIEWS (share links): data feed ══════════════════════════════════
-// Every share-link screen polls get_shared_project once a second: once RLS
-// is on, Realtime delivers nothing to an anonymous viewer, so this poll is
-// the only sync signal. The feed:
+// Every share-link screen polls the project once a second: once RLS is on,
+// Realtime delivers nothing to an anonymous viewer, so this poll is the only
+// sync signal. The feed:
+//  * Reads get_shared_project(p_id, p_mode) with a fallback chain (see
+//    _fetchSharedProjectRaw) and, when get_shared_project_version exists,
+//    only refetches when that version changed (_pvFetchChanged).
 //  * Public calls travel on the anon key (_rpc does that for share views): a
 //    user JWT left behind by an earlier login expires after an hour and used
 //    to freeze the screen. The poll itself reads the raw response text
@@ -10929,20 +10934,29 @@ async function _rpcPublicRaw(fn,args,timeoutMs){
     return text;
   }finally{clearTimeout(tmo);}
 }
-// ── Shared-project fetch, backward compatible with a backend that doesn't
-// have get_shared_project yet (migration 20261013100000 not applied): only
-// when the function itself is missing - HTTP 404 or PostgREST PGRST202 - read
-// the row directly (GET projects, anon key; what production does today) and
-// remember that for this page session. Any other failure (401, 5xx,
-// timeout) throws: the caller keeps its last data and counts a failed sync.
-// Returns the raw response text (an object for the RPC, a one-row array for
-// the legacy read); _sharedProjectFromText turns either into the row.
-let _sharedProjectLegacy=!!window._sharedProjectLegacy;
+// ── Shared-project fetch: get_shared_project(p_id, p_mode) returns only what
+// this mode renders (no photos, no crew where not shown; field matrix in
+// migration 20261013100000). Backward compatible, in this order:
+//   2-arg missing -> get_shared_project(p_id) (full blob, backend without
+//   the 2-arg variant) -> missing too -> read the row directly (GET projects,
+//   anon key; backend without share-link RPCs).
+// Only "function missing" - HTTP 404 or PostgREST PGRST202 - moves down the
+// chain, and the variant that answered is remembered for this page session
+// (_sharedProjectVia; the <head> early fetch decides it first). Any other
+// failure (401, 5xx, timeout) throws: the caller keeps its last data and
+// counts a failed sync. Returns the raw response text (an object for the
+// RPC, a one-row array for the direct read); _sharedProjectFromText turns
+// either into the row.
+let _sharedProjectVia=null;   // null = not known yet | 'mode' | 'pid' | 'table'
 async function _fetchSharedProjectRaw(pid,timeoutMs){
-  if(window._sharedProjectLegacy)_sharedProjectLegacy=true;
-  if(!_sharedProjectLegacy){
+  if(!_sharedProjectVia&&window._sharedProjectVia)_sharedProjectVia=window._sharedProjectVia;
+  if(!_sharedProjectVia||_sharedProjectVia==='mode'){
+    try{const t=await _rpcPublicRaw('get_shared_project',{p_id:pid,p_mode:PUBLIC_MODE},timeoutMs);_sharedProjectVia='mode';return t;}
+    catch(e){if(!e.rpcMissing)throw e;_sharedProjectVia='pid';console.warn('[public] get_shared_project(p_id, p_mode) not available - using get_shared_project(p_id)');}
+  }
+  if(_sharedProjectVia==='pid'){
     try{return await _rpcPublicRaw('get_shared_project',{p_id:pid},timeoutMs);}
-    catch(e){if(!e.rpcMissing)throw e;_sharedProjectLegacy=true;console.warn('[public] get_shared_project not available - reading the project directly');}
+    catch(e){if(!e.rpcMissing)throw e;_sharedProjectVia='table';console.warn('[public] get_shared_project not available - reading the project directly');}
   }
   const ctrl=new AbortController();
   const tmo=setTimeout(()=>ctrl.abort(),timeoutMs||8000);
@@ -11026,6 +11040,25 @@ function _pvAdopt(text){
   loadG();
   _pvDataVer++;
 }
+// Cheap poll (migration step 6, optional): get_shared_project_version is a
+// few bytes; the project itself (up to megabytes) is fetched only when that
+// number changed, and at least once a minute as a safety net. Without the
+// function (404 / PGRST202, remembered for the session) every poll fetches
+// the project, as before. Other failures count as a failed sync; they never
+// switch the mode off.
+let _pvVerAvail=null;          // null = not tried yet, true / false
+let _pvVer=undefined,_pvFullAt=0;
+const _PV_FULL_EVERY_MS=60000;
+// Resolves with {text,ver} for a fresh project, or null when unchanged.
+async function _pvFetchChanged(){
+  let ver;
+  if(_pvVerAvail!==false){
+    try{ver=(await _rpcPublicRaw('get_shared_project_version',{p_id:PUBLIC_PID},5000)).trim();_pvVerAvail=true;}
+    catch(e){if(!e.rpcMissing)throw e;_pvVerAvail=false;console.info('[public] get_shared_project_version not available - polling the full project');}
+  }
+  if(ver&&ver!=='null'&&ver===_pvVer&&Date.now()-_pvFullAt<_PV_FULL_EVERY_MS)return null;
+  return{text:await _fetchSharedProjectRaw(PUBLIC_PID,5000),ver};
+}
 // The one polling loop for every share-link mode. skip() lets check-in hold
 // the repaint while its own write is in flight.
 function _pvStartPolling(render,skip){
@@ -11034,10 +11067,15 @@ function _pvStartPolling(render,skip){
     if(skip&&skip())return;
     const n=gate.begin();if(!n)return;
     try{
-      const text=await _fetchSharedProjectRaw(PUBLIC_PID,5000);
+      const got=await _pvFetchChanged();
       if(!gate.accept(n))return;
       if(skip&&skip())return;
-      if(text!==_pvLastText){_pvAdopt(text);_pvLastText=text;}
+      if(got){
+        if(got.text!==_pvLastText){_pvAdopt(got.text);_pvLastText=got.text;}
+        // Remember the version only once its data is applied: a rejected
+        // answer is fetched again on the next poll.
+        _pvVer=got.ver;_pvFullAt=Date.now();
+      }
       _pvSyncOk();
       _pvRefresh(render,false);
     }catch(e){_pvSyncFail(e);}

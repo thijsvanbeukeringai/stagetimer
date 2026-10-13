@@ -113,6 +113,23 @@ Dit document zet alles in één volgorde.
   ```
 - **Rollback:** `drop function public.get_shared_project(text, text);`. De andere twee functies zijn achterwaarts compatibel en mogen blijven.
 
+**Veldmatrix van `get_shared_project(p_id, p_mode)`.** Gecontroleerd tegen elke publieke renderer in `app.html`: `renderSV` (met `_svMode`, cue en blackout), `renderBS`, `renderFOH`, `renderTL`, `renderOV`, `renderWV`/`tickWV` en `renderCI`. Elke modus houdt wat hij toont. De migratie hoefde niet te veranderen.
+
+| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin |
+|---|---|---|---|---|---|---|---|
+| `fohNotes` | - | ja | ja | - | - | - | - |
+| `shows[].note` | - | ja | - | - | - | - | - |
+| `shows[].crew` | - | - | ja | - | - | - | - |
+| `shows[].photo` | - | - | - | - | - | - | - |
+| `memberIds` | - | - | - | - | - | - | - |
+| `logo` | - | - | - | - | - | - | - |
+
+- `-` betekent gestript: `fohNotes` wordt `{}`, `memberIds` wordt `[]` en de rest verdwijnt. `company_id` is altijd `null`.
+- Alles anders blijft in elke modus staan. Het gaat om stages, days, de tijden en vlaggen van shows, `genre`, `booth`, `type`, `priority`, `arrived`, `activeStage`/`activeDay`, `timerMode`, `svModes`, `cue` en `blackout`. Het tijdmodel, de overlays en de schermen hebben die nodig, en er zit niets persoonlijks of groots in.
+- De Stage View leest geen van de zes gestripte velden. Foto's gebruikt alleen het operatorpaneel, `memberIds` alleen de crewkiezer en push, en `logo` nergens.
+- De matrix staat in de kop van het SQL-bestand. De JS-tweeling `tests/support/share-modes.js` voedt de mock-backend. `share-mode.spec.js` controleert dat de twee gelijk zijn.
+- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip.
+
 ### Stap 4: app deployen (improve/2026-10-13)
 
 - **Vereist:** stap 1 tot en met 3.
@@ -187,7 +204,19 @@ Er moet een app-versie live staan met:
 - In `PUBLIC_MODE` doet `save()`/`_pushProject` niets, behalve de check-in-RPC.
 - Publieke weergaven roepen `get_shared_project` aan met `{p_id, p_mode: PUBLIC_MODE}`. Dat geldt voor de early fetch in `<head>`, voor `loadPublicView` en voor de zeven polls.
 
-> **NIET GEDAAN in de app (stand 13 oktober 2026).** `app.html` roept `get_shared_project` overal nog aan met alleen `{p_id}` (de legacy-variant met één argument). `p_mode` is bewust níet aangesloten: met gestripte data kan wat de Stage View toont veranderen (bijvoorbeeld foto's), en de Stage View is bevroren. Stap 10 hangt hier niet van af; **stap 11 (PHASE B) wel**, zie daar.
+> **GEDAAN in de app (branch `feature/share-link-p-mode`, 13 oktober 2026; nog niet gedeployed).** De early fetch in `<head>`, `loadPublicView` en de poll van elke deellinkmodus roepen `get_shared_project` aan met `{p_id, p_mode: PUBLIC_MODE}`. Terugvalketen:
+>
+> 1. `get_shared_project(p_id, p_mode)`: alleen de velden die de modus toont;
+> 2. bestaat die niet (`404` of `PGRST202`): `get_shared_project(p_id)`, de volledige blob;
+> 3. bestaat die ook niet: de rij direct uit `projects` lezen (zoals vroeger).
+>
+> De variant die antwoordt, onthoudt de pagina voor de rest van de sessie. Bij `401`, `5xx` of een timeout valt de app **nooit** terug: hij houdt de laatste data en telt een mislukte sync (`window.__stLastSyncOk` blijft staan).
+>
+> Bestaat `get_shared_project_version` (stap 6), dan pollt de view elke seconde alleen dat getal en haalt het project pas op als de versie verandert, plus minstens één keer per minuut. Zonder die functie pollt hij het hele project, zoals voorheen.
+>
+> **Bewijs dat de Stage View gelijk blijft:** `npm run test:booth` draait elke publieke Stage View-toestand twee keer tegen dezelfde baseline (gemaakt van 845eb0d, niet opnieuw gegenereerd): één keer met de legacy-feed (volledige blob) en één keer met de gestripte feed plus versiepoll. Beide zijn pixel-identiek. `tests/regression/share-mode.spec.js` laat elke modus met beide feeds renderen en vergelijkt de DOM.
+>
+> Stap 10 hangt hier niet van af. **Stap 11 (PHASE B) blijft geblokkeerd** door de iPad-app, zie daar.
 
 Zie "App-wijzigingen" hieronder.
 
@@ -208,7 +237,10 @@ Zie "App-wijzigingen" hieronder.
 
 ### Stap 11: `share_link_rpcs` PHASE B (een paar dagen na stap 9)
 
-- **NIET UITVOEREN** zolang de app `get_shared_project` alleen met `{p_id}` aanroept (zo is het nu). PHASE B stript dan foto's uit elke deellink, ook de Stage View. Pas uitvoeren als (1) een toekomstige app-release `p_mode` meestuurt met een terugvalketen 2 argumenten → 1 argument → tabel (`404`/`PGRST202` → volgende), (2) de booth-suite (`npm run test:booth`) bewijst dat de Stage View met gestripte data pixel-identiek is, en (3) die release een paar dagen live staat zodat gecachte tabbladen herladen zijn.
+- **NIET UITVOEREN: GEBLOKKEERD.** De app-kant is klaar (branch `feature/share-link-p-mode`, zie stap 9): `p_mode` wordt overal meegestuurd met de terugvalketen 2 argumenten → 1 argument → tabel (`404`/`PGRST202` → volgende). De booth-suite bewijst dat de Stage View met gestripte data pixel-identiek is. Uitvoeren mag pas als aan álle voorwaarden is voldaan:
+  1. die release staat live;
+  2. hij staat er een paar dagen, zodat gecachte tabbladen herladen zijn;
+  3. **de blokkade bovenaan is opgeheven.** De iPad-app **Stagetimer Booth** (`nl.stagetimer.booth`) haalt projectdata op een nog onbekende manier op. Roept hij `get_shared_project(p_id)` aan en heeft hij foto's, `memberIds` of het logo nodig, dan breekt PHASE B elk iPad-boothscherm. Leest hij `projects` direct, dan breekt `rls_enable` hem. Stel eerst vast welke endpoints en velden hij gebruikt (broncode of netwerk-trace).
 - Voer het commentaarblok onderaan `20261013100000_share_link_rpcs.sql` uit. De legacy-aanroep met één argument geeft dan geen foto's, `memberIds`, logo of `company_id` meer terug.
 - **Rollback:** voer de LEGACY-definitie uit hetzelfde bestand opnieuw uit.
 
@@ -265,12 +297,12 @@ Zie `supabase/functions/README.md`:
 | Alleen `UPDATE(name)` op app_users | **gedaan:** `changeUserRole` → `_rpc('admin_set_user_role',{p_user_id:id,p_role:newRole})`; alleen als de RPC nog niet bestaat (404/PGRST202) de oude directe update. Een company_admin mag, net als nu in de app, binnen de eigen workspace rollen wisselen tussen operator en company_admin (afgedwongen door de guard-trigger); admin/super_admin blijven voorbehouden aan admins | stap 10 |
 | Detach via een RPC | **gedaan:** `delCompany` → `_rpc('admin_delete_company',{p_company_id:id})`, met dezelfde terugval; de RPC is alleen voor super_admin, net als de bestaande delete-policy | stap 10 |
 | Companies hernoemen alleen door company_admin en admins | **gedaan:** operators zien het naamveld in de workspace-instellingen alleen-lezen, zonder opslaan-knop | stap 10 |
-| Gestripte deellinkdata | **deels gedaan:** `save()` en `_pushProject` doen niets in `PUBLIC_MODE`. **Niet gedaan:** `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de 7 polls (met terugval 2 → 1 argument → tabel, en een booth-suite die bewijst dat de Stage View gelijk blijft). Tot dan geen stap 11 | stap 11 |
+| Gestripte deellinkdata | **gedaan** (branch `feature/share-link-p-mode`): `save()` en `_pushProject` doen niets in `PUBLIC_MODE`; `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de poll, met terugval 2 → 1 argument → tabel; de booth-suite draait op de legacy- én de gestripte feed. Stap 11 blijft geblokkeerd door de iPad-app | stap 11 |
 | Abonnement in trial | `_effectiveStageLimit`: `trialing` gelijk aan `active` (B2); eventueel in `canCreateProject` ook pass en `past_due` gelijktrekken met de server | stap 12 |
 | Plan-limiet van de server | **gedaan:** HTTP 402 (of 400) met `PT402`: bij `stage_limit_exceeded` haalt de app de nieuwste stage(s) die de server nog niet had lokaal weg (tot het aantal past), markeert ze als bewust verwijderd, toont `message` aan de operator en slaat direct opnieuw op. Bij `subscription_required` op een nieuw project legt het limietvenster uit dat het project niet is aangemaakt | stap 12 |
 | Conflictdetectie | `save_project` en `patch_show` (zie de kop van het versioning-bestand); echo's met `version <=` de eigen versie negeren | stap 13 |
 | Soft delete | `soft_delete_project`; filter `&deleted_at=is.null` in `_restGet('projects')` en de peek; in realtime een UPDATE met `deleted_at` behandelen als DELETE | stap 13 |
-| Goedkoop pollen (§4.3) | publieke views pollen `get_shared_project_version` en halen het project alleen op als de versie verandert | optioneel |
+| Goedkoop pollen (§4.3) | **gedaan** (zelfde branch): publieke views pollen `get_shared_project_version` en halen het project alleen op als de versie verandert (plus minstens één keer per minuut). Zonder de functie (vóór stap 6) blijft het de volle poll | optioneel, na stap 6 |
 | Push | **gedaan:** alleen nog `send-push`; `OS_REST_KEY` verwijderd; de `endTime`/`stageId`-bug in `scheduleProjectPushes` gerepareerd. Pushen werkt weer zodra stap 15 gedaan is | stap 15 |
 
 ## Niet verifieerbaar zonder het echte schema

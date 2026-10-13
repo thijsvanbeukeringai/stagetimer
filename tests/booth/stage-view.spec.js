@@ -54,6 +54,34 @@ const LOAD_AT = new Date(TIMES[0][1].getTime() - 60_000);
 // change. Everything else is maxDiffPixels 0 / threshold 0 (playwright.config.js).
 const shotOpts = (label) => (label === 'overtime' ? { maxDiffPixels: 12 } : {});
 
+// Every public booth test runs against two share-link backends and compares
+// with the SAME baseline images (snapshot names do not include the feed):
+//   legacy    only get_shared_project(p_id): the app falls back to it and
+//             gets the full blob (backend before the p_mode migration).
+//   stripped  get_shared_project(p_id, p_mode) + get_shared_project_version:
+//             Stage View gets only what mode=stage keeps (no photos, crew,
+//             notes, FOH notes, memberIds, logo; tests/support/share-modes.js)
+//             and polls the version. Proof for PHASE B that the booth screen
+//             is pixel-identical on stripped data.
+const FEEDS = { legacy: 'legacy', stripped: 'version' };
+const RPC = '/rest/v1/rpc/get_shared_project';
+
+// The feed really was the one under test (skipped when BASE_ROOT serves
+// another build, e.g. the baseline commit during test:update-baseline).
+async function expectFeed(feed, page, backend) {
+  if (process.env.BASE_ROOT) return;
+  const calls = backend.calls({ method: 'POST', path: RPC });
+  const shows = await page.evaluate(() => G.shows.map((s) => Object.keys(s)).flat());
+  if (feed === 'legacy') {
+    expect(calls.filter((c) => !('p_mode' in c.body)).length, 'fell back to get_shared_project(p_id)').toBeGreaterThan(0);
+  } else {
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((c) => c.body.p_mode === 'stage'), 'every read asked for p_mode=stage').toBe(true);
+    expect(shows.filter((k) => ['photo', 'crew', 'note'].includes(k)), 'stripped data reached the page').toEqual([]);
+    expect(backend.calls({ method: 'POST', path: `${RPC}_version` }).length, 'version poll used').toBeGreaterThan(0);
+  }
+}
+
 function withMode(stageId, mode, patch = {}) {
   return {
     mutate(seed) {
@@ -66,47 +94,53 @@ function withMode(stageId, mode, patch = {}) {
 }
 
 for (const [vpName, viewport] of Object.entries(VIEWPORTS)) {
-  test.describe(`public stage view ${vpName}`, () => {
-    test.use({ viewport });
+  for (const [feedName, feed] of Object.entries(FEEDS)) {
+    test.describe(`public stage view ${vpName} (${feedName} feed)`, () => {
+      test.use({ viewport });
 
-    for (const mode of MODES) {
-      test.describe(() => {
-        test.use({ stSeed: withMode(S.main, mode) });
-        test(`${mode} through a show`, async ({ page, st }) => {
-          await st.gotoPublic({ mode: 'stage', sid: S.main, at: LOAD_AT });
-          const fp = {};
-          for (const [label, at] of TIMES) {
-            await st.freezeAt(at);
-            await expect(page).toHaveScreenshot(`public-${mode}-${label}-${vpName}.png`, shotOpts(label));
-            fp[label] = await fingerprint(page);
-          }
-          expect(JSON.stringify(fp, null, 2)).toMatchSnapshot(`public-${mode}-${vpName}.json`);
+      for (const mode of MODES) {
+        test.describe(() => {
+          test.use({ stSeed: withMode(S.main, mode) });
+          test(`${mode} through a show`, async ({ page, st, backend }) => {
+            backend.shareFeed(feed);
+            await st.gotoPublic({ mode: 'stage', sid: S.main, at: LOAD_AT });
+            const fp = {};
+            for (const [label, at] of TIMES) {
+              await st.freezeAt(at);
+              await expect(page).toHaveScreenshot(`public-${mode}-${label}-${vpName}.png`, shotOpts(label));
+              fp[label] = await fingerprint(page);
+            }
+            expect(JSON.stringify(fp, null, 2)).toMatchSnapshot(`public-${mode}-${vpName}.json`);
+            await expectFeed(feedName, page, backend);
+          });
         });
-      });
-    }
+      }
 
-    // Extra booth states, countdown mode. Each needs its own stage / time / data.
-    const EXTRA = [
-      { name: 'overnight', sid: S.main, at: ams(D2, '00:45:00.400') },                 // "Night Owl" 23:00-01:30
-      { name: 'cue-wrapup', sid: S.main, at: ams(D1, '16:00:00.400'),
-        patch: { cue: { text: 'WRAP UP', color: 'red', stageId: S.main, sentAt: ams(D1, '15:59:00').getTime(), durationMs: null } } },
-      { name: 'blackout', sid: S.main, at: ams(D1, '16:00:00.400'), patch: { blackout: true } },
-      { name: 'hidden-skipped', sid: S.tent, at: ams(D1, '15:30:00.400') },           // hidden show live, public view skips it
-      { name: 'next-day', sid: S.tent, at: ams(D2, '03:00:00.400') },                  // nothing left today -> date + time
-      { name: 'idle', sid: S.club, at: ams('2026-07-12', '03:00:00.400') },            // nothing left at all
-    ];
-    for (const x of EXTRA) {
-      test.describe(() => {
-        test.use({ stSeed: withMode(x.sid, 'countdown', x.patch) });
-        test(`state ${x.name}`, async ({ page, st }) => {
-          await st.gotoPublic({ mode: 'stage', sid: x.sid, at: new Date(x.at.getTime() - 60_000) });
-          await st.freezeAt(x.at);
-          await expect(page).toHaveScreenshot(`public-state-${x.name}-${vpName}.png`);
-          expect(JSON.stringify(await fingerprint(page), null, 2)).toMatchSnapshot(`public-state-${x.name}-${vpName}.json`);
+      // Extra booth states, countdown mode. Each needs its own stage / time / data.
+      const EXTRA = [
+        { name: 'overnight', sid: S.main, at: ams(D2, '00:45:00.400') },                 // "Night Owl" 23:00-01:30
+        { name: 'cue-wrapup', sid: S.main, at: ams(D1, '16:00:00.400'),
+          patch: { cue: { text: 'WRAP UP', color: 'red', stageId: S.main, sentAt: ams(D1, '15:59:00').getTime(), durationMs: null } } },
+        { name: 'blackout', sid: S.main, at: ams(D1, '16:00:00.400'), patch: { blackout: true } },
+        { name: 'hidden-skipped', sid: S.tent, at: ams(D1, '15:30:00.400') },           // hidden show live, public view skips it
+        { name: 'next-day', sid: S.tent, at: ams(D2, '03:00:00.400') },                  // nothing left today -> date + time
+        { name: 'idle', sid: S.club, at: ams('2026-07-12', '03:00:00.400') },            // nothing left at all
+      ];
+      for (const x of EXTRA) {
+        test.describe(() => {
+          test.use({ stSeed: withMode(x.sid, 'countdown', x.patch) });
+          test(`state ${x.name}`, async ({ page, st, backend }) => {
+            backend.shareFeed(feed);
+            await st.gotoPublic({ mode: 'stage', sid: x.sid, at: new Date(x.at.getTime() - 60_000) });
+            await st.freezeAt(x.at);
+            await expect(page).toHaveScreenshot(`public-state-${x.name}-${vpName}.png`);
+            expect(JSON.stringify(await fingerprint(page), null, 2)).toMatchSnapshot(`public-state-${x.name}-${vpName}.json`);
+            await expectFeed(feedName, page, backend);
+          });
         });
-      });
-    }
-  });
+      }
+    });
+  }
 
   test.describe(`in-app stage view ${vpName}`, () => {
     test.use({ viewport, stAuth: 'admin' });

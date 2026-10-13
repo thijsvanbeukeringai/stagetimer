@@ -5,7 +5,8 @@
 //
 //   bamjpsquhdzxvsymldpq.supabase.co
 //     /rest/v1/<table>      fake PostgREST (projects, companies, app_users)
-//     /rest/v1/rpc/<fn>     get_shared_project, set_show_arrived (+ custom)
+//     /rest/v1/rpc/<fn>     get_shared_project (1-arg legacy + 2-arg per mode, see
+//                           shareFeed()), get_shared_project_version, set_show_arrived (+ custom)
 //     /rest/v1/  (HEAD)     server clock for the Wall (date header)
 //     /auth/v1/*            password / refresh grant, user, logout, recover
 //     /functions/v1/*       edge functions: recorded, configurable, never real
@@ -19,6 +20,8 @@
 // websocket route never calls connectToServer().
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const { stripProjectData, sqlMode } = require('./share-modes');
 
 const SUPA_HOST = 'bamjpsquhdzxvsymldpq.supabase.co';
 const SUPABASE_UMD_PATH = '/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
@@ -249,6 +252,41 @@ class MockBackend {
     this.hiddenColumns = {};
     this.realtime = new RealtimeStub(this);
     this.onesignal = [];
+    // Which share-link read functions "exist" (PostgREST overloads by
+    // argument names). Default: migration step 3 applied (both
+    // get_shared_project variants), step 6 not (no get_shared_project_version).
+    this.sharedRpc = { legacy: true, modes: true, version: false };
+  }
+
+  /**
+   * Pick the share-link backend a spec runs against:
+   *   'legacy'  only get_shared_project(p_id): full blob (backend before this release)
+   *   'modes'   + get_shared_project(p_id, p_mode): stripped per mode (default)
+   *   'version' + get_shared_project_version(p_id) (migration step 6 too)
+   *   'table'   no share-link RPC at all: the app reads projects directly
+   */
+  shareFeed(name) {
+    const feeds = {
+      legacy: { legacy: true, modes: false, version: false },
+      modes: { legacy: true, modes: true, version: false },
+      version: { legacy: true, modes: true, version: true },
+      table: { legacy: false, modes: false, version: false },
+    };
+    if (!feeds[name]) throw new Error(`shareFeed: unknown feed "${name}"`);
+    this.sharedRpc = { ...feeds[name] };
+    return this;
+  }
+
+  /**
+   * projects.version stand-in: derived from the row's content, so it changes
+   * whenever name / company_id / data change - also when a spec mutates
+   * backend.project(id).data directly - exactly like the version trigger.
+   */
+  projectVersion(id) {
+    const pr = this.project(id);
+    if (!pr) return null;
+    const h = crypto.createHash('sha1').update(JSON.stringify([pr.name, pr.company_id, pr.data])).digest('hex');
+    return parseInt(h.slice(0, 12), 16);
   }
 
   // ── seeding & inspection ───────────────────────────────────────────────
@@ -435,8 +473,18 @@ class MockBackend {
   async _rpc(fn, body, rec) {
     if (this.rpcHandlers[fn]) return this.rpcHandlers[fn](body, rec, this);
     if (fn === 'get_shared_project') {
-      const pr = this.db.projects.find((x) => String(x.id) === String(body && body.p_id));
-      return { json: pr ? clone({ id: pr.id, name: pr.name, company_id: pr.company_id, data: pr.data }) : null };
+      // PostgREST resolves the overload by the argument names in the body.
+      const args = Object.keys(body || {}).sort().join(',');
+      const sig = args === 'p_id' ? 'legacy' : args === 'p_id,p_mode' ? 'modes' : null;
+      if (!sig || !this.sharedRpc[sig]) return this._fnMissing(fn, body);
+      const pr = this.db.projects.find((x) => String(x.id) === String(body.p_id));
+      if (!pr) return { json: null };
+      if (sig === 'legacy') return { json: clone({ id: pr.id, name: pr.name, company_id: pr.company_id, data: pr.data }) };
+      return { json: { id: pr.id, name: pr.name, company_id: null, data: stripProjectData(pr.data, sqlMode(body.p_mode)) } };
+    }
+    if (fn === 'get_shared_project_version') {
+      if (!this.sharedRpc.version) return this._fnMissing(fn, body);
+      return { json: this.projectVersion(body && body.p_id) };
     }
     if (fn === 'set_show_arrived') {
       const pr = this.db.projects.find((x) => String(x.id) === String(body.p_id));
@@ -445,9 +493,12 @@ class MockBackend {
       if (!s) return pgError(400, 'P0002', `show ${body.p_show_id} not found in project ${body.p_id}`);
       s.arrived = !!body.p_arrived;
       s.arrivedAt = body.p_arrived_at == null ? null : body.p_arrived_at;
-      return { json: clone(pr.data) };
+      return { json: stripProjectData(pr.data, 'checkin') };   // the SQL returns the check-in view too
     }
-    return pgError(404, 'PGRST202', `Could not find the function public.${fn} in the schema cache`);
+    return this._fnMissing(fn, body);
+  }
+  _fnMissing(fn, body) {
+    return pgError(404, 'PGRST202', `Could not find the function public.${fn}(${Object.keys(body || {}).join(', ')}) in the schema cache`);
   }
 
   // ── PostgREST ──────────────────────────────────────────────────────────

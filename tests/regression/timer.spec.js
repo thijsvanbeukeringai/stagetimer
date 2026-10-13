@@ -157,7 +157,8 @@ test.describe('public poll', () => {
       window.__rpcStarted = 0;
       const f = window.fetch;
       window.fetch = function (input) {
-        if (String((input && input.url) || input).includes('/rpc/get_shared_project')) window.__rpcStarted++;
+        // Exactly this function: not the one-off get_shared_project_version probe.
+        if (/\/rpc\/get_shared_project$/.test(String((input && input.url) || input))) window.__rpcStarted++;
         return f.apply(this, arguments);
       };
     });
@@ -202,7 +203,7 @@ test.describe('public poll', () => {
     await openApp({ page, backend, st }, { at: '2026-06-19T22:30:00+02:00', rpc: 'missing' });
     for (let i = 0; i < 3; i++) await pollStep(page, backend);
     expect((await sv(page)).artist).toBe('Alpha');
-    expect(rpcCalls(backend).length).toBe(1);      // asked once, then remembered
+    expect(rpcCalls(backend).length).toBe(2);      // each variant (p_id+p_mode, p_id) asked once, then remembered
     expect(legacyCalls(backend).length).toBe(6);   // boot read + one per poll (5 polls)
   });
   test('a server error is not "missing": no direct read', async ({ page, backend, st }) => {
