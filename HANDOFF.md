@@ -31,9 +31,9 @@ Alles staat op dezelfde branch.
 - Check-in-scherm in de app en een nieuw Stage manager-scherm (ook als share-link `mode=stagemanager`).
 - Laatste volledige run: 842 geslaagd, 0 gefaald.
 
-**Nog te bevestigen:**
-- Mag de stage manager-link aankomsten wijzigen? Nu wel. Read-only maken is één regel (`_SHARE_RW`).
-- Crew op de stage manager-share-link? Nu alleen in de app.
+**Besloten door Thijs (13-10):**
+- De stage manager-share-link mag aankomsten afvinken (`_SHARE_RW`).
+- Geen crew op de stage manager-share-link. In de app blijft de crew zichtbaar.
 
 **Voorwaarden van de iPad-app (Stagetimer Booth), vóór deze migraties:**
 - `rls_enable`
