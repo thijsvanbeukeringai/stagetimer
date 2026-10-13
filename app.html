@@ -4868,9 +4868,10 @@ let _photoB64='';
 // Set when the operator clicks ✕ on the photo. saveShow must then store ''
 // instead of falling back to the photo the show had when the drawer opened.
 let _photoRemoved=false;
-// Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG.
+// Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG
+// (or PNG when asked, to keep a logo's transparency).
 // Keeps photos small enough to fit alongside other show data in Supabase's JSON column.
-function _compressImage(dataUrl,maxDim=900,quality=.82){
+function _compressImage(dataUrl,maxDim=900,quality=.82,mime='image/jpeg'){
   return new Promise((resolve,reject)=>{
     const img=new Image();
     img.onload=()=>{
@@ -4881,7 +4882,7 @@ function _compressImage(dataUrl,maxDim=900,quality=.82){
       }
       const c=document.createElement('canvas');c.width=w;c.height=h;
       const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
-      try{resolve(c.toDataURL('image/jpeg',quality));}catch(e){reject(e);}
+      try{resolve(c.toDataURL(mime,quality));}catch(e){reject(e);}
     };
     img.onerror=()=>reject(new Error('image load failed'));
     img.src=dataUrl;
@@ -8544,20 +8545,35 @@ function triggerLogoUpload(projId){
   document.getElementById('logo-file-input').click();
 }
 
+// The logo lives as a data URL inside projects.data (and the local cache),
+// so it gets the same treatment as artist photos: max 600px, JPEG .85 -
+// or PNG for formats that may be transparent - keeping the smaller of the
+// result and the original.
+async function _compressLogo(dataUrl,type){
+  const alpha=/png|gif|webp|svg/i.test(type||'');
+  const out=await _compressImage(dataUrl,600,.85,alpha?'image/png':'image/jpeg');
+  const small=await new Promise(r=>{const i=new Image();i.onload=()=>r(i.width<=600&&i.height<=600);i.onerror=()=>r(false);i.src=dataUrl;});
+  return(small&&dataUrl.length<=out.length)?dataUrl:out;
+}
 function handleLogoUpload(event){
   const file=event.target.files[0];
   if(!file)return;
+  if(!file.type.startsWith('image/')){alert('This file is not an image.');event.target.value='';return;}
+  if(file.size>25*1024*1024){alert('Image is too large (>25MB). Please choose a smaller file.');event.target.value='';return;}
+  const tgt=_logoProjectTarget;
   const reader=new FileReader();
-  reader.onload=e=>{
-    const proj=APP.projects.find(p=>p.id===_logoProjectTarget);
+  reader.onload=async e=>{
+    let logo;
+    try{logo=await _compressLogo(e.target.result,file.type);}
+    catch(err){console.error('logo compress failed:',err);alert('The logo could not be processed. Try a PNG or JPEG file.');return;}
+    const proj=APP.projects.find(p=>p.id===tgt);
     if(!proj)return;
     if(!proj.data)proj.data={};
-    proj.data.logo=e.target.result;
+    proj.data.logo=logo;
     // If this is the active project, update G too
-    if(_logoProjectTarget===APP.activeProjectId)G.logo=e.target.result;
+    if(tgt===APP.activeProjectId)G.logo=logo;
     // Persist + push THE SPECIFIC project (not just the active one)
     localStorage.setItem(AKEY,JSON.stringify(APP));
-    const tgt=_logoProjectTarget;
     _pendingPush[tgt]=true;
     clearTimeout(_projSync[tgt]);
     _projSync[tgt]=setTimeout(()=>_pushProject(tgt),300);
