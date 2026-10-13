@@ -2341,6 +2341,8 @@ function loadAPPCache(){
     APP={companies:[],users:[],projects:[],activeProjectId:null};
   }
   if(!APP.companies)APP.companies=[];
+  // Older builds cached companies.setup_token here. Drop it, keep only the flag.
+  APP.companies.forEach(c=>{if('setupToken' in c){if(c.setupPending==null)c.setupPending=!!c.setupToken;delete c.setupToken;}});
   if(!APP.users)APP.users=[];
   if(!APP.timers)APP.timers=[];
   // Restore current user from cache so renderDash filters correctly on first render
@@ -2352,13 +2354,13 @@ function loadAPPCache(){
 // supa.from(...).select() has hung in production (same deadlock family as
 // signInWithPassword / upsert). PostgREST returns the same shape: data[] or
 // error string. We mimic { data, error } so callers don't change.
-async function _restGet(table){
+async function _restGet(table,cols){
   const ctrl=new AbortController();
   const tmo=setTimeout(()=>ctrl.abort(),10000);
   let jwt=SUPA_KEY;
   try{const stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');if(stored?.access_token)jwt=stored.access_token;}catch(_){}
   try{
-    const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=*`,{
+    const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}`,{
       signal:ctrl.signal,
       headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${jwt}`,'Accept':'application/json'},
     });
@@ -2372,11 +2374,60 @@ async function _restGet(table){
   }
 }
 
+// ── Companies: never read setup_token ─────────────────────────────────────
+// setup_token is the one-time secret finalize-signup accepts to set the first
+// password of a paid workspace. Clients must never see it (anyone who reads it
+// can take the workspace over). We select an explicit column list and only use
+// the derived boolean setup_pending ("awaiting activation").
+// Until the hotfix migration adds setup_pending (and while a column in this list
+// is missing on the server), PostgREST answers 42703 / "column ... does not
+// exist"; we then fall back to select=* so the app keeps loading either way.
+const COMPANY_COLS='id,name,stripe_customer_id,stripe_subscription_id,subscription_status,subscription_tier,project_limit,current_period_end,trial_ends_at,last_paid_at,pending_name,pending_email,setup_pending,extra_seats,seat_subscription_item_id,plan_slug,live_stages_limit,live_stages_override,pass_slug,pass_expires_at';
+function _isMissingColumn(err){
+  const m=((err&&(err.message||err.details||err.hint))||'')+' '+((err&&err.code)||'');
+  return /42703|does not exist|setup_pending/i.test(m);
+}
+function _mapCompany(c){
+  return{
+    id:c.id,name:c.name,
+    stripeCustomerId:c.stripe_customer_id,
+    stripeSubscriptionId:c.stripe_subscription_id,
+    subscriptionStatus:c.subscription_status||'inactive',
+    subscriptionTier:c.subscription_tier,
+    projectLimit:c.project_limit||0,
+    currentPeriodEnd:c.current_period_end,
+    trialEndsAt:c.trial_ends_at,
+    lastPaidAt:c.last_paid_at,
+    pendingName:c.pending_name,
+    pendingEmail:c.pending_email,
+    // Only the flag survives; the token itself is never copied into APP/localStorage.
+    setupPending:c.setup_pending!=null?!!c.setup_pending:(c.setup_token!=null&&c.setup_token!==''),
+    extraSeats:c.extra_seats||0,
+    seatSubscriptionItemId:c.seat_subscription_item_id,
+    // 2026-05-26 pricing model
+    planSlug:c.plan_slug||null,
+    liveStagesLimit:c.live_stages_limit,        // null = unlimited
+    liveStagesOverride:c.live_stages_override,  // admin override (wins over limit)
+    passSlug:c.pass_slug||null,
+    passExpiresAt:c.pass_expires_at||null,
+  };
+}
+async function _restGetCompanies(){
+  const r=await _restGet('companies',COMPANY_COLS);
+  if(r.error&&_isMissingColumn(r.error))return _restGet('companies');
+  return r;
+}
+async function _supaCompanies(){
+  const r=await supa.from('companies').select(COMPANY_COLS);
+  if(r.error&&_isMissingColumn(r.error))return supa.from('companies').select('*');
+  return r;
+}
+
 async function loadAPPRemote(){
   setSyncDot('ing');
   try{
     const[cosRes,usrsRes,projsRes]=await Promise.all([
-      _restGet('companies'),
+      _restGetCompanies(),
       _restGet('app_users'),
       _restGet('projects')
     ]);
@@ -2384,28 +2435,7 @@ async function loadAPPRemote(){
     // fetch fails (iOS Safari token expiry, transient RLS, etc.). Otherwise a
     // single bad projects response keeps stale subscription_status in cache
     // forever and shows misleading banners to paying users.
-    if(cosRes.data)APP.companies=cosRes.data.map(c=>({
-      id:c.id,name:c.name,
-      stripeCustomerId:c.stripe_customer_id,
-      stripeSubscriptionId:c.stripe_subscription_id,
-      subscriptionStatus:c.subscription_status||'inactive',
-      subscriptionTier:c.subscription_tier,
-      projectLimit:c.project_limit||0,
-      currentPeriodEnd:c.current_period_end,
-      trialEndsAt:c.trial_ends_at,
-      lastPaidAt:c.last_paid_at,
-      pendingName:c.pending_name,
-      pendingEmail:c.pending_email,
-      setupToken:c.setup_token,
-      extraSeats:c.extra_seats||0,
-      seatSubscriptionItemId:c.seat_subscription_item_id,
-      // 2026-05-26 pricing model
-      planSlug:c.plan_slug||null,
-      liveStagesLimit:c.live_stages_limit,        // null = unlimited
-      liveStagesOverride:c.live_stages_override,  // admin override (wins over limit)
-      passSlug:c.pass_slug||null,
-      passExpiresAt:c.pass_expires_at||null,
-    }));
+    if(cosRes.data)APP.companies=cosRes.data.map(_mapCompany);
     if(usrsRes.data)APP.users=usrsRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id}));
     // Projects: keep cache on error (never wipe the user's data on transient failure),
     // but only overwrite when we got a clean successful response.
@@ -2600,22 +2630,10 @@ function setupRealtime(){
       const c=payload.new;
       if(!c)return;
       const local=APP.companies.find(x=>x.id===c.id);
-      const mapped={
-        id:c.id,name:c.name,
-        stripeCustomerId:c.stripe_customer_id,
-        stripeSubscriptionId:c.stripe_subscription_id,
-        subscriptionStatus:c.subscription_status||'inactive',
-        subscriptionTier:c.subscription_tier,
-        projectLimit:c.project_limit||0,
-        currentPeriodEnd:c.current_period_end,
-        trialEndsAt:c.trial_ends_at,
-        lastPaidAt:c.last_paid_at,
-        pendingName:c.pending_name,
-        pendingEmail:c.pending_email,
-        setupToken:c.setup_token,
-        extraSeats:c.extra_seats||0,
-        seatSubscriptionItemId:c.seat_subscription_item_id,
-      };
+      const mapped=_mapCompany(c);
+      // Realtime never carries setup_pending (generated column) nor setup_token
+      // (stripped from the publication), so keep the flag we already know.
+      if(c.setup_pending==null&&c.setup_token==null&&local)mapped.setupPending=local.setupPending;
       if(local)Object.assign(local,mapped);
       else APP.companies.push(mapped);
       localStorage.setItem(AKEY,JSON.stringify(APP));
@@ -6486,10 +6504,10 @@ async function removeMember(userId){
     // Refresh
     const[uRes,cRes]=await Promise.all([
       supa.from('app_users').select('*'),
-      supa.from('companies').select('*'),
+      _supaCompanies(),
     ]);
     if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id,planSlug:c.plan_slug||null,liveStagesLimit:c.live_stages_limit,liveStagesOverride:c.live_stages_override,passSlug:c.pass_slug||null,passExpiresAt:c.pass_expires_at||null}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
     saveAPP();
     renderSubscriptionPage();
     renderAdmin?.();
@@ -6714,10 +6732,10 @@ async function openAdmin(){
   try{
     const[uRes,cRes]=await Promise.all([
       supa.from('app_users').select('*'),
-      supa.from('companies').select('*'),
+      _supaCompanies(),
     ]);
     if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||'',disabled:u.disabled||false}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id,planSlug:c.plan_slug||null,liveStagesLimit:c.live_stages_limit,liveStagesOverride:c.live_stages_override,passSlug:c.pass_slug||null,passExpiresAt:c.pass_expires_at||null}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
     saveAPP();
     renderAdmin();
   }catch(e){console.warn('[admin] refresh failed:',e);}
@@ -6892,8 +6910,8 @@ function _admSetUsrFilter(v){_admFilter.usr=v.toLowerCase();renderAdmin();}
 
 function _initials(name){const w=(name||'?').split(' ').filter(Boolean);return((w[0]||'?')[0]+(w[1]?w[1][0]:'')).toUpperCase();}
 function _subBadge(c){
-  // Pending = signed up but hasn't finalized password yet (setup_token still set)
-  if(c.setupToken)return`<span style="font-size:9px;font-weight:800;letter-spacing:.04em;color:#fbbf24;background:rgba(251,191,36,.12);padding:2px 7px;border-radius:99px;text-transform:uppercase;">Awaiting activation</span>`;
+  // Pending = signed up but hasn't finalized password yet (setup_pending: setup_token still set server-side)
+  if(c.setupPending)return`<span style="font-size:9px;font-weight:800;letter-spacing:.04em;color:#fbbf24;background:rgba(251,191,36,.12);padding:2px 7px;border-radius:99px;text-transform:uppercase;">Awaiting activation</span>`;
   const s=c.subscriptionStatus||'inactive';
   const map={active:['#22c55e','Active','rgba(34,197,94,.12)'],trialing:['#a5b4fc','Trial','rgba(99,102,241,.12)'],incomplete:['#fbbf24','Incomplete','rgba(251,191,36,.12)'],past_due:['#f97316','Past due','rgba(249,115,22,.12)'],canceled:['#ef4444','Cancelled','rgba(239,68,68,.12)'],inactive:['rgba(255,255,255,.4)','No subscription','rgba(255,255,255,.05)']};
   const[col,lbl,bg]=map[s]||map.inactive;
@@ -6927,8 +6945,8 @@ function _renderKpis(){
   kpis.style.display='';mix.style.display='';
   const cos=APP.companies||[];
   const active=cos.filter(c=>c.subscriptionStatus==='active');
-  const pending=cos.filter(c=>c.setupToken||c.subscriptionStatus==='trialing');
-  const attention=cos.filter(c=>['past_due','incomplete','canceled'].includes(c.subscriptionStatus||'')&&!c.setupToken);
+  const pending=cos.filter(c=>c.setupPending||c.subscriptionStatus==='trialing');
+  const attention=cos.filter(c=>['past_due','incomplete','canceled'].includes(c.subscriptionStatus||'')&&!c.setupPending);
   // Direct revenue per billing cycle (base subscription + seats)
   // Monthly: count of monthly active workspaces × monthly price + monthly seats × seat price
   // Yearly: same for yearly. We deliberately don't annualize/cross-pollinate cycles -
@@ -7264,10 +7282,10 @@ async function addUser(){
     // Refresh users + companies from DB (extra_seats may have changed)
     const[uRes,cRes]=await Promise.all([
       supa.from('app_users').select('*'),
-      supa.from('companies').select('*'),
+      _supaCompanies(),
     ]);
     if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id,planSlug:c.plan_slug||null,liveStagesLimit:c.live_stages_limit,liveStagesOverride:c.live_stages_override,passSlug:c.pass_slug||null,passExpiresAt:c.pass_expires_at||null}));
+    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
     saveAPP();
     renderAdmin();
     alert(data.message||'Invite sent.');
@@ -7308,8 +7326,8 @@ async function delUser(id){
     if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
     APP.users=APP.users.filter(x=>x.id!==id);
     // Refresh companies to pick up new extra_seats count
-    const{data:cos}=await supa.from('companies').select('*');
-    if(cos)APP.companies=cos.map(c=>({id:c.id,name:c.name,stripeCustomerId:c.stripe_customer_id,stripeSubscriptionId:c.stripe_subscription_id,subscriptionStatus:c.subscription_status||'inactive',subscriptionTier:c.subscription_tier,projectLimit:c.project_limit||0,currentPeriodEnd:c.current_period_end,trialEndsAt:c.trial_ends_at,lastPaidAt:c.last_paid_at,pendingName:c.pending_name,pendingEmail:c.pending_email,setupToken:c.setup_token,extraSeats:c.extra_seats||0,seatSubscriptionItemId:c.seat_subscription_item_id}));
+    const{data:cos}=await _supaCompanies();
+    if(cos)APP.companies=cos.map(_mapCompany);
     saveAPP();renderAdmin();
   }catch(e){
     alert('Failed to remove: '+(e.message||e));
