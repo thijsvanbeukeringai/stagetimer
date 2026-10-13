@@ -2224,6 +2224,114 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   .ws-table tbody tr:has(.ws-empty){display:block !important;padding:0;}
   .ws-empty{padding:40px 18px;}
 }
+/* ═══════════════════════════════════════════════════════════════
+   DIALOGS (stDialog) - dialog-specific styles only. Buttons and
+   inputs reuse the existing classes (.btn-p / .btn-g / .btn-del on
+   the dark screens, .ws-btn-* in the light back office).
+   Never shown on Stage View unless an operator action opens one.
+   ═══════════════════════════════════════════════════════════════ */
+.st-dlg-ov{position:fixed;left:0;right:0;top:0;height:100%;z-index:10000;display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);}
+.st-dlg{width:min(440px,100%);max-height:100%;display:flex;flex-direction:column;background:var(--s2);color:var(--text);
+  border:1px solid var(--border2);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.55);font-family:var(--ff);
+  user-select:text;-webkit-user-select:text;outline:none;animation:st-dlg-in .14s ease-out;}
+.st-dlg.st-dlg-wide{width:min(560px,100%);}
+@keyframes st-dlg-in{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.st-dlg-title{margin:0;padding:18px 20px 6px;font-size:16px;font-weight:800;line-height:1.3;letter-spacing:-.2px;}
+.st-dlg-bd{padding:6px 20px 4px;overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;}
+.st-dlg-msg{margin:0 0 12px;font-size:13.5px;line-height:1.55;color:var(--sub);white-space:pre-line;}
+.st-dlg-field{margin:0 0 12px;}
+.st-dlg-lbl{display:block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub);margin:0 0 5px;}
+.st-dlg-in{width:100%;padding:9px 11px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);
+  font-family:var(--ff);font-size:14px;font-weight:500;user-select:text;-webkit-user-select:text;}
+.st-dlg-in[aria-invalid="true"]{border-color:#ef4444;}
+.st-dlg-help{font-size:12px;color:var(--sub);margin-top:5px;line-height:1.45;}
+.st-dlg-err{font-size:12px;font-weight:600;color:#fca5a5;margin-top:5px;line-height:1.4;}
+.st-dlg-formerr{margin:4px 0 10px;padding:9px 11px;border-radius:8px;font-size:12.5px;line-height:1.45;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+.st-dlg-ft{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 20px 18px;flex-shrink:0;}
+.st-dlg-ft button{min-height:40px;padding:9px 16px;font-size:13px;justify-content:center;}
+.st-dlg-ft .st-dlg-danger{background:#dc2626;border:1px solid #dc2626;color:#fff;font-weight:700;}
+.st-dlg-ft .st-dlg-danger:hover{background:#b91c1c;border-color:#b91c1c;color:#fff;}
+.st-dlg :focus-visible{outline:2px solid #a5b4fc;outline-offset:2px;}
+.st-dlg .st-dlg-in:focus-visible{outline:2px solid #a5b4fc;outline-offset:0;border-color:transparent;}
+/* Small blocks dialogs build with `html` (previews, lists) */
+.st-dlg-list{margin:0 0 12px;padding:0;list-style:none;border:1px solid var(--border2);border-radius:8px;overflow:hidden;font-size:12.5px;}
+.st-dlg-list li{display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-top:1px solid var(--border);}
+.st-dlg-list li:first-child{border-top:none;}
+.st-dlg-list .st-dlg-k{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
+.st-dlg-list .st-dlg-v{font-family:var(--ffm);font-size:12px;white-space:nowrap;color:var(--sub);}
+.st-dlg-list .st-dlg-v b{color:var(--text);font-weight:700;}
+.st-dlg-list .st-dlg-chg,.st-dlg-list .st-dlg-chg b{color:#fbbf24;}
+.st-dlg-note{font-size:12px;color:var(--sub);margin:0 0 12px;line-height:1.5;}
+.st-dlg-opts{display:flex;flex-direction:column;gap:10px;margin:0 0 12px;}
+.st-dlg-opt{display:block;width:100%;text-align:left;padding:12px 14px;border-radius:10px;border:1px solid var(--border2);
+  background:var(--s3);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;transition:border-color .12s,background .12s;}
+.st-dlg-opt:hover:not(:disabled){border-color:rgba(99,102,241,.6);background:var(--s4);}
+.st-dlg-opt:disabled{cursor:not-allowed;opacity:.6;}
+.st-dlg-opt-t{display:block;font-size:14px;font-weight:800;margin:0 0 3px;}
+.st-dlg-opt-d{display:block;font-size:12px;color:var(--sub);line-height:1.45;margin:0 0 8px;}
+.st-dlg-opt .st-dlg-list{margin:0;background:rgba(0,0,0,.18);}
+/* Light back office */
+.st-dlg-light .st-dlg{background:#fff;color:#0A0A0B;border-color:rgba(28,25,23,.12);box-shadow:0 20px 60px rgba(28,25,23,.25);font-family:'Geist','Inter',system-ui,sans-serif;}
+.st-dlg-light{background:rgba(28,25,23,.45);}
+.st-dlg-light .st-dlg-msg,.st-dlg-light .st-dlg-help,.st-dlg-light .st-dlg-note,.st-dlg-light .st-dlg-list .st-dlg-v{color:#52525B;}
+.st-dlg-light .st-dlg-lbl{color:#3F3F46;}
+.st-dlg-light .st-dlg-in{background:#fff;border-color:rgba(28,25,23,.18);color:#0A0A0B;}
+.st-dlg-light .st-dlg-in[aria-invalid="true"]{border-color:#B91C1C;}
+.st-dlg-light .st-dlg-err{color:#B91C1C;}
+.st-dlg-light .st-dlg-formerr{background:#FEF2F2;border-color:rgba(185,28,28,.25);color:#991B1B;}
+.st-dlg-light .st-dlg-list{border-color:rgba(28,25,23,.12);}
+.st-dlg-light .st-dlg-list li{border-color:rgba(28,25,23,.08);}
+.st-dlg-light .st-dlg-list .st-dlg-v b{color:#0A0A0B;}
+.st-dlg-light .st-dlg-list .st-dlg-chg,.st-dlg-light .st-dlg-list .st-dlg-chg b{color:#B45309;}
+.st-dlg-light :focus-visible{outline-color:#1E40AF;}
+.st-dlg-light .st-dlg-ft .st-dlg-danger{background:#B91C1C;border-color:#B91C1C;color:#fff;}
+/* Phones: a sheet on the bottom of the visible viewport (above the
+   keyboard, see _fitViewport), full-width stacked buttons. */
+@media (max-width:600px){
+  .st-dlg-ov{align-items:flex-end;padding:0;}
+  .st-dlg,.st-dlg.st-dlg-wide{width:100%;border-radius:16px 16px 0 0;max-height:calc(100% - 24px);}
+  .st-dlg-ft{flex-direction:column-reverse;padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+  .st-dlg-ft button{width:100%;min-height:46px;font-size:15px;}
+  .st-dlg-in{font-size:16px;} /* no iOS zoom-on-focus */
+}
+@media (prefers-reduced-motion:reduce){.st-dlg{animation:none;}}
+/* Forms that live outside the dialog (show editor, day list): field
+   messages next to the field, sub-labels for date / time / seconds. */
+.st-fset{border:0;padding:0;margin-left:0;margin-right:0;min-width:0;}
+.st-fset>legend{padding:0;}
+.st-sub{display:flex;flex-direction:column;min-width:0;}
+.st-sublbl{font-size:10.5px;font-weight:600;color:var(--sub);margin:0 0 3px;}
+.st-fld-err{font-size:11.5px;font-weight:600;color:#fca5a5;margin-top:6px;line-height:1.4;}
+.st-fld-warn{padding:8px 11px;border-radius:7px;font-size:11.5px;line-height:1.45;margin:-7px 0 15px;
+  background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);color:#fdba74;}
+.fi[aria-invalid="true"]{border-color:#ef4444;}
+#dur-prev .st-auto{color:#fbbf24;}
+button.booth-opt{font-family:inherit;min-width:32px;}
+#drawer :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
+/* Cue panel / manual timer (operator side only, never Stage View) */
+#cue-hdr #cue-status{order:3;flex:1 1 100%;text-align:left;line-height:1.45;}
+.st-cue-target{font-size:11px;color:var(--sub);margin:-2px 0 8px;line-height:1.4;}
+.st-cue-target strong{color:var(--text);}
+.st-bo-status{font-size:11.5px;font-weight:700;line-height:1.4;margin:0 0 8px;padding:7px 10px;border-radius:7px;
+  background:rgba(220,38,38,.14);border:1px solid rgba(220,38,38,.45);color:#fca5a5;}
+.cue-btn.st-cue-on{box-shadow:0 0 0 2px #fff inset;filter:brightness(1.35);}
+.cue-btn.st-cue-on::before{content:"● ";}
+#cue-clear:disabled{opacity:.45;cursor:default;}
+.st-thelp{font-size:10.5px;color:var(--sub);line-height:1.4;margin-top:6px;padding:0 2px;}
+.st-cued{font-size:10px;font-weight:800;color:#86efac;letter-spacing:.04em;}
+#cue-panel :focus-visible,#tbar :focus-visible,.scard :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
+/* Back office forms (light theme): field errors and save status */
+.st-ws-err{font-size:12px;font-weight:600;color:#B91C1C;margin-top:6px;line-height:1.4;}
+.st-ws-status{font-size:12.5px;color:#52525B;}
+.st-ws-status.st-ok{color:#15803D;font-weight:600;}
+.st-ws-status.st-err{color:#B91C1C;font-weight:600;}
+.ws-input[aria-invalid="true"],.admin-fi[aria-invalid="true"]{border-color:#B91C1C;}
+.ws-sb-section-label.st-sb-gap{margin-top:14px;}
+#dash :focus-visible,#admin :focus-visible{outline:2px solid #1E40AF;outline-offset:2px;}
+.st-pw-rule{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.4;}
+/* ═══ end DIALOGS ═══ */
 </style>
 <script>
 window.OneSignalDeferred=window.OneSignalDeferred||[];
@@ -3893,8 +4001,9 @@ function renderTbar(){
       <div id="login-logo-sub" id="set-pw-sub">Set your password</div>
     </div>
     <div id="set-pw-err" style="display:none;padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
-    <input class="fi" id="new-pw" type="password" placeholder="New password (min. 8 characters)" onkeydown="if(event.key==='Enter')setNewPassword()">
-    <input class="fi" id="new-pw2" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <input class="fi" id="new-pw" type="password" placeholder="New password" aria-label="New password" aria-describedby="new-pw-rule" autocomplete="new-password" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <input class="fi" id="new-pw2" type="password" placeholder="Repeat password" aria-label="Repeat password" onkeydown="if(event.key==='Enter')setNewPassword()">
+    <div class="st-pw-rule" id="new-pw-rule" data-pw-rule></div>
     <button class="btn-p" id="set-pw-btn" onclick="setNewPassword()">Set password</button>
   </div>
 </div>
@@ -3909,8 +4018,9 @@ function renderTbar(){
       <div style="font-size:13px;color:var(--sub);">Set your password to log in.</div>
     </div>
     <div id="su-fin-err" style="display:none;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);color:#fca5a5;padding:10px 12px;border-radius:8px;font-size:12px;margin-bottom:12px;"></div>
-    <input class="fi" id="su-fin-pw" type="password" placeholder="Password (min. 8 characters)" minlength="8" autocomplete="new-password">
-    <input class="fi" id="su-fin-pw2" type="password" placeholder="Repeat password" minlength="8" autocomplete="new-password" style="margin-top:8px;" onkeydown="if(event.key==='Enter')completeSignup()">
+    <input class="fi" id="su-fin-pw" type="password" placeholder="Password" aria-label="Password" aria-describedby="su-fin-pw-rule" minlength="8" autocomplete="new-password">
+    <input class="fi" id="su-fin-pw2" type="password" placeholder="Repeat password" aria-label="Repeat password" minlength="8" autocomplete="new-password" style="margin-top:8px;" onkeydown="if(event.key==='Enter')completeSignup()">
+    <div class="st-pw-rule" id="su-fin-pw-rule" data-pw-rule></div>
     <button class="btn-p" id="su-fin-btn" onclick="completeSignup()" style="margin-top:14px;width:100%;">Create account & log in</button>
     <div style="text-align:center;font-size:11px;color:var(--sub);margin-top:14px;">Your payment is already set up. You will be logged in directly afterwards.</div>
   </div>
@@ -4066,7 +4176,7 @@ function renderTbar(){
         </button>
         <button class="dd-item super-admin-only" style="display:none;" onclick="closeAllDD();openAdmin()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Admin
+          Platform admin
         </button>
         <div class="dd-sep"></div>
         <button class="dd-item danger" onclick="closeAllDD();doLogout()">
@@ -4133,12 +4243,13 @@ function renderTbar(){
       </div>
       <div id="tbar">
         <div id="trow">
-          <button class="tb" onclick="mPrev()">⏮</button>
-          <button class="tb stp" onclick="mStop()">⏹</button>
+          <button class="tb" onclick="mPrevUI()" aria-label="Cue the previous show (resets the timer)" title="Cue the previous show (resets the timer)">⏮</button>
+          <button class="tb stp" onclick="mStopUI()" aria-label="Reset the timer to the full show length" title="Reset the timer to the full show length">⏹</button>
           <button class="tb go" id="btn-pp" onclick="mPP()">▶ Start</button>
-          <button class="tb" onclick="mNext()">⏭</button>
+          <button class="tb" onclick="mNextUI()" aria-label="Cue the next show (resets the timer)" title="Cue the next show (resets the timer)">⏭</button>
         </div>
         <div id="t-inf"><span id="t-cs">-</span><span id="t-cn">-</span><span id="t-ce">-</span></div>
+        <div class="st-thelp" id="t-help">⏮ ⏭ cue another show · ⏹ resets the timer · use "Cue" on a show to select it. Cards never reset the timer.</div>
       </div>
       <!-- Display mode toggle: what the Stage View for the active stage shows.
            Per-stage so the operator can put one stage on "Blank" (between sets)
@@ -4176,21 +4287,23 @@ function renderTbar(){
           <div class="cue-status" id="cue-status">No active cue</div>
           <!-- Blackout: kills all viewer screens instantly. Used between
                segments / for go-to-break / emergency wipe. -->
-          <button id="blackout-btn" class="cue-blackout-btn" onclick="toggleBlackout()" title="Hide all viewer displays">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 0 1-5.2-9l8.2 8.2A6 6 0 0 1 12 18zm5.2-3L9 6.8A6 6 0 0 1 17.2 15z"/></svg>
+          <button id="blackout-btn" class="cue-blackout-btn" onclick="toggleBlackout()" title="Hide all viewer displays" aria-pressed="false" aria-describedby="blackout-status">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 0 1-5.2-9l8.2 8.2A6 6 0 0 1 12 18zm5.2-3L9 6.8A6 6 0 0 1 17.2 15z"/></svg>
             <span id="blackout-btn-label">Blackout</span>
           </button>
         </div>
+        <div class="st-cue-target" id="cue-target"></div>
+        <div class="st-bo-status" id="blackout-status" hidden>Blackout is ON: every viewer screen of this project (Stage View, Backstage, FOH, all stages) is black.</div>
         <div id="cue-presets">
-          <button class="cue-btn cue-green"  onclick="sendCue('READY','green')">READY</button>
-          <button class="cue-btn cue-amber"  onclick="sendCue('5 MIN','amber')">5 MIN</button>
-          <button class="cue-btn cue-amber"  onclick="sendCue('1 MIN','amber')">1 MIN</button>
-          <button class="cue-btn cue-red"    onclick="sendCue('WRAP UP','red')">WRAP UP</button>
-          <button class="cue-btn cue-blue"   onclick="sendCue('STAND BY','blue')">STAND BY</button>
-          <button class="cue-btn cue-purple" onclick="sendCue('GO TO BREAK','purple')">GO TO BREAK</button>
+          <button class="cue-btn cue-green"  onclick="sendCue('READY','green')" data-cue="READY" aria-pressed="false">READY</button>
+          <button class="cue-btn cue-amber"  onclick="sendCue('5 MIN','amber')" data-cue="5 MIN" aria-pressed="false">5 MIN</button>
+          <button class="cue-btn cue-amber"  onclick="sendCue('1 MIN','amber')" data-cue="1 MIN" aria-pressed="false">1 MIN</button>
+          <button class="cue-btn cue-red"    onclick="sendCue('WRAP UP','red')" data-cue="WRAP UP" aria-pressed="false">WRAP UP</button>
+          <button class="cue-btn cue-blue"   onclick="sendCue('STAND BY','blue')" data-cue="STAND BY" aria-pressed="false">STAND BY</button>
+          <button class="cue-btn cue-purple" onclick="sendCue('GO TO BREAK','purple')" data-cue="GO TO BREAK" aria-pressed="false">GO TO BREAK</button>
         </div>
         <div id="cue-custom">
-          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" onkeydown="if(event.key==='Enter')sendCustomCue()">
+          <input id="cue-input" type="text" placeholder="Custom cue (e.g. STRETCH 1 MIN)" maxlength="40" aria-label="Custom cue text" onkeydown="if(event.key==='Enter')sendCustomCue()">
           <button id="cue-send" onclick="sendCustomCue()">Send</button>
           <button id="cue-clear" onclick="clearCue()" title="Clear active cue">Clear</button>
         </div>
@@ -4215,10 +4328,10 @@ function renderTbar(){
 
 <!-- DRAWER -->
 <div id="dov" onclick="closeDrawer()"></div>
-<div id="drawer">
-  <div id="drhdr"><div id="drtitle">New show</div><button id="drclose" onclick="closeDrawer()">×</button></div>
+<div id="drawer" role="dialog" aria-modal="true" aria-labelledby="drtitle" aria-hidden="true" inert>
+  <div id="drhdr"><h2 id="drtitle">New show</h2><button id="drclose" onclick="closeDrawer()" aria-label="Close show editor">×</button></div>
   <div id="drbody">
-    <div class="fg"><label class="fl" for="f-a">Name / Artist</label><input class="fi" id="f-a" type="text" placeholder="e.g. Martin Garrix"></div>
+    <div class="fg"><label class="fl" for="f-a">Name / Artist</label><input class="fi" id="f-a" type="text" placeholder="e.g. Martin Garrix" aria-describedby="f-a-err" required><div class="st-fld-err" id="f-a-err" hidden></div></div>
     <div class="fg"><label class="fl">Artist photo</label>
       <div id="photo-preview-wrap" style="display:none;margin-bottom:7px;border-radius:8px;overflow:hidden;height:100px;background:var(--s3);">
         <img id="photo-preview" src="" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;">
@@ -4226,32 +4339,35 @@ function renderTbar(){
       <div style="display:flex;gap:6px;">
         <button type="button" class="btn-g" style="flex:1;text-align:center;cursor:pointer;margin:0;" onclick="document.getElementById('f-photo').click()">📷 Choose photo</button>
         <input id="f-photo" type="file" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" onchange="previewPhoto(this)">
-        <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;">✕</button>
+        <button type="button" class="btn-g" id="f-photo-clear" onclick="clearPhoto()" style="display:none;" aria-label="Remove photo">✕</button>
       </div>
     </div>
-    <div class="fg">
-      <label class="fl">Start <span style="color:var(--sub);font-weight:500;">(date · time · seconds)</span></label>
+    <fieldset class="fg st-fset" aria-describedby="f-start-err">
+      <legend class="fl">Start</legend>
       <div class="frow">
-        <input class="fi" id="f-start-date" type="date" style="flex:2;min-width:0;">
-        <input class="fi" id="f-start-time" type="time" style="flex:1.4;min-width:0;">
-        <input class="fi" id="f-start-sec" type="number" min="0" max="59" inputmode="numeric" placeholder="ss" aria-label="Start seconds" style="flex:0.7;min-width:0;text-align:center;">
+        <div class="st-sub" style="flex:2;"><label class="st-sublbl" for="f-start-date">Date</label><input class="fi" id="f-start-date" type="date" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:1.4;"><label class="st-sublbl" for="f-start-time">Time</label><input class="fi" id="f-start-time" type="time" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:0.7;"><label class="st-sublbl" for="f-start-sec">Seconds</label><input class="fi" id="f-start-sec" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="00" style="min-width:0;text-align:center;"></div>
       </div>
-    </div>
-    <div class="fg">
-      <label class="fl">End <span style="color:var(--sub);font-weight:500;">(date · time · seconds)</span></label>
+      <div class="st-fld-err" id="f-start-err" hidden></div>
+    </fieldset>
+    <fieldset class="fg st-fset" aria-describedby="f-end-err">
+      <legend class="fl">End</legend>
       <div class="frow">
-        <input class="fi" id="f-end-date" type="date" style="flex:2;min-width:0;">
-        <input class="fi" id="f-end-time" type="time" style="flex:1.4;min-width:0;">
-        <input class="fi" id="f-end-sec" type="number" min="0" max="59" inputmode="numeric" placeholder="ss" aria-label="End seconds" style="flex:0.7;min-width:0;text-align:center;">
+        <div class="st-sub" style="flex:2;"><label class="st-sublbl" for="f-end-date">Date</label><input class="fi" id="f-end-date" type="date" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:1.4;"><label class="st-sublbl" for="f-end-time">Time</label><input class="fi" id="f-end-time" type="time" style="min-width:0;"></div>
+        <div class="st-sub" style="flex:0.7;"><label class="st-sublbl" for="f-end-sec">Seconds</label><input class="fi" id="f-end-sec" type="number" min="0" max="59" step="1" inputmode="numeric" placeholder="00" style="min-width:0;text-align:center;"></div>
       </div>
-    </div>
+      <div class="st-fld-err" id="f-end-err" hidden></div>
+    </fieldset>
     <!-- Legacy hidden fields kept so any code that still reads them works. -->
     <input type="hidden" id="f-date">
     <input type="hidden" id="f-s">
     <input type="hidden" id="f-e">
     <input type="hidden" id="f-starts-at">
     <input type="hidden" id="f-ends-at">
-    <div id="dur-prev"><svg width="11" height="11" viewBox="0 0 11 11" fill="none"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
+    <div id="dur-prev" aria-live="polite"><svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true"><circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M5.5 3v3l2 1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span id="dur-txt">-</span></div>
+    <div class="st-fld-warn" id="f-overlap" role="status" hidden></div>
     <!-- Genre is intentionally not surfaced in the UI; the data field is kept
          as a hidden input so existing reads/writes continue to work without
          touching downstream display code. -->
@@ -4269,7 +4385,7 @@ function renderTbar(){
           <option value="break">BREAK</option>
         </select>
       </div>
-      <div class="fg" style="flex:0 0 auto;"><label class="fl">Booth</label><div id="booth-sel"><div class="booth-opt sel-none" id="bo-none" onclick="selBooth('')">-</div><div class="booth-opt" id="bo-A" onclick="selBooth('A')">A</div><div class="booth-opt" id="bo-B" onclick="selBooth('B')">B</div></div></div>
+      <div class="fg" style="flex:0 0 auto;"><div class="fl" id="booth-lbl">Booth</div><div id="booth-sel" role="group" aria-labelledby="booth-lbl"><button type="button" class="booth-opt sel-none" id="bo-none" onclick="selBooth('')" aria-label="No booth" aria-pressed="true">-</button><button type="button" class="booth-opt" id="bo-A" onclick="selBooth('A')" aria-label="Booth A" aria-pressed="false">A</button><button type="button" class="booth-opt" id="bo-B" onclick="selBooth('B')" aria-label="Booth B" aria-pressed="false">B</button></div></div>
     </div>
     <div class="fg"><label class="fl" for="f-n">Note</label><textarea class="fi" id="f-n" placeholder="Internal note…"></textarea></div>
   </div>
@@ -4281,7 +4397,7 @@ function renderTbar(){
     </div>
     <div class="dr-actions">
       <button class="btn-p" id="dr-save" onclick="saveShow()">Save show</button>
-      <button class="btn-g" onclick="closeDrawer()">Cancel</button>
+      <button class="btn-g" id="dr-cancel" onclick="closeDrawer()">Cancel</button>
     </div>
   </div>
 </div>
@@ -4323,15 +4439,17 @@ function renderTbar(){
       </button>
       <button class="ws-sb-link" data-section="settings" onclick="showWsSection('settings')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
+        Workspace settings
       </button>
+      <div class="ws-sb-section-label st-sb-gap">Your account</div>
       <button class="ws-sb-link" data-section="profile" onclick="showWsSection('profile')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Profile
+        Account settings
       </button>
+      <div class="ws-sb-section-label st-sb-gap super-admin-only" style="display:none;">Platform</div>
       <button class="ws-sb-link super-admin-only" data-section="admin" id="dash-admin-btn" onclick="openAdmin()" style="display:none;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Admin
+        Platform admin
       </button>
     </nav>
     <div class="ws-sb-footer">
@@ -4368,15 +4486,15 @@ function renderTbar(){
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Subscription</span>
     </button>
-    <button class="ws-tab" data-section="settings" onclick="showWsSection('settings')" aria-label="Settings">
+    <button class="ws-tab" data-section="settings" onclick="showWsSection('settings')" aria-label="Workspace settings">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span>Settings</span>
+      <span>Workspace</span>
     </button>
-    <button class="ws-tab" data-section="profile" onclick="showWsSection('profile')" aria-label="Profile">
+    <button class="ws-tab" data-section="profile" onclick="showWsSection('profile')" aria-label="Account settings">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
+      <span>Account</span>
     </button>
-    <button class="ws-tab super-admin-only" data-section="admin" id="dash-admin-tab" onclick="openAdmin()" aria-label="Admin" style="display:none;">
+    <button class="ws-tab super-admin-only" data-section="admin" id="dash-admin-tab" onclick="openAdmin()" aria-label="Platform admin" style="display:none;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       <span>Admin</span>
     </button>
@@ -4431,7 +4549,7 @@ function renderTbar(){
       <div class="ws-section-hdr">
         <div>
           <h1>Subscription</h1>
-          <div class="ws-section-hdr-sub">Plan, billing and seats</div>
+          <div class="ws-section-hdr-sub">Workspace plan, billing and members</div>
         </div>
       </div>
       <div id="ws-subscription-body"></div>
@@ -4440,8 +4558,8 @@ function renderTbar(){
     <section class="ws-section" id="ws-settings">
       <div class="ws-section-hdr">
         <div>
-          <h1>Settings</h1>
-          <div class="ws-section-hdr-sub">Workspace name, logo, and branding</div>
+          <h1>Workspace settings</h1>
+          <div class="ws-section-hdr-sub">Settings for everyone in this workspace</div>
         </div>
       </div>
       <div id="ws-settings-body"></div>
@@ -4450,8 +4568,8 @@ function renderTbar(){
     <section class="ws-section" id="ws-profile">
       <div class="ws-section-hdr">
         <div>
-          <h1>Profile</h1>
-          <div class="ws-section-hdr-sub">Your account</div>
+          <h1>Account settings</h1>
+          <div class="ws-section-hdr-sub">Only you: your name, password and session</div>
         </div>
       </div>
       <div id="ws-profile-body"></div>
@@ -4468,14 +4586,14 @@ function renderTbar(){
       <div style="width:30px;height:30px;border-radius:9px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </div>
-      <span style="font-size:14px;font-weight:800;letter-spacing:-.3px;">Admin</span>
+      <h1 id="admin-title" style="font-size:14px;font-weight:800;letter-spacing:-.3px;">Platform admin</h1>
     </div>
     <div style="flex:1;"></div>
     <button class="hbtn" onclick="doLogout()" style="display:flex;align-items:center;gap:5px;">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Log out
     </button>
-    <button class="hbtn" onclick="closeAdmin()" style="display:flex;align-items:center;gap:5px;">
+    <button class="hbtn" onclick="closeAdmin()" style="display:flex;align-items:center;gap:5px;" aria-label="Close platform admin">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       Close
     </button>
@@ -4547,7 +4665,7 @@ function renderTbar(){
         </div>
         <div class="admin-list" id="admin-co-list"></div>
         <div class="admin-form">
-          <input class="admin-fi" id="adm-co-name" type="text" placeholder="Workspace name…" onkeydown="if(event.key==='Enter')addCompany()">
+          <input class="admin-fi" id="adm-co-name" type="text" placeholder="Workspace name…" aria-label="New workspace name" onkeydown="if(event.key==='Enter')addCompany()">
           <button class="admin-add-btn" onclick="addCompany()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add workspace
@@ -4565,19 +4683,20 @@ function renderTbar(){
         </div>
         <div class="admin-list" id="admin-usr-list"></div>
         <div class="admin-form">
-          <div style="font-size:11px;font-weight:600;color:#52525B;margin-bottom:2px;letter-spacing:.02em;">Invite a new member · billed €9.95/mo or €119.40/yr per seat</div>
+          <div style="font-size:11px;font-weight:600;color:#52525B;margin-bottom:2px;letter-spacing:.02em;">Invite a new member · billed €9,95/month or €119,40/year per seat</div>
           <div class="admin-form-row">
-            <input class="admin-fi" id="adm-usr-name" type="text" placeholder="Full name…" style="flex:1;">
-            <input class="admin-fi" id="adm-usr-email" type="email" placeholder="Email address…" style="flex:1;" onkeydown="if(event.key==='Enter')addUser()">
+            <input class="admin-fi" id="adm-usr-name" type="text" placeholder="Full name…" aria-label="Full name" style="flex:1;">
+            <input class="admin-fi" id="adm-usr-email" type="email" placeholder="Email address…" aria-label="Email address" style="flex:1;" onkeydown="if(event.key==='Enter')addUser()">
           </div>
           <div class="admin-form-row">
-            <select class="admin-fi admin-fi-sel" id="adm-usr-role" style="flex:1;">
+            <select class="admin-fi admin-fi-sel" id="adm-usr-role" aria-label="Role" style="flex:1;">
               <option value="operator">Operator</option>
               <option value="company_admin">Co. Admin</option>
             </select>
-            <select class="admin-fi admin-fi-sel" id="adm-usr-co" style="flex:1;"></select>
+            <select class="admin-fi admin-fi-sel" id="adm-usr-co" aria-label="Workspace" style="flex:1;"></select>
           </div>
-          <button class="admin-add-btn" onclick="addUser()">
+          <div class="st-ws-err" id="adm-usr-err" role="alert" hidden></div>
+          <button class="admin-add-btn" id="adm-usr-send" onclick="addUser()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 12h16"/><path d="M14 6l6 6-6 6"/></svg>
             Send invite
           </button>
@@ -4776,15 +4895,19 @@ function renderTbar(){
 
 <!-- DAY MODAL -->
 <div id="day-modal-ov" onclick="if(event.target===this)closeDayModal()" style="position:fixed;inset:0;z-index:115;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:360px;display:flex;flex-direction:column;gap:12px;">
+  <div role="dialog" aria-modal="true" aria-labelledby="day-modal-title" style="background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:22px;width:360px;max-width:calc(100vw - 32px);display:flex;flex-direction:column;gap:12px;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:800;">Manage days</div>
-      <button onclick="closeDayModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
+      <h2 id="day-modal-title" style="font-size:14px;font-weight:800;">Manage days</h2>
+      <button onclick="closeDayModal()" aria-label="Close" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div id="day-list" style="display:flex;flex-direction:column;gap:4px;max-height:260px;overflow-y:auto;"></div>
+    <div class="st-fld-err" id="day-list-err" role="alert" hidden></div>
     <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:7px;">
       <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);">New day</div>
-      <input class="fi" id="dm-name" type="text" placeholder="E.g. Friday June 20…" onkeydown="if(event.key==='Enter')addDay()">
+      <label class="st-sublbl" for="dm-name">Name</label>
+      <input class="fi" id="dm-name" type="text" placeholder="E.g. Friday June 20…" aria-describedby="dm-name-err" onkeydown="if(event.key==='Enter')addDay()" oninput="_drSetFieldErr('dm-name','dm-name-err','')">
+      <div class="st-fld-err" id="dm-name-err" hidden></div>
+      <label class="st-sublbl" for="dm-date">Date (optional)</label>
       <input class="fi" id="dm-date" type="date" title="Calendar date (optional - determines whether the countdowns run on that day)" style="font-size:12px;">
       <button class="btn-p" onclick="addDay()">+ Add</button>
       <div style="font-size:10px;color:var(--sub);line-height:1.4;">Without a date, this day runs every day as 'today'. Fill in a date to link it to an actual calendar day.</div>
@@ -4931,6 +5054,249 @@ function renderTbar(){
 </div>
 
 <script>
+// ══ DIALOGS (stDialog) ═══════════════════════════════════════════════════
+// One accessible dialog for every alert / confirm / prompt / small form.
+// role="dialog" + aria-modal, a labelled title, focus kept inside (Tab and
+// Shift+Tab wrap), Escape cancels, focus goes back to whatever opened it.
+// It mounts in the fullscreen element when there is one, and follows the
+// visual viewport so the buttons stay above an on-screen keyboard.
+// Every call returns a Promise:
+//   stDialog.alert(msg,{title})                      -> undefined
+//   stDialog.confirm(msg,{title,okLabel,danger})      -> true | false
+//   stDialog.prompt(msg,{title,label,value,validate}) -> string | null
+//   stDialog.form({title,fields,onSubmit,...})        -> values | null
+//   stDialog.choice({title,choices:[{value,label}]})  -> value | null
+// Inside `html`, a <button data-st-value="x"> closes the dialog with "x".
+// Texts (message, labels) are plain text and always escaped; `html` is for
+// callers that build their own escaped markup (previews, lists).
+// Move focus one step inside a list of focusable elements, wrapping.
+function _stTabStep(list,back,fallback){
+  if(!list.length){fallback&&fallback.focus();return;}
+  const i=list.indexOf(document.activeElement);
+  const n=i<0?(back?list.length-1:0):(i+(back?-1:1)+list.length)%list.length;
+  list[n].focus();
+}
+const stDialog=(()=>{
+  const stack=[];let seq=0;
+  const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  const host=()=>document.fullscreenElement||document.webkitFullscreenElement||document.body;
+  const top=()=>stack[stack.length-1]||null;
+  const visible=el=>!!(el&&(el.offsetWidth||el.offsetHeight||el.getClientRects().length));
+  const focusables=d=>[...d.panel.querySelectorAll(FOCUSABLE)].filter(visible);
+  // Light back office (#dash / #admin) or the dark production screens.
+  function _isLight(trigger){
+    if(trigger&&trigger!==document.body&&trigger.closest)return!!trigger.closest('#dash,#admin');
+    return['dash','admin'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  }
+  function _fitViewport(){
+    const vv=window.visualViewport;
+    stack.forEach(d=>{
+      if(!vv){d.ov.style.top='';d.ov.style.height='';return;}
+      d.ov.style.top=vv.offsetTop+'px';d.ov.style.height=vv.height+'px';
+    });
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',_fitViewport);
+    window.visualViewport.addEventListener('scroll',_fitViewport);
+  }
+  // Capture phase on window: the dialog sees keys before any page handler
+  // (the global Escape that closes screens, Enter handlers on inputs below).
+  window.addEventListener('keydown',e=>{
+    const d=top();if(!d)return;
+    if(e.key==='Escape'){
+      e.preventDefault();e.stopPropagation();
+      if(!d.busy)d.close(d.cancelValue);
+      return;
+    }
+    if(e.key==='Tab'){
+      // Moved here, not by the browser: the order wraps, and buttons are
+      // reachable even where the platform skips them on Tab (Safari).
+      e.preventDefault();e.stopPropagation();
+      _stTabStep(focusables(d),e.shiftKey,d.panel);
+      return;
+    }
+    // Keys typed inside the dialog belong to the dialog only.
+    if(d.panel.contains(e.target))e.stopPropagation();
+  },true);
+  // Focus that escapes (a click on the page behind, a script) comes back.
+  document.addEventListener('focusin',e=>{
+    const d=top();if(!d||d.ov.contains(e.target))return;
+    (focusables(d)[0]||d.panel).focus({preventScroll:true});
+  });
+  const esc=s=>escH(s==null?'':s);
+  function _fieldHTML(f,id){
+    const fid=id+'-f-'+f.name,help=f.help?`<div class="st-dlg-help" id="${fid}-h">${esc(f.help)}</div>`:'';
+    const describedBy=[f.help?fid+'-h':'',fid+'-e'].filter(Boolean).join(' ');
+    const common=`id="${fid}" name="${esc(f.name)}" aria-describedby="${describedBy}"${f.required?' aria-required="true"':''}${f.autocomplete?` autocomplete="${esc(f.autocomplete)}"`:''}${f.placeholder?` placeholder="${esc(f.placeholder)}"`:''}${f.inputmode?` inputmode="${esc(f.inputmode)}"`:''}${f.maxlength?` maxlength="${+f.maxlength}"`:''}${f.min!=null?` min="${esc(f.min)}"`:''}${f.max!=null?` max="${esc(f.max)}"`:''}${f.step!=null?` step="${esc(f.step)}"`:''}`;
+    let input;
+    if(f.type==='select')input=`<select class="st-dlg-in" ${common}>${(f.options||[]).map(o=>`<option value="${esc(o.value)}"${String(o.value)===String(f.value??'')?' selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
+    else if(f.type==='textarea')input=`<textarea class="st-dlg-in" rows="${+f.rows||3}" ${common}>${esc(f.value??'')}</textarea>`;
+    else input=`<input class="st-dlg-in" type="${esc(f.type||'text')}" value="${esc(f.value??'')}" ${common}>`;
+    return`<div class="st-dlg-field" data-field="${esc(f.name)}"><label class="st-dlg-lbl" for="${fid}">${esc(f.label||f.name)}</label>${input}${help}<div class="st-dlg-err" id="${fid}-e" hidden></div></div>`;
+  }
+  // opts: title, message, html, fields, actions[{label,value,kind,submit}],
+  //       cancelValue, onSubmit(values,ctx), busyLabel, trigger, initial
+  //       ('first' | 'cancel' | selector), backdrop (click outside cancels).
+  function open(opts){
+    opts=opts||{};
+    return new Promise(resolve=>{
+      const id='st-dlg-'+(++seq);
+      const trigger=opts.trigger||document.activeElement;
+      const light=opts.light!=null?opts.light:_isLight(trigger);
+      const fields=opts.fields||[];
+      const actions=opts.actions||[{label:'OK',value:true,kind:'primary',submit:true}];
+      const ov=document.createElement('div');
+      ov.className='st-dlg-ov'+(light?' st-dlg-light':'');
+      const btnCls=k=>light
+        ?(k==='primary'?'ws-btn-primary':k==='danger'?'ws-btn-primary st-dlg-danger':'ws-btn-secondary')
+        :(k==='primary'?'btn-p':k==='danger'?'btn-del st-dlg-danger':'btn-g');
+      ov.innerHTML=`<form class="st-dlg${opts.wide?' st-dlg-wide':''}" role="dialog" aria-modal="true" aria-labelledby="${id}-t"${opts.message?` aria-describedby="${id}-m"`:''} tabindex="-1" novalidate>
+        <h2 class="st-dlg-title" id="${id}-t">${esc(opts.title||'Stagetimer')}</h2>
+        <div class="st-dlg-bd">
+          ${opts.message?`<p class="st-dlg-msg" id="${id}-m">${esc(opts.message)}</p>`:''}
+          ${opts.html||''}
+          ${fields.map(f=>_fieldHTML(f,id)).join('')}
+          <div class="st-dlg-formerr" role="alert" hidden></div>
+        </div>
+        <div class="st-dlg-ft">${actions.map((a,i)=>`<button type="${a.submit?'submit':'button'}" class="${btnCls(a.kind)}" data-i="${i}"${a.kind==='danger'?' data-danger="1"':''}>${esc(a.label)}</button>`).join('')}</div>
+      </form>`;
+      const panel=ov.firstElementChild;
+      const d={ov,panel,busy:false,cancelValue:opts.cancelValue!==undefined?opts.cancelValue:null,trigger};
+      const formErr=panel.querySelector('.st-dlg-formerr');
+      const fieldEl=n=>panel.querySelector(`[data-field="${CSS.escape(n)}"]`);
+      const inputOf=n=>fieldEl(n)?.querySelector('.st-dlg-in');
+      const values=()=>{const v={};fields.forEach(f=>{const el=inputOf(f.name);v[f.name]=el?(f.type==='password'?el.value:el.value.trim()):'';});return v;};
+      function setFieldError(n,msg){
+        const w=fieldEl(n);if(!w)return;
+        const e=w.querySelector('.st-dlg-err'),inp=w.querySelector('.st-dlg-in');
+        e.textContent=msg||'';e.hidden=!msg;
+        if(msg)inp.setAttribute('aria-invalid','true');else inp.removeAttribute('aria-invalid');
+      }
+      function setError(msg){formErr.textContent=msg||'';formErr.hidden=!msg;}
+      function setBusy(on,label){
+        d.busy=!!on;panel.setAttribute('aria-busy',on?'true':'false');
+        panel.querySelectorAll('button,input,select,textarea').forEach(el=>{el.disabled=!!on;});
+        const sb=panel.querySelector('button[type=submit]');
+        if(sb){if(on){sb.dataset.label=sb.textContent;sb.textContent=label||opts.busyLabel||'Working…';}else if(sb.dataset.label){sb.textContent=sb.dataset.label;}}
+      }
+      d.close=val=>{
+        const i=stack.indexOf(d);if(i<0)return;
+        stack.splice(i,1);ov.remove();
+        if(!stack.length)document.documentElement.classList.remove('st-dlg-open');
+        const t=d.trigger;
+        if(t&&t!==document.body&&document.contains(t)&&typeof t.focus==='function'){try{t.focus({preventScroll:true});}catch(_){}}
+        else if(top())(focusables(top())[0]||top().panel).focus();
+        resolve(val);
+      };
+      fields.forEach(f=>{const el=inputOf(f.name);if(el)el.addEventListener('input',()=>{setFieldError(f.name,'');setError('');});});
+      async function run(a){
+        if(d.busy)return;
+        if(!a.submit){d.close(a.value);return;}
+        // Field checks first, all of them, messages next to each field.
+        const v=values();let firstBad=null;
+        fields.forEach(f=>{
+          let msg='';
+          if(f.required&&!v[f.name])msg=f.requiredMsg||`${f.label||f.name} is required.`;
+          else if(f.validate)msg=f.validate(v[f.name],v)||'';
+          setFieldError(f.name,msg);if(msg&&!firstBad)firstBad=f.name;
+        });
+        if(firstBad){inputOf(firstBad)?.focus();return;}
+        setError('');
+        if(opts.onSubmit){
+          setBusy(true);
+          let r;
+          try{r=await opts.onSubmit(v,{setFieldError,setError,action:a.value});}
+          catch(e){setBusy(false);setError(e&&e.message?e.message:String(e));panel.querySelector('button[type=submit]')?.focus();return;}
+          setBusy(false);
+          if(r===false){const bad=fields.find(f=>!fieldEl(f.name)?.querySelector('.st-dlg-err').hidden);(bad?inputOf(bad.name):panel.querySelector('button[type=submit]'))?.focus();return;}
+          if(r!==undefined&&r!==true){d.close(r);return;}
+        }
+        d.close(fields.length?v:a.value);
+      }
+      panel.addEventListener('submit',e=>{e.preventDefault();const sb=panel.querySelector('button[type=submit]');run(actions[+(sb?.dataset.i||0)]);});
+      panel.querySelector('.st-dlg-ft').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.type==='submit')return;run(actions[+b.dataset.i]);});
+      // Option buttons inside the body (html) choose by data-st-value.
+      panel.querySelector('.st-dlg-bd').addEventListener('click',e=>{const b=e.target.closest('[data-st-value]');if(!b||b.disabled||d.busy)return;e.preventDefault();d.close(b.dataset.stValue);});
+      if(opts.backdrop!==false&&!fields.length)ov.addEventListener('mousedown',e=>{if(e.target===ov&&!d.busy)d.close(d.cancelValue);});
+      stack.push(d);
+      document.documentElement.classList.add('st-dlg-open');
+      host().appendChild(ov);
+      _fitViewport();
+      let first=null;
+      if(opts.initial==='cancel')first=panel.querySelector('.st-dlg-ft button:not([type=submit])');
+      else if(typeof opts.initial==='string'&&opts.initial!=='first')first=panel.querySelector(opts.initial);
+      if(!first)first=panel.querySelector('.st-dlg-in')||panel.querySelector('.st-dlg-ft button[type=submit]')||focusables(d)[0];
+      (first||panel).focus({preventScroll:true});
+      if(first&&first.select&&first.type!=='date'&&first.type!=='time')try{first.select();}catch(_){}
+    });
+  }
+  const alert=(message,o={})=>open({...o,message,actions:[{label:o.okLabel||'OK',value:undefined,kind:'primary',submit:true}],cancelValue:undefined}).then(()=>undefined);
+  const confirm=(message,o={})=>open({...o,message,initial:o.initial||(o.danger?'cancel':null),
+    actions:[{label:o.cancelLabel||'Cancel',value:false,kind:'secondary'},{label:o.okLabel||'OK',value:true,kind:o.danger?'danger':'primary',submit:true}],cancelValue:false});
+  const prompt=(message,o={})=>open({...o,message,
+    fields:[{name:'value',label:o.label||'Value',type:o.type||'text',value:o.value||'',placeholder:o.placeholder,required:o.required!==false,requiredMsg:o.requiredMsg,validate:o.validate,maxlength:o.maxlength,autocomplete:o.autocomplete||'off'}],
+    actions:[{label:o.cancelLabel||'Cancel',value:null,kind:'secondary'},{label:o.okLabel||'OK',value:true,kind:'primary',submit:true}],cancelValue:null})
+    .then(v=>v&&typeof v==='object'?v.value:null);
+  const form=(o={})=>open({...o,actions:o.actions||[{label:o.cancelLabel||'Cancel',value:null,kind:'secondary'},{label:o.submitLabel||'Save',value:true,kind:o.danger?'danger':'primary',submit:true}],cancelValue:null});
+  const choice=(o={})=>open({...o,initial:o.initial||'first',
+    actions:[{label:o.cancelLabel||'Cancel',value:null,kind:'secondary'},...(o.choices||[]).map(c=>({label:c.label,value:c.value,kind:c.kind||'primary'}))],cancelValue:null});
+  return{open,alert,confirm,prompt,form,choice,isOpen:()=>stack.length>0,closeAll:()=>{while(stack.length)stack[stack.length-1].close(stack[stack.length-1].cancelValue);}};
+})();
+window.stDialog=stDialog;
+// One date notation in dialogs and forms: "Fri, Jun 19, 2026" (calendar
+// date strings are read at noon so no time zone can shift the day).
+function _fmtDay(ymd){
+  if(!ymd)return'-';
+  const d=new Date(String(ymd).slice(0,10)+'T12:00:00');
+  return isNaN(d)?String(ymd):d.toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+// ── The app's own modal overlays (project, stages, crew, days, import,
+// vouchers, one-off timer, FOH note, share links, limits) get the same
+// basics as stDialog without touching their markup or styles: dialog role
+// and name, Escape closes the top one (and nothing behind it), Tab stays
+// inside, focus returns to whatever opened it.
+(function _legacyModalA11y(){
+  const M=[
+    ['proj-modal-ov','New project',()=>closeProjModal()],['limit-modal-ov','Limit reached',()=>closeLimitModal()],
+    ['stage-modal-ov','Manage stages',()=>closeStageModal()],['crew-modal-ov','Manage crew',()=>closeCrewModal()],
+    ['day-modal-ov','Manage days',()=>closeDayModal()],['json-modal-ov','Import lineup',()=>closeJSONModal()],
+    ['voucher-modal-ov','New voucher',()=>closeVoucherModal()],['ot-modal-ov','One-off timer',()=>closeOTModal()],
+    ['fohn-ov','Add note',()=>closeFohnModal()],['share-ov','Shareable links',()=>closeShareModal()],
+  ];
+  const shown=ov=>!!ov&&getComputedStyle(ov).display!=='none'&&ov.getClientRects().length>0;
+  const state=new Map();
+  function topOpen(){
+    let best=null,bz=-1;
+    for(const[id,,close]of M){const ov=document.getElementById(id);if(!shown(ov))continue;const z=+getComputedStyle(ov).zIndex||0;if(z>=bz){bz=z;best={ov,close};}}
+    return best;
+  }
+  function watch(){
+    for(const[id,label]of M){
+      const ov=document.getElementById(id);if(!ov||state.has(id))continue;
+      const panel=ov.firstElementChild;
+      if(panel&&!panel.getAttribute('role')){panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');if(!panel.getAttribute('aria-labelledby'))panel.setAttribute('aria-label',label);}
+      const st={open:false,trigger:null};state.set(id,st);
+      new MutationObserver(()=>{
+        const now=shown(ov);if(now===st.open)return;st.open=now;
+        if(now){const a=document.activeElement;st.trigger=a&&!ov.contains(a)?a:null;}
+        else{const t=st.trigger;st.trigger=null;if(t&&t!==document.body&&document.contains(t)&&!stDialog.isOpen()&&(!document.activeElement||document.activeElement===document.body||ov.contains(document.activeElement)))try{t.focus({preventScroll:true});}catch(_){}}
+      }).observe(ov,{attributes:true,attributeFilter:['style','class']});
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();
+  document.addEventListener('keydown',e=>{
+    if(stDialog.isOpen()||(e.key!=='Escape'&&e.key!=='Tab'))return;
+    const t=topOpen();if(!t)return;
+    if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();t.close();return;}
+    const f=[...t.ov.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled])')].filter(el=>el.getClientRects().length);
+    if(!f.length)return;
+    e.preventDefault();_stTabStep(f,e.shiftKey);
+  },true);
+})();
+// For the few code paths that may run before / without the dialog (node test
+// harness, very early boot): the dialog when it exists, else the browser one.
+function _stAlert(msg,o){return window.stDialog?window.stDialog.alert(msg,o):(alert(msg),Promise.resolve());}
+
 // ══ RENDER TIMER PANEL
 function renderTP(){
   if(G.timerMode==='manual'){renderTPManual();renderTbar();return;}
@@ -5059,8 +5425,7 @@ function renderSched(){
     const hasCrew=CREW_ROLES.some(r=>s.crew?.[r.id]?.name);
     const hasContent=s.note||hasCrew||notes.length;
     const arrivedDot=`<button class="sc-arrived ${s.arrived?'on':''}" title="${s.arrived?'Checked in':'Not checked in - click to mark arrived'}" onclick="ciToggleArrived('${s.id}');event.stopPropagation()">${s.arrived?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}</button>`;
-    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}"
-      onclick="${G.timerMode==='manual'?`selMCue(${i})`:''}">
+    return`<div class="scard ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''}">
       ${(isNow||isSel)?`<div class="spr" style="width:${pct.toFixed(1)}%;"></div>`:''}
       <div class="scard-top">
         <span class="scard-time">${s.start.slice(0,5)}<span style="color:var(--dim)"> – </span>${s.end.slice(0,5)}</span>
@@ -5069,8 +5434,8 @@ function renderSched(){
         ${itemTypeBadge(s)}
         ${s.booth?`<span class="sc-booth" style="background:${bBg};color:${bCol};">${escH(s.booth)}</span>`:''}
         <span class="scard-act">
-          <button class="rb" onclick="openDrawer('${s.id}');event.stopPropagation()">✏️</button>
-          <button class="rb d" onclick="delShow('${s.id}',event)">🗑</button>
+          <button class="rb" onclick="openDrawer(${_jsArg(s.id)});event.stopPropagation()" aria-label="Edit ${escH(s.artist)}" title="Edit show">✏️</button>
+          <button class="rb d" onclick="delShow(${_jsArg(s.id)},event)" aria-label="Delete ${escH(s.artist)}" title="Delete show">🗑</button>
         </span>
       </div>
       ${hasContent?`<div class="scard-sep"></div>`:''}
@@ -5078,7 +5443,10 @@ function renderSched(){
       ${hasCrew?`<div class="scard-crew">${fohCrewHTML(s)}</div>`:''}
       ${notes.length?`<div class="scard-fnotes">${notesHTML}</div>`:''}
       <div class="scard-ft">
-        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal('${escH(s.id)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" style="font-size:10px;padding:3px 8px;" onclick="openFohnModal(${_jsArg(s.id)});event.stopPropagation()">+ Note</button>
+        ${G.timerMode==='manual'&&!s.cancelled?(isSel
+          ?`<span class="st-cued" aria-label="This show is cued on the timer">● Cued</span>`
+          :`<button class="foh-add-note st-cue-show" style="font-size:10px;padding:3px 8px;" onclick="selMCueUI(${i});event.stopPropagation()" aria-label="Cue ${escH(s.artist)} on the timer">▶ Cue</button>`):''}
         ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;font-size:13px;">${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
         ${_showIsFuture(s)&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
@@ -5086,6 +5454,23 @@ function renderSched(){
   }).join('');
 }
 function selMCue(i){_mCue(getShows(G.activeStage,G.activeDay)[i]);renderTP();renderTbar();renderSched();}
+// Manual mode, operator side: picking another show or resetting throws away
+// a running / paused countdown, so that asks first. Idle timers just move.
+async function _mConfirmReset(action,okLabel){
+  if(M.state==='idle')return true;
+  const cur=_mShow();
+  const left=s2cdH(Math.round(mRem()/1000));
+  return stDialog.confirm(`The timer for "${cur?.artist||'this show'}" is ${M.state==='running'?'running':'paused'} with ${left} left. ${action} resets it to the full length of the show.`,
+    {title:'Reset the running timer?',okLabel,cancelLabel:'Keep the timer',danger:true});
+}
+async function selMCueUI(i){
+  const s=getShows(G.activeStage,G.activeDay)[i];if(!s||s.id===M.showId)return;
+  if(!await _mConfirmReset(`Cueing "${s.artist}"`,'Cue and reset'))return;
+  selMCue(i);
+}
+async function mPrevUI(){if(await _mConfirmReset('Cueing the previous show','Cue previous show'))mPrev();}
+async function mNextUI(){if(await _mConfirmReset('Cueing the next show','Cue next show'))mNext();}
+async function mStopUI(){if(await _mConfirmReset('Resetting','Reset timer'))mStop();}
 
 // Fast tick for schedule countdowns
 function tickSched(){
@@ -5630,6 +6015,7 @@ let editId=null,prefillBooth='',_drFlags={cancelled:false,priority:false,hidden:
 function toggleDrFlag(flag){
   _drFlags[flag]=!_drFlags[flag];
   _updateDrFlagBtns();
+  if(flag==='cancelled')updDur(); // a cancelled show cannot overlap
 }
 function _updateDrFlagBtns(){
   const cb=document.getElementById('dr-cancel-btn');
@@ -5638,8 +6024,10 @@ function _updateDrFlagBtns(){
   if(cb)cb.className='dr-flag-btn'+(_drFlags.cancelled?' active-cancel':'');
   if(pb)pb.className='dr-flag-btn'+(_drFlags.priority?' active-priority':'');
   if(hb)hb.className='dr-flag-btn'+(_drFlags.hidden?' active-hidden':'');
+  [[cb,'cancelled'],[pb,'priority'],[hb,'hidden']].forEach(([b,f])=>{if(b)b.setAttribute('aria-pressed',_drFlags[f]?'true':'false');});
 }
 function openDrawer(id,booth=null){
+  if(!document.getElementById('drawer').classList.contains('open'))_drTrigger=document.activeElement;
   editId=id;prefillBooth=booth;
   _drFlags={cancelled:false,priority:false,hidden:false};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
@@ -5684,15 +6072,59 @@ function openDrawer(id,booth=null){
     _drSetDT('end',startMs+90*60*1000);
   }
   _updateDrFlagBtns();
+  _drAutoNote='';_drClearErrors();
   updDur();
+  _drSnap=_drState();
   document.getElementById('dov').classList.add('open');
-  document.getElementById('drawer').classList.add('open');
+  const dr=document.getElementById('drawer');
+  dr.removeAttribute('inert');dr.removeAttribute('aria-hidden');
+  dr.classList.add('open');
   document.body.classList.add('drawer-open');
   setTimeout(()=>document.getElementById('f-a').focus(),240);
 }
-function closeDrawer(){document.getElementById('dov').classList.remove('open');document.getElementById('drawer').classList.remove('open');document.body.classList.remove('drawer-open');}
+// ── Show editor: unsaved-changes guard, Escape, focus
+let _drSnap='',_drTrigger=null,_drAutoNote='';
+const _drVal=id=>document.getElementById(id)?.value||'';
+// Everything the form can change, to compare against the state at opening.
+function _drState(){
+  return JSON.stringify([_drVal('f-a'),_drVal('f-start-date'),_drVal('f-start-time'),_drVal('f-start-sec'),
+    _drVal('f-end-date'),_drVal('f-end-time'),_drVal('f-end-sec'),_drVal('f-type'),_drVal('f-n'),
+    curBooth,_drFlags,_photoB64,_photoRemoved]);
+}
+const _drIsOpen=()=>document.getElementById('drawer').classList.contains('open');
+function _drDirty(){return _drIsOpen()&&_drState()!==_drSnap;}
+// force=true: close without asking (after a save). Resolves false when the
+// operator chose to keep editing.
+async function closeDrawer(force){
+  if(!_drIsOpen())return true;
+  if(force!==true&&_drDirty()){
+    const ok=await stDialog.confirm('Your changes to this show have not been saved.',
+      {title:'Discard changes?',okLabel:'Discard changes',cancelLabel:'Keep editing',danger:true});
+    if(!ok)return false;
+  }
+  const dr=document.getElementById('drawer');
+  document.getElementById('dov').classList.remove('open');dr.classList.remove('open');document.body.classList.remove('drawer-open');
+  // Off-screen (translated), not display:none: keep it out of Tab order and
+  // the accessibility tree while closed.
+  dr.setAttribute('inert','');dr.setAttribute('aria-hidden','true');
+  const t=_drTrigger;_drTrigger=null;
+  if(t&&t!==document.body&&document.contains(t)&&typeof t.focus==='function'){try{t.focus({preventScroll:true});}catch(_){}}
+  return true;
+}
+// Escape closes the editor (through the guard) and nothing else; Tab stays
+// inside it while it is open. Registered before the global Escape handler.
+document.addEventListener('keydown',e=>{
+  if(!_drIsOpen()||stDialog.isOpen())return;
+  const dr=document.getElementById('drawer');
+  if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();closeDrawer();return;}
+  if(e.key==='Tab'){
+    const f=[...dr.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled])')].filter(el=>el.offsetWidth||el.offsetHeight);
+    if(!f.length)return;
+    e.preventDefault();_stTabStep(f,e.shiftKey);
+  }
+});
 let curBooth='A';
-function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el)el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');});}
+function selBooth(b){curBooth=b;['A','B',''].forEach(v=>{const el=document.getElementById('bo-'+(v||'none'));if(el){el.className='booth-opt'+(v===b?' sel-'+(v||'none'):'');el.setAttribute('aria-pressed',v===b?'true':'false');}});}
 // The drawer's six split inputs (start/end date + time + sec) hold FESTIVAL
 // wall time (Europe/Amsterdam, see the time module), never the device's zone:
 // a laptop set to New York must read and write the same 22:00 as a Dutch one.
@@ -5702,25 +6134,51 @@ function _drSetDT(which,ms){
   document.getElementById(`f-${which}-time`).value=amsTimeStr(ms);
   document.getElementById(`f-${which}-sec`).value=_p2(amsParts(ms).s);
 }
-// Read: the inputs as a Date (festival wall time → instant), or null.
+// ── Field errors next to the field (no alert, no silent correction)
+const _DR_ERR={'f-a':'f-a-err','f-start-date':'f-start-err','f-start-time':'f-start-err','f-start-sec':'f-start-err','f-end-date':'f-end-err','f-end-time':'f-end-err','f-end-sec':'f-end-err'};
+function _drSetErr(field,msg){
+  const box=document.getElementById(_DR_ERR[field]);if(!box)return;
+  box.textContent=msg||'';box.hidden=!msg;
+  const el=document.getElementById(field);if(el){if(msg)el.setAttribute('aria-invalid','true');else el.removeAttribute('aria-invalid');}
+}
+function _drClearErrors(){Object.keys(_DR_ERR).forEach(f=>_drSetErr(f,''));}
+// Read one split date + time + seconds group. Returns {dt} or {err,field}.
+// Seconds: blank means 00; anything that is not a whole number 0-59 is an
+// error (it used to be clamped or zeroed without a word).
 function _drReadDT(which){
-  const d=document.getElementById(`f-${which}-date`).value;
-  const t=document.getElementById(`f-${which}-time`).value;
-  const secRaw=(document.getElementById(`f-${which}-sec`).value||'0').trim();
-  if(!d||!t)return null;
-  const ss=Math.max(0,Math.min(59,parseInt(secRaw,10)||0));
+  const L=which==='start'?'start':'end',id=k=>`f-${which}-${k}`;
+  const d=_drVal(id('date')),t=_drVal(id('time'));
+  const secEl=document.getElementById(id('sec')),secRaw=(secEl?.value||'').trim();
+  if(!d&&!t)return{err:`Set the ${L} date and time.`,field:id('date')};
+  if(!d)return{err:`Set the ${L} date.`,field:id('date')};
+  if(!t)return{err:`Set the ${L} time.`,field:id('time')};
+  if(secEl?.validity?.badInput||(secRaw!==''&&(!/^\d{1,2}$/.test(secRaw)||+secRaw>59)))
+    return{err:'Seconds must be a whole number from 0 to 59.',field:id('sec')};
+  const ss=secRaw===''?0:+secRaw;
   // t is HH:MM (native time picker drops seconds on iOS); some browsers return HH:MM:SS - both fine
   const hm=t.split(':').slice(0,2).map(x=>x.padStart(2,'0')).join(':');
-  const ms=parseFestivalISO(`${d}T${hm}:${_p2(ss)}`);
-  return isNaN(ms)?null:new Date(ms);
+  // Festival wall time (Europe/Amsterdam), never the device's zone.
+  const ms=parseFestivalISO(`${d}T${hm}:${String(ss).padStart(2,'0')}`);
+  if(isNaN(ms))return{err:`The ${L} date or time is not valid.`,field:id('date')};
+  return{dt:new Date(ms)};
 }
-function _readStartDate(){return _drReadDT('start');}
-function _readEndDate(){return _drReadDT('end');}
+// Combine the six split inputs (start date+time+sec, end date+time+sec) into Date objects.
+function _readStartDate(){return _drReadDT('start').dt||null;}
+function _readEndDate(){return _drReadDT('end').dt||null;}
+const _d2=n=>String(n).padStart(2,'0');
+const _drIso=dt=>`${amsDateStr(dt.getTime())}T${amsTimeStr(dt.getTime(),true)}`;
 ['f-start-date','f-start-time','f-start-sec','f-end-date','f-end-time','f-end-sec'].forEach(id=>{
   const el=document.getElementById(id);
-  if(el)el.addEventListener('input',updDur);
+  if(!el)return;
+  el.addEventListener('input',()=>{
+    // Editing the end by hand replaces the automatic adjustment note.
+    if(id.startsWith('f-end'))_drAutoNote='';
+    _drSetErr(id,'');updDur();
+  });
 });
-// Auto-bump end to start+1h30m if user pushes start past end.
+document.getElementById('f-a').addEventListener('input',()=>_drSetErr('f-a',''));
+// Start pushed past the end: the end follows to start + 1h30m. That is an
+// automatic change, so the duration preview says so.
 document.getElementById('f-start-date').addEventListener('change',_maybeBumpEnd);
 document.getElementById('f-start-time').addEventListener('change',_maybeBumpEnd);
 document.getElementById('f-start-sec').addEventListener('change',_maybeBumpEnd);
@@ -5728,22 +6186,49 @@ function _maybeBumpEnd(){
   const sd=_readStartDate(),ed=_readEndDate();
   if(!sd||!ed)return;
   if(ed<=sd){
-    _drSetDT('end',sd.getTime()+90*60*1000);
+    const ne=new Date(sd.getTime()+90*60*1000);
+    _drSetDT('end',ne.getTime());
+    const nextDay=amsDateStr(ne.getTime())!==amsDateStr(sd.getTime());
+    _drAutoNote=`End moved to ${amsTimeStr(ne.getTime())}${nextDay?' the next day':''} (start + 1h 30m) because the start was after the end.`;
+    ['f-end-date','f-end-time','f-end-sec'].forEach(f=>_drSetErr(f,''));
     updDur();
   }
 }
+// Other shows on the same stage whose time overlaps [sd, ed). Cancelled
+// shows never count. Times are read the way they will be stored.
+function _drOverlaps(sd,ed){
+  if(!sd||!ed||ed<=sd||_drFlags.cancelled)return[];
+  const ex=editId?G.shows.find(x=>x.id===editId):null;
+  const stage=ex?ex.stage:G.activeStage,day=ex?ex.day:G.activeDay;
+  const iv=_showIv({stage,day,startsAt:_drIso(sd),endsAt:_drIso(ed)});
+  if(isNaN(iv.startMs)||isNaN(iv.endMs))return[];
+  return(G.shows||[]).filter(x=>x.id!==editId&&x.stage===stage&&!x.cancelled).filter(x=>{
+    const o=_showIv(x);return!isNaN(o.startMs)&&!isNaN(o.endMs)&&o.startMs<iv.endMs&&iv.startMs<o.endMs;
+  }).sort(_showOrder);
+}
+const _drShowSpan=x=>`${escH(x.artist||'Untitled')} (${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))})`;
 function updDur(){
   const el=document.getElementById('dur-txt');
   if(!el)return;
-  const sd=_readStartDate(),ed=_readEndDate();
-  if(!sd||!ed){el.textContent='-';el.style.color='';return;}
+  const warn=document.getElementById('f-overlap');
+  const a=_drReadDT('start'),b=_drReadDT('end');
+  const secErr=[a,b].find(r=>r.err&&/sec$/.test(r.field||''));
+  if(warn)warn.hidden=true;
+  if(secErr){el.textContent='⚠ '+secErr.err;el.style.color='#fca5a5';return;}
+  if(!a.dt||!b.dt){el.textContent='-';el.style.color='';return;}
+  const sd=a.dt,ed=b.dt;
   const diff=Math.round((ed-sd)/1000);
   if(diff<=0){el.textContent='⚠ End must be after start';el.style.color='#fca5a5';return;}
   el.style.color='';
   const sStr=document.getElementById('f-start-date').value;
   const eStr=document.getElementById('f-end-date').value;
   const sameDay=sStr===eStr;
-  el.textContent='Duration: '+fmtDur(diff)+(sameDay?'':' · ends next day');
+  el.innerHTML=escH('Duration: '+fmtDur(diff)+(sameDay?'':' · ends next day'))+(_drAutoNote?`<br><span class="st-auto">${escH(_drAutoNote)}</span>`:'');
+  const ov=_drOverlaps(sd,ed);
+  if(warn&&ov.length){
+    warn.innerHTML=`⚠ Overlaps with ${ov.slice(0,3).map(_drShowSpan).join(', ')}${ov.length>3?` and ${ov.length-3} more`:''} on this stage.`;
+    warn.hidden=false;
+  }
 }
 // ── Photo
 let _photoB64='';
@@ -5772,8 +6257,8 @@ function _compressImage(dataUrl,maxDim=900,quality=.82,mime='image/jpeg'){
 }
 async function previewPhoto(inp){
   const f=inp.files&&inp.files[0];if(!f)return;
-  if(!f.type.startsWith('image/')){alert('This file is not an image.');inp.value='';return;}
-  if(f.size>25*1024*1024){alert('Image is too large (>25MB). Please choose a smaller file.');inp.value='';return;}
+  if(!f.type.startsWith('image/')){inp.value='';stDialog.alert(`"${f.name}" is not an image. Choose a JPEG, PNG or WebP photo.`,{title:'Photo not added'});return;}
+  if(f.size>25*1024*1024){inp.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Photo not added'});return;}
   const wrap=document.getElementById('photo-preview-wrap');
   const preview=document.getElementById('photo-preview');
   const clearBtn=document.getElementById('f-photo-clear');
@@ -5788,7 +6273,7 @@ async function previewPhoto(inp){
     clearBtn.style.display='';
   }catch(e){
     console.error('photo upload failed:',e);
-    alert('Photo could not be processed: '+(e.message||e));
+    stDialog.alert('The photo could not be processed ('+(e.message||e)+'). Try a JPEG or PNG file.',{title:'Photo not added'});
     _photoB64='';wrap.style.display='none';preview.style.opacity='1';inp.value='';
   }
 }
@@ -5805,24 +6290,42 @@ function setTPPhoto(src){
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
   else{img.src='';wrap.classList.remove('has-photo');inner.classList.remove('has-photo');}
 }
-function saveShow(){
-  const artist=document.getElementById('f-a').value.trim();if(!artist){document.getElementById('f-a').focus();return;}
+let _drSaving=false;
+async function saveShow(){
+  if(_drSaving)return;
+  _drClearErrors();
+  // Every field is checked; each message sits next to its field and the
+  // first wrong field gets focus.
+  const artist=document.getElementById('f-a').value.trim();
+  const errs=[];
+  if(!artist)errs.push(['f-a','Enter a name or artist.']);
+  const a=_drReadDT('start'),b=_drReadDT('end');
+  if(a.err)errs.push([a.field,a.err]);
+  if(b.err)errs.push([b.field,b.err]);
+  const sd=a.dt,ed=b.dt;
+  if(sd&&ed&&ed<=sd)errs.push(['f-end-date','End must be after start. To run past midnight, pick the next day\'s date in End.']);
+  if(errs.length){
+    errs.forEach(([f,m])=>_drSetErr(f,m));
+    document.getElementById(errs[0][0])?.focus();
+    return;
+  }
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew=existing?.crew||{};
   // The old photo is only a fallback while a new upload is still compressing;
   // after an explicit ✕ the removal must stick.
   const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
-  // Source of truth: split start (date+time) and end (date+time) inputs.
-  // Each time input has step=1 so seconds are captured.
-  const sd=_readStartDate(),ed=_readEndDate();
-  if(!sd||!ed){
-    document.getElementById('f-start-date').focus();
-    alert('Please set both start and end (date + time).');return;
-  }
-  if(ed<=sd){
-    document.getElementById('f-end-date').focus();
-    alert('End must be after start. To run past midnight, pick tomorrow\'s date in the End field.');
-    return;
+  // Overlap on the same stage: a warning, the operator may save anyway.
+  const ov=_drOverlaps(sd,ed);
+  if(ov.length){
+    _drSaving=true;
+    let go;
+    try{
+      go=await stDialog.open({title:'This show overlaps another show',
+        message:`${artist} (${amsTimeStr(sd.getTime())}–${amsTimeStr(ed.getTime())}) overlaps on the same stage with:`,
+        html:`<ul class="st-dlg-list">${ov.map(x=>`<li><span class="st-dlg-k">${escH(x.artist||'Untitled')}</span><span class="st-dlg-v">${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))}</span></li>`).join('')}</ul>`,
+        actions:[{label:'Go back',value:false,kind:'secondary'},{label:'Save anyway',value:true,kind:'primary',submit:true}],cancelValue:false});
+    }finally{_drSaving=false;}
+    if(!go)return;
   }
   // Festival wall time (see _drSetDT), not the device's zone.
   const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
@@ -5846,9 +6349,17 @@ function saveShow(){
     hidden:_drFlags.hidden||false,
   };
   if(editId){if(existing)Object.assign(existing,obj);}else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
-  save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer();
+  save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer(true);
 }
-function delShow(id,e){e.stopPropagation();if(!confirm('Delete this show?'))return;_markIntentionalRemoval([id]);G.shows=G.shows.filter(s=>s.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();}
+async function delShow(id,e){
+  e?.stopPropagation?.();
+  const s=G.shows.find(x=>x.id===id);if(!s)return;
+  const when=`${(s.start||'').slice(0,5)}–${(s.end||'').slice(0,5)}`;
+  const ok=await stDialog.confirm(`"${s.artist||'Untitled'}" (${when}) will be removed from the schedule, with its crew, notes and check-in. This cannot be undone.`,
+    {title:'Delete this show?',okLabel:'Delete show',danger:true});
+  if(!ok)return;
+  _markIntentionalRemoval([id]);G.shows=G.shows.filter(x=>x.id!==id);save();renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();
+}
 
 // ══ MODE
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
@@ -6562,65 +7073,55 @@ function _writeShowTimes(s, newStart, newEnd){
   s.endsAt=`${endDate}T${endTime}`;
   s.endsNextDay=startDate!==endDate;
 }
-function adjustLiveShow(minutes){
+// The two ways to apply a correction, computed WITHOUT touching the data so
+// the operator sees the resulting times first. The arithmetic is the one
+// the quick-adjust buttons always used:
+//   cascade: the live show's end and every following show move by delta.
+//   absorb:  the live show's end moves; a back-to-back next show gets the
+//            same start shift while its end stays fixed. Nothing else moves.
+// Returns {cascade:{changes}, absorb:{changes}|{error}} or {error}.
+function _qaPlans(minutes){
   const shows=getShows(G.activeStage,G.activeDay);
   const cur=curShow(shows);
-  if(!cur){alert('No live show to adjust on this stage.');return;}
+  if(!cur)return{error:'There is no live show on this stage to adjust.'};
   const ordered=_showsInOrder();
   const idx=ordered.findIndex(s=>s.id===cur.s.id);
-  if(idx<0){alert('Could not locate the live show in the schedule.');return;}
+  if(idx<0)return{error:'Could not find the live show in the schedule.'};
   const liveShow=ordered[idx];
   const liveStart=_showStartsAt(liveShow);
   const liveEnd=_showEndsAt(liveShow);
-  if(!liveStart||!liveEnd)return;
+  if(!liveStart||!liveEnd)return{error:'The live show has no start or end time.'};
   const deltaMs=minutes*60*1000;
   const newLiveEnd=new Date(liveEnd.getTime()+deltaMs);
   // Don't allow the live show to end before it started (would be nonsense).
-  if(newLiveEnd<=liveStart){
-    alert('Cannot shorten the show below 0 minutes.');return;
+  if(newLiveEnd<=liveStart)return{error:`"${liveShow.artist}" cannot be shortened by ${-minutes} min: it would end before it started.`};
+  const live={s:liveShow,from:[liveStart,liveEnd],to:[liveStart,newLiveEnd]};
+  const cascade=[live];
+  for(let i=idx+1;i<ordered.length;i++){
+    const s=ordered[i];
+    const sa=_showStartsAt(s),ea=_showEndsAt(s);
+    if(!sa||!ea)continue;
+    cascade.push({s,from:[sa,ea],to:[new Date(sa.getTime()+deltaMs),new Date(ea.getTime()+deltaMs)]});
   }
-  // Ask the operator: push the whole rest of the lineup back/forward, or only
-  // let the immediately following slot absorb the change?
-  //   OK     → cascade: shift every show after this one by delta
-  //   Cancel → only the next slot absorbs (its end stays fixed). Far rest
-  //            of the lineup keeps its original times.
-  const sign=minutes>=0?'+':'';
-  const cascade=confirm(
-    `Adjust live show "${liveShow.artist}" by ${sign}${minutes} min.\n\n`+
-    `Push the rest of the lineup by ${sign}${minutes} min too?\n\n`+
-    `OK = cascade through every following show\n`+
-    `Cancel = only the next slot absorbs the change (its end time stays fixed)`
-  );
-
-  if(cascade){
-    // Shift every following show on this stage/day by deltaMs.
-    for(let i=idx+1;i<ordered.length;i++){
-      const s=ordered[i];
-      const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      if(!sa||!ea)continue;
-      _writeShowTimes(s,new Date(sa.getTime()+deltaMs),new Date(ea.getTime()+deltaMs));
-    }
-  } else {
-    // Original "single-slot absorbs" behaviour: only the next show's START
-    // moves (if it was back-to-back); its END stays fixed.
-    const next=ordered[idx+1];
-    if(next){
-      const nextStart=_showStartsAt(next);
-      const nextEnd=_showEndsAt(next);
-      if(nextStart && nextEnd){
-        const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
-        if(wasBackToBack){
-          const newNextStart=new Date(nextStart.getTime()+deltaMs);
-          if(newNextStart>=nextEnd){
-            alert("That would make the next show's slot zero or negative. Aborted.");return;
-          }
-          _writeShowTimes(next,newNextStart,nextEnd);
-        }
+  let absorb={changes:[live],gap:true};
+  const next=ordered[idx+1];
+  if(next){
+    const nextStart=_showStartsAt(next);
+    const nextEnd=_showEndsAt(next);
+    if(nextStart&&nextEnd){
+      const wasBackToBack=Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
+      if(wasBackToBack){
+        const newNextStart=new Date(nextStart.getTime()+deltaMs);
+        absorb=newNextStart>=nextEnd
+          ?{error:`"${next.artist}" would have no time left (its slot would be zero or negative).`}
+          :{changes:[live,{s:next,from:[nextStart,nextEnd],to:[newNextStart,nextEnd]}]};
       }
     }
   }
-  // Write the live show's new end time. Start stays the same.
-  _writeShowTimes(liveShow,liveStart,newLiveEnd);
+  return{live:liveShow,following:ordered.length-idx-1,cascade:{changes:cascade},absorb};
+}
+function _qaApply(changes){
+  changes.forEach(c=>_writeShowTimes(c.s,c.to[0],c.to[1]));
   // Immediate push - viewer screens see the new times within ~500ms instead
   // of waiting the full 300ms debounce + upsert + polling roundtrip.
   save({immediate:true});
@@ -6628,6 +7129,46 @@ function adjustLiveShow(minutes){
   if(document.getElementById('foh')?.classList.contains('open'))renderFOH();
   if(document.getElementById('bs')?.classList.contains('open'))renderBS();
   if(document.getElementById('tl')?.classList.contains('open'))renderTL();
+}
+// Preview rows: "Bravo  23:00–23:30 → 23:05–23:30", changed parts marked.
+function _qaListHTML(changes,max){
+  const t=d=>amsTimeStr(d.getTime());
+  const part=(a,b)=>t(a)===t(b)?`<b>${t(b)}</b>`:`<span class="st-dlg-chg"><b>${t(b)}</b></span>`;
+  const rows=changes.slice(0,max).map(c=>`<li><span class="st-dlg-k">${escH(c.s.artist||'Untitled')}</span><span class="st-dlg-v">${t(c.from[0])}–${t(c.from[1])} → ${part(c.from[0],c.to[0])}–${part(c.from[1],c.to[1])}</span></li>`);
+  if(changes.length>max)rows.push(`<li><span class="st-dlg-k" style="font-weight:500;">+ ${changes.length-max} more show${changes.length-max===1?'':'s'}, each moved the same way</span></li>`);
+  return`<ul class="st-dlg-list">${rows.join('')}</ul>`;
+}
+// Quick adjust: the operator chooses explicitly and sees the new times
+// before anything changes. Cancel (button, Escape) changes nothing.
+async function adjustLiveShow(minutes){
+  const p=_qaPlans(minutes);
+  if(p.error){await stDialog.alert(p.error,{title:'Cannot adjust the live show'});return;}
+  const sign=minutes>=0?'+':'−',amt=`${sign}${Math.abs(minutes)} min`;
+  const opt=(value,title,desc,body,disabled)=>`<button type="button" class="st-dlg-opt" data-st-value="${value}"${disabled?' disabled aria-disabled="true"':''}><span class="st-dlg-opt-t">${title}</span><span class="st-dlg-opt-d">${desc}</span>${body}</button>`;
+  let html='<div class="st-dlg-opts">';
+  if(!p.following){
+    html+=opt('cascade','Apply',`No shows follow on this stage. Only "${escH(p.live.artist)}" changes.`,_qaListHTML(p.cascade.changes,6));
+  }else{
+    html+=opt('cascade','Shift all following shows',`Every later show on this stage moves ${amt}.`,_qaListHTML(p.cascade.changes,6));
+    html+=p.absorb.error
+      ?opt('absorb','Only the next show absorbs it',escH(p.absorb.error)+' Not possible.','',true)
+      :opt('absorb','Only the next show absorbs it',p.absorb.gap
+        ?'There is a gap before the next show: the change fills the gap and no other show moves.'
+        :'The next show starts at the new time and keeps its end time. No other show moves.',_qaListHTML(p.absorb.changes,6));
+  }
+  html+='</div>';
+  const choice=await stDialog.open({title:`Adjust "${p.live.artist}" by ${amt}`,
+    message:'Choose how the schedule changes. The new times are shown below; nothing changes until you pick one.',
+    html,wide:true,initial:'.st-dlg-opt',
+    actions:[{label:'Cancel',value:null,kind:'secondary'}],cancelValue:null});
+  if(choice!=='cascade'&&choice!=='absorb')return;
+  // Re-plan at apply time (the clock moved while the dialog was open).
+  const q=_qaPlans(minutes);
+  if(q.error){await stDialog.alert(q.error,{title:'Cannot adjust the live show'});return;}
+  if(q.live.id!==p.live.id){await stDialog.alert('The live show changed while the dialog was open. Nothing was adjusted.',{title:'Nothing changed'});return;}
+  const plan=q[choice];
+  if(plan.error){await stDialog.alert(plan.error,{title:'Cannot adjust the live show'});return;}
+  _qaApply(plan.changes);
 }
 window.adjustLiveShow=adjustLiveShow;
 
@@ -6650,8 +7191,8 @@ function renderQuickAdjust(){
         const liveEnd=_showEndsAt(cur.s);
         const backToBack=nextStart && liveEnd && Math.abs(nextStart.getTime()-liveEnd.getTime())<=1000;
         hint.textContent=backToBack
-          ? `Next show (${escH(next.artist)}) absorbs the change - its end time stays fixed.`
-          : `No back-to-back next show; the change extends into the gap.`;
+          ? `Each change asks first: shift all following shows, or let only the next show (${next.artist}) absorb it.`
+          : `The next show starts later: a change fills the gap first. You see the new times before anything changes.`;
       } else {
         hint.textContent='No following show on this stage.';
       }
@@ -6689,7 +7230,10 @@ function renderBlackout(){
     btn.className='cue-blackout-btn'+(on?' on':'');
     if(lbl)lbl.textContent=on?'Blackout ON':'Blackout';
     btn.title=on?'Click to lift blackout':'Hide all viewer displays';
+    btn.setAttribute('aria-pressed',on?'true':'false');
   }
+  const bs=document.getElementById('blackout-status');
+  if(bs&&bs.hidden===on)bs.hidden=!on;
 }
 
 // Cues are persistent by default: they stay visible on the Stage View
@@ -6723,16 +7267,39 @@ function _cueActive(c){
   const expiresAt=(c.sentAt||0)+c.durationMs;
   return nowMs()<expiresAt;
 }
+// Operator side of cues. Stage View rendering is unchanged (_renderCueOverlay):
+// this only says where a cue goes, which one is on air, for how long, and
+// whether blackout is on.
+let _cueUiKey='';
 function renderCueStatus(){
   const el=document.getElementById('cue-status');if(!el)return;
   const c=G&&G.cue;
-  if(!_cueActive(c)){el.textContent='No active cue';return;}
+  const stName=id=>(G.stages||[]).find(x=>x.id===id)?.name||'(deleted stage)';
+  const here=activeStageObj()?.name||'this stage';
+  const active=_cueActive(c);
+  const forHere=active&&(!c.stageId||c.stageId===G.activeStage);
+  const where=!active?'':!c.stageId?'every stage':stName(c.stageId);
+  // Target line + active preset + Clear: only touched when something changed.
+  const key=[G.activeStage,here,active?c.text+'|'+c.stageId+'|'+c.sentAt:''].join('§');
+  if(key!==_cueUiKey){
+    _cueUiKey=key;
+    const tg=document.getElementById('cue-target');
+    if(tg)tg.innerHTML=`Cues go to the <strong>${escH(here)}</strong> screens (Stage View, Backstage, FOH).`;
+    document.querySelectorAll('#cue-presets .cue-btn').forEach(b=>{
+      const on=forHere&&b.dataset.cue===c.text;
+      b.classList.toggle('st-cue-on',on);b.setAttribute('aria-pressed',on?'true':'false');
+    });
+    const clr=document.getElementById('cue-clear');
+    if(clr){clr.disabled=!active;clr.title=active?`Clear "${c.text}" from ${where}`:'No active cue to clear';}
+  }
+  if(!active){el.textContent='No active cue';return;}
   const ageSec=Math.max(0,Math.round((nowMs()-c.sentAt)/1000));
+  const onWhere=forHere?'':` on <strong>${escH(where)}</strong> (not this stage)`;
   if(c.durationMs){
     const remain=Math.max(0,Math.ceil(((c.sentAt+c.durationMs)-nowMs())/1000));
-    el.innerHTML=`Sent <strong>${escH(c.text)}</strong> · ${ageSec}s ago · clears in ${remain}s`;
+    el.innerHTML=`On air${onWhere}: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · disappears in ${remain}s`;
   }else{
-    el.innerHTML=`On air: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · <em style="color:var(--sub);">hit Clear to stop</em>`;
+    el.innerHTML=`On air${onWhere}: <strong>${escH(c.text)}</strong> · ${ageSec}s ago · <em style="color:var(--sub);">stays until you press Clear</em>`;
   }
 }
 // Stage View overlay tick — runs on the main 250ms loop.
@@ -6866,7 +7433,7 @@ function addStage(){
   const emoji=document.getElementById('sm-emoji').value.trim()||'🎵';
   // Enforce stage limit BEFORE pushing to local state (and certainly before save()).
   const limCheck=checkStageLimit();
-  if(!limCheck.allowed){alert(limCheck.reason);return;}
+  if(!limCheck.allowed){stDialog.alert(limCheck.reason,{title:'Stage limit reached'});return;}
   const id=uid();
   if(!G.stages)G.stages=[];
   G.stages.push({id,name,emoji});
@@ -6875,13 +7442,15 @@ function addStage(){
   document.getElementById('sm-name').value='';document.getElementById('sm-emoji').value='';
   document.getElementById('sm-name').focus();
 }
-function delStage(id){
+async function delStage(id){
   const st=(G.stages||[]).find(s=>s.id===id);if(!st)return;
   const n=_stageShowCount(id);
+  // Unchanged behaviour: the stage goes, its shows stay in the project data
+  // (they are no longer listed anywhere). The dialog says so plainly.
   const msg=n
-    ? `Delete stage "${st.name}"?\n\nIts ${n} show${n===1?'':'s'} stay in the project but will no longer be visible until you assign them to another stage.`
-    : `Delete stage "${st.name}"?`;
-  if(!confirm(msg))return;
+    ? `Stage "${st.name}" is deleted. Its ${n} show${n===1?'':'s'} stay${n===1?'s':''} in the project data but ${n===1?'is':'are'} no longer shown on any screen. Share links for this stage stop working.`
+    : `Stage "${st.name}" has no shows. Share links for this stage stop working.`;
+  if(!await stDialog.confirm(msg,{title:'Delete this stage?',okLabel:'Delete stage',danger:true}))return;
   G.stages=G.stages.filter(s=>s.id!==id);
   if(G.activeStage===id)G.activeStage=G.stages[0]?.id||null;
   save();renderAll();renderStageList();
@@ -7232,20 +7801,49 @@ function closeDayModal(){document.getElementById('day-modal-ov').style.display='
 function renderDayList(){
   document.getElementById('day-list').innerHTML=(G.days||[]).map((d,i)=>`
     <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;background:var(--s3);border-radius:8px;">
-      <input class="fi" value="${escH(d.name)}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay(${_jsArg(d.id)},this.value)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
-      <input class="fi" type="date" value="${escH(d.date||'')}" onchange="setDayDate(${_jsArg(d.id)},this.value)" title="Calendar date for this day" style="width:130px;font-size:11px;padding:4px 6px;">
-      ${(G.days.length>1)?`<button onclick="delDay(${_jsArg(d.id)})" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Delete">×</button>`:''}
+      <input class="fi" value="${escH(d.name)}" aria-label="Name of day ${i+1}" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='transparent';renameDay(${_jsArg(d.id)},this.value,this)" style="flex:1;min-width:0;font-size:12px;font-weight:700;padding:4px 6px;background:transparent;border:1px solid transparent;">
+      <input class="fi" type="date" value="${escH(d.date||'')}" aria-label="Date of ${escH(d.name)}" onchange="setDayDate(${_jsArg(d.id)},this.value,this)" title="Calendar date for this day" style="width:130px;font-size:11px;padding:4px 6px;">
+      ${(G.days.length>1)?`<button onclick="delDay(${_jsArg(d.id)})" style="background:none;border:none;color:var(--sub);font-size:15px;cursor:pointer;line-height:1;padding:0 2px;" title="Delete day" aria-label="Delete ${escH(d.name)}">×</button>`:''}
     </div>`).join('')||`<div style="font-size:12px;color:var(--sub);padding:8px 4px;">No days created yet.</div>`;
 }
-function renameDay(id,name){
-  name=name.trim();if(!name)return;
-  const d=G.days.find(x=>x.id===id);if(!d||d.name===name)return;
+function _drSetFieldErr(inputId,errId,msg){
+  const e=document.getElementById(errId),i=document.getElementById(inputId);
+  if(e){e.textContent=msg||'';e.hidden=!msg;}
+  if(i){if(msg)i.setAttribute('aria-invalid','true');else i.removeAttribute('aria-invalid');}
+}
+function renameDay(id,name,inp){
+  name=name.trim();
+  const d=G.days.find(x=>x.id===id);if(!d)return;
+  // An empty name is not saved, and the operator is told so (it used to
+  // look renamed until the next refresh).
+  if(!name){if(inp)inp.value=d.name;_drSetFieldErr('','day-list-err',`A day needs a name: "${d.name}" was kept.`);return;}
+  _drSetFieldErr('','day-list-err','');
+  if(d.name===name)return;
   d.name=name;save();renderAll();
 }
-function setDayDate(id,date){
+// Day date change: say first what happens to the day's shows
+// (dayDateChangeEffect), apply only after "Change date".
+async function setDayDate(id,date,inp){
   const d=G.days.find(x=>x.id===id);if(!d)return;
-  d.date=date||null;
+  date=date||null;
+  if((d.date||null)===date)return;
+  // Typing a year fires change at 0002, 0020, 0202...: wait for a real year.
+  if(date&&!/^(19|20)\d\d-\d\d-\d\d$/.test(date))return;
+  const eff=dayDateChangeEffect(id,date);
+  if(eff.moved.length||eff.keptOffDay.length){
+    const li=x=>`<li><span class="st-dlg-k">${escH(x.artist||'Untitled')}</span><span class="st-dlg-v">${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))}${x.date?' · '+escH(_fmtDay(x.date)):''}</span></li>`;
+    const list=(arr)=>`<ul class="st-dlg-list">${arr.slice(0,6).map(li).join('')}${arr.length>6?`<li><span class="st-dlg-k" style="font-weight:500;">+ ${arr.length-6} more</span></li>`:''}</ul>`;
+    let html='';
+    if(eff.moved.length)html+=`<p class="st-dlg-note"><b>${eff.moved.length} show${eff.moved.length===1?'':'s'}</b> ${date?`move${eff.moved.length===1?'s':''} to ${escH(_fmtDay(date))}`:`no longer ${eff.moved.length===1?'has':'have'} a date (${eff.moved.length===1?'it runs':'they run'} as "today")`}:</p>`+list(eff.moved);
+    if(eff.keptOffDay.length)html+=`<p class="st-dlg-note"><b>${eff.keptOffDay.length} show${eff.keptOffDay.length===1?'':'s'}</b> ${eff.keptOffDay.length===1?'has its':'have their'} own date and ${eff.keptOffDay.length===1?'stays':'stay'} where ${eff.keptOffDay.length===1?'it is':'they are'}, so ${eff.keptOffDay.length===1?'it is':'they are'} no longer on this day's date:</p>`+list(eff.keptOffDay);
+    const ok=await stDialog.open({title:`Change the date of "${d.name}"?`,
+      message:`From ${d.date?_fmtDay(d.date):'no date'} to ${date?_fmtDay(date):'no date'}.`,html,wide:true,
+      actions:[{label:'Cancel',value:false,kind:'secondary'},{label:'Change date',value:true,kind:'primary',submit:true}],cancelValue:false});
+    if(!ok){if(inp&&document.contains(inp))inp.value=d.date||'';return;}
+  }
+  d.date=date;
   save();renderAll();
+  if(document.getElementById('day-modal-ov').style.display==='flex')renderDayList();
 }
 // Try to parse a date out of an English day name like "Friday 3 April 2026" → "2026-04-03"
 function _parseDateFromName(name){
@@ -7258,7 +7856,9 @@ function _parseDateFromName(name){
   return `${yyyy}-${mm}-${String(m[1]).padStart(2,'0')}`;
 }
 function addDay(){
-  const name=document.getElementById('dm-name').value.trim();if(!name)return;
+  const name=document.getElementById('dm-name').value.trim();
+  if(!name){_drSetFieldErr('dm-name','dm-name-err','Enter a name for the day.');document.getElementById('dm-name').focus();return;}
+  _drSetFieldErr('dm-name','dm-name-err','');
   if(!G.days)G.days=[];
   const id=uid();
   const dateInput=document.getElementById('dm-date');
@@ -7270,11 +7870,30 @@ function addDay(){
   if(dateInput)dateInput.value='';
   document.getElementById('dm-name').focus();
 }
-function delDay(id){
-  if(G.days.length<=1){alert('You cannot delete the last day.');return;}
-  if(!confirm('Delete this day? Shows on this day will be kept but will no longer be visible.'))return;
-  _markIntentionalRemoval([],{days:[id]}); // so the save merge does not bring it back
-  G.days=G.days.filter(d=>d.id!==id);
+// Delete a day: its shows would otherwise stay behind as invisible orphans,
+// so they are named and deleted with it (moving them to another day is not
+// something the app does today).
+async function delDay(id){
+  const d=G.days.find(x=>x.id===id);if(!d)return;
+  if(G.days.length<=1){await stDialog.alert('A project needs at least one day. Add another day first, then delete this one.',{title:'Cannot delete the last day'});return;}
+  const shows=(G.shows||[]).filter(s=>s.day===id);
+  let ok;
+  if(!shows.length){
+    ok=await stDialog.confirm(`"${d.name}"${d.date?' ('+_fmtDay(d.date)+')':''} has no shows. This cannot be undone.`,{title:'Delete this day?',okLabel:'Delete day',danger:true});
+  }else{
+    const n=shows.length,label=`Delete day and its ${n} show${n===1?'':'s'}`;
+    const stName=sid=>(G.stages||[]).find(x=>x.id===sid)?.name||'';
+    const html=`<ul class="st-dlg-list">${[...shows].sort(_showOrder).slice(0,8).map(x=>`<li><span class="st-dlg-k">${escH(x.artist||'Untitled')}</span><span class="st-dlg-v">${escH(stName(x.stage))} · ${escH((x.start||'').slice(0,5))}–${escH((x.end||'').slice(0,5))}</span></li>`).join('')}${n>8?`<li><span class="st-dlg-k" style="font-weight:500;">+ ${n-8} more</span></li>`:''}</ul>`;
+    ok=await stDialog.open({title:`Delete "${d.name}" and its shows?`,
+      message:`${n} show${n===1?' is':'s are'} planned on this day, on all stages. ${n===1?'It is':'They are'} deleted together with the day, with crew, notes and check-ins. This cannot be undone.`,
+      html,wide:true,initial:'cancel',
+      actions:[{label:'Cancel',value:false,kind:'secondary'},{label,value:true,kind:'danger',submit:true}],cancelValue:false});
+  }
+  if(!ok)return;
+  const ids=shows.map(s=>s.id);
+  _markIntentionalRemoval(ids,{days:[id]}); // so the save merge does not bring them back
+  G.shows=(G.shows||[]).filter(s=>s.day!==id);
+  G.days=G.days.filter(x=>x.id!==id);
   if(G.activeDay===id)G.activeDay=G.days[0].id;
   save();renderAll();renderDayList();
 }
@@ -7430,6 +8049,15 @@ const _PLAN_CATALOG={
   festival:  {name:'Stagetimer Festival',  month:39.95,year:399.50},
 };
 const _LEGACY_PLAN={name:'Stagetimer Pro',month:12.95,year:129.50};
+// Extra member seat (unchanged commercial terms), per billing cycle.
+const SEAT_PRICE={month:9.95,year:119.40};
+// One amount notation everywhere: euro, nl-NL digits (€1.234,50).
+function _fmtEur(n){return'€'+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function _seatPriceLabel(cycle,long){
+  const u=long?{month:'month',year:'year'}:{month:'mo',year:'yr'};
+  return cycle==='year'?`${_fmtEur(SEAT_PRICE.year)}/${u.year}`:cycle==='month'?`${_fmtEur(SEAT_PRICE.month)}/${u.month}`
+    :`${_fmtEur(SEAT_PRICE.month)}/${u.month} or ${_fmtEur(SEAT_PRICE.year)}/${u.year}`;
+}
 const _PASS_NAMES={'pass-single':'Single Event Pass','pass-weekend':'Weekend Festival Pass','pass-monthly':'Monthly Festival Pass'};
 function _billingCycle(co){
   if(!co)return null;
@@ -7479,7 +8107,7 @@ function renderSubscriptionPage(){
   const pi=_planInfo(co);
   const cycle=pi.cycle;
   const seats=co.extraSeats||0;
-  const seatPrice=cycle==='year'?119.40:9.95;
+  const seatPrice=cycle==='year'?SEAT_PRICE.year:SEAT_PRICE.month;
   const basePrice=cycle==='year'?pi.price.year:pi.price.month;
   const cycleLabel=cycle==='year'?'year':'month';
   const cycleShort=cycle==='year'?'yr':'mo';
@@ -7510,23 +8138,23 @@ function renderSubscriptionPage(){
         ${passOnly
           ?`<div class="ws-card-value">One-time pass</div>
         <div class="ws-card-meta">No recurring charge</div>`
-          :`<div class="ws-card-value">€${totalMonthly.toFixed(2).replace('.',',')}</div>
-        <div class="ws-card-meta">Total annualized: €${totalAnnualized.toFixed(2).replace('.',',')}</div>`}
+          :`<div class="ws-card-value">${_fmtEur(totalMonthly)}</div>
+        <div class="ws-card-meta">Total annualized: ${_fmtEur(totalAnnualized)}</div>`}
       </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Plan breakdown</div>
       <div class="ws-divrow">
         <div class="ws-divrow-label">${escH(pi.name)} · base seat</div>
-        <div class="ws-divrow-value">€${basePrice.toFixed(2).replace('.',',')} / ${cycleLabel}</div>
+        <div class="ws-divrow-value">${_fmtEur(basePrice)} / ${cycleLabel}</div>
       </div>
       <div class="ws-divrow">
-        <div class="ws-divrow-label">Extra members · ${seats} × €${seatPrice.toFixed(2).replace('.',',')}</div>
-        <div class="ws-divrow-value">€${(seats*seatPrice).toFixed(2).replace('.',',')} / ${cycleLabel}</div>
+        <div class="ws-divrow-label">Extra members · ${seats} × ${_fmtEur(seatPrice)}</div>
+        <div class="ws-divrow-value">${_fmtEur((seats*seatPrice))} / ${cycleLabel}</div>
       </div>
       <div class="ws-divrow" style="border-top:1px solid rgba(28,25,23,.14);">
         <div class="ws-divrow-label" style="font-weight:600;color:#0A0A0B;">Total</div>
-        <div class="ws-divrow-value" style="font-size:14px;">€${(basePrice+seats*seatPrice).toFixed(2).replace('.',',')} / ${cycleLabel}</div>
+        <div class="ws-divrow-value" style="font-size:14px;">${_fmtEur((basePrice+seats*seatPrice))} / ${cycleLabel}</div>
       </div>
       ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">${status==='trialing'?'Trial ends':status==='canceled'?'Access until':'Next renewal'}</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
       ${co.lastPaidAt?`<div class="ws-divrow"><div class="ws-divrow-label">Last payment</div><div class="ws-divrow-value">${_fmtDate(co.lastPaidAt)}</div></div>`:''}
@@ -7534,15 +8162,15 @@ function renderSubscriptionPage(){
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Members</div>
       <div id="ws-seats-list" style="margin-bottom:14px;"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">
+      ${isCompanyAdmin()?`<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">
         <button class="ws-btn-primary" onclick="openInviteMemberPrompt()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Invite member · €${seatPrice.toFixed(2).replace('.',',')}/${cycleShort}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Invite member · ${_fmtEur(seatPrice)}/${cycleShort}
         </button>
         <button class="ws-btn-secondary" onclick="manageSubscription(${_jsArg(co.id)})">
           Manage billing in Stripe
         </button>
-      </div>
+      </div>`:`<div class="ws-field-help" style="padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">Only workspace admins can invite or remove members and manage billing.</div>`}
     </div>
   `;
   const seatsList=document.getElementById('ws-seats-list');
@@ -7562,7 +8190,7 @@ function renderSubscriptionPage(){
           <div class="ws-seat-name">${escH(u.name||u.email)}${pending}${isMe?' <span style="font-size:10px;color:#78716C;">(you)</span>':''}</div>
           <div class="ws-seat-email">${escH(u.email||'')} · ${roleLabel}</div>
         </div>
-        ${isMe?'':`<button class="ws-icon-btn danger" onclick="removeMember(${_jsArg(u.id)})" title="Remove member">
+        ${isMe||!isCompanyAdmin()?'':`<button class="ws-icon-btn danger" onclick="removeMember(${_jsArg(u.id)})" title="Remove member" aria-label="Remove ${escH(u.name||u.email)}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
         </button>`}
       </div>`;
@@ -7583,12 +8211,14 @@ function renderSettingsPage(){
     <div class="ws-card">
       <div class="ws-card-title">Workspace</div>
       <div class="ws-field">
-        <label class="ws-field-label">Name</label>
-        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}"${canRename?'':' disabled style="background:#F5F5F4;color:#78716C;"'}>
-        <div class="ws-field-help">${canRename?'The name your team and customers see across Stagetimer.':'Only a workspace admin can change the name.'}</div>
+        <label class="ws-field-label" for="ws-settings-name">Name</label>
+        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}" aria-describedby="ws-settings-name-help ws-settings-name-err"${canRename?'':' disabled style="background:#F5F5F4;color:#78716C;"'} onkeydown="if(event.key==='Enter')saveWorkspaceName(${_jsArg(co.id)})">
+        <div class="st-ws-err" id="ws-settings-name-err" hidden></div>
+        <div class="ws-field-help" id="ws-settings-name-help">${canRename?'The name your team and customers see across Stagetimer.':'Only workspace admins can change the workspace name.'}</div>
       </div>
-      ${canRename?`<div style="display:flex;gap:8px;">
-        <button class="ws-btn-primary" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
+      ${canRename?`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="ws-btn-primary" id="ws-settings-save" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
+        <span class="st-ws-status" id="ws-settings-status" role="status"></span>
       </div>`:''}
     </div>
     <div class="ws-card" style="margin-top:18px;">
@@ -7599,21 +8229,41 @@ function renderSettingsPage(){
   `;
 }
 
+// Inline field error / status in the light back office (no alert()).
+function _wsFieldErr(inputId,msg){
+  const i=document.getElementById(inputId),e=document.getElementById(inputId+'-err');
+  if(e){e.textContent=msg||'';e.hidden=!msg;}
+  if(i){if(msg)i.setAttribute('aria-invalid','true');else i.removeAttribute('aria-invalid');}
+}
+function _wsStatus(id,state,msg){
+  const el=document.getElementById(id);if(!el)return;
+  el.className='st-ws-status'+(state?' st-'+state:'');el.textContent=msg||'';
+}
+// Button busy state: disabled + "Saving…", restored afterwards.
+function _btnBusy(id,on,label){
+  const b=document.getElementById(id);if(!b)return;
+  if(on){if(b.dataset.label==null)b.dataset.label=b.textContent;b.textContent=label||'Saving…';b.disabled=true;b.setAttribute('aria-busy','true');}
+  else{if(b.dataset.label!=null){b.textContent=b.dataset.label;delete b.dataset.label;}b.disabled=false;b.removeAttribute('aria-busy');}
+}
 async function saveWorkspaceName(id){
-  if(!isCompanyAdmin())return alert('Only a workspace admin can change the workspace name.');
+  if(!isCompanyAdmin()){_wsFieldErr('ws-settings-name','Only a workspace admin can change the workspace name.');return;}
   const input=document.getElementById('ws-settings-name');
   const newName=(input?.value||'').trim();
-  if(!newName)return alert('Name cannot be empty.');
+  _wsFieldErr('ws-settings-name','');_wsStatus('ws-settings-status','','');
+  if(!newName){_wsFieldErr('ws-settings-name','Enter a workspace name.');input?.focus();return;}
   const co=APP.companies.find(c=>c.id===id);
-  if(!co||newName===co.name)return;
+  if(!co)return;
+  if(newName===co.name){_wsStatus('ws-settings-status','ok','No changes to save.');return;}
+  _btnBusy('ws-settings-save',true);_wsStatus('ws-settings-status','busy','Saving…');
   // Direct REST (bounded, refreshes an expired session) instead of
   // supa.from(), which can hang on a stale auth refresh.
   try{
     const n=await _restWrite('companies','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:newName});
     if(!n){const e=new Error('no rows');e.status=403;throw e;}
-  }catch(e){return alert(_friendlyError(e,'Saving the workspace name'));}
+  }catch(e){_btnBusy('ws-settings-save',false);_wsStatus('ws-settings-status','err',_friendlyError(e,'Saving the workspace name'));return;}
   co.name=newName;saveAPP();
   _updateWsSidebar();renderSettingsPage();
+  _wsStatus('ws-settings-status','ok','Saved.');
 }
 window.saveWorkspaceName=saveWorkspaceName;
 
@@ -7626,27 +8276,37 @@ function renderProfilePage(){
     <div class="ws-card">
       <div class="ws-card-title">Your account</div>
       <div class="ws-field">
-        <label class="ws-field-label">Display name</label>
-        <input class="ws-input" id="ws-profile-name" type="text" value="${escH(CURRENT_USER.name||'')}">
+        <label class="ws-field-label" for="ws-profile-name">Display name</label>
+        <input class="ws-input" id="ws-profile-name" type="text" value="${escH(CURRENT_USER.name||'')}" aria-describedby="ws-profile-name-err" onkeydown="if(event.key==='Enter')saveProfileName()">
+        <div class="st-ws-err" id="ws-profile-name-err" hidden></div>
       </div>
       <div class="ws-field">
-        <label class="ws-field-label">Email</label>
-        <input class="ws-input" type="email" value="${escH(CURRENT_USER.email||'')}" disabled style="background:#F5F5F4;color:#78716C;">
-        <div class="ws-field-help">Email cannot be changed here. Contact support to migrate to a new address.</div>
+        <label class="ws-field-label" for="ws-profile-email">Email</label>
+        <input class="ws-input" id="ws-profile-email" type="email" value="${escH(CURRENT_USER.email||'')}" disabled style="background:#F5F5F4;color:#78716C;" aria-describedby="ws-profile-email-help">
+        <div class="ws-field-help" id="ws-profile-email-help">Email cannot be changed here. Contact support to migrate to a new address.</div>
       </div>
-      <button class="ws-btn-primary" onclick="saveProfileName()">Save changes</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="ws-btn-primary" id="ws-profile-save" onclick="saveProfileName()">Save changes</button>
+        <span class="st-ws-status" id="ws-profile-status" role="status"></span>
+      </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Change password</div>
       <div class="ws-field">
-        <label class="ws-field-label">New password</label>
-        <input class="ws-input" id="ws-profile-pw" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+        <label class="ws-field-label" for="ws-profile-pw">New password</label>
+        <input class="ws-input" id="ws-profile-pw" type="password" placeholder="${_pwRule()}" autocomplete="new-password" aria-describedby="ws-profile-pw-rule ws-profile-pw-err">
+        <div class="ws-field-help" id="ws-profile-pw-rule">${_pwRule()}</div>
+        <div class="st-ws-err" id="ws-profile-pw-err" hidden></div>
       </div>
       <div class="ws-field">
-        <label class="ws-field-label">Repeat password</label>
-        <input class="ws-input" id="ws-profile-pw2" type="password" autocomplete="new-password">
+        <label class="ws-field-label" for="ws-profile-pw2">Repeat password</label>
+        <input class="ws-input" id="ws-profile-pw2" type="password" autocomplete="new-password" aria-describedby="ws-profile-pw2-err" onkeydown="if(event.key==='Enter')saveProfilePassword()">
+        <div class="st-ws-err" id="ws-profile-pw2-err" hidden></div>
       </div>
-      <button class="ws-btn-primary" onclick="saveProfilePassword()">Update password</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="ws-btn-primary" id="ws-profile-pw-save" onclick="saveProfilePassword()">Update password</button>
+        <span class="st-ws-status" id="ws-profile-pw-status" role="status"></span>
+      </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Session</div>
@@ -7667,56 +8327,118 @@ function renderProfilePage(){
 async function saveProfileName(){
   const input=document.getElementById('ws-profile-name');
   const newName=(input?.value||'').trim();
-  if(!newName)return alert('Name cannot be empty.');
-  if(newName===CURRENT_USER.name)return;
+  _wsFieldErr('ws-profile-name','');_wsStatus('ws-profile-status','','');
+  if(!newName){_wsFieldErr('ws-profile-name','Enter your name.');input?.focus();return;}
+  if(newName===CURRENT_USER.name){_wsStatus('ws-profile-status','ok','No changes to save.');return;}
+  _btnBusy('ws-profile-save',true);_wsStatus('ws-profile-status','busy','Saving…');
   try{
     const n=await _restWrite('app_users','PATCH',`id=eq.${encodeURIComponent(CURRENT_USER.id)}`,{name:newName});
     if(!n){const e=new Error('no rows');e.status=403;throw e;}
-  }catch(e){return alert(_friendlyError(e,'Saving your name'));}
+  }catch(e){_btnBusy('ws-profile-save',false);_wsStatus('ws-profile-status','err',_friendlyError(e,'Saving your name'));return;}
+  _btnBusy('ws-profile-save',false);
   CURRENT_USER.name=newName;
   localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
   _updateWsSidebar();
-  alert('Profile updated.');
+  _wsStatus('ws-profile-status','ok','Saved.');
 }
 window.saveProfileName=saveProfileName;
 
+// The one password rule (PW_MIN), worded the same everywhere it is shown.
+function _pwRule(){return`Use at least ${PW_MIN} characters.`;}
+function _pwProblem(pw,pw2){
+  if(pw.length<PW_MIN)return['pw',`Password must be at least ${PW_MIN} characters.`];
+  if(pw!==pw2)return['pw2','Passwords do not match.'];
+  return null;
+}
 async function saveProfilePassword(){
   const pw=document.getElementById('ws-profile-pw')?.value||'';
   const pw2=document.getElementById('ws-profile-pw2')?.value||'';
-  if(pw.length<PW_MIN)return alert(`Password must be at least ${PW_MIN} characters.`);
-  if(pw!==pw2)return alert('Passwords do not match.');
+  _wsFieldErr('ws-profile-pw','');_wsFieldErr('ws-profile-pw2','');_wsStatus('ws-profile-pw-status','','');
+  const bad=_pwProblem(pw,pw2);
+  if(bad){const id=bad[0]==='pw'?'ws-profile-pw':'ws-profile-pw2';_wsFieldErr(id,bad[1]);document.getElementById(id)?.focus();return;}
+  _btnBusy('ws-profile-pw-save',true,'Updating…');_wsStatus('ws-profile-pw-status','busy','Updating…');
   try{await _authUpdateUser({password:pw});}
-  catch(e){return alert(_authErrorText(e,'Updating the password'));}
+  catch(e){_btnBusy('ws-profile-pw-save',false);_wsStatus('ws-profile-pw-status','err',_authErrorText(e,'Updating the password'));return;}
+  _btnBusy('ws-profile-pw-save',false);
   document.getElementById('ws-profile-pw').value='';
   document.getElementById('ws-profile-pw2').value='';
-  alert('Password updated.');
+  _wsStatus('ws-profile-pw-status','ok','Password updated.');
 }
 window.saveProfilePassword=saveProfilePassword;
 
-function openInviteMemberPrompt(){
-  // Bring user back to the existing Admin form (reuses addUser → invite-member flow)
-  // For workspace context where we don't open admin, use a quick prompt.
-  const name=prompt('Full name of the new member:');
-  if(!name||!name.trim())return;
-  const email=prompt('Email address:');
-  if(!email||!email.trim())return;
-  // Stash into the existing admin form inputs and call addUser
-  const n=document.getElementById('adm-usr-name');
-  const e=document.getElementById('adm-usr-email');
-  const r=document.getElementById('adm-usr-role');
-  const c=document.getElementById('adm-usr-co');
-  if(n)n.value=name.trim();
-  if(e)e.value=email.trim();
-  if(r)r.value='operator';
-  if(c&&CURRENT_USER?.companyId)c.value=CURRENT_USER.companyId;
-  addUser();
+// Invite a member to the own workspace (Subscription page). One form with
+// inline validation; the price is on the submit button; errors from the
+// invite-member edge function stay in the dialog. Same request as the
+// Platform admin form (_inviteMember).
+async function openInviteMemberPrompt(){
+  const ws=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
+  if(!isCompanyAdmin()){await stDialog.alert('Only workspace admins can invite members.',{title:'No permission'});return;}
+  if(!ws){await stDialog.alert('You are not linked to a workspace. Contact support.',{title:'No workspace'});return;}
+  if(ws.subscriptionStatus!=='active'&&ws.subscriptionStatus!=='trialing'){
+    await stDialog.alert(`"${ws.name}" doesn't have an active subscription yet, so members cannot be invited.`,{title:'Cannot invite members'});return;
+  }
+  const price=_seatPriceLabel(_billingCycle(ws),true);
+  const res=await stDialog.form({
+    title:`Invite a member to ${ws.name}`,
+    message:`They get an email to set their own password and join as an operator. ${price} is added to the subscription (pro-rated for the current period).`,
+    fields:[
+      {name:'name',label:'Full name',required:true,requiredMsg:'Enter the full name.',autocomplete:'off'},
+      {name:'email',label:'Email address',type:'email',required:true,requiredMsg:'Enter an email address.',autocomplete:'off',inputmode:'email',
+        validate:v=>_inviteEmailProblem(v)},
+    ],
+    submitLabel:`Send invite · ${price}`,busyLabel:'Sending invite…',
+    onSubmit:async v=>{
+      const r=await _inviteMember({workspaceId:ws.id,name:v.name,email:v.email,role:'operator'});
+      return r;
+    },
+  });
+  if(res&&res.message)await stDialog.alert(res.message,{title:'Invite sent'});
+}
+function _inviteEmailProblem(email){
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return'Enter a valid email address, like name@example.com.';
+  if(APP.users.some(u=>(u.email||'').toLowerCase()===email.toLowerCase()))return'A user with this email address already exists.';
+  return'';
+}
+// The invite request itself: POST invite-member with the user's token (one
+// refresh-and-retry on 401, like removeMember), then reload users and
+// companies (seat count). Returns {message}; throws an Error whose message
+// is written for people.
+async function _inviteMember({workspaceId,name,email,role}){
+  try{
+    if(_jwt()===SUPA_KEY){const e=new Error('not signed in');e.status=401;throw e;}
+    const post=()=>fetch(`${SUPA_URL}/functions/v1/invite-member`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${_jwt()}`,'apikey':SUPA_KEY},
+      body:JSON.stringify({workspaceId,name,email,role})
+    });
+    let res=await post();
+    if(res.status===401&&await _refreshAuthToken())res=await post();
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||`HTTP ${res.status}`);e.status=res.status;throw e;}
+    // Refresh users + companies (extra_seats may have changed). Bounded: the
+    // invite is already sent, a slow reload must not hide that.
+    try{
+      const[uRes,cRes]=await _withTimeout(Promise.all([_restGet('app_users'),_restGetCompanies()]),10000);
+      if(uRes.data)APP.users=uRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
+      if(cRes.data)APP.companies=cRes.data.map(_mapCompany);
+    }catch(e){console.warn('[invite] refresh failed:',e?.message||e);}
+    saveAPP();
+    if(document.getElementById('ws-subscription')?.classList.contains('active'))renderSubscriptionPage();
+    if(document.getElementById('admin')?.classList.contains('open'))renderAdmin();
+    return{message:data.message||`Invite sent to ${email}.`};
+  }catch(e){
+    // The edge function's own `error` text is written for people; HTTP
+    // codes and network failures get the generic wording.
+    throw new Error(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not send the invite: '+e.message:_friendlyError(e,'Sending the invite'));
+  }
 }
 window.openInviteMemberPrompt=openInviteMemberPrompt;
 
 async function removeMember(userId){
   const u=APP.users.find(x=>x.id===userId);
-  if(!u){alert('User not found.');return;}
-  if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
+  if(!u){await stDialog.alert('This member no longer exists. Reload the page.',{title:'Member not found'});return;}
+  if(!await stDialog.confirm(`${u.name||u.email} (${u.email}) loses access to this workspace. The paid seat is released and pro-rated credit is applied to the next invoice.`,
+    {title:`Remove ${u.name||u.email}?`,okLabel:'Remove member',danger:true}))return;
   try{
     // st_auth_v1 token (kept fresh) instead of supa.auth.getSession(), which
     // has hung; one refresh-and-retry on 401.
@@ -7743,11 +8465,11 @@ async function removeMember(userId){
     saveAPP();
     renderSubscriptionPage();
     renderAdmin?.();
-    alert(data.seatDecremented?'Member removed. Seat released.':'Member removed.');
+    await stDialog.alert(data.seatDecremented?'The member was removed and the seat released.':'The member was removed.',{title:'Member removed'});
   }catch(e){
     // The edge function's own `error` text is written for people; HTTP
     // codes and network failures get the generic wording.
-    alert(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not remove the member: '+e.message:_friendlyError(e,'Removing the member'));
+    await stDialog.alert(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not remove the member: '+e.message:_friendlyError(e,'Removing the member'),{title:'Member not removed'});
   }
 }
 window.removeMember=removeMember;
@@ -7783,30 +8505,36 @@ async function _restWrite(table,method,filter,body){
   return Array.isArray(rows)?rows.length:0;
 }
 async function deleteProject(id){
-  if(!confirm('Delete this project?'))return;
+  const proj=APP.projects.find(p=>p.id===id);
+  const name=proj?.name||'this project';
+  const nShows=(proj?.data?.shows||[]).length,nStages=(proj?.data?.stages||[]).length;
+  if(!await stDialog.confirm(`"${name}" is deleted for everyone in the workspace, with its ${nStages} stage${nStages===1?'':'s'} and ${nShows} show${nShows===1?'':'s'}. Share links stop working. This cannot be undone.`,
+    {title:'Delete this project?',okLabel:'Delete project',danger:true}))return;
   try{
     const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
-    if(!n){alert('Nothing was deleted - you may not have permission for this project.');return;}
-  }catch(e){alert(_friendlyError(e,'Deleting the project'));return;}
+    if(!n){await stDialog.alert('Nothing was deleted - you may not have permission for this project.',{title:'Project not deleted'});return;}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Deleting the project'),{title:'Project not deleted'});return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
   saveAPP();renderDash();
 }
 async function renameProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
-  const newName=prompt('Rename project:',proj.name);
-  if(!newName||!newName.trim()||newName.trim()===proj.name)return;
-  const oldName=proj.name;
-  proj.name=newName.trim();
-  saveAPP();
-  try{
-    const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});
-    if(!n){const e=new Error('no rows');e.status=403;throw e;}
-  }catch(e){
-    // Put the old name back - it used to stay renamed locally only.
-    proj.name=oldName;saveAPP();
-    alert(_friendlyError(e,'Renaming the project'));
-  }
+  const res=await stDialog.form({
+    title:'Rename project',
+    fields:[{name:'name',label:'Project name',value:proj.name,required:true,requiredMsg:'Enter a project name.',maxlength:120}],
+    submitLabel:'Save name',busyLabel:'Saving…',
+    onSubmit:async v=>{
+      if(v.name===proj.name)return undefined;
+      try{
+        const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:v.name});
+        if(!n){const e=new Error('no rows');e.status=403;throw e;}
+      }catch(e){throw new Error(_friendlyError(e,'Renaming the project'));}
+      proj.name=v.name;saveAPP();
+      return undefined;
+    },
+  });
+  if(!res)return;
   const lnEl=document.getElementById('logo-name');
   if(APP.activeProjectId===id&&lnEl)lnEl.textContent=proj.name;
   renderDash();
@@ -7878,7 +8606,7 @@ function openProjModal(){
 }
 function showLimitModal(chk){
   const ov=document.getElementById('limit-modal-ov');
-  if(!ov)return alert(chk.reason);
+  if(!ov)return stDialog.alert(chk.reason,{title:'Limit reached'});
   document.getElementById('limit-modal-msg').textContent=chk.reason;
   const btn=document.getElementById('limit-modal-action');
   if(chk.action==='subscribe'){
@@ -7904,7 +8632,7 @@ async function createProject(){
   const btn=document.querySelector('#proj-modal .btn-p');
   try{
     const nameEl=document.getElementById('pm-name');
-    if(!nameEl){console.error('[createProject] #pm-name not found');alert('Project name field missing - please reload.');return;}
+    if(!nameEl){console.error('[createProject] #pm-name not found');await stDialog.alert('The project name field is missing. Reload the page and try again.',{title:'Project not created'});return;}
     const name=nameEl.value.trim();
     if(!name){nameEl.focus();return;}
     const coEl=document.getElementById('pm-co');
@@ -7954,7 +8682,7 @@ async function createProject(){
       if(res.status===401&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await insert();
     }catch(e){
       if(e?.name==='AbortError')console.error('[createProject] timed out after 8s');
-      alert(_friendlyError(e,'Creating the project'));
+      await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
       return;
     }
     if(!res.ok){
@@ -7970,7 +8698,7 @@ async function createProject(){
           reason:(pe.message||'This workspace has no active subscription or event pass.')+' The project was not created.'});
         return;
       }
-      alert(_friendlyError(e,'Creating the project'));
+      await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
       return;
     }
     APP.projects.push(proj);
@@ -7978,7 +8706,7 @@ async function createProject(){
     closeProjModal();renderDash();
   }catch(e){
     console.error('[createProject] threw',e);
-    alert(_friendlyError(e,'Creating the project'));
+    await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
   }finally{
     if(btn){btn.disabled=false;btn.textContent='Create';}
   }
@@ -7986,7 +8714,7 @@ async function createProject(){
 
 // ── Admin
 async function openAdmin(){
-  if(!isAdmin()){alert('No permission.');return;}
+  if(!isAdmin()){await stDialog.alert('Platform admin is only available to Stagetimer admins.',{title:'No permission'});return;}
   document.getElementById('admin').classList.add('open');
   renderAdmin();
   // Re-fetch fresh data so we never show stale state
@@ -8033,7 +8761,7 @@ async function loadVouchers(){
 function _voucherDiscountLabel(v){
   const c=v.coupon||{};
   if(c.percentOff)return c.percentOff+'% off';
-  if(c.amountOff)return '€'+(c.amountOff/100).toFixed(2).replace('.',',')+' off';
+  if(c.amountOff)return _fmtEur(c.amountOff/100)+' off';
   return '-';
 }
 function _voucherDurationLabel(v){
@@ -8149,18 +8877,18 @@ async function createVoucher(){
 window.createVoucher=createVoucher;
 async function archiveVoucher(promoId){
   const _v=_vouchers.find(x=>x.id===promoId);
-  if(!confirm(`Archive voucher ${_v?_v.code:''}?\n\nThe code stops working immediately. Existing subscriptions that already redeemed it keep their discount.`))return;
+  if(!await stDialog.confirm(`The code ${_v?_v.code:''} stops working immediately. Existing subscriptions that already redeemed it keep their discount.`,{title:`Archive voucher ${_v?_v.code:''}?`,okLabel:'Archive voucher',danger:true}))return;
   try{
     await _callVoucher({action:'archive',promoId});
     await loadVouchers();
-  }catch(e){alert('Archive failed: '+(e.message||e));}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Archiving the voucher'),{title:'Voucher not archived'});}
 }
 window.archiveVoucher=archiveVoucher;
 async function activateVoucher(promoId){
   try{
     await _callVoucher({action:'activate',promoId});
     await loadVouchers();
-  }catch(e){alert('Activate failed: '+(e.message||e));}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Activating the voucher'),{title:'Voucher not activated'});}
 }
 window.activateVoucher=activateVoucher;
 function closeAdmin(){document.getElementById('admin').classList.remove('open');}
@@ -8193,8 +8921,8 @@ function _mrrFor(c){
   if(cycle==='yearly')return PRO_YEARLY/12;
   return PRO_MONTHLY; // monthly or unknown → monthly default
 }
-function _fmtEuro(n){return'€'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function _fmtEuroRound(n){return'€'+Math.round(n).toLocaleString('en-US');}
+function _fmtEuro(n){return _fmtEur(n);}
+function _fmtEuroRound(n){return'€'+Math.round(n).toLocaleString('nl-NL');}
 function _renderKpis(){
   const kpis=document.getElementById('admin-kpis');
   const mix=document.getElementById('admin-mix');
@@ -8267,8 +8995,8 @@ function _renderKpis(){
   `:`<div class="mix-bar-seg" style="width:100%;background:var(--s3);color:var(--sub);font-size:10px;">No active subscribers</div>`;
   const yRev=yearlyCount*PRO_YEARLY,mRev=monthlyCount*PRO_MONTHLY*12;
   legend.innerHTML=`
-    <div class="mix-legend-row"><div class="mix-dot" style="background:#2563eb;"></div><div class="mix-legend-name">Yearly · €${PRO_YEARLY.toFixed(2)}</div><div class="mix-legend-val">${yearlyCount} · ${_fmtEuroRound(yRev)}/yr</div></div>
-    <div class="mix-legend-row"><div class="mix-dot" style="background:#a78bfa;"></div><div class="mix-legend-name">Monthly · €${PRO_MONTHLY.toFixed(2)}</div><div class="mix-legend-val">${monthlyCount} · ${_fmtEuroRound(mRev)}/yr</div></div>
+    <div class="mix-legend-row"><div class="mix-dot" style="background:#2563eb;"></div><div class="mix-legend-name">Yearly · ${_fmtEur(PRO_YEARLY)}</div><div class="mix-legend-val">${yearlyCount} · ${_fmtEuroRound(yRev)}/yr</div></div>
+    <div class="mix-legend-row"><div class="mix-dot" style="background:#a78bfa;"></div><div class="mix-legend-name">Monthly · ${_fmtEur(PRO_MONTHLY)}</div><div class="mix-legend-val">${monthlyCount} · ${_fmtEuroRound(mRev)}/yr</div></div>
   `;
   // Upcoming renewals (next 60 days)
   const now=Date.now(),horizon=now+60*86400000;
@@ -8294,9 +9022,9 @@ function _renderKpis(){
 }
 function renderAdmin(){
   // Header context
-  const hdrName=document.querySelector('#admin-hdr span[style*="font-weight:800"]');
+  const hdrName=document.getElementById('admin-title');
   if(hdrName){
-    hdrName.textContent=CURRENT_USER?.role==='super_admin'?'Admin · All workspaces':CURRENT_USER?.role==='admin'?'Admin':'Admin · '+(APP.companies.find(c=>c.id===CURRENT_USER?.companyId)?.name||'own workspace');
+    hdrName.textContent=CURRENT_USER?.role==='super_admin'?'Platform admin · All workspaces':CURRENT_USER?.role==='admin'?'Platform admin':'Workspace admin · '+(APP.companies.find(c=>c.id===CURRENT_USER?.companyId)?.name||'own workspace');
   }
   _renderKpis();
   const coList=document.getElementById('admin-co-list');
@@ -8316,7 +9044,7 @@ function renderAdmin(){
     const dateLine=[];
     if(c.lastPaidAt)dateLine.push('Last payment: '+_fmtDate(c.lastPaidAt));
     if(c.currentPeriodEnd)dateLine.push('Next: '+_fmtDate(c.currentPeriodEnd));
-    const stripeUrl=c.stripeCustomerId?`https://dashboard.stripe.com/customers/${c.stripeCustomerId}`:'';
+    const stripeUrl=c.stripeCustomerId?escH(`https://dashboard.stripe.com/customers/${encodeURIComponent(c.stripeCustomerId)}`):'';
     // Stage limit summary + admin override input. Override wins over plan default.
     const planLimitTxt=(c.liveStagesLimit==null)?'∞':String(c.liveStagesLimit);
     const overrideVal=(c.liveStagesOverride==null)?'':String(c.liveStagesOverride);
@@ -8324,7 +9052,7 @@ function renderAdmin(){
     const passActive=c.passExpiresAt && new Date(c.passExpiresAt).getTime()>Date.now();
     const passLine=passActive?`<div style="font-size:11px;color:#fbbf24;margin-top:3px;">🎟 Active pass: ${escH(c.passSlug||'')} · expires ${_fmtDate(c.passExpiresAt)}</div>`:'';
     return`<div class="admin-item" style="align-items:flex-start;padding-top:14px;padding-bottom:14px;">
-      <div class="admin-avatar admin-avatar-co" style="margin-top:1px;">${_initials(c.name)}</div>
+      <div class="admin-avatar admin-avatar-co" style="margin-top:1px;">${escH(_initials(c.name))}</div>
       <div class="admin-item-info">
         <div class="admin-item-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span>${escH(c.name)}</span>
@@ -8340,22 +9068,22 @@ function renderAdmin(){
           <span style="color:rgba(255,255,255,.45);">plan = ${planLimitTxt}</span>
           <span style="color:rgba(255,255,255,.35);">·</span>
           <span style="font-weight:600;">override:</span>
-          <input type="number" min="0" step="1" placeholder="-" value="${overrideVal}" onchange="setStageOverride('${c.id}',this.value)" style="width:70px;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:#fff;font-family:var(--ffm);font-size:12px;text-align:center;">
+          <input type="number" min="0" step="1" placeholder="-" value="${overrideVal}" onchange="setStageOverride(${_jsArg(c.id)},this.value)" aria-label="Live stages override for ${escH(c.name)}" style="width:70px;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:#fff;font-family:var(--ffm);font-size:12px;text-align:center;">
           <span style="color:rgba(255,255,255,.4);font-size:10px;">(blank = use plan)</span>
         </div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
         <div style="display:flex;gap:2px;">
-          ${stripeUrl?`<a class="admin-item-del" href="${stripeUrl}" target="_blank" rel="noopener" title="Open in Stripe dashboard" style="color:#a5b4fc;text-decoration:none;">
+          ${stripeUrl?`<a class="admin-item-del" href="${stripeUrl}" target="_blank" rel="noopener" title="Open in Stripe dashboard" aria-label="Open ${escH(c.name)} in Stripe" style="color:#a5b4fc;text-decoration:none;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>`:''}
-          ${isAdmin()?`<button class="admin-item-del" onclick="editCompany('${c.id}')" title="Edit name">
+          ${isAdmin()?`<button class="admin-item-del" onclick="editCompany(${_jsArg(c.id)})" title="Rename workspace" aria-label="Rename ${escH(c.name)}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>`:''}
-          <button class="admin-item-del" onclick="manageSubscription('${c.id}')" title="Manage subscription" style="color:#a5b4fc;">
+          <button class="admin-item-del" onclick="manageSubscription(${_jsArg(c.id)})" title="Manage subscription" aria-label="Manage subscription of ${escH(c.name)}" style="color:#a5b4fc;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
           </button>
-          ${isAdmin()?`<button class="admin-item-del" onclick="delCompany('${c.id}')" title="Delete">
+          ${isAdmin()?`<button class="admin-item-del" onclick="delCompany(${_jsArg(c.id)})" title="Delete workspace" aria-label="Delete ${escH(c.name)}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
           </button>`:''}
         </div>
@@ -8374,7 +9102,7 @@ function renderAdmin(){
   // Companies dropdown - limited for company_admin
   const sel=document.getElementById('adm-usr-co');
   const dropdownCos=isSuper||CURRENT_USER?.role==='admin'?APP.companies:APP.companies.filter(c=>c.id===CURRENT_USER?.companyId);
-  sel.innerHTML=`<option value="">- No workspace -</option>`+dropdownCos.map(c=>`<option value="${c.id}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
+  sel.innerHTML=`<option value="">- No workspace -</option>`+dropdownCos.map(c=>`<option value="${escH(c.id)}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
   // Role dropdown - restrict for non-super_admin
   const roleSel=document.getElementById('adm-usr-role');
   if(roleSel){
@@ -8388,15 +9116,15 @@ function renderAdmin(){
     const roleClass=u.role==='super_admin'?'role-admin':u.role==='admin'?'role-admin':u.role==='company_admin'?'role-co-admin':'role-op';
     const canEditRole=isSuper||(CURRENT_USER?.role==='admin'&&u.role!=='super_admin');
     return`<div class="admin-item">
-      <div class="admin-avatar admin-avatar-usr">${_initials(u.name||u.email)}</div>
+      <div class="admin-avatar admin-avatar-usr">${escH(_initials(u.name||u.email))}</div>
       <div class="admin-item-info">
         <div class="admin-item-name">${escH(u.name||u.email)}${isSelf?'<span style="font-size:9px;color:rgba(255,255,255,.4);margin-left:6px;">(you)</span>':''}</div>
         <div class="admin-item-sub">${u.email?escH(u.email):''}${co?' · '+escH(co.name):''}</div>
       </div>
-      ${canEditRole?`<select class="role-badge ${roleClass}" onchange="changeUserRole('${u.id}',this.value)" style="cursor:pointer;border:none;font-family:inherit;font-weight:700;font-size:9px;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;">
+      ${canEditRole?`<select class="role-badge ${roleClass}" onchange="changeUserRole(${_jsArg(u.id)},this.value)" aria-label="Role of ${escH(u.name||u.email)}" style="cursor:pointer;border:none;font-family:inherit;font-weight:700;font-size:9px;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;">
         ${(isSuper?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin'],['super_admin','Super Admin']]:[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin']]).map(([v,l])=>`<option value="${v}"${v===u.role?' selected':''}>${l}</option>`).join('')}
       </select>`:`<span class="role-badge ${roleClass}">${roleLabel}</span>`}
-      ${isSelf?'':`<button class="admin-item-del" onclick="delUser('${u.id}')" title="Delete">
+      ${isSelf?'':`<button class="admin-item-del" onclick="delUser(${_jsArg(u.id)})" title="Remove user" aria-label="Remove ${escH(u.name||u.email)}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
       </button>`}
     </div>`;
@@ -8414,16 +9142,16 @@ function renderAdmin(){
       const showCount=(p.data?.shows||[]).length;
       const stageCount=(p.data?.stages||[]).length;
       const isActive=p.id===APP.activeProjectId;
-      return`<div class="admin-item${isActive?' admin-item-active':''}" style="cursor:pointer;" onclick="openProject('${p.id}');closeAdmin();" title="Open project">
+      return`<div class="admin-item${isActive?' admin-item-active':''}" style="cursor:pointer;" onclick="openProject(${_jsArg(p.id)});closeAdmin();" title="Open project">
         <div class="admin-avatar admin-avatar-proj">${escH(p.name.slice(0,2).toUpperCase())}</div>
         <div class="admin-item-info">
           <div class="admin-item-name">${escH(p.name)}${isActive?'<span class="admin-active-pill">active</span>':''}</div>
           <div class="admin-item-sub">${co?escH(co.name)+' · ':''}${showCount} shows · ${stageCount} stages${owner?' · owner: '+escH(owner.name||owner.email):''}</div>
         </div>
-        <button class="admin-item-del" onclick="event.stopPropagation();openShareModal('${p.id}')" title="View share links" style="color:#1E40AF;">
+        <button class="admin-item-del" onclick="event.stopPropagation();openShareModal(${_jsArg(p.id)})" title="View share links" aria-label="Share links of ${escH(p.name)}" style="color:#1E40AF;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         </button>
-        <button class="admin-item-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="Delete">
+        <button class="admin-item-del" onclick="event.stopPropagation();deleteProject(${_jsArg(p.id)})" title="Delete project" aria-label="Delete ${escH(p.name)}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>`;
@@ -8432,23 +9160,31 @@ function renderAdmin(){
 }
 
 async function addCompany(){
-  if(CURRENT_USER?.role!=='super_admin'){alert('Only Super Admin may create workspaces.');return;}
+  if(CURRENT_USER?.role!=='super_admin'){await stDialog.alert('Only a Super Admin can create workspaces.',{title:'No permission'});return;}
   const inp=document.getElementById('adm-co-name');
   const name=inp.value.trim();if(!name){inp.focus();return;}
   const id=uid();
   const{error}=await supa.from('companies').insert([{id,name,subscription_status:'inactive',project_limit:0}]);
-  if(error){alert('Failed to create company: '+error.message);return;}
+  if(error){await stDialog.alert(_friendlyError(error,'Creating the workspace'),{title:'Workspace not created'});return;}
   APP.companies.push({id,name,subscriptionStatus:'inactive',projectLimit:0});
   saveAPP();inp.value='';renderAdmin();
 }
 async function editCompany(id){
   if(!isAdmin()){return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
-  const newName=prompt('New workspace name:',c.name);
-  if(!newName||newName.trim()===c.name)return;
-  const{error}=await supa.from('companies').update({name:newName.trim()}).eq('id',id);
-  if(error){alert('Update failed: '+error.message);return;}
-  c.name=newName.trim();saveAPP();renderAdmin();
+  const res=await stDialog.form({
+    title:'Rename workspace',
+    fields:[{name:'name',label:'Workspace name',value:c.name,required:true,requiredMsg:'Enter a workspace name.',maxlength:120}],
+    submitLabel:'Save name',busyLabel:'Saving…',
+    onSubmit:async v=>{
+      if(v.name===c.name)return undefined;
+      const{error}=await supa.from('companies').update({name:v.name}).eq('id',id);
+      if(error)throw new Error(_friendlyError(error,'Renaming the workspace'));
+      c.name=v.name;saveAPP();
+      return undefined;
+    },
+  });
+  if(res)renderAdmin();
 }
 
 // Per-company override of the live-stages limit. Empty / blank input means
@@ -8461,26 +9197,26 @@ async function setStageOverride(id,rawValue){
   let newVal=null;
   if(v!==''){
     const n=parseInt(v,10);
-    if(isNaN(n)||n<0){alert('Override must be a non-negative whole number, or blank to clear.');renderAdmin();return;}
+    if(!/^\d+$/.test(v)){await stDialog.alert(`"${v}" is not a whole number. Enter 0 or more, or leave it blank to use the plan.`,{title:'Override not saved'});renderAdmin();return;}
     newVal=n;
   }
   const{error}=await supa.from('companies').update({live_stages_override:newVal}).eq('id',id);
-  if(error){alert('Override update failed: '+error.message);return;}
+  if(error){await stDialog.alert(_friendlyError(error,'Saving the override'),{title:'Override not saved'});renderAdmin();return;}
   c.liveStagesOverride=newVal;
   saveAPP();renderAdmin();
 }
 window.setStageOverride=setStageOverride;
 async function delCompany(id){
-  if(!isAdmin()){alert('Only Admin or Super Admin may delete workspaces.');return;}
+  if(!isAdmin()){await stDialog.alert('Only an Admin or Super Admin can delete workspaces.',{title:'No permission'});return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
   const userCount=APP.users.filter(u=>u.companyId===id).length;
   const projCount=APP.projects.filter(p=>p.companyId===id).length;
   if(c.subscriptionStatus==='active'){
-    if(!confirm(`⚠️ "${c.name}" has an ACTIVE subscription. You must cancel it in Stripe first. Delete anyway?`))return;
+    if(!await stDialog.confirm(`"${c.name}" has an ACTIVE subscription. Cancel it in Stripe first: deleting the workspace does not stop the billing.`,
+      {title:'Active subscription',okLabel:'Continue anyway',danger:true}))return;
   }
-  let msg=`Delete "${c.name}"?`;
-  if(userCount||projCount){msg+=`\n\n${userCount} user(s) and ${projCount} project(s) will also be detached.`;}
-  if(!confirm(msg))return;
+  const detach=userCount||projCount?` Its ${userCount} user${userCount===1?'':'s'} and ${projCount} project${projCount===1?'':'s'} are kept but detached from any workspace.`:'';
+  if(!await stDialog.confirm(`"${c.name}" is deleted.${detach} This cannot be undone.`,{title:'Delete this workspace?',okLabel:'Delete workspace',danger:true}))return;
   // Cascade: detach users and projects (set company_id = '') and delete, in
   // one atomic server call (rls_prep). Until that migration is applied the
   // RPC does not exist and the three direct requests below do the same.
@@ -8489,86 +9225,73 @@ async function delCompany(id){
     try{r=await _rpc('admin_delete_company',{p_company_id:id});}
     catch(e){if(!_rpcFnMissing(e))throw e;viaRpc=false;console.warn('[delCompany] admin_delete_company not available yet, using direct writes:',e.message);}
     if(viaRpc){
-      if(!r||!r.ok){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+      if(!r||!r.ok){await stDialog.alert('Nothing was deleted - only a Super Admin can delete a workspace.',{title:'Workspace not deleted'});return;}
     }else{
       await Promise.all([
         _restWrite('app_users','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
         _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
       ]);
       const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
-      if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
+      if(!n){await stDialog.alert('Nothing was deleted - only a Super Admin can delete a workspace.',{title:'Workspace not deleted'});return;}
     }
-  }catch(e){alert(_friendlyError(e,'Deleting the workspace'));return;}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Deleting the workspace'),{title:'Workspace not deleted'});return;}
   APP.users.forEach(u=>{if(u.companyId===id)u.companyId='';});
   APP.projects.forEach(p=>{if(p.companyId===id)p.companyId='';});
   APP.companies=APP.companies.filter(c=>c.id!==id);
   saveAPP();renderAdmin();
 }
+// Platform admin invite form: checks next to the form, a confirmation with
+// the price, then the shared invite request (_inviteMember).
+function _admUsrErr(msg,focusId){
+  const e=document.getElementById('adm-usr-err');if(e){e.textContent=msg||'';e.hidden=!msg;}
+  if(msg&&focusId)document.getElementById(focusId)?.focus();
+}
 async function addUser(){
-  if(!isAdmin()&&CURRENT_USER?.role!=='company_admin'){alert('No permission.');return;}
+  if(!isAdmin()&&CURRENT_USER?.role!=='company_admin'){_admUsrErr('You do not have permission to invite members.');return;}
+  _admUsrErr('');
   const name=document.getElementById('adm-usr-name').value.trim();
-  if(!name){document.getElementById('adm-usr-name').focus();return;}
+  if(!name){_admUsrErr('Enter the full name.','adm-usr-name');return;}
   const email=document.getElementById('adm-usr-email').value.trim();
-  if(!email){document.getElementById('adm-usr-email').focus();return;}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){document.getElementById('adm-usr-email').focus();alert('Not a valid email address.');return;}
+  if(!email){_admUsrErr('Enter an email address.','adm-usr-email');return;}
+  const emailBad=_inviteEmailProblem(email);
+  if(emailBad){_admUsrErr(emailBad,'adm-usr-email');return;}
   let workspaceId=document.getElementById('adm-usr-co').value;
   let role=document.getElementById('adm-usr-role').value;
   if(CURRENT_USER?.role==='company_admin'){
-    if(['admin','super_admin'].includes(role)){alert('No permission to assign that role.');return;}
+    if(['admin','super_admin'].includes(role)){_admUsrErr('You cannot assign that role.','adm-usr-role');return;}
     workspaceId=CURRENT_USER.companyId;
   }
-  if(!workspaceId){alert('Please select a workspace for this member.');return;}
-  if(APP.users.some(u=>u.email.toLowerCase()===email.toLowerCase())){alert('A user with this email address already exists.');return;}
+  if(!workspaceId){_admUsrErr('Select a workspace for this member.','adm-usr-co');return;}
   // Find workspace + show what the user will be charged
   const ws=APP.companies.find(c=>c.id===workspaceId);
-  if(!ws){alert('Workspace not found.');return;}
+  if(!ws){_admUsrErr('That workspace no longer exists. Reload the page.');return;}
   if(ws.subscriptionStatus!=='active'&&ws.subscriptionStatus!=='trialing'){
-    alert(`Cannot invite members - "${ws.name}" doesn't have an active subscription yet.`);return;
+    _admUsrErr(`Cannot invite members - "${ws.name}" doesn't have an active subscription yet.`);return;
   }
-  const cycle=(()=>{
-    if(!ws.lastPaidAt||!ws.currentPeriodEnd)return null;
-    const days=(new Date(ws.currentPeriodEnd)-new Date(ws.lastPaidAt))/86400000;
-    return isNaN(days)?null:(days>180?'year':'month');
-  })();
-  const priceLabel=cycle==='year'?'€119.40/year':cycle==='month'?'€9.95/month':'€9.95/month or €119.40/year';
-  const confirmMsg=`Invite ${name} (${email}) to "${ws.name}" as ${role}?\n\n${priceLabel} will be added to the subscription (pro-rated for the current cycle). They'll receive an email to set their own password.`;
-  if(!confirm(confirmMsg))return;
-  const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
-  if(addBtn){addBtn.textContent='Sending invite…';addBtn.disabled=true;}
+  const roleLabel={operator:'Operator',company_admin:'Co. Admin',admin:'Admin',super_admin:'Super Admin'}[role]||role;
+  const priceLabel=_seatPriceLabel(_billingCycle(ws),true);
+  if(!await stDialog.confirm(`${name} (${email}) joins "${ws.name}" as ${roleLabel}. ${priceLabel} is added to the subscription (pro-rated for the current period). They get an email to set their own password.`,
+    {title:'Send this invite?',okLabel:'Send invite'}))return;
+  const addBtn=document.getElementById('adm-usr-send');
+  if(addBtn){addBtn.dataset.html=addBtn.innerHTML;addBtn.textContent='Sending invite…';addBtn.disabled=true;}
   try{
-    const{data:{session}}=await supa.auth.getSession();
-    if(!session?.access_token)throw new Error('Not authenticated.');
-    const res=await fetch(`${SUPA_URL}/functions/v1/invite-member`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
-      body:JSON.stringify({workspaceId,name,email,role})
-    });
-    const data=await res.json().catch(()=>({error:'Invalid response from server.'}));
-    if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
+    const r=await _inviteMember({workspaceId,name,email,role});
     // Reset form
     document.getElementById('adm-usr-name').value='';
     document.getElementById('adm-usr-email').value='';
-    // Refresh users + companies from DB (extra_seats may have changed)
-    const[uRes,cRes]=await Promise.all([
-      supa.from('app_users').select('*'),
-      _supaCompanies(),
-    ]);
-    if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
-    saveAPP();
-    renderAdmin();
-    alert(data.message||'Invite sent.');
+    await stDialog.alert(r.message,{title:'Invite sent'});
   }catch(e){
-    alert('Failed to invite: '+(e.message||e));
+    _admUsrErr(e.message);
+  }finally{
+    if(addBtn){if(addBtn.dataset.html)addBtn.innerHTML=addBtn.dataset.html;addBtn.disabled=false;}
   }
-  if(addBtn){addBtn.textContent='Send invite';addBtn.disabled=false;}
 }
 async function changeUserRole(id,newRole){
   const u=APP.users.find(x=>x.id===id);if(!u)return;
   // RBAC guards
-  if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){alert('Only Super Admin may grant Super Admin.');renderAdmin();return;}
-  if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){alert('No permission.');renderAdmin();return;}
-  if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!confirm('Lowering your role may prevent you from accessing Admin. Continue?')){renderAdmin();return;}}
+  if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){await stDialog.alert('Only a Super Admin can grant Super Admin.',{title:'No permission'});renderAdmin();return;}
+  if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){await stDialog.alert('You cannot assign that role.',{title:'No permission'});renderAdmin();return;}
+  if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!await stDialog.confirm('You are lowering your own role. You may lose access to Platform admin and cannot undo this yourself.',{title:'Lower your own role?',okLabel:'Lower my role',danger:true})){renderAdmin();return;}}
   // Server-side role change (rls_prep): once RLS is on, clients may only
   // update their own name on app_users. The direct write is the fallback
   // for as long as the RPC does not exist yet - never for a refusal.
@@ -8580,7 +9303,7 @@ async function changeUserRole(id,newRole){
       try{({error}=await supa.from('app_users').update({role:newRole}).eq('id',id));}catch(e2){error=e2;}
     }else error=e;
   }
-  if(error){alert(error.status?_friendlyError(error,'Changing the role'):'Failed to change role: '+(error.message||error));renderAdmin();return;}
+  if(error){await stDialog.alert(error.status?_friendlyError(error,'Changing the role'):'The role could not be changed: '+(error.message||error),{title:'Role not changed'});renderAdmin();return;}
   u.role=newRole;
   saveAPP();
   if(u.id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
@@ -8588,10 +9311,11 @@ async function changeUserRole(id,newRole){
 }
 async function delUser(id){
   const u=APP.users.find(x=>x.id===id);if(!u)return;
-  if(u.id===CURRENT_USER?.id){alert('You cannot delete yourself.');return;}
-  if(CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId){alert('No permission.');return;}
-  if(CURRENT_USER?.role==='admin'&&u.role==='super_admin'){alert('Only Super Admin may delete a Super Admin.');return;}
-  if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
+  if(u.id===CURRENT_USER?.id){await stDialog.alert('You cannot remove yourself.',{title:'Not possible'});return;}
+  if(CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId){await stDialog.alert('You can only remove members of your own workspace.',{title:'No permission'});return;}
+  if(CURRENT_USER?.role==='admin'&&u.role==='super_admin'){await stDialog.alert('Only a Super Admin can remove a Super Admin.',{title:'No permission'});return;}
+  if(!await stDialog.confirm(`${u.name||u.email} (${u.email}) loses access to the workspace. The paid seat is released and pro-rated credit is applied to the next invoice.`,
+    {title:`Remove ${u.name||u.email}?`,okLabel:'Remove user',danger:true}))return;
   // Use remove-member edge function - it handles Stripe seat decrement + auth user + app_users row
   try{
     const{data:{session}}=await supa.auth.getSession();
@@ -8609,23 +9333,23 @@ async function delUser(id){
     if(cos)APP.companies=cos.map(_mapCompany);
     saveAPP();renderAdmin();
   }catch(e){
-    alert('Failed to remove: '+(e.message||e));
+    await stDialog.alert(e?.status&&e.status<500?'Could not remove the user: '+e.message:_friendlyError(e,'Removing the user'),{title:'User not removed'});
   }
 }
 async function manageSubscription(coId){
   const c=APP.companies.find(x=>x.id===coId);if(!c)return;
   const status=c.subscriptionStatus||'inactive';
   if(!c.stripeCustomerId){
-    alert(`"${c.name}" does not have a Stripe link yet. Have the workspace sign up at stagetimer.nl/#pricing to start a subscription.`);
+    await stDialog.alert(`"${c.name}" does not have a Stripe link yet. Have the workspace sign up at stagetimer.nl/#pricing to start a subscription.`,{title:'No billing account yet'});
     return;
   }
   if(status==='inactive'||status==='canceled'){
-    if(!confirm(`"${c.name}" has no active subscription (status: ${status}).\n\nOpen Stripe Customer Portal to start again?`))return;
+    if(!await stDialog.confirm(`"${c.name}" has no active subscription (status: ${status}). The Stripe customer portal opens, where it can be started again.`,{title:'Open the Stripe portal?',okLabel:'Open Stripe portal'}))return;
   }
   // Get user session to authenticate the portal-link edge function call
   try{
     const{data:{session}}=await supa.auth.getSession();
-    if(!session){alert('Not logged in.');return;}
+    if(!session){await stDialog.alert('Your session has expired. Log out and log in again.',{title:'Not logged in'});return;}
     const res=await fetch(`${SUPA_URL}/functions/v1/portal-link`,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
@@ -8636,7 +9360,7 @@ async function manageSubscription(coId){
     if(data.url){location.href=data.url;return;}
     throw new Error('No portal URL returned.');
   }catch(e){
-    alert('Failed to open Stripe portal: '+(e.message||e));
+    await stDialog.alert(_friendlyError(e,'Opening the Stripe portal'),{title:'Stripe portal not opened'});
   }
 }
 
@@ -8958,7 +9682,7 @@ async function initOneSignalUser(userId){
 }
 async function requestPushPermission(){
   if(!window._OS){
-    alert('Push notifications are still loading. Please try again in a few seconds.');
+    stDialog.alert('Push notifications are still loading. Try again in a few seconds.',{title:'Not ready yet'});
     return;
   }
   try{
@@ -9230,7 +9954,7 @@ async function ciToggleArrived(showId){
     if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
     renderCI();
     console.error('[ciToggleArrived]',e);
-    alert(humanError(e,'Saving the check-in'));
+    _stAlert(humanError(e,'Saving the check-in'),{title:'Check-in not saved'});
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
     _ciBusy.delete(showId);
@@ -9308,7 +10032,7 @@ async function completeSignup(){
       history.replaceState({},'',location.pathname);
       document.getElementById('signup-setup').style.display='none';
       _showLogin();
-      alert('Account created. Please log in now with your new password.');
+      stDialog.alert('Your account is ready. Log in with your email address and the password you just chose.',{title:'Account created'});
     }
   }catch(e){
     err.textContent=e?.serverMsg||_friendlyError(e,'Creating your account');err.style.display='block';
@@ -9681,14 +10405,14 @@ async function _compressLogo(dataUrl,type){
 function handleLogoUpload(event){
   const file=event.target.files[0];
   if(!file)return;
-  if(!file.type.startsWith('image/')){alert('This file is not an image.');event.target.value='';return;}
-  if(file.size>25*1024*1024){alert('Image is too large (>25MB). Please choose a smaller file.');event.target.value='';return;}
+  if(!file.type.startsWith('image/')){event.target.value='';stDialog.alert(`"${file.name}" is not an image. Choose a PNG or JPEG file.`,{title:'Logo not added'});return;}
+  if(file.size>25*1024*1024){event.target.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Logo not added'});return;}
   const tgt=_logoProjectTarget;
   const reader=new FileReader();
   reader.onload=async e=>{
     let logo;
     try{logo=await _compressLogo(e.target.result,file.type);}
-    catch(err){console.error('logo compress failed:',err);alert('The logo could not be processed. Try a PNG or JPEG file.');return;}
+    catch(err){console.error('logo compress failed:',err);stDialog.alert('The logo could not be processed. Try a PNG or JPEG file.',{title:'Logo not added'});return;}
     const proj=APP.projects.find(p=>p.id===tgt);
     if(!proj)return;
     if(!proj.data)proj.data={};
@@ -10020,6 +10744,8 @@ function _authErrorText(e,action){
   return _friendlyError(e,action);
 }
 const PW_MIN=8; // one rule everywhere: signup, set-password, profile
+// Show that rule under every password field that asks for a new one.
+document.querySelectorAll('[data-pw-rule]').forEach(el=>{el.textContent=_pwRule();});
 async function sendReset(){
   const email=document.getElementById('li-reset-email').value.trim();
   const btn=document.getElementById('reset-btn');

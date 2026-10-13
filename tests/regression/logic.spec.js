@@ -9,6 +9,23 @@ const { FESTIVAL, ams } = require('../support/seed');
 const P = FESTIVAL.projectId;
 const fieldIds = ['f-start-date', 'f-start-time', 'f-start-sec', 'f-end-date', 'f-end-time', 'f-end-sec'];
 const dialogs = page => { const seen = []; page.on('dialog', d => { seen.push(d.message()); d.accept().catch(() => {}); }); return seen; };
+// Native alert/confirm became stDialog (in-page, Promise-based). Run fn in the
+// page without blocking on it and answer every stDialog that opens with its
+// last (primary / OK) button, recording the message text.
+async function runAnswering(page, fn, arg, seen = []) {
+  let finished = false, err = null;
+  const done = page.evaluate(fn, arg).then(() => { finished = true; }, e => { finished = true; err = e; });
+  const d = page.locator('.st-dlg[role="dialog"]');
+  while (!finished) {
+    if (await d.count()) {
+      seen.push(((await d.locator('.st-dlg-msg').first().textContent().catch(() => '')) || '').trim());
+      await d.locator('.st-dlg-ft button').last().click().catch(() => {});
+      await expect(d).toHaveCount(0).catch(() => {});
+    } else await page.waitForTimeout(50);
+  }
+  await done; if (err) throw err;
+  return seen;
+}
 const serverShow = (backend, id) => backend.project(P).data.shows.find(s => s.id === id);
 
 // ── 1. Show editor reads / writes festival (Amsterdam) time ─────────────
@@ -22,7 +39,7 @@ for (const timezoneId of ['Europe/Amsterdam', 'America/New_York', 'Asia/Tokyo'])
       // Existing overnight show: 23:00 -> 01:30 next day, as stored.
       await page.evaluate(() => openDrawer('m6'));
       expect(await fields()).toEqual(['2026-07-10', '23:00', '00', '2026-07-11', '01:30', '00']);
-      await page.evaluate(() => saveShow());          // unchanged save: nothing moves
+      await runAnswering(page, () => saveShow());     // unchanged save: nothing moves
       expect(await page.evaluate(() => G.shows.find(s => s.id === 'm6'))).toMatchObject({
         date: '2026-07-10', start: '23:00:00', end: '01:30:00', startsAt: '2026-07-10T23:00:00', endsAt: '2026-07-11T01:30:00', endsNextDay: true });
       // Edit m3 across midnight, with seconds.
@@ -34,7 +51,7 @@ for (const timezoneId of ['Europe/Amsterdam', 'America/New_York', 'Asia/Tokyo'])
         updDur();
       });
       await expect(page.locator('#dur-txt')).toHaveText('Duration: 1h 44m 45s · ends next day');
-      await page.evaluate(() => saveShow());
+      await runAnswering(page, () => saveShow());     // m3 now overlaps m6: 'Save anyway'
       await expect.poll(() => serverShow(backend, 'm3').startsAt).toBe('2026-07-10T23:30:15');
       expect(serverShow(backend, 'm3')).toMatchObject({ date: '2026-07-10', start: '23:30:15', end: '01:15:00', endsAt: '2026-07-11T01:15:00', endsNextDay: true });
       // New show on Main / Friday: starts where the last one (m3 now, 23:30) ends, 90 min.
@@ -162,27 +179,25 @@ test.describe('admin writes before RLS (rls_prep RPCs)', () => {
     expect(roleOf(backend, op)).toBe('company_admin');
   });
   test('changeUserRole: a refusal is shown, never retried as a direct write', async ({ page, st, backend }) => {
-    const seen = dialogs(page);
+    const seen = [];
     backend.setRpc('admin_set_user_role', () => ({ status: 403, json: { code: '42501', message: 'insufficient privileges to change a user role' } }));
     await st.gotoApp();
-    await page.evaluate(id => changeUserRole(id, 'company_admin'), op);
+    await runAnswering(page, id => changeUserRole(id, 'company_admin'), op, seen);
     expect(backend.calls({ method: 'PATCH', path: '/rest/v1/app_users' })).toEqual([]);
     expect(roleOf(backend, op)).toBe('operator');
     expect(seen).toEqual(["Changing the role failed: you don't have permission for this."]);
   });
   test('delCompany uses admin_delete_company, falls back while it is missing', async ({ page, st, backend }) => {
-    dialogs(page);
     backend.setRpc('admin_delete_company', (b, rec, be) => { be.db.companies = be.db.companies.filter(c => c.id !== b.p_company_id); return { json: { ok: true, users_detached: 1, projects_detached: 0, deleted: 1 } }; });
     await st.gotoApp();
-    await page.evaluate(id => delCompany(id), FESTIVAL.otherCompanyId);
+    await runAnswering(page, id => delCompany(id), FESTIVAL.otherCompanyId);
     expect(backend.calls({ path: '/rest/v1/rpc/admin_delete_company' }).map(c => c.body)).toEqual([{ p_company_id: FESTIVAL.otherCompanyId }]);
     expect(backend.calls({ method: 'DELETE' })).toEqual([]);
     expect(await page.evaluate(id => APP.companies.some(c => c.id === id), FESTIVAL.otherCompanyId)).toBe(false);
   });
   test('delCompany without the RPC: the old three requests', async ({ page, st, backend }) => {
-    dialogs(page);
     await st.gotoApp();
-    await page.evaluate(id => delCompany(id), FESTIVAL.otherCompanyId);
+    await runAnswering(page, id => delCompany(id), FESTIVAL.otherCompanyId);
     expect(backend.calls({ method: 'DELETE', path: '/rest/v1/companies' }).length).toBe(1);
     expect(backend.calls({ method: 'PATCH', path: '/rest/v1/app_users' }).length).toBe(1);
     expect(backend.calls({ method: 'PATCH', path: '/rest/v1/projects' }).length).toBeGreaterThanOrEqual(1);
