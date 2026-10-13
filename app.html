@@ -5700,7 +5700,14 @@ async function previewPhoto(inp){
   }
 }
 function clearPhoto(){_photoB64='';_photoRemoved=true;document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
+// Called from the 250ms tick: only touch the DOM when the photo changes.
+// Re-assigning the same base64 src four times a second made the browser
+// re-decode it every time.
+var _tpPhotoSrc=null;
 function setTPPhoto(src){
+  src=src||'';
+  if(src===_tpPhotoSrc)return;
+  _tpPhotoSrc=src;
   const wrap=document.getElementById('tp-photo-wrap'),img=document.getElementById('tp-photo'),inner=document.getElementById('tinner');
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
   else{img.src='';wrap.classList.remove('has-photo');inner.classList.remove('has-photo');}
@@ -6063,7 +6070,14 @@ function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').
 function _wvDayLabel(d){
   if(!d)return '';
   if(d.name&&d.date){
-    try{const dt=new Date(d.date);const day=dt.getDate();const mo=dt.toLocaleString('nl-NL',{month:'long'});return `Geplande tijden ${d.name.toLowerCase()} — ${day} ${mo}`;}catch(_){return `Geplande tijden ${d.name.toLowerCase()}`;}
+    // A festival calendar date: noon festival time, read back in festival
+    // time. new Date('YYYY-MM-DD') is UTC midnight, which is the previous
+    // day on any device west of Greenwich.
+    try{
+      const ms=parseFestivalISO(`${d.date}T12:00:00`);if(isNaN(ms))throw new Error('bad day date '+d.date);
+      const mo=new Date(ms).toLocaleString('nl-NL',{month:'long',timeZone:festivalTZ()});
+      return `Geplande tijden ${d.name.toLowerCase()} — ${amsParts(ms).Da} ${mo}`;
+    }catch(e){console.warn('[wall] day label without date:',e?.message||e);return `Geplande tijden ${d.name.toLowerCase()}`;}
   }
   return d.name?`Geplande tijden ${d.name.toLowerCase()}`:'';
 }

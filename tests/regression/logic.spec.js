@@ -126,6 +126,37 @@ test.describe('show editor uses festival time', () => {
   });
 });
 
+test('Wall day label is the festival date on any device', async ({ browser }) => {
+  for (const timezoneId of ['America/Los_Angeles', 'Pacific/Auckland']) {
+    const { page, context } = await openOperator(browser, { at: '2026-06-19T20:00:00+02:00', timezoneId });
+    expect(await page.evaluate(() => [_wvDayLabel({ name: 'Friday', date: '2026-06-19' }), _wvDayLabel({ name: 'Saturday', date: '2026-11-01' })]))
+      .toEqual(['Geplande tijden friday — 19 juni', 'Geplande tijden saturday — 1 november']);
+    await context.close();
+  }
+});
+
+test('timer panel photo: src only assigned when it changes', async ({ browser }) => {
+  const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const { page, context } = await openOperator(browser, {
+    at: '2026-06-19T22:30:00+02:00',
+    data: { shows: [{ id: 'a', stage: 's1', day: 'd1', artist: 'Alpha', date: '2026-06-19', start: '22:00:00', end: '23:00:00', photo }] },
+  });
+  const n = await page.evaluate(() => {
+    const img = document.getElementById('tp-photo');
+    const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+    window.__srcSets = 0;
+    Object.defineProperty(img, 'src', { configurable: true, get() { return d.get.call(this); }, set(v) { window.__srcSets++; d.set.call(this, v); } });
+    return document.getElementById('tp-photo-wrap').classList.contains('has-photo');
+  });
+  expect(n).toBe(true);
+  await page.clock.runFor(3000); // 12 ticks
+  expect(await page.evaluate(() => window.__srcSets)).toBe(0);
+  await page.evaluate(() => { G.shows[0].photo = ''; });
+  await page.clock.runFor(1000);
+  expect(await page.evaluate(() => [window.__srcSets, document.getElementById('tp-photo-wrap').classList.contains('has-photo')])).toEqual([1, false]);
+  await context.close();
+});
+
 test.describe('crew pushes via send-push', () => {
   const data = {
     memberIds: ['u1', 'u2'],
