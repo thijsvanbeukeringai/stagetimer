@@ -1,6 +1,6 @@
 // Regression tests for the review findings of 2026-10-13 (sync, auth,
 // security). One test per fixed bug; every request is mocked.
-const { test, expect, openOperator, dlg } = require('./_operator');
+const { test, expect, openOperator, dlg, projectData } = require('./_operator');
 const { test: baseTest } = require('../support/fixtures');
 
 const PID = 'proj-fest';
@@ -94,6 +94,87 @@ test.describe('sync', () => {
     expect(data.shows.filter((s) => !stageIds.includes(s.stage))).toEqual([]);
     expect(data.shows.map((s) => s.artist)).toContain('Main Extra');
     expect(await page.evaluate(() => G.shows.filter((s) => !G.stages.some((x) => x.id === s.stage)).length)).toBe(0);
+  });
+});
+
+test.describe('security: ids from the blob never execute', () => {
+  const EVIL = 'x"><img src=x onerror=window.__xss=1>';
+  test.use({
+    stSeed: { mutate(seed) {
+      const data = projectData();
+      data.shows.find((s) => s.id === 'b').id = EVIL;
+      data.fohNotes = { [EVIL]: [{ id: "n'1", text: 'Check monitor', time: '23:05', color: '#ffe600' }] };
+      seed.projects[0].data = data;
+      return seed;
+    } },
+  });
+
+  test('operator list: no execution, notes work, ids are normalised and saved', async ({ page, st, backend }) => {
+    await openOperator({ page, st });
+    await expect(page.locator('#slist')).toContainText('Bravo');
+    await expect(page.locator('#slist')).toContainText('Check monitor');
+    expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+    // The id got a deterministic safe replacement, references followed it.
+    const ids = await page.evaluate(() => G.shows.map((s) => s.id));
+    expect(ids).not.toContain(EVIL);
+    for (const id of ids) expect(id).toMatch(/^[A-Za-z0-9_.:-]{1,64}$/);
+    const bravo = await page.evaluate(() => G.shows.find((s) => s.artist === 'Bravo').id);
+    expect(await page.evaluate((id) => (G.fohNotes[id] || []).map((n) => n.text), bravo)).toEqual(['Check monitor']);
+    await expect.poll(() => backend.project(PID).data.shows.map((s) => s.id).sort()).toEqual([...ids].sort());
+    expect(backend.project(PID).data.shows.length).toBe(4);
+    // The note delete button (formerly '${nt.id}') works.
+    await page.locator('.foh-note-del').first().click();
+    await expect(page.locator('#slist')).not.toContainText('Check monitor');
+    expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+  });
+
+  test('share link (FOH): no execution', async ({ page, st }) => {
+    await st.gotoPublic({ mode: 'foh', sid: 's1', at: new Date('2026-06-19T22:30:00+02:00') });
+    await expect(page.locator('body')).toContainText('Bravo');
+    expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+  });
+
+  test('voucher ids in inline handlers are JS-escaped', async ({ page, st }) => {
+    await openOperator({ page, st }, { open: false });
+    const id = `pr'o"mo<img src=x onerror=window.__xss=1>`;
+    await page.evaluate((vid) => {
+      window.__args = [];
+      window.archiveVoucher = (x) => window.__args.push(['archive', x]);
+      window.activateVoucher = (x) => window.__args.push(['activate', x]);
+      window.copyVoucherCode = (x) => window.__args.push(['copy', x]);
+      document.getElementById('admin').classList.add('open');
+      _vouchers = [{ id: vid, code: 'SUMMER', active: true, timesRedeemed: 0, coupon: { percentOff: 10, duration: 'once' } },
+        { id: vid, code: 'WINTER', active: false, timesRedeemed: 0, coupon: { percentOff: 10, duration: 'once' } }];
+      renderVouchers();
+      document.querySelectorAll('#admin-voucher-list button').forEach((b) => b.click());
+    }, id);
+    expect(await page.evaluate(() => window.__args)).toEqual([['copy', id], ['archive', id], ['copy', id], ['activate', id]]);
+    expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+  });
+});
+
+test.describe('companies with column grants (setup_token hidden)', () => {
+  test('workspace rename asks for select=id and succeeds', async ({ page, st, backend }) => {
+    backend.hiddenColumns = { companies: ['setup_token'] };
+    await openOperator({ page, st }, { open: false });
+    await page.evaluate(() => { renderSettingsPage(); document.getElementById('ws-settings-name').value = 'Zomerfeest Events'; return saveWorkspaceName('co-fest'); });
+    expect(await page.evaluate(() => document.getElementById('ws-settings-status').textContent)).toBe('Saved.');
+    expect(backend.table('companies').find((c) => c.id === 'co-fest').name).toBe('Zomerfeest Events');
+    const patch = backend.calls({ method: 'PATCH', path: '/rest/v1/companies' }).pop();
+    expect(patch.query.select).toBe('id');
+  });
+  test.describe('as super admin', () => {
+    test.use({ stAuth: 'super' });
+    test('delete workspace (direct-write fallback) succeeds', async ({ page, st, backend }) => {
+      backend.hiddenColumns = { companies: ['setup_token'] };
+      await openOperator({ page, st }, { open: false });
+      await page.evaluate(() => { delCompany('co-other'); });
+      const d = dlg(page);
+      await d.getByRole('button', { name: 'Delete workspace' }).click();
+      await expect.poll(() => backend.table('companies').some((c) => c.id === 'co-other')).toBe(false);
+      const del = backend.calls({ method: 'DELETE', path: '/rest/v1/companies' }).pop();
+      expect(del.query.select).toBe('id');
+    });
   });
 });
 

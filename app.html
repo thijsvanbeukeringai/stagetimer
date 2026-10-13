@@ -3139,9 +3139,64 @@ async function loadAPPRemote(){
   }catch(e){setSyncDot('err');console.warn('Supabase load failed (keeping cache):',e);}
 }
 
+// Ids end up in inline handlers and id="" attributes. Every template escapes
+// them, but the blob is writable by any workspace member over REST, so an id
+// that is not a plain token is replaced as well (defence in depth). The new
+// id is derived from the old one, so every device picks the same and the
+// merge converges instead of duplicating shows. Valid ids are never touched:
+// share links carry stage ids in &sid=.
+const _ID_OK=/^[A-Za-z0-9_.:-]{1,64}$/;
+const _safeId=v=>typeof v==='number'||(typeof v==='string'&&_ID_OK.test(v));
+function _remapId(old,taken){
+  let h=2166136261;const t=String(old);
+  for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619);}
+  let id='r'+(h>>>0).toString(36);while(taken.has(id))id+='x';
+  taken.add(id);return id;
+}
+// Rewrites unsafe ids in g (shows, days, stages, FOH notes) and every
+// reference to them. Returns the old ids that were replaced, or null.
+function _normIds(g){
+  if(!_isObj(g))return null;
+  const gone={shows:[],days:[],stages:[]};let n=0;
+  const fix=(arr,kind)=>{
+    const m=new Map();if(!Array.isArray(arr))return m;
+    const taken=new Set(arr.map(x=>x&&String(x.id)));
+    for(const x of arr){if(!_isObj(x)||_safeId(x.id))continue;const nid=_remapId(x.id,taken);m.set(x.id,nid);gone[kind].push(x.id);x.id=nid;n++;}
+    return m;
+  };
+  const sm=fix(g.stages,'stages'),dm=fix(g.days,'days'),hm=fix(g.shows,'shows');
+  if(Array.isArray(g.shows))for(const x of g.shows){
+    if(!_isObj(x))continue;
+    if(sm.has(x.stage)){x.stage=sm.get(x.stage);n++;}
+    if(dm.has(x.day)){x.day=dm.get(x.day);n++;}
+  }
+  if(sm.has(g.activeStage)){g.activeStage=sm.get(g.activeStage);n++;}
+  if(dm.has(g.activeDay)){g.activeDay=dm.get(g.activeDay);n++;}
+  if(_isObj(g.cue)&&sm.has(g.cue.stageId)){g.cue.stageId=sm.get(g.cue.stageId);n++;}
+  if(_isObj(g.svModes))for(const k of Object.keys(g.svModes))if(sm.has(k)){g.svModes[sm.get(k)]=g.svModes[k];delete g.svModes[k];n++;}
+  if(_isObj(g.fohNotes)){
+    const keys=new Set(Object.keys(g.fohNotes));
+    for(const k of [...keys]){
+      const list=g.fohNotes[k];
+      if(Array.isArray(list)){const taken=new Set(list.map(x=>x&&String(x.id)));for(const nt of list)if(_isObj(nt)&&!_safeId(nt.id)){nt.id=_remapId(nt.id,taken);n++;}}
+      if(_safeId(k)&&!hm.has(k))continue;
+      const nk=hm.get(k)||_remapId(k,keys);
+      g.fohNotes[nk]=list;delete g.fohNotes[k];n++;
+    }
+  }
+  return n?gone:null;
+}
 function loadG(){
   const proj=APP.projects.find(p=>p.id===APP.activeProjectId);
   if(proj&&proj.data&&proj.data.stages){G=proj.data;}else{G={stages:[],shows:[],fohNotes:{},activeStage:null,activeDay:null,days:[],timerMode:'live'};}
+  const badIds=_normIds(G);
+  if(badIds&&!window.PUBLIC_MODE&&proj){
+    // Persist the new ids. The old ones are intentional removals, or the
+    // merge would restore them as "missing here" next to the new ones.
+    console.warn('[loadG] replaced unsafe ids:',badIds);
+    _markIntentionalRemoval(badIds.shows,{days:badIds.days,stages:badIds.stages});
+    const pid=proj.id;setTimeout(()=>{if(APP.activeProjectId===pid)save();},0);
+  }
   if(!G.activeStage&&G.stages&&G.stages.length)G.activeStage=G.stages[0].id;
   // Migrate old date-based days to named days
   if(!G.days||!G.days.length){
@@ -5896,7 +5951,7 @@ function renderSched(){
     const notesHTML=notes.map(nt=>`<div class="foh-note-item" style="border-left-color:${safeColor(nt.color,'#ffe600')}">
       ${nt.time?`<span class="foh-note-time" style="color:${safeColor(nt.color,'#ffe600')}">${escH(nt.time)}</span>`:''}
       <span class="foh-note-txt">${escH(nt.text)}</span>
-      <button class="foh-note-del" onclick="delFohnNote('${s.id}','${nt.id}');event.stopPropagation()" aria-label="Delete note" title="Delete note">×</button>
+      <button class="foh-note-del" onclick="delFohnNote(${_jsArg(s.id)},${_jsArg(nt.id)});event.stopPropagation()" aria-label="Delete note" title="Delete note">×</button>
     </div>`).join('');
     const hasCrew=CREW_ROLES.some(r=>s.crew?.[r.id]?.name);
     const hasContent=s.note||hasCrew||notes.length;
@@ -5915,7 +5970,7 @@ function renderSched(){
     return`<div class="scard state-${state} ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''} ${s.cancelled?'cancelled':''}">
       ${(isNow||isSel)?`<div class="spr" style="width:${pct.toFixed(1)}%;"></div>`:''}
       <div class="scard-top">
-        <span class="scard-time">${s.start.slice(0,5)}<span class="scard-time-sep"> – </span>${s.end.slice(0,5)}</span>
+        <span class="scard-time">${escH(String(s.start||'').slice(0,5))}<span class="scard-time-sep"> – </span>${escH(String(s.end||'').slice(0,5))}</span>
         <span class="scard-name" title="${aName}">${aName}</span>
         <span class="scard-meta">${itemTypeBadge(s)}${s.booth?`<span class="sc-booth booth-${s.booth==='A'?'a':'b'}" style="background:${bBg};color:${bCol};">Booth ${escH(s.booth)}</span>`:''}${statusChip}${hiddenChip}</span>
         <span class="scard-act">
@@ -5931,8 +5986,8 @@ function renderSched(){
         ${arrivedDot}
         <button class="foh-add-note" onclick="openFohnModal(${_jsArg(s.id)});event.stopPropagation()" aria-label="Add FOH note to ${aName}">+ Note</button>
         ${G.timerMode==='manual'&&!s.cancelled&&!isSel?`<button class="foh-add-note st-cue-show" onclick="selMCueUI(${i});event.stopPropagation()" aria-label="Cue ${aName} on the timer">▶ Cue</button>`:''}
-        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${s.id}" style="color:#22c55e;">ends in ${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
-        ${_showIsFuture(s)&&G.timerMode==='live'&&!s.cancelled?`<span class="scard-cd" id="scd-${s.id}" style="color:${cdCol};">starts in ${s2cdH(Math.ceil(secUntil))}</span>`:''}
+        ${isNow&&G.timerMode==='live'?`<span class="scard-cd" id="scd-${escH(s.id)}" style="color:#22c55e;">ends in ${s2cdH(Math.max(0,_showRemainingSec(s)))}</span>`:''}
+        ${_showIsFuture(s)&&G.timerMode==='live'&&!s.cancelled?`<span class="scard-cd" id="scd-${escH(s.id)}" style="color:${cdCol};">starts in ${s2cdH(Math.ceil(secUntil))}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -9218,11 +9273,14 @@ function openProject(id){
 // that matches no rows returns 200 with an empty body, so "did nothing" and
 // "succeeded" look identical unless we ask for the representation back.
 // 10s ceiling and one refresh-and-retry on 401 (expired session).
+// select=id: callers only count rows. Without it PostgREST answers with
+// RETURNING *, which needs SELECT on every column - refused (42501) once
+// column grants hide companies.setup_token, so renames and deletes failed.
 async function _restWrite(table,method,filter,body){
   const go=async()=>{
     const ctrl=new AbortController();const tmo=setTimeout(()=>ctrl.abort(),10000);
     try{
-      return await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}`,{
+      return await fetch(`${SUPA_URL}/rest/v1/${table}?${filter}&select=id`,{
         method,signal:ctrl.signal,
         headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Prefer':'return=representation'},
         ...(body?{body:JSON.stringify(body)}:{}),
@@ -9532,12 +9590,12 @@ function renderVouchers(){
         </div>
       </div>
       <div style="display:flex;gap:4px;align-items:flex-start;">
-        <button class="admin-item-del" onclick="copyVoucherCode('${escH(v.id)}',this)" title="Copy code">
+        <button class="admin-item-del" onclick="copyVoucherCode(${_jsArg(v.id)},this)" title="Copy code">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
         </button>
-        ${v.active?`<button class="admin-item-del" onclick="archiveVoucher('${escH(v.id)}')" title="Archive">
+        ${v.active?`<button class="admin-item-del" onclick="archiveVoucher(${_jsArg(v.id)})" title="Archive">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-        </button>`:`<button class="admin-item-del" onclick="activateVoucher('${v.id}')" title="Re-activate" style="color:#15803D;">
+        </button>`:`<button class="admin-item-del" onclick="activateVoucher(${_jsArg(v.id)})" title="Re-activate" style="color:#15803D;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
         </button>`}
       </div>
@@ -11272,16 +11330,16 @@ function renderOTSection(){
     const col=live?(rem!==null&&rem<=0?'#ef4444':rem!==null?tColor(rem):'#22c55e'):'#6366f1';
     const status=live?(rem!==null&&rem<=0?'OVERTIME':'● LIVE'):'Scheduled';
     const statusCol=live?(rem!==null&&rem<=0?'#ef4444':'#22c55e'):'var(--sub)';
-    return`<div class="proj-card" onclick="openOTV('${t.id}')" style="cursor:pointer;">
+    return`<div class="proj-card" onclick="openOTV(${_jsArg(t.id)})" style="cursor:pointer;">
       <div class="proj-card-accent" style="background:${live?col:'linear-gradient(90deg,#6366f1,#8b5cf6)'}"></div>
       <div class="proj-card-body">
         <div class="proj-card-actions">
-          <button class="proj-card-btn" onclick="openOTModal('${t.id}');event.stopPropagation()" aria-label="Edit timer ${escH(t.artist)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Edit</button>
-          <button class="proj-card-btn del" onclick="delOT('${t.id}');event.stopPropagation()" title="Delete timer" aria-label="Delete timer ${escH(t.artist)}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+          <button class="proj-card-btn" onclick="openOTModal(${_jsArg(t.id)});event.stopPropagation()" aria-label="Edit timer ${escH(t.artist)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> Edit</button>
+          <button class="proj-card-btn del" onclick="delOT(${_jsArg(t.id)});event.stopPropagation()" title="Delete timer" aria-label="Delete timer ${escH(t.artist)}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
         </div>
         <div class="ot-card-status" style="color:${statusCol};">${status}</div>
         <div class="proj-card-name">${escH(t.artist)}</div>
-        <div style="font-family:var(--ffm);font-size:11px;color:var(--sub);margin-top:5px;">${t.start.slice(0,5)} – ${t.end.slice(0,5)} · ${t.date}</div>
+        <div style="font-family:var(--ffm);font-size:11px;color:var(--sub);margin-top:5px;">${escH(String(t.start||'').slice(0,5))} – ${escH(String(t.end||'').slice(0,5))} · ${escH(t.date)}</div>
         ${live&&rem!==null?`<div style="font-family:var(--ffm);font-size:20px;font-weight:700;color:${col};margin-top:8px;letter-spacing:-.04em;">${s2cdH(Math.max(0,Math.ceil(rem)))}</div>`:''}
         ${t.note?`<div style="font-size:11px;color:var(--sub);margin-top:6px;">📝 ${escH(t.note)}</div>`:''}
       </div>

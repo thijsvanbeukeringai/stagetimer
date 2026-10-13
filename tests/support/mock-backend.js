@@ -242,6 +242,11 @@ class MockBackend {
                                  // or an (async) function returning one per request, e.g. the page's
                                  // own fake clock (AppDriver.serverClockFollowsPage)
     this.realtimeJoinError = null;
+    // Column-level grants (setup_token hotfix PART 2): { companies: ['setup_token'] }.
+    // Any read of a hidden column - an explicit select, select=* or the implicit
+    // RETURNING * of return=representation without select= - fails with 42501,
+    // before anything is written (the real statement rolls back too).
+    this.hiddenColumns = {};
     this.realtime = new RealtimeStub(this);
     this.onesignal = [];
   }
@@ -485,6 +490,11 @@ class MockBackend {
       return null;
     };
     const wantRep = prefer.includes('return=representation');
+    const hidden = this.hiddenColumns[table] || [];
+    if (hidden.length && (method === 'GET' || method === 'HEAD' || wantRep)
+      && (select === '*' ? true : select.some((x) => hidden.includes(x.col)))) {
+      return pgError(403, '42501', `permission denied for table ${table}`);
+    }
 
     if (method === 'GET' || method === 'HEAD') {
       let rows = this.db[table].filter(matches);
