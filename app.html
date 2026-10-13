@@ -4752,7 +4752,7 @@ function openDrawer(id,booth=null){
       document.getElementById('f-type').value=s.type||'';
       document.getElementById('f-n').value=s.note||'';
       selBooth(s.booth||'');
-      _photoB64=s.photo||'';
+      _photoB64=s.photo||'';_photoRemoved=false;
       _drFlags.cancelled=!!s.cancelled;
       _drFlags.priority=!!s.priority;
       _drFlags.hidden=!!s.hidden;
@@ -4776,7 +4776,7 @@ function openDrawer(id,booth=null){
     }
   }else{
     document.getElementById('f-a').value='';document.getElementById('f-g').value='';document.getElementById('f-n').value='';document.getElementById('f-type').value='';
-    clearPhoto();selBooth(booth||'');
+    clearPhoto();_photoRemoved=false;selBooth(booth||'');
     const baseDate=(G.days||[]).find(d=>d.id===G.activeDay)?.date||festivalDayStr();
     const shows=getShows(G.activeStage,G.activeDay);
     let startDt;
@@ -4864,6 +4864,9 @@ function updDur(){
 }
 // ── Photo
 let _photoB64='';
+// Set when the operator clicks ✕ on the photo. saveShow must then store ''
+// instead of falling back to the photo the show had when the drawer opened.
+let _photoRemoved=false;
 // Compress an image data URL by drawing it onto a canvas with max dims, then re-exporting as JPEG.
 // Keeps photos small enough to fit alongside other show data in Supabase's JSON column.
 function _compressImage(dataUrl,maxDim=900,quality=.82){
@@ -4896,7 +4899,7 @@ async function previewPhoto(inp){
     const raw=await new Promise((resolve,reject)=>{
       const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>reject(new Error('read failed'));r.readAsDataURL(f);
     });
-    _photoB64=await _compressImage(raw);
+    _photoB64=await _compressImage(raw);_photoRemoved=false;
     preview.src=_photoB64;preview.style.opacity='1';
     clearBtn.style.display='';
   }catch(e){
@@ -4905,7 +4908,7 @@ async function previewPhoto(inp){
     _photoB64='';wrap.style.display='none';preview.style.opacity='1';inp.value='';
   }
 }
-function clearPhoto(){_photoB64='';document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
+function clearPhoto(){_photoB64='';_photoRemoved=true;document.getElementById('photo-preview-wrap').style.display='none';document.getElementById('f-photo-clear').style.display='none';document.getElementById('f-photo').value='';}
 function setTPPhoto(src){
   const wrap=document.getElementById('tp-photo-wrap'),img=document.getElementById('tp-photo'),inner=document.getElementById('tinner');
   if(src){img.src=src;wrap.classList.add('has-photo');inner.classList.add('has-photo');}
@@ -4915,7 +4918,9 @@ function saveShow(){
   const artist=document.getElementById('f-a').value.trim();if(!artist){document.getElementById('f-a').focus();return;}
   const existing=editId?G.shows.find(x=>x.id===editId):null;
   const crew=existing?.crew||{};
-  const photo=_photoB64||(existing?.photo||'');
+  // The old photo is only a fallback while a new upload is still compressing;
+  // after an explicit ✕ the removal must stick.
+  const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
   // Source of truth: split start (date+time) and end (date+time) inputs.
   // Each time input has step=1 so seconds are captured.
   const sd=_readStartDate(),ed=_readEndDate();
@@ -7757,8 +7762,8 @@ function renderCrewList(){
   list.innerHTML=users.map(u=>{
     const checked=memberIds.includes(u.id);
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;background:${checked?'var(--s3)':'transparent'};">
-      <input type="checkbox" ${checked?'checked':''} onchange="toggleCrewMember('${u.id}',this.checked)" style="cursor:pointer;width:16px;height:16px;">
-      <span style="font-size:13px;">${u.name||u.email}</span>
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleCrewMember(${_jsArg(u.id)},this.checked)" style="cursor:pointer;width:16px;height:16px;">
+      <span style="font-size:13px;">${escH(u.name||u.email||'')}</span>
     </label>`;
   }).join('');
 }
@@ -7766,7 +7771,8 @@ function toggleCrewMember(userId,add){
   if(!G.memberIds)G.memberIds=[];
   if(add){if(!G.memberIds.includes(userId))G.memberIds.push(userId);}
   else{G.memberIds=G.memberIds.filter(id=>id!==userId);}
-  saveProj();renderCrewList();
+  // Was saveProj() - which does not exist, so the toggle threw before saving.
+  save();renderCrewList();
 }
 
 // ══ ONESIGNAL
