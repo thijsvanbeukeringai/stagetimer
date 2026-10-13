@@ -124,6 +124,19 @@ Legenda testbestanden:
 | User toevoegen / rol / verwijderen | `addUser` 7246, `changeUserRole` 7305, `delUser` 7318 | regression/logic: *changeUserRole* (RPC, terugval alleen bij ontbrekende RPC, weigering) (rest: gat); smoke dialogs: *platform admin: …change role, remove user*; uitnodigen: regression dialogs-forms *invite* |
 | Vouchers (Stripe promotiecodes via edge `manage-voucher`) | `loadVouchers` 6768, `createVoucher` 6871, `archiveVoucher` 6897, `activateVoucher` 6906 | admin (lijst via gemockte functie) |
 
+## 13. Reviewbevindingen 13 oktober 2026 (`tests/regression/review-fixes.spec.js`)
+
+| Bevinding | Code | Test |
+|---|---|---|
+| Verouderd object na een dialoog (realtime-update terwijl de dialoog open is) | `saveShow`, `setDayDate`, `delDay`, `selMCueUI`, `renameProject`, `editCompany`, `setStageOverride`, `changeUserRole`, `saveWorkspaceName`: na elke `await` opnieuw opzoeken op id | *saveShow: "Save anyway" after a remote update…*, *setDayDate: "Change date" after a remote update…* |
+| Refetch tijdens een lopende refetch ging verloren | `_refetchProject` (`refetchAgain`) | *_refetchProject: a refetch requested while one is in flight…* |
+| Laatste stage van een leeg project verwijderen werd door de wipe-guard geweigerd | `delStage`, dedup in `_applyLineupImport` (`_markIntentionalRemoval`) | *delStage: deleting the last stage of an empty project…* |
+| PT402: nieuwe stage weg, shows bleven als wezen achter | `_dropRefusedStages` | *plan limit (PT402): a refused new stage takes its unsaved shows…* |
+| Offline opstarten: herinloggen alleen op `online` | `_reauthUntilOnline` (timer 15/30/60 s, `visibilitychange`, `online`) | *offline boot: re-auth retries on a timer…* |
+| 429/408 van de auth-server logde uit | `_authUnreachable` in `_authProbe`/`_authRefresh` | *429 / 408 from the auth server…*, *408 on the refresh after a rejected probe…* |
+| XSS via ids uit de blob (`id="scd-…"`, `delFohnNote('…')`, losse timers, vouchers) | `renderSched`, `renderOTSection`, `renderVouchers`; `_normIds` in `loadG` | *operator list: no execution…*, *share link (FOH): no execution*, *voucher ids in inline handlers…* |
+| `_restWrite` vroeg impliciet `RETURNING *` (42501 met kolomrechten op companies) | `_restWrite` (`select=id`); mock: `backend.hiddenColumns` | *workspace rename asks for select=id…*, *delete workspace (direct-write fallback)…* |
+
 ## Bekende gaten in het vangnet
 - `confirm()`/`prompt()`/`alert()` zijn vervangen door de stDialog-component (`form.st-dlg[role=dialog]`); tests klikken op de knoppen in de dialoog. Een native dialoog laat smoke *dialogs* en regression *dialogs-forms* falen. Nog zonder eigen test: company toevoegen/verwijderen, vouchers archiveren/activeren, project aanmaken-fouten.
 - Echte Safari/iOS, pushmeldingen, e-mail, Stripe en de productiedatabase worden niet getest (BOUWPLAN "Expliciet niet getest").

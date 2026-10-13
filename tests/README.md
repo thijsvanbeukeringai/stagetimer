@@ -71,6 +71,7 @@ backend.setRpc('get_shared_project', (body) => ({ json: null }))
 backend.auth.loginError = { status: 400, error: 'invalid_grant', error_description: 'x' }
 backend.auth.refreshFails = true; backend.auth.invalidTokens.add(token); backend.auth.recover = { status: 500, json: {...} }
 backend.schema.companies = backend.schema.companies.filter(c => c !== 'setup_pending')  // simulate pre-migration DB -> 42703
+backend.hiddenColumns = { companies: ['setup_token'] }  // column grants: select=*, implicit RETURNING * or the column -> 42501
 backend.serverNow = date                     // Date header for the Wall's server-clock sync (or a function; st.serverClockFollowsPage() answers with the page's fake clock)
 backend.updateProject(id, (data) => { ... }, { broadcast: true })  // edit as "another device" + push realtime UPDATE
 backend.realtime.push({ table: 'projects', type: 'UPDATE', record, old_record })
