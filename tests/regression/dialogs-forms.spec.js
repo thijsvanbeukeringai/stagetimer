@@ -338,3 +338,85 @@ test.describe('day management', () => {
     await expect(name).toHaveValue('Friday');
   });
 });
+
+test.describe('account and workspace', () => {
+  test('invite: one form, inline checks, mocked invite-member gets the right payload', async ({ page, st, backend }) => {
+    await openOperator({ page, st }, { open: false });
+    await page.getByRole('button', { name: 'Subscription' }).first().click();
+    await page.getByRole('button', { name: /Invite member/ }).click();
+    const d = dlg(page);
+    await expect(d.locator('.st-dlg-title')).toHaveText('Invite a member to Zomerfeest Events BV');
+    await expect(d.getByLabel('Full name')).toBeFocused();
+    const send = d.getByRole('button', { name: /Send invite/ });
+    await expect(send).toContainText('€');
+    await send.click();
+    await expect(d.locator('[data-field="name"] .st-dlg-err')).toHaveText('Enter the full name.');
+    await expect(d.locator('[data-field="email"] .st-dlg-err')).toHaveText('Enter an email address.');
+    await d.getByLabel('Full name').fill("Rosa O'Hara");
+    await d.getByLabel('Email address').fill('rosa@');
+    await send.click();
+    await expect(d.locator('[data-field="email"] .st-dlg-err')).toContainText('Enter a valid email address');
+    await d.getByLabel('Email address').fill('operator@zomerfeest.test');
+    await send.click();
+    await expect(d.locator('[data-field="email"] .st-dlg-err')).toHaveText('A user with this email address already exists.');
+    expect(backend.functionCalls('invite-member').length).toBe(0);
+    // Server refuses: the message stays in the dialog, nothing is lost.
+    backend.setFunction('invite-member', () => ({ status: 400, json: { error: 'Seat limit reached' } }));
+    await d.getByLabel('Email address').fill('rosa@zomerfeest.test');
+    await send.click();
+    await expect(d.locator('.st-dlg-formerr')).toHaveText('Could not send the invite: Seat limit reached');
+    await expect(d.getByLabel('Full name')).toHaveValue("Rosa O'Hara");
+    // Accepted.
+    backend.setFunction('invite-member', (body) => ({ message: `Invite sent to ${body.email}.` }));
+    await send.click();
+    await expect(d.locator('.st-dlg-title')).toHaveText('Invite sent');
+    await expect(d.locator('.st-dlg-msg')).toHaveText('Invite sent to rosa@zomerfeest.test.');
+    const calls = backend.functionCalls('invite-member');
+    expect(calls.length).toBe(2);
+    expect(calls[1].body).toEqual({ workspaceId: 'co-fest', name: "Rosa O'Hara", email: 'rosa@zomerfeest.test', role: 'operator' });
+    expect(calls[1].headers.authorization).toMatch(/^Bearer /);
+    await d.getByRole('button', { name: 'OK' }).click();
+    await expect(d).toHaveCount(0);
+  });
+  test('password rule is shown and checked next to the field', async ({ page, st }) => {
+    await openOperator({ page, st }, { open: false });
+    await page.getByRole('button', { name: 'Account settings' }).first().click();
+    await expect(page.locator('#ws-profile-pw-rule')).toHaveText('Use at least 8 characters.');
+    await page.getByLabel('New password').fill('short');
+    await page.getByLabel('Repeat password').fill('short');
+    await page.getByRole('button', { name: 'Update password' }).click();
+    await expect(page.locator('#ws-profile-pw-err')).toHaveText('Password must be at least 8 characters.');
+    await expect(page.getByLabel('New password')).toBeFocused();
+    await page.getByLabel('New password').fill('long-enough-1');
+    await page.getByRole('button', { name: 'Update password' }).click();
+    await expect(page.locator('#ws-profile-pw2-err')).toHaveText('Passwords do not match.');
+    await page.getByLabel('Repeat password').fill('long-enough-1');
+    await page.getByRole('button', { name: 'Update password' }).click();
+    await expect(page.locator('#ws-profile-pw-status')).toHaveText('Password updated.');
+  });
+  test('rename project is a form dialog with saving and error states', async ({ page, st, backend }) => {
+    await openOperator({ page, st }, { open: false });
+    await page.locator('#proj-grid tr', { hasText: 'Zomerfeest 2026' }).getByTitle('Rename').click();
+    const d = dlg(page);
+    await expect(d.getByLabel('Project name')).toHaveValue('Zomerfeest 2026');
+    backend.failNext({ method: 'PATCH', path: '/rest/v1/projects', status: 500 });
+    await d.getByLabel('Project name').fill('Zomerfeest 2027');
+    await d.getByRole('button', { name: 'Save name' }).click();
+    await expect(d.locator('.st-dlg-formerr')).toContainText('Renaming the project failed');
+    await d.getByRole('button', { name: 'Save name' }).click();
+    await expect(d).toHaveCount(0);
+    await expect(page.locator('#proj-grid')).toContainText('Zomerfeest 2027');
+    expect(backend.project('proj-fest').name).toBe('Zomerfeest 2027');
+  });
+  test.describe('as operator', () => {
+    test.use({ stAuth: 'operator' });
+    test('member management is only offered to workspace admins', async ({ page, st }) => {
+      await openOperator({ page, st }, { open: false });
+      await page.getByRole('button', { name: 'Subscription' }).first().click();
+      await expect(page.locator('#ws-subscription-body')).toContainText('Only workspace admins can invite or remove members');
+      await expect(page.getByRole('button', { name: /Invite member/ })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Workspace settings' }).first().click();
+      await expect(page.locator('#ws-settings-name')).toBeDisabled();
+    });
+  });
+});

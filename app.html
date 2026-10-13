@@ -2322,6 +2322,14 @@ button.booth-opt{font-family:inherit;min-width:32px;}
 .st-thelp{font-size:10.5px;color:var(--sub);line-height:1.4;margin-top:6px;padding:0 2px;}
 .st-cued{font-size:10px;font-weight:800;color:#86efac;letter-spacing:.04em;}
 #cue-panel :focus-visible,#tbar :focus-visible,.scard :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
+/* Back office forms (light theme): field errors and save status */
+.st-ws-err{font-size:12px;font-weight:600;color:#B91C1C;margin-top:6px;line-height:1.4;}
+.st-ws-status{font-size:12.5px;color:#52525B;}
+.st-ws-status.st-ok{color:#15803D;font-weight:600;}
+.st-ws-status.st-err{color:#B91C1C;font-weight:600;}
+.ws-input[aria-invalid="true"],.admin-fi[aria-invalid="true"]{border-color:#B91C1C;}
+.ws-sb-section-label.st-sb-gap{margin-top:14px;}
+#dash :focus-visible,#admin :focus-visible{outline:2px solid #1E40AF;outline-offset:2px;}
 /* ═══ end DIALOGS ═══ */
 </style>
 <script>
@@ -4032,7 +4040,7 @@ function renderTbar(){
         </button>
         <button class="dd-item super-admin-only" style="display:none;" onclick="closeAllDD();openAdmin()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          Admin
+          Platform admin
         </button>
         <div class="dd-sep"></div>
         <button class="dd-item danger" onclick="closeAllDD();doLogout()">
@@ -4295,15 +4303,17 @@ function renderTbar(){
       </button>
       <button class="ws-sb-link" data-section="settings" onclick="showWsSection('settings')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
+        Workspace settings
       </button>
+      <div class="ws-sb-section-label st-sb-gap">Your account</div>
       <button class="ws-sb-link" data-section="profile" onclick="showWsSection('profile')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Profile
+        Account settings
       </button>
+      <div class="ws-sb-section-label st-sb-gap super-admin-only" style="display:none;">Platform</div>
       <button class="ws-sb-link super-admin-only" data-section="admin" id="dash-admin-btn" onclick="openAdmin()" style="display:none;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Admin
+        Platform admin
       </button>
     </nav>
     <div class="ws-sb-footer">
@@ -4340,15 +4350,15 @@ function renderTbar(){
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Subscription</span>
     </button>
-    <button class="ws-tab" data-section="settings" onclick="showWsSection('settings')" aria-label="Settings">
+    <button class="ws-tab" data-section="settings" onclick="showWsSection('settings')" aria-label="Workspace settings">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span>Settings</span>
+      <span>Workspace</span>
     </button>
-    <button class="ws-tab" data-section="profile" onclick="showWsSection('profile')" aria-label="Profile">
+    <button class="ws-tab" data-section="profile" onclick="showWsSection('profile')" aria-label="Account settings">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Profile</span>
+      <span>Account</span>
     </button>
-    <button class="ws-tab super-admin-only" data-section="admin" id="dash-admin-tab" onclick="openAdmin()" aria-label="Admin" style="display:none;">
+    <button class="ws-tab super-admin-only" data-section="admin" id="dash-admin-tab" onclick="openAdmin()" aria-label="Platform admin" style="display:none;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       <span>Admin</span>
     </button>
@@ -4403,7 +4413,7 @@ function renderTbar(){
       <div class="ws-section-hdr">
         <div>
           <h1>Subscription</h1>
-          <div class="ws-section-hdr-sub">Plan, billing and seats</div>
+          <div class="ws-section-hdr-sub">Workspace plan, billing and members</div>
         </div>
       </div>
       <div id="ws-subscription-body"></div>
@@ -4412,8 +4422,8 @@ function renderTbar(){
     <section class="ws-section" id="ws-settings">
       <div class="ws-section-hdr">
         <div>
-          <h1>Settings</h1>
-          <div class="ws-section-hdr-sub">Workspace name, logo, and branding</div>
+          <h1>Workspace settings</h1>
+          <div class="ws-section-hdr-sub">Settings for everyone in this workspace</div>
         </div>
       </div>
       <div id="ws-settings-body"></div>
@@ -4422,8 +4432,8 @@ function renderTbar(){
     <section class="ws-section" id="ws-profile">
       <div class="ws-section-hdr">
         <div>
-          <h1>Profile</h1>
-          <div class="ws-section-hdr-sub">Your account</div>
+          <h1>Account settings</h1>
+          <div class="ws-section-hdr-sub">Only you: your name, password and session</div>
         </div>
       </div>
       <div id="ws-profile-body"></div>
@@ -4440,14 +4450,14 @@ function renderTbar(){
       <div style="width:30px;height:30px;border-radius:9px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </div>
-      <span style="font-size:14px;font-weight:800;letter-spacing:-.3px;">Admin</span>
+      <h1 id="admin-title" style="font-size:14px;font-weight:800;letter-spacing:-.3px;">Platform admin</h1>
     </div>
     <div style="flex:1;"></div>
     <button class="hbtn" onclick="doLogout()" style="display:flex;align-items:center;gap:5px;">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Log out
     </button>
-    <button class="hbtn" onclick="closeAdmin()" style="display:flex;align-items:center;gap:5px;">
+    <button class="hbtn" onclick="closeAdmin()" style="display:flex;align-items:center;gap:5px;" aria-label="Close platform admin">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       Close
     </button>
@@ -4519,7 +4529,7 @@ function renderTbar(){
         </div>
         <div class="admin-list" id="admin-co-list"></div>
         <div class="admin-form">
-          <input class="admin-fi" id="adm-co-name" type="text" placeholder="Workspace name…" onkeydown="if(event.key==='Enter')addCompany()">
+          <input class="admin-fi" id="adm-co-name" type="text" placeholder="Workspace name…" aria-label="New workspace name" onkeydown="if(event.key==='Enter')addCompany()">
           <button class="admin-add-btn" onclick="addCompany()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add workspace
@@ -4537,19 +4547,20 @@ function renderTbar(){
         </div>
         <div class="admin-list" id="admin-usr-list"></div>
         <div class="admin-form">
-          <div style="font-size:11px;font-weight:600;color:#52525B;margin-bottom:2px;letter-spacing:.02em;">Invite a new member · billed €9.95/mo or €119.40/yr per seat</div>
+          <div style="font-size:11px;font-weight:600;color:#52525B;margin-bottom:2px;letter-spacing:.02em;">Invite a new member · billed €9,95/month or €119,40/year per seat</div>
           <div class="admin-form-row">
-            <input class="admin-fi" id="adm-usr-name" type="text" placeholder="Full name…" style="flex:1;">
-            <input class="admin-fi" id="adm-usr-email" type="email" placeholder="Email address…" style="flex:1;" onkeydown="if(event.key==='Enter')addUser()">
+            <input class="admin-fi" id="adm-usr-name" type="text" placeholder="Full name…" aria-label="Full name" style="flex:1;">
+            <input class="admin-fi" id="adm-usr-email" type="email" placeholder="Email address…" aria-label="Email address" style="flex:1;" onkeydown="if(event.key==='Enter')addUser()">
           </div>
           <div class="admin-form-row">
-            <select class="admin-fi admin-fi-sel" id="adm-usr-role" style="flex:1;">
+            <select class="admin-fi admin-fi-sel" id="adm-usr-role" aria-label="Role" style="flex:1;">
               <option value="operator">Operator</option>
               <option value="company_admin">Co. Admin</option>
             </select>
-            <select class="admin-fi admin-fi-sel" id="adm-usr-co" style="flex:1;"></select>
+            <select class="admin-fi admin-fi-sel" id="adm-usr-co" aria-label="Workspace" style="flex:1;"></select>
           </div>
-          <button class="admin-add-btn" onclick="addUser()">
+          <div class="st-ws-err" id="adm-usr-err" role="alert" hidden></div>
+          <button class="admin-add-btn" id="adm-usr-send" onclick="addUser()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 12h16"/><path d="M14 6l6 6-6 6"/></svg>
             Send invite
           </button>
@@ -7840,6 +7851,15 @@ const _PLAN_CATALOG={
   festival:  {name:'Stagetimer Festival',  month:39.95,year:399.50},
 };
 const _LEGACY_PLAN={name:'Stagetimer Pro',month:12.95,year:129.50};
+// Extra member seat (unchanged commercial terms), per billing cycle.
+const SEAT_PRICE={month:9.95,year:119.40};
+// One amount notation everywhere: euro, nl-NL digits (€1.234,50).
+function _fmtEur(n){return'€'+Number(n||0).toLocaleString('nl-NL',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function _seatPriceLabel(cycle,long){
+  const u=long?{month:'month',year:'year'}:{month:'mo',year:'yr'};
+  return cycle==='year'?`${_fmtEur(SEAT_PRICE.year)}/${u.year}`:cycle==='month'?`${_fmtEur(SEAT_PRICE.month)}/${u.month}`
+    :`${_fmtEur(SEAT_PRICE.month)}/${u.month} or ${_fmtEur(SEAT_PRICE.year)}/${u.year}`;
+}
 const _PASS_NAMES={'pass-single':'Single Event Pass','pass-weekend':'Weekend Festival Pass','pass-monthly':'Monthly Festival Pass'};
 function _billingCycle(co){
   if(!co)return null;
@@ -7889,7 +7909,7 @@ function renderSubscriptionPage(){
   const pi=_planInfo(co);
   const cycle=pi.cycle;
   const seats=co.extraSeats||0;
-  const seatPrice=cycle==='year'?119.40:9.95;
+  const seatPrice=cycle==='year'?SEAT_PRICE.year:SEAT_PRICE.month;
   const basePrice=cycle==='year'?pi.price.year:pi.price.month;
   const cycleLabel=cycle==='year'?'year':'month';
   const cycleShort=cycle==='year'?'yr':'mo';
@@ -7920,23 +7940,23 @@ function renderSubscriptionPage(){
         ${passOnly
           ?`<div class="ws-card-value">One-time pass</div>
         <div class="ws-card-meta">No recurring charge</div>`
-          :`<div class="ws-card-value">€${totalMonthly.toFixed(2).replace('.',',')}</div>
-        <div class="ws-card-meta">Total annualized: €${totalAnnualized.toFixed(2).replace('.',',')}</div>`}
+          :`<div class="ws-card-value">${_fmtEur(totalMonthly)}</div>
+        <div class="ws-card-meta">Total annualized: ${_fmtEur(totalAnnualized)}</div>`}
       </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Plan breakdown</div>
       <div class="ws-divrow">
         <div class="ws-divrow-label">${escH(pi.name)} · base seat</div>
-        <div class="ws-divrow-value">€${basePrice.toFixed(2).replace('.',',')} / ${cycleLabel}</div>
+        <div class="ws-divrow-value">${_fmtEur(basePrice)} / ${cycleLabel}</div>
       </div>
       <div class="ws-divrow">
-        <div class="ws-divrow-label">Extra members · ${seats} × €${seatPrice.toFixed(2).replace('.',',')}</div>
-        <div class="ws-divrow-value">€${(seats*seatPrice).toFixed(2).replace('.',',')} / ${cycleLabel}</div>
+        <div class="ws-divrow-label">Extra members · ${seats} × ${_fmtEur(seatPrice)}</div>
+        <div class="ws-divrow-value">${_fmtEur((seats*seatPrice))} / ${cycleLabel}</div>
       </div>
       <div class="ws-divrow" style="border-top:1px solid rgba(28,25,23,.14);">
         <div class="ws-divrow-label" style="font-weight:600;color:#0A0A0B;">Total</div>
-        <div class="ws-divrow-value" style="font-size:14px;">€${(basePrice+seats*seatPrice).toFixed(2).replace('.',',')} / ${cycleLabel}</div>
+        <div class="ws-divrow-value" style="font-size:14px;">${_fmtEur((basePrice+seats*seatPrice))} / ${cycleLabel}</div>
       </div>
       ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">${status==='trialing'?'Trial ends':status==='canceled'?'Access until':'Next renewal'}</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
       ${co.lastPaidAt?`<div class="ws-divrow"><div class="ws-divrow-label">Last payment</div><div class="ws-divrow-value">${_fmtDate(co.lastPaidAt)}</div></div>`:''}
@@ -7944,15 +7964,15 @@ function renderSubscriptionPage(){
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Members</div>
       <div id="ws-seats-list" style="margin-bottom:14px;"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">
+      ${isCompanyAdmin()?`<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">
         <button class="ws-btn-primary" onclick="openInviteMemberPrompt()">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Invite member · €${seatPrice.toFixed(2).replace('.',',')}/${cycleShort}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Invite member · ${_fmtEur(seatPrice)}/${cycleShort}
         </button>
         <button class="ws-btn-secondary" onclick="manageSubscription(${_jsArg(co.id)})">
           Manage billing in Stripe
         </button>
-      </div>
+      </div>`:`<div class="ws-field-help" style="padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">Only workspace admins can invite or remove members and manage billing.</div>`}
     </div>
   `;
   const seatsList=document.getElementById('ws-seats-list');
@@ -7972,7 +7992,7 @@ function renderSubscriptionPage(){
           <div class="ws-seat-name">${escH(u.name||u.email)}${pending}${isMe?' <span style="font-size:10px;color:#78716C;">(you)</span>':''}</div>
           <div class="ws-seat-email">${escH(u.email||'')} · ${roleLabel}</div>
         </div>
-        ${isMe?'':`<button class="ws-icon-btn danger" onclick="removeMember(${_jsArg(u.id)})" title="Remove member">
+        ${isMe||!isCompanyAdmin()?'':`<button class="ws-icon-btn danger" onclick="removeMember(${_jsArg(u.id)})" title="Remove member" aria-label="Remove ${escH(u.name||u.email)}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
         </button>`}
       </div>`;
@@ -7990,13 +8010,15 @@ function renderSettingsPage(){
     <div class="ws-card">
       <div class="ws-card-title">Workspace</div>
       <div class="ws-field">
-        <label class="ws-field-label">Name</label>
-        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}">
-        <div class="ws-field-help">The name your team and customers see across Stagetimer.</div>
+        <label class="ws-field-label" for="ws-settings-name">Name</label>
+        <input class="ws-input" id="ws-settings-name" type="text" value="${escH(co.name||'')}" aria-describedby="ws-settings-name-help ws-settings-name-err"${isCompanyAdmin()?'':' disabled style="background:#F5F5F4;color:#78716C;"'} onkeydown="if(event.key==='Enter')saveWorkspaceName(${_jsArg(co.id)})">
+        <div class="st-ws-err" id="ws-settings-name-err" hidden></div>
+        <div class="ws-field-help" id="ws-settings-name-help">${isCompanyAdmin()?'The name your team and customers see across Stagetimer.':'Only workspace admins can change the workspace name.'}</div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="ws-btn-primary" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
-      </div>
+      ${isCompanyAdmin()?`<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="ws-btn-primary" id="ws-settings-save" onclick="saveWorkspaceName(${_jsArg(co.id)})">Save changes</button>
+        <span class="st-ws-status" id="ws-settings-status" role="status"></span>
+      </div>`:''}
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Workspace ID</div>
@@ -8006,20 +8028,40 @@ function renderSettingsPage(){
   `;
 }
 
+// Inline field error / status in the light back office (no alert()).
+function _wsFieldErr(inputId,msg){
+  const i=document.getElementById(inputId),e=document.getElementById(inputId+'-err');
+  if(e){e.textContent=msg||'';e.hidden=!msg;}
+  if(i){if(msg)i.setAttribute('aria-invalid','true');else i.removeAttribute('aria-invalid');}
+}
+function _wsStatus(id,state,msg){
+  const el=document.getElementById(id);if(!el)return;
+  el.className='st-ws-status'+(state?' st-'+state:'');el.textContent=msg||'';
+}
+// Button busy state: disabled + "Saving…", restored afterwards.
+function _btnBusy(id,on,label){
+  const b=document.getElementById(id);if(!b)return;
+  if(on){if(b.dataset.label==null)b.dataset.label=b.textContent;b.textContent=label||'Saving…';b.disabled=true;b.setAttribute('aria-busy','true');}
+  else{if(b.dataset.label!=null){b.textContent=b.dataset.label;delete b.dataset.label;}b.disabled=false;b.removeAttribute('aria-busy');}
+}
 async function saveWorkspaceName(id){
   const input=document.getElementById('ws-settings-name');
   const newName=(input?.value||'').trim();
-  if(!newName)return alert('Name cannot be empty.');
+  _wsFieldErr('ws-settings-name','');_wsStatus('ws-settings-status','','');
+  if(!newName){_wsFieldErr('ws-settings-name','Enter a workspace name.');input?.focus();return;}
   const co=APP.companies.find(c=>c.id===id);
-  if(!co||newName===co.name)return;
+  if(!co)return;
+  if(newName===co.name){_wsStatus('ws-settings-status','ok','No changes to save.');return;}
+  _btnBusy('ws-settings-save',true);_wsStatus('ws-settings-status','busy','Saving…');
   // Direct REST (bounded, refreshes an expired session) instead of
   // supa.from(), which can hang on a stale auth refresh.
   try{
     const n=await _restWrite('companies','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:newName});
     if(!n){const e=new Error('no rows');e.status=403;throw e;}
-  }catch(e){return alert(_friendlyError(e,'Saving the workspace name'));}
+  }catch(e){_btnBusy('ws-settings-save',false);_wsStatus('ws-settings-status','err',_friendlyError(e,'Saving the workspace name'));return;}
   co.name=newName;saveAPP();
   _updateWsSidebar();renderSettingsPage();
+  _wsStatus('ws-settings-status','ok','Saved.');
 }
 window.saveWorkspaceName=saveWorkspaceName;
 
@@ -8032,27 +8074,37 @@ function renderProfilePage(){
     <div class="ws-card">
       <div class="ws-card-title">Your account</div>
       <div class="ws-field">
-        <label class="ws-field-label">Display name</label>
-        <input class="ws-input" id="ws-profile-name" type="text" value="${escH(CURRENT_USER.name||'')}">
+        <label class="ws-field-label" for="ws-profile-name">Display name</label>
+        <input class="ws-input" id="ws-profile-name" type="text" value="${escH(CURRENT_USER.name||'')}" aria-describedby="ws-profile-name-err" onkeydown="if(event.key==='Enter')saveProfileName()">
+        <div class="st-ws-err" id="ws-profile-name-err" hidden></div>
       </div>
       <div class="ws-field">
-        <label class="ws-field-label">Email</label>
-        <input class="ws-input" type="email" value="${escH(CURRENT_USER.email||'')}" disabled style="background:#F5F5F4;color:#78716C;">
-        <div class="ws-field-help">Email cannot be changed here. Contact support to migrate to a new address.</div>
+        <label class="ws-field-label" for="ws-profile-email">Email</label>
+        <input class="ws-input" id="ws-profile-email" type="email" value="${escH(CURRENT_USER.email||'')}" disabled style="background:#F5F5F4;color:#78716C;" aria-describedby="ws-profile-email-help">
+        <div class="ws-field-help" id="ws-profile-email-help">Email cannot be changed here. Contact support to migrate to a new address.</div>
       </div>
-      <button class="ws-btn-primary" onclick="saveProfileName()">Save changes</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="ws-btn-primary" id="ws-profile-save" onclick="saveProfileName()">Save changes</button>
+        <span class="st-ws-status" id="ws-profile-status" role="status"></span>
+      </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Change password</div>
       <div class="ws-field">
-        <label class="ws-field-label">New password</label>
-        <input class="ws-input" id="ws-profile-pw" type="password" placeholder="At least 8 characters" autocomplete="new-password">
+        <label class="ws-field-label" for="ws-profile-pw">New password</label>
+        <input class="ws-input" id="ws-profile-pw" type="password" placeholder="${_pwRule()}" autocomplete="new-password" aria-describedby="ws-profile-pw-rule ws-profile-pw-err">
+        <div class="ws-field-help" id="ws-profile-pw-rule">${_pwRule()}</div>
+        <div class="st-ws-err" id="ws-profile-pw-err" hidden></div>
       </div>
       <div class="ws-field">
-        <label class="ws-field-label">Repeat password</label>
-        <input class="ws-input" id="ws-profile-pw2" type="password" autocomplete="new-password">
+        <label class="ws-field-label" for="ws-profile-pw2">Repeat password</label>
+        <input class="ws-input" id="ws-profile-pw2" type="password" autocomplete="new-password" aria-describedby="ws-profile-pw2-err" onkeydown="if(event.key==='Enter')saveProfilePassword()">
+        <div class="st-ws-err" id="ws-profile-pw2-err" hidden></div>
       </div>
-      <button class="ws-btn-primary" onclick="saveProfilePassword()">Update password</button>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="ws-btn-primary" id="ws-profile-pw-save" onclick="saveProfilePassword()">Update password</button>
+        <span class="st-ws-status" id="ws-profile-pw-status" role="status"></span>
+      </div>
     </div>
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Session</div>
@@ -8073,56 +8125,118 @@ function renderProfilePage(){
 async function saveProfileName(){
   const input=document.getElementById('ws-profile-name');
   const newName=(input?.value||'').trim();
-  if(!newName)return alert('Name cannot be empty.');
-  if(newName===CURRENT_USER.name)return;
+  _wsFieldErr('ws-profile-name','');_wsStatus('ws-profile-status','','');
+  if(!newName){_wsFieldErr('ws-profile-name','Enter your name.');input?.focus();return;}
+  if(newName===CURRENT_USER.name){_wsStatus('ws-profile-status','ok','No changes to save.');return;}
+  _btnBusy('ws-profile-save',true);_wsStatus('ws-profile-status','busy','Saving…');
   try{
     const n=await _restWrite('app_users','PATCH',`id=eq.${encodeURIComponent(CURRENT_USER.id)}`,{name:newName});
     if(!n){const e=new Error('no rows');e.status=403;throw e;}
-  }catch(e){return alert(_friendlyError(e,'Saving your name'));}
+  }catch(e){_btnBusy('ws-profile-save',false);_wsStatus('ws-profile-status','err',_friendlyError(e,'Saving your name'));return;}
+  _btnBusy('ws-profile-save',false);
   CURRENT_USER.name=newName;
   localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));
   _updateWsSidebar();
-  alert('Profile updated.');
+  _wsStatus('ws-profile-status','ok','Saved.');
 }
 window.saveProfileName=saveProfileName;
 
+// The one password rule (PW_MIN), worded the same everywhere it is shown.
+function _pwRule(){return`Use at least ${PW_MIN} characters.`;}
+function _pwProblem(pw,pw2){
+  if(pw.length<PW_MIN)return['pw',`Password must be at least ${PW_MIN} characters.`];
+  if(pw!==pw2)return['pw2','Passwords do not match.'];
+  return null;
+}
 async function saveProfilePassword(){
   const pw=document.getElementById('ws-profile-pw')?.value||'';
   const pw2=document.getElementById('ws-profile-pw2')?.value||'';
-  if(pw.length<PW_MIN)return alert(`Password must be at least ${PW_MIN} characters.`);
-  if(pw!==pw2)return alert('Passwords do not match.');
+  _wsFieldErr('ws-profile-pw','');_wsFieldErr('ws-profile-pw2','');_wsStatus('ws-profile-pw-status','','');
+  const bad=_pwProblem(pw,pw2);
+  if(bad){const id=bad[0]==='pw'?'ws-profile-pw':'ws-profile-pw2';_wsFieldErr(id,bad[1]);document.getElementById(id)?.focus();return;}
+  _btnBusy('ws-profile-pw-save',true,'Updating…');_wsStatus('ws-profile-pw-status','busy','Updating…');
   try{await _authUpdateUser({password:pw});}
-  catch(e){return alert(_authErrorText(e,'Updating the password'));}
+  catch(e){_btnBusy('ws-profile-pw-save',false);_wsStatus('ws-profile-pw-status','err',_authErrorText(e,'Updating the password'));return;}
+  _btnBusy('ws-profile-pw-save',false);
   document.getElementById('ws-profile-pw').value='';
   document.getElementById('ws-profile-pw2').value='';
-  alert('Password updated.');
+  _wsStatus('ws-profile-pw-status','ok','Password updated.');
 }
 window.saveProfilePassword=saveProfilePassword;
 
-function openInviteMemberPrompt(){
-  // Bring user back to the existing Admin form (reuses addUser → invite-member flow)
-  // For workspace context where we don't open admin, use a quick prompt.
-  const name=prompt('Full name of the new member:');
-  if(!name||!name.trim())return;
-  const email=prompt('Email address:');
-  if(!email||!email.trim())return;
-  // Stash into the existing admin form inputs and call addUser
-  const n=document.getElementById('adm-usr-name');
-  const e=document.getElementById('adm-usr-email');
-  const r=document.getElementById('adm-usr-role');
-  const c=document.getElementById('adm-usr-co');
-  if(n)n.value=name.trim();
-  if(e)e.value=email.trim();
-  if(r)r.value='operator';
-  if(c&&CURRENT_USER?.companyId)c.value=CURRENT_USER.companyId;
-  addUser();
+// Invite a member to the own workspace (Subscription page). One form with
+// inline validation; the price is on the submit button; errors from the
+// invite-member edge function stay in the dialog. Same request as the
+// Platform admin form (_inviteMember).
+async function openInviteMemberPrompt(){
+  const ws=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
+  if(!isCompanyAdmin()){await stDialog.alert('Only workspace admins can invite members.',{title:'No permission'});return;}
+  if(!ws){await stDialog.alert('You are not linked to a workspace. Contact support.',{title:'No workspace'});return;}
+  if(ws.subscriptionStatus!=='active'&&ws.subscriptionStatus!=='trialing'){
+    await stDialog.alert(`"${ws.name}" doesn't have an active subscription yet, so members cannot be invited.`,{title:'Cannot invite members'});return;
+  }
+  const price=_seatPriceLabel(_billingCycle(ws),true);
+  const res=await stDialog.form({
+    title:`Invite a member to ${ws.name}`,
+    message:`They get an email to set their own password and join as an operator. ${price} is added to the subscription (pro-rated for the current period).`,
+    fields:[
+      {name:'name',label:'Full name',required:true,requiredMsg:'Enter the full name.',autocomplete:'off'},
+      {name:'email',label:'Email address',type:'email',required:true,requiredMsg:'Enter an email address.',autocomplete:'off',inputmode:'email',
+        validate:v=>_inviteEmailProblem(v)},
+    ],
+    submitLabel:`Send invite · ${price}`,busyLabel:'Sending invite…',
+    onSubmit:async v=>{
+      const r=await _inviteMember({workspaceId:ws.id,name:v.name,email:v.email,role:'operator'});
+      return r;
+    },
+  });
+  if(res&&res.message)await stDialog.alert(res.message,{title:'Invite sent'});
+}
+function _inviteEmailProblem(email){
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return'Enter a valid email address, like name@example.com.';
+  if(APP.users.some(u=>(u.email||'').toLowerCase()===email.toLowerCase()))return'A user with this email address already exists.';
+  return'';
+}
+// The invite request itself: POST invite-member with the user's token (one
+// refresh-and-retry on 401, like removeMember), then reload users and
+// companies (seat count). Returns {message}; throws an Error whose message
+// is written for people.
+async function _inviteMember({workspaceId,name,email,role}){
+  try{
+    if(_jwt()===SUPA_KEY){const e=new Error('not signed in');e.status=401;throw e;}
+    const post=()=>fetch(`${SUPA_URL}/functions/v1/invite-member`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${_jwt()}`,'apikey':SUPA_KEY},
+      body:JSON.stringify({workspaceId,name,email,role})
+    });
+    let res=await post();
+    if(res.status===401&&await _refreshAuthToken())res=await post();
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){const e=new Error(data.error||`HTTP ${res.status}`);e.status=res.status;throw e;}
+    // Refresh users + companies (extra_seats may have changed). Bounded: the
+    // invite is already sent, a slow reload must not hide that.
+    try{
+      const[uRes,cRes]=await _withTimeout(Promise.all([_restGet('app_users'),_restGetCompanies()]),10000);
+      if(uRes.data)APP.users=uRes.data.map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
+      if(cRes.data)APP.companies=cRes.data.map(_mapCompany);
+    }catch(e){console.warn('[invite] refresh failed:',e?.message||e);}
+    saveAPP();
+    if(document.getElementById('ws-subscription')?.classList.contains('active'))renderSubscriptionPage();
+    if(document.getElementById('admin')?.classList.contains('open'))renderAdmin();
+    return{message:data.message||`Invite sent to ${email}.`};
+  }catch(e){
+    // The edge function's own `error` text is written for people; HTTP
+    // codes and network failures get the generic wording.
+    throw new Error(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not send the invite: '+e.message:_friendlyError(e,'Sending the invite'));
+  }
 }
 window.openInviteMemberPrompt=openInviteMemberPrompt;
 
 async function removeMember(userId){
   const u=APP.users.find(x=>x.id===userId);
-  if(!u){alert('User not found.');return;}
-  if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
+  if(!u){await stDialog.alert('This member no longer exists. Reload the page.',{title:'Member not found'});return;}
+  if(!await stDialog.confirm(`${u.name||u.email} (${u.email}) loses access to this workspace. The paid seat is released and pro-rated credit is applied to the next invoice.`,
+    {title:`Remove ${u.name||u.email}?`,okLabel:'Remove member',danger:true}))return;
   try{
     // st_auth_v1 token (kept fresh) instead of supa.auth.getSession(), which
     // has hung; one refresh-and-retry on 401.
@@ -8149,11 +8263,11 @@ async function removeMember(userId){
     saveAPP();
     renderSubscriptionPage();
     renderAdmin?.();
-    alert(data.seatDecremented?'Member removed. Seat released.':'Member removed.');
+    await stDialog.alert(data.seatDecremented?'The member was removed and the seat released.':'The member was removed.',{title:'Member removed'});
   }catch(e){
     // The edge function's own `error` text is written for people; HTTP
     // codes and network failures get the generic wording.
-    alert(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not remove the member: '+e.message:_friendlyError(e,'Removing the member'));
+    await stDialog.alert(e?.status&&e.status<500&&e.status!==401&&!/^HTTP /.test(e.message)?'Could not remove the member: '+e.message:_friendlyError(e,'Removing the member'),{title:'Member not removed'});
   }
 }
 window.removeMember=removeMember;
@@ -8189,30 +8303,36 @@ async function _restWrite(table,method,filter,body){
   return Array.isArray(rows)?rows.length:0;
 }
 async function deleteProject(id){
-  if(!confirm('Delete this project?'))return;
+  const proj=APP.projects.find(p=>p.id===id);
+  const name=proj?.name||'this project';
+  const nShows=(proj?.data?.shows||[]).length,nStages=(proj?.data?.stages||[]).length;
+  if(!await stDialog.confirm(`"${name}" is deleted for everyone in the workspace, with its ${nStages} stage${nStages===1?'':'s'} and ${nShows} show${nShows===1?'':'s'}. Share links stop working. This cannot be undone.`,
+    {title:'Delete this project?',okLabel:'Delete project',danger:true}))return;
   try{
     const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
-    if(!n){alert('Nothing was deleted - you may not have permission for this project.');return;}
-  }catch(e){alert(_friendlyError(e,'Deleting the project'));return;}
+    if(!n){await stDialog.alert('Nothing was deleted - you may not have permission for this project.',{title:'Project not deleted'});return;}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Deleting the project'),{title:'Project not deleted'});return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
   saveAPP();renderDash();
 }
 async function renameProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
-  const newName=prompt('Rename project:',proj.name);
-  if(!newName||!newName.trim()||newName.trim()===proj.name)return;
-  const oldName=proj.name;
-  proj.name=newName.trim();
-  saveAPP();
-  try{
-    const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:proj.name});
-    if(!n){const e=new Error('no rows');e.status=403;throw e;}
-  }catch(e){
-    // Put the old name back - it used to stay renamed locally only.
-    proj.name=oldName;saveAPP();
-    alert(_friendlyError(e,'Renaming the project'));
-  }
+  const res=await stDialog.form({
+    title:'Rename project',
+    fields:[{name:'name',label:'Project name',value:proj.name,required:true,requiredMsg:'Enter a project name.',maxlength:120}],
+    submitLabel:'Save name',busyLabel:'Saving…',
+    onSubmit:async v=>{
+      if(v.name===proj.name)return undefined;
+      try{
+        const n=await _restWrite('projects','PATCH',`id=eq.${encodeURIComponent(id)}`,{name:v.name});
+        if(!n){const e=new Error('no rows');e.status=403;throw e;}
+      }catch(e){throw new Error(_friendlyError(e,'Renaming the project'));}
+      proj.name=v.name;saveAPP();
+      return undefined;
+    },
+  });
+  if(!res)return;
   const lnEl=document.getElementById('logo-name');
   if(APP.activeProjectId===id&&lnEl)lnEl.textContent=proj.name;
   renderDash();
@@ -8430,7 +8550,7 @@ async function loadVouchers(){
 function _voucherDiscountLabel(v){
   const c=v.coupon||{};
   if(c.percentOff)return c.percentOff+'% off';
-  if(c.amountOff)return '€'+(c.amountOff/100).toFixed(2).replace('.',',')+' off';
+  if(c.amountOff)return _fmtEur(c.amountOff/100)+' off';
   return '-';
 }
 function _voucherDurationLabel(v){
@@ -8590,8 +8710,8 @@ function _mrrFor(c){
   if(cycle==='yearly')return PRO_YEARLY/12;
   return PRO_MONTHLY; // monthly or unknown → monthly default
 }
-function _fmtEuro(n){return'€'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function _fmtEuroRound(n){return'€'+Math.round(n).toLocaleString('en-US');}
+function _fmtEuro(n){return _fmtEur(n);}
+function _fmtEuroRound(n){return'€'+Math.round(n).toLocaleString('nl-NL');}
 function _renderKpis(){
   const kpis=document.getElementById('admin-kpis');
   const mix=document.getElementById('admin-mix');
@@ -8664,8 +8784,8 @@ function _renderKpis(){
   `:`<div class="mix-bar-seg" style="width:100%;background:var(--s3);color:var(--sub);font-size:10px;">No active subscribers</div>`;
   const yRev=yearlyCount*PRO_YEARLY,mRev=monthlyCount*PRO_MONTHLY*12;
   legend.innerHTML=`
-    <div class="mix-legend-row"><div class="mix-dot" style="background:#2563eb;"></div><div class="mix-legend-name">Yearly · €${PRO_YEARLY.toFixed(2)}</div><div class="mix-legend-val">${yearlyCount} · ${_fmtEuroRound(yRev)}/yr</div></div>
-    <div class="mix-legend-row"><div class="mix-dot" style="background:#a78bfa;"></div><div class="mix-legend-name">Monthly · €${PRO_MONTHLY.toFixed(2)}</div><div class="mix-legend-val">${monthlyCount} · ${_fmtEuroRound(mRev)}/yr</div></div>
+    <div class="mix-legend-row"><div class="mix-dot" style="background:#2563eb;"></div><div class="mix-legend-name">Yearly · ${_fmtEur(PRO_YEARLY)}</div><div class="mix-legend-val">${yearlyCount} · ${_fmtEuroRound(yRev)}/yr</div></div>
+    <div class="mix-legend-row"><div class="mix-dot" style="background:#a78bfa;"></div><div class="mix-legend-name">Monthly · ${_fmtEur(PRO_MONTHLY)}</div><div class="mix-legend-val">${monthlyCount} · ${_fmtEuroRound(mRev)}/yr</div></div>
   `;
   // Upcoming renewals (next 60 days)
   const now=Date.now(),horizon=now+60*86400000;
@@ -8691,9 +8811,9 @@ function _renderKpis(){
 }
 function renderAdmin(){
   // Header context
-  const hdrName=document.querySelector('#admin-hdr span[style*="font-weight:800"]');
+  const hdrName=document.getElementById('admin-title');
   if(hdrName){
-    hdrName.textContent=CURRENT_USER?.role==='super_admin'?'Admin · All workspaces':CURRENT_USER?.role==='admin'?'Admin':'Admin · '+(APP.companies.find(c=>c.id===CURRENT_USER?.companyId)?.name||'own workspace');
+    hdrName.textContent=CURRENT_USER?.role==='super_admin'?'Platform admin · All workspaces':CURRENT_USER?.role==='admin'?'Platform admin':'Workspace admin · '+(APP.companies.find(c=>c.id===CURRENT_USER?.companyId)?.name||'own workspace');
   }
   _renderKpis();
   const coList=document.getElementById('admin-co-list');
@@ -8713,7 +8833,7 @@ function renderAdmin(){
     const dateLine=[];
     if(c.lastPaidAt)dateLine.push('Last payment: '+_fmtDate(c.lastPaidAt));
     if(c.currentPeriodEnd)dateLine.push('Next: '+_fmtDate(c.currentPeriodEnd));
-    const stripeUrl=c.stripeCustomerId?`https://dashboard.stripe.com/customers/${c.stripeCustomerId}`:'';
+    const stripeUrl=c.stripeCustomerId?escH(`https://dashboard.stripe.com/customers/${encodeURIComponent(c.stripeCustomerId)}`):'';
     // Stage limit summary + admin override input. Override wins over plan default.
     const planLimitTxt=(c.liveStagesLimit==null)?'∞':String(c.liveStagesLimit);
     const overrideVal=(c.liveStagesOverride==null)?'':String(c.liveStagesOverride);
@@ -8721,7 +8841,7 @@ function renderAdmin(){
     const passActive=c.passExpiresAt && new Date(c.passExpiresAt).getTime()>Date.now();
     const passLine=passActive?`<div style="font-size:11px;color:#fbbf24;margin-top:3px;">🎟 Active pass: ${escH(c.passSlug||'')} · expires ${_fmtDate(c.passExpiresAt)}</div>`:'';
     return`<div class="admin-item" style="align-items:flex-start;padding-top:14px;padding-bottom:14px;">
-      <div class="admin-avatar admin-avatar-co" style="margin-top:1px;">${_initials(c.name)}</div>
+      <div class="admin-avatar admin-avatar-co" style="margin-top:1px;">${escH(_initials(c.name))}</div>
       <div class="admin-item-info">
         <div class="admin-item-name" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span>${escH(c.name)}</span>
@@ -8737,22 +8857,22 @@ function renderAdmin(){
           <span style="color:rgba(255,255,255,.45);">plan = ${planLimitTxt}</span>
           <span style="color:rgba(255,255,255,.35);">·</span>
           <span style="font-weight:600;">override:</span>
-          <input type="number" min="0" step="1" placeholder="-" value="${overrideVal}" onchange="setStageOverride('${c.id}',this.value)" style="width:70px;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:#fff;font-family:var(--ffm);font-size:12px;text-align:center;">
+          <input type="number" min="0" step="1" placeholder="-" value="${overrideVal}" onchange="setStageOverride(${_jsArg(c.id)},this.value)" aria-label="Live stages override for ${escH(c.name)}" style="width:70px;padding:4px 8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:#fff;font-family:var(--ffm);font-size:12px;text-align:center;">
           <span style="color:rgba(255,255,255,.4);font-size:10px;">(blank = use plan)</span>
         </div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
         <div style="display:flex;gap:2px;">
-          ${stripeUrl?`<a class="admin-item-del" href="${stripeUrl}" target="_blank" rel="noopener" title="Open in Stripe dashboard" style="color:#a5b4fc;text-decoration:none;">
+          ${stripeUrl?`<a class="admin-item-del" href="${stripeUrl}" target="_blank" rel="noopener" title="Open in Stripe dashboard" aria-label="Open ${escH(c.name)} in Stripe" style="color:#a5b4fc;text-decoration:none;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>`:''}
-          ${isAdmin()?`<button class="admin-item-del" onclick="editCompany('${c.id}')" title="Edit name">
+          ${isAdmin()?`<button class="admin-item-del" onclick="editCompany(${_jsArg(c.id)})" title="Rename workspace" aria-label="Rename ${escH(c.name)}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>`:''}
-          <button class="admin-item-del" onclick="manageSubscription('${c.id}')" title="Manage subscription" style="color:#a5b4fc;">
+          <button class="admin-item-del" onclick="manageSubscription(${_jsArg(c.id)})" title="Manage subscription" aria-label="Manage subscription of ${escH(c.name)}" style="color:#a5b4fc;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
           </button>
-          ${isAdmin()?`<button class="admin-item-del" onclick="delCompany('${c.id}')" title="Delete">
+          ${isAdmin()?`<button class="admin-item-del" onclick="delCompany(${_jsArg(c.id)})" title="Delete workspace" aria-label="Delete ${escH(c.name)}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
           </button>`:''}
         </div>
@@ -8771,7 +8891,7 @@ function renderAdmin(){
   // Companies dropdown - limited for company_admin
   const sel=document.getElementById('adm-usr-co');
   const dropdownCos=isSuper||CURRENT_USER?.role==='admin'?APP.companies:APP.companies.filter(c=>c.id===CURRENT_USER?.companyId);
-  sel.innerHTML=`<option value="">- No workspace -</option>`+dropdownCos.map(c=>`<option value="${c.id}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
+  sel.innerHTML=`<option value="">- No workspace -</option>`+dropdownCos.map(c=>`<option value="${escH(c.id)}"${c.id===CURRENT_USER?.companyId&&!isSuper?' selected':''}>${escH(c.name)}</option>`).join('');
   // Role dropdown - restrict for non-super_admin
   const roleSel=document.getElementById('adm-usr-role');
   if(roleSel){
@@ -8785,15 +8905,15 @@ function renderAdmin(){
     const roleClass=u.role==='super_admin'?'role-admin':u.role==='admin'?'role-admin':u.role==='company_admin'?'role-co-admin':'role-op';
     const canEditRole=isSuper||(CURRENT_USER?.role==='admin'&&u.role!=='super_admin');
     return`<div class="admin-item">
-      <div class="admin-avatar admin-avatar-usr">${_initials(u.name||u.email)}</div>
+      <div class="admin-avatar admin-avatar-usr">${escH(_initials(u.name||u.email))}</div>
       <div class="admin-item-info">
         <div class="admin-item-name">${escH(u.name||u.email)}${isSelf?'<span style="font-size:9px;color:rgba(255,255,255,.4);margin-left:6px;">(you)</span>':''}</div>
         <div class="admin-item-sub">${u.email?escH(u.email):''}${co?' · '+escH(co.name):''}</div>
       </div>
-      ${canEditRole?`<select class="role-badge ${roleClass}" onchange="changeUserRole('${u.id}',this.value)" style="cursor:pointer;border:none;font-family:inherit;font-weight:700;font-size:9px;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;">
+      ${canEditRole?`<select class="role-badge ${roleClass}" onchange="changeUserRole(${_jsArg(u.id)},this.value)" aria-label="Role of ${escH(u.name||u.email)}" style="cursor:pointer;border:none;font-family:inherit;font-weight:700;font-size:9px;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;">
         ${(isSuper?[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin'],['super_admin','Super Admin']]:[['operator','Operator'],['company_admin','Co. Admin'],['admin','Admin']]).map(([v,l])=>`<option value="${v}"${v===u.role?' selected':''}>${l}</option>`).join('')}
       </select>`:`<span class="role-badge ${roleClass}">${roleLabel}</span>`}
-      ${isSelf?'':`<button class="admin-item-del" onclick="delUser('${u.id}')" title="Delete">
+      ${isSelf?'':`<button class="admin-item-del" onclick="delUser(${_jsArg(u.id)})" title="Remove user" aria-label="Remove ${escH(u.name||u.email)}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
       </button>`}
     </div>`;
@@ -8811,16 +8931,16 @@ function renderAdmin(){
       const showCount=(p.data?.shows||[]).length;
       const stageCount=(p.data?.stages||[]).length;
       const isActive=p.id===APP.activeProjectId;
-      return`<div class="admin-item${isActive?' admin-item-active':''}" style="cursor:pointer;" onclick="openProject('${p.id}');closeAdmin();" title="Open project">
+      return`<div class="admin-item${isActive?' admin-item-active':''}" style="cursor:pointer;" onclick="openProject(${_jsArg(p.id)});closeAdmin();" title="Open project">
         <div class="admin-avatar admin-avatar-proj">${escH(p.name.slice(0,2).toUpperCase())}</div>
         <div class="admin-item-info">
           <div class="admin-item-name">${escH(p.name)}${isActive?'<span class="admin-active-pill">active</span>':''}</div>
           <div class="admin-item-sub">${co?escH(co.name)+' · ':''}${showCount} shows · ${stageCount} stages${owner?' · owner: '+escH(owner.name||owner.email):''}</div>
         </div>
-        <button class="admin-item-del" onclick="event.stopPropagation();openShareModal('${p.id}')" title="View share links" style="color:#1E40AF;">
+        <button class="admin-item-del" onclick="event.stopPropagation();openShareModal(${_jsArg(p.id)})" title="View share links" aria-label="Share links of ${escH(p.name)}" style="color:#1E40AF;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
         </button>
-        <button class="admin-item-del" onclick="event.stopPropagation();deleteProject('${p.id}')" title="Delete">
+        <button class="admin-item-del" onclick="event.stopPropagation();deleteProject(${_jsArg(p.id)})" title="Delete project" aria-label="Delete ${escH(p.name)}">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>`;
@@ -8829,23 +8949,31 @@ function renderAdmin(){
 }
 
 async function addCompany(){
-  if(CURRENT_USER?.role!=='super_admin'){alert('Only Super Admin may create workspaces.');return;}
+  if(CURRENT_USER?.role!=='super_admin'){await stDialog.alert('Only a Super Admin can create workspaces.',{title:'No permission'});return;}
   const inp=document.getElementById('adm-co-name');
   const name=inp.value.trim();if(!name){inp.focus();return;}
   const id=uid();
   const{error}=await supa.from('companies').insert([{id,name,subscription_status:'inactive',project_limit:0}]);
-  if(error){alert('Failed to create company: '+error.message);return;}
+  if(error){await stDialog.alert(_friendlyError(error,'Creating the workspace'),{title:'Workspace not created'});return;}
   APP.companies.push({id,name,subscriptionStatus:'inactive',projectLimit:0});
   saveAPP();inp.value='';renderAdmin();
 }
 async function editCompany(id){
   if(!isAdmin()){return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
-  const newName=prompt('New workspace name:',c.name);
-  if(!newName||newName.trim()===c.name)return;
-  const{error}=await supa.from('companies').update({name:newName.trim()}).eq('id',id);
-  if(error){alert('Update failed: '+error.message);return;}
-  c.name=newName.trim();saveAPP();renderAdmin();
+  const res=await stDialog.form({
+    title:'Rename workspace',
+    fields:[{name:'name',label:'Workspace name',value:c.name,required:true,requiredMsg:'Enter a workspace name.',maxlength:120}],
+    submitLabel:'Save name',busyLabel:'Saving…',
+    onSubmit:async v=>{
+      if(v.name===c.name)return undefined;
+      const{error}=await supa.from('companies').update({name:v.name}).eq('id',id);
+      if(error)throw new Error(_friendlyError(error,'Renaming the workspace'));
+      c.name=v.name;saveAPP();
+      return undefined;
+    },
+  });
+  if(res)renderAdmin();
 }
 
 // Per-company override of the live-stages limit. Empty / blank input means
@@ -8858,26 +8986,26 @@ async function setStageOverride(id,rawValue){
   let newVal=null;
   if(v!==''){
     const n=parseInt(v,10);
-    if(isNaN(n)||n<0){alert('Override must be a non-negative whole number, or blank to clear.');renderAdmin();return;}
+    if(!/^\d+$/.test(v)){await stDialog.alert(`"${v}" is not a whole number. Enter 0 or more, or leave it blank to use the plan.`,{title:'Override not saved'});renderAdmin();return;}
     newVal=n;
   }
   const{error}=await supa.from('companies').update({live_stages_override:newVal}).eq('id',id);
-  if(error){alert('Override update failed: '+error.message);return;}
+  if(error){await stDialog.alert(_friendlyError(error,'Saving the override'),{title:'Override not saved'});renderAdmin();return;}
   c.liveStagesOverride=newVal;
   saveAPP();renderAdmin();
 }
 window.setStageOverride=setStageOverride;
 async function delCompany(id){
-  if(!isAdmin()){alert('Only Admin or Super Admin may delete workspaces.');return;}
+  if(!isAdmin()){await stDialog.alert('Only an Admin or Super Admin can delete workspaces.',{title:'No permission'});return;}
   const c=APP.companies.find(x=>x.id===id);if(!c)return;
   const userCount=APP.users.filter(u=>u.companyId===id).length;
   const projCount=APP.projects.filter(p=>p.companyId===id).length;
   if(c.subscriptionStatus==='active'){
-    if(!confirm(`⚠️ "${c.name}" has an ACTIVE subscription. You must cancel it in Stripe first. Delete anyway?`))return;
+    if(!await stDialog.confirm(`"${c.name}" has an ACTIVE subscription. Cancel it in Stripe first: deleting the workspace does not stop the billing.`,
+      {title:'Active subscription',okLabel:'Continue anyway',danger:true}))return;
   }
-  let msg=`Delete "${c.name}"?`;
-  if(userCount||projCount){msg+=`\n\n${userCount} user(s) and ${projCount} project(s) will also be detached.`;}
-  if(!confirm(msg))return;
+  const detach=userCount||projCount?` Its ${userCount} user${userCount===1?'':'s'} and ${projCount} project${projCount===1?'':'s'} are kept but detached from any workspace.`:'';
+  if(!await stDialog.confirm(`"${c.name}" is deleted.${detach} This cannot be undone.`,{title:'Delete this workspace?',okLabel:'Delete workspace',danger:true}))return;
   // Cascade: detach users and projects (set company_id = '')
   try{
     await Promise.all([
@@ -8885,80 +9013,67 @@ async function delCompany(id){
       _restWrite('projects','PATCH',`company_id=eq.${encodeURIComponent(id)}`,{company_id:''}),
     ]);
     const n=await _restWrite('companies','DELETE',`id=eq.${encodeURIComponent(id)}`);
-    if(!n){alert('Nothing was deleted - only a Super Admin may delete a workspace.');return;}
-  }catch(e){alert('Delete failed: '+(e.message||e));return;}
+    if(!n){await stDialog.alert('Nothing was deleted - only a Super Admin can delete a workspace.',{title:'Workspace not deleted'});return;}
+  }catch(e){await stDialog.alert(_friendlyError(e,'Deleting the workspace'),{title:'Workspace not deleted'});return;}
   APP.users.forEach(u=>{if(u.companyId===id)u.companyId='';});
   APP.projects.forEach(p=>{if(p.companyId===id)p.companyId='';});
   APP.companies=APP.companies.filter(c=>c.id!==id);
   saveAPP();renderAdmin();
 }
+// Platform admin invite form: checks next to the form, a confirmation with
+// the price, then the shared invite request (_inviteMember).
+function _admUsrErr(msg,focusId){
+  const e=document.getElementById('adm-usr-err');if(e){e.textContent=msg||'';e.hidden=!msg;}
+  if(msg&&focusId)document.getElementById(focusId)?.focus();
+}
 async function addUser(){
-  if(!isAdmin()&&CURRENT_USER?.role!=='company_admin'){alert('No permission.');return;}
+  if(!isAdmin()&&CURRENT_USER?.role!=='company_admin'){_admUsrErr('You do not have permission to invite members.');return;}
+  _admUsrErr('');
   const name=document.getElementById('adm-usr-name').value.trim();
-  if(!name){document.getElementById('adm-usr-name').focus();return;}
+  if(!name){_admUsrErr('Enter the full name.','adm-usr-name');return;}
   const email=document.getElementById('adm-usr-email').value.trim();
-  if(!email){document.getElementById('adm-usr-email').focus();return;}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){document.getElementById('adm-usr-email').focus();alert('Not a valid email address.');return;}
+  if(!email){_admUsrErr('Enter an email address.','adm-usr-email');return;}
+  const emailBad=_inviteEmailProblem(email);
+  if(emailBad){_admUsrErr(emailBad,'adm-usr-email');return;}
   let workspaceId=document.getElementById('adm-usr-co').value;
   let role=document.getElementById('adm-usr-role').value;
   if(CURRENT_USER?.role==='company_admin'){
-    if(['admin','super_admin'].includes(role)){alert('No permission to assign that role.');return;}
+    if(['admin','super_admin'].includes(role)){_admUsrErr('You cannot assign that role.','adm-usr-role');return;}
     workspaceId=CURRENT_USER.companyId;
   }
-  if(!workspaceId){alert('Please select a workspace for this member.');return;}
-  if(APP.users.some(u=>u.email.toLowerCase()===email.toLowerCase())){alert('A user with this email address already exists.');return;}
+  if(!workspaceId){_admUsrErr('Select a workspace for this member.','adm-usr-co');return;}
   // Find workspace + show what the user will be charged
   const ws=APP.companies.find(c=>c.id===workspaceId);
-  if(!ws){alert('Workspace not found.');return;}
+  if(!ws){_admUsrErr('That workspace no longer exists. Reload the page.');return;}
   if(ws.subscriptionStatus!=='active'&&ws.subscriptionStatus!=='trialing'){
-    alert(`Cannot invite members - "${ws.name}" doesn't have an active subscription yet.`);return;
+    _admUsrErr(`Cannot invite members - "${ws.name}" doesn't have an active subscription yet.`);return;
   }
-  const cycle=(()=>{
-    if(!ws.lastPaidAt||!ws.currentPeriodEnd)return null;
-    const days=(new Date(ws.currentPeriodEnd)-new Date(ws.lastPaidAt))/86400000;
-    return isNaN(days)?null:(days>180?'year':'month');
-  })();
-  const priceLabel=cycle==='year'?'€119.40/year':cycle==='month'?'€9.95/month':'€9.95/month or €119.40/year';
-  const confirmMsg=`Invite ${name} (${email}) to "${ws.name}" as ${role}?\n\n${priceLabel} will be added to the subscription (pro-rated for the current cycle). They'll receive an email to set their own password.`;
-  if(!confirm(confirmMsg))return;
-  const addBtn=document.querySelector('.admin-add-btn[onclick="addUser()"]');
-  if(addBtn){addBtn.textContent='Sending invite…';addBtn.disabled=true;}
+  const roleLabel={operator:'Operator',company_admin:'Co. Admin',admin:'Admin',super_admin:'Super Admin'}[role]||role;
+  const priceLabel=_seatPriceLabel(_billingCycle(ws),true);
+  if(!await stDialog.confirm(`${name} (${email}) joins "${ws.name}" as ${roleLabel}. ${priceLabel} is added to the subscription (pro-rated for the current period). They get an email to set their own password.`,
+    {title:'Send this invite?',okLabel:'Send invite'}))return;
+  const addBtn=document.getElementById('adm-usr-send');
+  if(addBtn){addBtn.dataset.html=addBtn.innerHTML;addBtn.textContent='Sending invite…';addBtn.disabled=true;}
   try{
-    const{data:{session}}=await supa.auth.getSession();
-    if(!session?.access_token)throw new Error('Not authenticated.');
-    const res=await fetch(`${SUPA_URL}/functions/v1/invite-member`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
-      body:JSON.stringify({workspaceId,name,email,role})
-    });
-    const data=await res.json().catch(()=>({error:'Invalid response from server.'}));
-    if(!res.ok)throw new Error(data.error||`HTTP ${res.status}`);
+    const r=await _inviteMember({workspaceId,name,email,role});
     // Reset form
     document.getElementById('adm-usr-name').value='';
     document.getElementById('adm-usr-email').value='';
-    // Refresh users + companies from DB (extra_seats may have changed)
-    const[uRes,cRes]=await Promise.all([
-      supa.from('app_users').select('*'),
-      _supaCompanies(),
-    ]);
-    if(!uRes.error)APP.users=(uRes.data||[]).map(u=>({id:u.id,name:u.name,email:u.email,role:u.role,companyId:u.company_id||''}));
-    if(!cRes.error)APP.companies=(cRes.data||[]).map(_mapCompany);
-    saveAPP();
-    renderAdmin();
-    alert(data.message||'Invite sent.');
+    await stDialog.alert(r.message,{title:'Invite sent'});
   }catch(e){
-    alert('Failed to invite: '+(e.message||e));
+    _admUsrErr(e.message);
+  }finally{
+    if(addBtn){if(addBtn.dataset.html)addBtn.innerHTML=addBtn.dataset.html;addBtn.disabled=false;}
   }
-  if(addBtn){addBtn.textContent='Send invite';addBtn.disabled=false;}
 }
 async function changeUserRole(id,newRole){
   const u=APP.users.find(x=>x.id===id);if(!u)return;
   // RBAC guards
-  if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){alert('Only Super Admin may grant Super Admin.');renderAdmin();return;}
-  if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){alert('No permission.');renderAdmin();return;}
-  if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!confirm('Lowering your role may prevent you from accessing Admin. Continue?')){renderAdmin();return;}}
+  if(CURRENT_USER?.role==='admin'&&newRole==='super_admin'){await stDialog.alert('Only a Super Admin can grant Super Admin.',{title:'No permission'});renderAdmin();return;}
+  if(CURRENT_USER?.role==='company_admin'&&['admin','super_admin'].includes(newRole)){await stDialog.alert('You cannot assign that role.',{title:'No permission'});renderAdmin();return;}
+  if(u.id===CURRENT_USER?.id&&u.role==='super_admin'&&newRole!=='super_admin'){if(!await stDialog.confirm('You are lowering your own role. You may lose access to Platform admin and cannot undo this yourself.',{title:'Lower your own role?',okLabel:'Lower my role',danger:true})){renderAdmin();return;}}
   const{error}=await supa.from('app_users').update({role:newRole}).eq('id',id);
-  if(error){alert('Failed to change role: '+error.message);renderAdmin();return;}
+  if(error){await stDialog.alert(_friendlyError(error,'Changing the role'),{title:'Role not changed'});renderAdmin();return;}
   u.role=newRole;
   saveAPP();
   if(u.id===CURRENT_USER?.id){CURRENT_USER.role=newRole;localStorage.setItem('st_current_user',JSON.stringify(CURRENT_USER));updateRoleUI();}
@@ -8966,10 +9081,11 @@ async function changeUserRole(id,newRole){
 }
 async function delUser(id){
   const u=APP.users.find(x=>x.id===id);if(!u)return;
-  if(u.id===CURRENT_USER?.id){alert('You cannot delete yourself.');return;}
-  if(CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId){alert('No permission.');return;}
-  if(CURRENT_USER?.role==='admin'&&u.role==='super_admin'){alert('Only Super Admin may delete a Super Admin.');return;}
-  if(!confirm(`Remove ${u.name||u.email} from this workspace?\n\nThe paid seat will be released and pro-rated credit applied to the next invoice.`))return;
+  if(u.id===CURRENT_USER?.id){await stDialog.alert('You cannot remove yourself.',{title:'Not possible'});return;}
+  if(CURRENT_USER?.role==='company_admin'&&u.companyId!==CURRENT_USER?.companyId){await stDialog.alert('You can only remove members of your own workspace.',{title:'No permission'});return;}
+  if(CURRENT_USER?.role==='admin'&&u.role==='super_admin'){await stDialog.alert('Only a Super Admin can remove a Super Admin.',{title:'No permission'});return;}
+  if(!await stDialog.confirm(`${u.name||u.email} (${u.email}) loses access to the workspace. The paid seat is released and pro-rated credit is applied to the next invoice.`,
+    {title:`Remove ${u.name||u.email}?`,okLabel:'Remove user',danger:true}))return;
   // Use remove-member edge function - it handles Stripe seat decrement + auth user + app_users row
   try{
     const{data:{session}}=await supa.auth.getSession();
@@ -8987,23 +9103,23 @@ async function delUser(id){
     if(cos)APP.companies=cos.map(_mapCompany);
     saveAPP();renderAdmin();
   }catch(e){
-    alert('Failed to remove: '+(e.message||e));
+    await stDialog.alert(e?.status&&e.status<500?'Could not remove the user: '+e.message:_friendlyError(e,'Removing the user'),{title:'User not removed'});
   }
 }
 async function manageSubscription(coId){
   const c=APP.companies.find(x=>x.id===coId);if(!c)return;
   const status=c.subscriptionStatus||'inactive';
   if(!c.stripeCustomerId){
-    alert(`"${c.name}" does not have a Stripe link yet. Have the workspace sign up at stagetimer.nl/#pricing to start a subscription.`);
+    await stDialog.alert(`"${c.name}" does not have a Stripe link yet. Have the workspace sign up at stagetimer.nl/#pricing to start a subscription.`,{title:'No billing account yet'});
     return;
   }
   if(status==='inactive'||status==='canceled'){
-    if(!confirm(`"${c.name}" has no active subscription (status: ${status}).\n\nOpen Stripe Customer Portal to start again?`))return;
+    if(!await stDialog.confirm(`"${c.name}" has no active subscription (status: ${status}). The Stripe customer portal opens, where it can be started again.`,{title:'Open the Stripe portal?',okLabel:'Open Stripe portal'}))return;
   }
   // Get user session to authenticate the portal-link edge function call
   try{
     const{data:{session}}=await supa.auth.getSession();
-    if(!session){alert('Not logged in.');return;}
+    if(!session){await stDialog.alert('Your session has expired. Log out and log in again.',{title:'Not logged in'});return;}
     const res=await fetch(`${SUPA_URL}/functions/v1/portal-link`,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
@@ -9014,7 +9130,7 @@ async function manageSubscription(coId){
     if(data.url){location.href=data.url;return;}
     throw new Error('No portal URL returned.');
   }catch(e){
-    alert('Failed to open Stripe portal: '+(e.message||e));
+    await stDialog.alert(_friendlyError(e,'Opening the Stripe portal'),{title:'Stripe portal not opened'});
   }
 }
 

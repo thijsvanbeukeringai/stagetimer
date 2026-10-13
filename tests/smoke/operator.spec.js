@@ -118,6 +118,8 @@ test('cues, blackout and quick adjust reach the backend', async ({ page, st, bac
   await page.locator('#blackout-btn').click();
   await expect.poll(() => lastSaved(backend)?.data?.blackout).toBe(false);
   await page.getByRole('button', { name: '+5 min' }).click();
+  // The correction shows its preview first; nothing is saved before a choice.
+  await page.getByRole('dialog').getByRole('button', { name: /Shift all following shows/ }).click();
   await expect.poll(() => lastSaved(backend)?.data?.shows?.find((s) => s.id === 'm2')?.end).toBe('16:35:00');
 });
 
@@ -186,7 +188,7 @@ test('one-off timer can be created from the dashboard', async ({ page }) => {
 });
 
 test('workspace sections: subscription, settings, profile', async ({ page }) => {
-  for (const [section, text] of [['subscription', 'Active'], ['settings', 'Workspace'], ['profile', 'Profile']]) {
+  for (const [section, text] of [['subscription', 'Active'], ['settings', 'Workspace'], ['profile', 'Account settings']]) {
     await page.locator(`.ws-sb-link[data-section="${section}"], .ws-tab[data-section="${section}"]`).filter({ visible: true }).first().click();
     await expect(page.locator(`#ws-${section}`)).toBeVisible();
     await expect(page.locator(`#ws-${section}`)).toContainText(text);
