@@ -12,3 +12,9 @@ stagetimer logo nieuw.png
 
 # Third-party SDK bundles dropped into the repo by accident
 *.zip
+
+# Test tooling
+node_modules/
+tests/output/
+test-results/
+playwright-report/

@@ -1,0 +1,12 @@
+# Dev-only files: Vercel serves this folder as-is, keep these out of the public site
+tests/
+node_modules/
+package.json
+package-lock.json
+playwright.config.*
+supabase/
+docs/
+*.md
+.devserver.py
+push-secrets.sh
+push-smtp.sh
