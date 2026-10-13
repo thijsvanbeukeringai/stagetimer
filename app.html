@@ -302,6 +302,88 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
   .ci-artist{font-size:14px;}
 }
 
+/* ══ VIEWS: FOH / Backstage / Timeline / Overview / Wall / Check-in / Share
+   dialog (view polish, BOUWPLAN 3.5). View-specific only: never Stage View
+   (#sv), never the operator control screen. Classes are prefixed vw-. ══ */
+/* Status chip - one vocabulary everywhere: Live / Next / Done / Cancelled /
+   Hidden / Scheduled / Overtime. Text, never colour alone. */
+.vw-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--ffm);font-size:10px;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;padding:2px 7px;border-radius:99px;line-height:1.4;flex-shrink:0;white-space:nowrap;vertical-align:middle;
+  border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);background:rgba(255,255,255,.06);}
+.vw-chip.vw-live{color:#04130a;background:#fbbf24;border-color:#fbbf24;}
+.vw-chip.vw-overtime{color:#fff;background:#ef4444;border-color:#ef4444;}
+.vw-chip.vw-next{color:#86efac;border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.1);}
+.vw-chip.vw-done{color:rgba(255,255,255,.62);}
+.vw-chip.vw-cancelled{color:#fca5a5;border-color:rgba(239,68,68,.5);background:rgba(239,68,68,.12);}
+.vw-chip.vw-hidden{color:#c4b5fd;border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.1);border-style:dashed;}
+.vw-chip.vw-scheduled{color:#a5b4fc;border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.1);}
+/* Empty states: no shows planned / programme finished / other day / load error. */
+.vw-empty{max-width:520px;margin:32px auto;padding:22px 24px;border:1px dashed rgba(255,255,255,.18);border-radius:12px;
+  text-align:center;color:rgba(255,255,255,.82);background:rgba(255,255,255,.025);}
+.vw-empty-title{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.1px;}
+.vw-empty-sub{font-size:13px;line-height:1.5;color:rgba(255,255,255,.66);margin-top:6px;}
+.vw-empty.vw-error{border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.06);}
+.vw-empty.vw-error .vw-empty-title{color:#fca5a5;}
+.vw-empty.vw-inline{margin:14px 16px;padding:14px 16px;max-width:none;text-align:left;}
+/* "Last sync 23s ago": only when the share-link feed is stale (>10 s). */
+.vw-sync{display:inline-flex;align-items:center;gap:6px;font-family:var(--ffm);font-size:11px;font-weight:700;letter-spacing:.02em;
+  padding:4px 9px;border-radius:99px;color:#fcd34d;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);
+  white-space:nowrap;flex-shrink:0;}
+.vw-sync::before{content:'';width:6px;height:6px;border-radius:50%;background:#f59e0b;}
+.vw-sync[hidden]{display:none;}
+#foh-hdr .vw-sync,#bs-hdr .vw-sync,#tl-hdr .vw-sync,#stov-hdr .vw-sync,#ci-hdr .vw-sync{margin-left:auto;}
+.vw-sync:not([hidden]) + [id$="-clock"]{margin-left:0 !important;}
+#wv .vw-sync{color:var(--wv-text);margin-top:2px;}
+#wv .vw-empty,#wv .vw-empty-title{color:var(--wv-text);}
+#wv .vw-empty-sub{color:var(--wv-text-mute);}
+/* Day label next to a stage when Overview stages show different days */
+#stov .stov-stage-name:has(.stov-day){flex-wrap:wrap;row-gap:4px;}
+.stov-day{display:inline-block;margin-left:0;font-family:var(--ffm);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:none;
+  padding:1px 7px;border-radius:99px;color:#c7d2fe;background:rgba(99,102,241,.16);border:1px solid rgba(99,102,241,.4);vertical-align:middle;}
+#stov-daylbl{font-family:var(--ffm);font-size:12px;font-weight:700;color:rgba(255,255,255,.75);white-space:nowrap;}
+#stov-daylbl.mixed{color:#c7d2fe;}
+/* FOH crew status: visible words next to the icon buttons */
+.foh-crew-stl{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:rgba(255,255,255,.5);white-space:nowrap;}
+.foh-crew-stl.present{color:#86efac;}.foh-crew-stl.otw{color:#fcd34d;}.foh-crew-stl.unknown{color:#fca5a5;}
+.foh-nolive{padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.06);font-size:14px;color:rgba(255,255,255,.78);}
+.foh-nolive strong{color:#fff;}
+/* Timeline */
+.tl-lane-ov{position:absolute;right:4px;bottom:3px;font-family:var(--ffm);font-size:9px;font-weight:700;color:rgba(255,255,255,.5);}
+.tl-m-stage{position:sticky;top:0;z-index:2;background:#101018;}
+/* Check-in */
+.ci-legend{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:12px;color:rgba(255,255,255,.72);
+  padding:10px 14px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);}
+.ci-legend b{color:#fff;}
+.ci-legend .ci-lg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1.5px solid rgba(255,255,255,.4);}
+.ci-legend .ci-lg-dot.on{background:#22c55e;border-color:#22c55e;}
+.ci-toggle[disabled]{cursor:progress;opacity:.75;}
+.ci-toggle.busy{border-style:dashed;}
+.ci-err{grid-column:1/-1;font-size:12px;font-weight:600;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);
+  border-radius:8px;padding:8px 10px;}
+/* Share dialog */
+.share-intro{font-size:12px;line-height:1.5;color:var(--sub);}
+.share-link-row{flex-wrap:wrap;}
+.share-link-head{display:flex;align-items:center;gap:8px;width:100%;}
+.share-link-head .share-link-label{width:auto;}
+.share-access{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;border:1px solid var(--border2);color:var(--sub);}
+.share-access.rw{color:#fcd34d;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.1);}
+.share-link-row .share-link-url{user-select:all;-webkit-user-select:all;}
+.share-copy-btn{min-height:32px;}
+.share-copy-msg{width:100%;font-size:11px;line-height:1.4;color:var(--sub);}
+.share-copy-msg:empty{display:none;}
+.share-copy-msg.err{color:#fca5a5;}
+.share-copy-btn.failed{border-color:rgba(239,68,68,.5);color:#fca5a5;}
+@media (max-width:700px){
+  #share-modal{max-height:calc(100dvh - 24px);}
+  .share-link-row{gap:6px;margin-bottom:12px;}
+  .share-link-row .share-link-url{flex:1 1 100%;order:3;white-space:normal;word-break:break-all;font-size:11px;padding:8px;}
+  .share-copy-btn{min-height:44px;min-width:88px;font-size:13px;margin-left:auto;}
+  .share-link-head{width:auto;flex:1 1 0;min-width:0;flex-wrap:wrap;row-gap:4px;}
+  .share-copy-msg{order:4;}
+  #foh-hdr .vw-sync, #bs-hdr .vw-sync, #tl-hdr .vw-sync{grid-column:1/-1;grid-row:3;justify-self:start;margin-left:0;}
+  .vw-empty{margin:20px 12px;}
+}
+
 /* Operator overview "Arrived" pill - shows on the live/up-next card. */
 .stov-arrived{display:inline-flex;align-items:center;gap:4px;font-family:var(--ffm);font-size:9px;font-weight:800;
   letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-left:8px;vertical-align:middle;
@@ -3988,7 +4070,7 @@ function renderTbar(){
       <div style="font-size:14px;font-weight:800;" id="share-modal-title">Shareable links</div>
       <button onclick="closeShareModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;">×</button>
     </div>
-    <div style="font-size:11px;color:var(--sub);">These links open the view directly without logging in.</div>
+    <div class="share-intro">Anyone with a link opens that view without logging in. <strong>Read-only</strong> links can only look at the programme. The <strong>Artist check-in</strong> link can also mark artists as arrived - share it only with the check-in desk.</div>
     <div id="share-stage-list"></div>
   </div>
 </div>
@@ -4407,8 +4489,9 @@ function renderTbar(){
   <div id="foh-hdr">
     <a class="st-brand" id="st-brand-foh" href="#" onclick="closeFOH();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
     <div id="foh-title">FOH · <span id="foh-sname">-</span></div>
+    <select id="foh-ssel" class="hsel" aria-label="Stage"></select>
     <div id="foh-dtabs"></div>
-    <select id="foh-ssel" class="hsel"></select>
+    <span class="vw-sync" hidden></span>
     <div id="foh-clock"></div>
     <button class="fhbtn" id="foh-close-btn" onclick="closeFOH()">✕</button>
   </div>
@@ -4934,8 +5017,10 @@ function renderTbar(){
 <div id="stov">
   <div id="stov-hdr">
     <img class="co-logo" id="co-logo-stov" alt="logo">
-    <div id="stov-title">⊞ Stage Overview</div>
+    <div id="stov-title">Overview</div>
     <div style="display:flex;gap:4px;" id="stov-dtabs"></div>
+    <div id="stov-daylbl"></div>
+    <span class="vw-sync" hidden></span>
     <div id="stov-clock" style="margin-left:auto;"></div>
     <button class="stovhbtn" onclick="closeOV()">✕ Close</button>
   </div>
@@ -4954,6 +5039,7 @@ function renderTbar(){
     <div id="wv-hdr-center">
       <div id="wv-project"></div>
       <div id="wv-day"></div>
+      <span class="vw-sync" hidden></span>
     </div>
     <div id="wv-clock-wrap">
       <div id="wv-clock">--:--</div>
@@ -4978,10 +5064,11 @@ function renderTbar(){
   <div id="ci-hdr">
     <a class="st-brand" id="st-brand-ci" href="#" onclick="closeCI();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
     <div>
-      <div id="ci-title">Artist Check-in</div>
-      <div id="ci-sub" style="margin-top:2px;">Tap to mark arrived</div>
+      <div id="ci-title">Artist check-in</div>
+      <div id="ci-sub" style="margin-top:2px;">Changes are saved for everyone</div>
     </div>
     <div id="ci-dtabs"></div>
+    <span class="vw-sync" hidden></span>
     <div id="ci-clock"></div>
     <div id="ci-summary"><strong id="ci-arr">0</strong> / <span id="ci-tot">0</span> arrived</div>
     <button class="fhbtn" id="ci-close-btn" onclick="closeCI()">✕</button>
@@ -4994,9 +5081,10 @@ function renderTbar(){
   <div id="bs-hdr">
     <a class="st-brand" id="st-brand-bs" href="#" onclick="closeBS();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
     <img class="co-logo" id="co-logo-bs" alt="logo">
-    <div id="bs-title">🎭 Backstage · <span id="bs-sname">-</span></div>
+    <div id="bs-title">Backstage · <span id="bs-sname">-</span></div>
+    <select id="bs-ssel" class="hsel" aria-label="Stage" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
     <div id="bs-dtabs"></div>
-    <select id="bs-ssel" class="hsel" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
+    <span class="vw-sync" hidden></span>
     <div id="bs-clock"></div>
     <button class="bshbtn" id="bs-close-btn" onclick="closeBS()">✕</button>
   </div>
@@ -5008,9 +5096,10 @@ function renderTbar(){
   <div id="tl-hdr">
     <a class="st-brand" id="st-brand-tl" href="#" onclick="closeTL();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
     <img class="co-logo" id="co-logo-tl" alt="logo">
-    <div id="tl-title" style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;">▦ Timeline</div>
+    <div id="tl-title" style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;flex-shrink:0;">Timeline</div>
     <div id="tl-dtabs"></div>
     <div id="tl-hdr-spacer" style="flex:1;"></div>
+    <span class="vw-sync" hidden></span>
     <div id="tl-clock" style="font-family:var(--ffm);font-size:13px;color:rgba(255,255,255,.3);flex-shrink:0;margin-right:4px;"></div>
     <button class="fhbtn" id="tl-close-btn" onclick="closeTL()">✕</button>
   </div>
@@ -5599,10 +5688,107 @@ function _pickDayOV(id){G.activeDay=id;_selChanged('day');renderOV();}
 function _dayPickerHTML(activeId,handlerName,pillClass='fhbtn'){
   const days=getDays();if(!days.length)return'';
   // Day ids come from project data (imports, old date ids): JSON-quote + escape for the inline handler.
-  const pills=days.map(d=>`<button class="${pillClass} ${d.id===activeId?'on':''}" onclick="${handlerName}(${escH(JSON.stringify(String(d.id)))})">${escH(d.name)}</button>`).join('');
-  const opts=days.map(d=>`<option value="${escH(d.id)}"${d.id===activeId?' selected':''}>${escH(d.name)}</option>`).join('');
+  // Pills stay compact (name); the date is in the tooltip and in the mobile dropdown (vwDayLabel).
+  const pills=days.map(d=>`<button class="${pillClass} ${d.id===activeId?'on':''}" title="${escH(vwDayLabel(d))}" aria-pressed="${d.id===activeId}" onclick="${handlerName}(${_jsArg(d.id)})">${escH(d.name||vwDateLabel(d.date))}</button>`).join('');
+  const opts=days.map(d=>`<option value="${escH(d.id)}"${d.id===activeId?' selected':''}>${escH(vwDayLabel(d))}</option>`).join('');
   return`<div class="day-picker"><div class="day-pills">${pills}</div><select class="day-select" aria-label="Select day" onchange="${handlerName}(this.value)">${opts}</select></div>`;
 }
+
+// ══ VIEW HELPERS - FOH, Backstage, Timeline, Overview, Wall, Check-in.
+// One vocabulary for show status and one date format on every control view
+// (never Stage View, whose texts are frozen).
+const VW_STATUS={live:'Live',overtime:'Overtime',next:'Next',done:'Done',cancelled:'Cancelled',hidden:'Hidden',scheduled:'Scheduled'};
+// Status of a show at `at`: cancelled > live > done > next (later today or
+// tomorrow night) > scheduled (another festival day). Hidden is a separate
+// visibility flag, see vwChips.
+function vwStatusKey(s,at){
+  if(!s)return'';
+  if(s.cancelled)return'cancelled';
+  const n=at||nowMs();
+  if(_showIsLive(s,n))return'live';
+  if(_showIsPast(s,n))return'done';
+  return isShowToday(s)?'next':'scheduled';
+}
+function vwChip(key,label){return key?`<span class="vw-chip vw-${key}">${escH(label||VW_STATUS[key]||key)}</span>`:'';}
+// Status chip plus the Hidden chip (operators only ever see hidden shows).
+function vwChips(s,at,{skip}={}){
+  const k=vwStatusKey(s,at);
+  return(k&&k!==skip?vwChip(k):'')+(s&&s.hidden?vwChip('hidden'):'');
+}
+// "Fri 19 Jun" from "YYYY-MM-DD" - calendar date, no time zone involved.
+const _VW_WD=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],_VW_MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function vwDateLabel(iso){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||''));if(!m)return'';
+  const d=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));if(isNaN(d))return'';
+  return`${_VW_WD[d.getUTCDay()]} ${d.getUTCDate()} ${_VW_MO[d.getUTCMonth()]}`;
+}
+// "Friday · Fri 19 Jun" (name and/or date, whatever the day has).
+function vwDayLabel(d){
+  if(!d)return'';
+  const dl=vwDateLabel(d.date);
+  return d.name&&dl?`${d.name} · ${dl}`:(d.name||dl||'');
+}
+function vwDayById(id){return id&&G?vwDayLabel((G.days||[]).find(d=>d.id===id)):'';}
+// A colour from project data used inside style="" (FOH note colours):
+// only plain hex / rgb(a) values, anything else falls back.
+function vwColor(c,fallback){return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i.test(String(c||''))?c:fallback;}
+const vwTime=t=>escH(String(t||'').slice(0,5));
+// Empty states. Which one applies for these stages on day `dayId`:
+//  'nostages' - the project has no stages at all
+//  'none'     - nothing planned on these stages, on any day
+//  'finished' - this day had shows and they are all done
+//  'otherday' - nothing on this day, but there are shows on other days
+function vwEmptyKind(stageIds,dayId){
+  const ids=new Set(stageIds||[]);
+  if(!ids.size)return'nostages';
+  const isPub=_isPublicView();
+  const all=(G.shows||[]).filter(s=>ids.has(s.stage)&&showAllowed(s,'live',isPub));
+  if(!all.length)return'none';
+  const onDay=all.filter(s=>s.day===dayId);
+  if(onDay.length&&onDay.every(s=>_showIsPast(s)))return'finished';
+  return onDay.length?'':'otherday';
+}
+// First upcoming show on these stages after now, any day (for the hints).
+function vwNextAnyDay(stageIds){
+  const ids=new Set(stageIds||[]),n=nowMs(),isPub=_isPublicView();
+  let best=null;
+  for(const s of (G.shows||[])){
+    if(!ids.has(s.stage)||!showAllowed(s,'live',isPub))continue;
+    const st=_showIv(s).startMs;
+    if(st>n&&(!best||st<best.st))best={s,st};
+  }
+  return best&&best.s;
+}
+function vwEmptyHTML(kind,{dayId,stageIds,canPickDay,inline}={}){
+  const day=vwDayById(dayId)||'this day';
+  const nx=stageIds?vwNextAnyDay(stageIds):null;
+  const nxTxt=nx?`Next show: ${nx.artist||'(no name)'} · ${vwDayById(nx.day)||vwDateLabel(showDate(nx))} ${String(nx.start||'').slice(0,5)}`:'';
+  const T={
+    nostages:['No stages yet','Add a stage in Project management to fill this view.'],
+    none:['No shows planned','Nothing has been scheduled here yet. Shows appear as soon as they are added.'],
+    finished:['Programme finished',`All shows on ${day} are done.${nxTxt?' '+nxTxt+'.':''}`],
+    otherday:[`No shows on ${day}`,canPickDay?`There are shows on other days - pick another day above.${nxTxt?' '+nxTxt+'.':''}`:(nxTxt?nxTxt+'.':'There are shows on other days.')],
+    error:['Could not load the programme','Check the internet connection. Retrying automatically…'],
+  }[kind]||['Nothing to show',''];
+  return`<div class="vw-empty vw-${escH(kind)}${inline?' vw-inline':''}" role="status"><div class="vw-empty-title">${escH(T[0])}</div>${T[1]?`<div class="vw-empty-sub">${escH(T[1])}</div>`:''}</div>`;
+}
+// "Last sync 23s ago" on share-link control screens when the public feed is
+// stale (>10 s since the last good poll). Never on Stage View (no element there).
+function vwTickSync(){
+  const mode=window.PUBLIC_MODE;
+  const last=window.__stLastSyncOk;
+  const age=mode&&mode!=='stage'&&last?Date.now()-last:0;
+  const stale=age>10000;
+  const sec=Math.floor(age/1000);
+  const txt=stale?(sec<120?`Last sync ${sec}s ago`:`Last sync ${Math.floor(sec/60)} min ago`):'';
+  document.querySelectorAll('.vw-sync').forEach(el=>{
+    if(el.hidden!==!stale)el.hidden=!stale;
+    if(stale&&el.textContent!==txt){el.textContent=txt;el.title='No connection to the server - showing the last programme received. Retrying every second.';}
+  });
+}
+// Rebuild a container only when its signature changed (keeps scroll position,
+// focus and open pickers intact on the periodic re-renders).
+function vwSame(el,sig){if(!el)return true;if(el._vwSig===sig)return true;el._vwSig=sig;return false;}
 
 // ══ CREW
 const CREW_ROLES=[{id:'vj',label:'VJ'},{id:'light',label:'Light'},{id:'sound',label:'Sound'},{id:'sfx',label:'SFX'},{id:'laser',label:'Laser'}];
@@ -5610,15 +5796,19 @@ function fohCrewHTML(show){
   const crew=show.crew||{};
   const rows=CREW_ROLES.filter(r=>crew[r.id]?.name).map(r=>{
     const st=crew[r.id]?.status||'';
-    const csb=(s,lbl)=>`<button class="csb ${st===s?s:''}" onclick="setCrewStatus('${show.id}','${r.id}','${s}');event.stopPropagation()">${lbl}</button>`;
+    // The icon buttons set the status; the word next to the name says what it is.
+    const csb=(s,lbl)=>`<button class="csb ${st===s?s:''}" title="${CREW_STATUS[s]}" aria-label="${escH(r.label)}: ${CREW_STATUS[s]}" aria-pressed="${st===s}" onclick="setCrewStatus(${_jsArg(show.id)},${_jsArg(r.id)},'${s}');event.stopPropagation()">${lbl}</button>`;
     return`<div class="foh-crew-row">
-      <span class="foh-crew-role">${r.label}</span>
+      <span class="foh-crew-role">${escH(r.label)}</span>
       <span class="foh-crew-name">${escH(crew[r.id].name)}</span>
+      <span class="foh-crew-stl ${CREW_STATUS[st]?st:''}">${CREW_STATUS[st]||'No status'}</span>
       <div class="foh-crew-st">${csb('present','✅')}${csb('otw','🟡')}${csb('unknown','❓')}</div>
     </div>`;
   });
   return rows.length?`<div class="foh-crew">${rows.join('')}</div>`:'';
 }
+// Crew status words: the FOH buttons only show an icon, this says what it means.
+const CREW_STATUS={present:'On site',otw:'On the way',unknown:'Not reachable'};
 function setCrewStatus(showId,role,status){
   const s=G.shows.find(x=>x.id===showId);if(!s)return;
   if(!s.crew)s.crew={};if(!s.crew[role])s.crew[role]={name:'',status:''};
@@ -5636,11 +5826,11 @@ function fohBoothBadge(booth){
 function fohNotesHTML(showId){
   const notes=(G.fohNotes[showId]||[]);
   if(!notes.length)return'';
-  return`<div class="foh-notes">${notes.map(n=>`<div class="foh-note-item" style="border-left-color:${n.color||'#ffe600'}">
-    ${n.time?`<span class="foh-note-time" style="color:${n.color||'#ffe600'}">${n.time}</span>`:''}
+  return`<div class="foh-notes">${notes.map(n=>{const col=vwColor(n.color,'#ffe600');return`<div class="foh-note-item" style="border-left-color:${col}">
+    ${n.time?`<span class="foh-note-time" style="color:${col}">${escH(n.time)}</span>`:''}
     <span class="foh-note-txt">${escH(n.text)}</span>
-    <button class="foh-note-del" onclick="delFohnNote('${showId}','${n.id}');event.stopPropagation()">×</button>
-  </div>`).join('')}</div>`;
+    <button class="foh-note-del" aria-label="Delete note" onclick="delFohnNote(${_jsArg(showId)},${_jsArg(n.id)});event.stopPropagation()">×</button>
+  </div>`;}).join('')}</div>`;
 }
 function renderFOH(){
   if(!document.getElementById('foh').classList.contains('open'))return;
@@ -5649,13 +5839,20 @@ function renderFOH(){
   const{shows:all,cur,nxt}=stageShowAt(G.activeStage,G.activeDay,now,'live');
   // The FOH list never shows cancelled shows (same rule as the live pick).
   const shows=all.filter(s=>showAllowed(s,'live',_isPublicView()));
-  const n=nowSecAdj(),nm=nowMinAdj();
+  const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;return !_showIsPast(s);});
+  // Rebuild only when what is drawn changed: the 8 s refresh used to wipe
+  // focus and hover state. Countdowns and bars are kept current by tickFOH.
+  const body=document.getElementById('foh-col-body');
+  const sig=JSON.stringify([G.activeStage,G.activeDay,activeStageObj().name,cur&&cur.s.id,cur&&tColor(Math.round((cur.endMs-now)/1000)),nxt&&nxt.s.id,
+    shows.map(s=>[s.id,s.artist,s.start,s.end,s.booth,s.type,s.hidden,s.crew,vwStatusKey(s,now),_showIsFuture(s,now)]),
+    upcoming.map(s=>s.id),shows.map(s=>(G.fohNotes||{})[s.id]||0)]);
+  if(vwSame(body,sig))return;
   let liveHTML='';
   if(cur){
     const rem=Math.round((cur.endMs-now)/1000),dur=Math.round((cur.endMs-cur.startMs)/1000),pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
     const tc=tColor(rem);
     liveHTML=`<div class="foh-now">
-      <div class="foh-now-lbl" style="color:${tc};"><span class="foh-now-dot lp" style="background:${tc};"></span>Now Playing ${itemTypeBadge(cur.s)} ${fohBoothBadge(cur.s.booth)}</div>
+      <div class="foh-now-lbl" style="color:${tc};"><span class="foh-now-dot lp" style="background:${tc};"></span>${VW_STATUS.live} · ${vwTime(cur.s.start)}–${vwTime(cur.s.end)} ${itemTypeBadge(cur.s)} ${fohBoothBadge(cur.s.booth)} ${cur.s.hidden?vwChip('hidden'):''}</div>
       <div class="foh-now-row">
         <div class="foh-now-artist">${escH(cur.s.artist)}</div>
         <div class="foh-now-cd ${shouldBlink(rem)?'ot':''}" id="foh-cd" style="color:${tc};">${s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1))}</div>
@@ -5664,42 +5861,48 @@ function renderFOH(){
       ${fohCrewHTML(cur.s)}
       ${fohNotesHTML(cur.s.id)}
       <div style="display:flex;gap:6px;margin-top:8px;">
-        <button class="foh-add-note" onclick="openFohnModal('${escH(cur.s.id)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" onclick="openFohnModal(${_jsArg(cur.s.id)});event.stopPropagation()">+ Note</button>
       </div>
     </div>`;
-  }else{
-    liveHTML=`<div class="foh-empty">${nxt?'Waiting for first artist…':'No shows scheduled'}</div>`;
+  }else if(nxt&&upcoming.length){
+    liveHTML=`<div class="foh-nolive">Nothing live right now · ${VW_STATUS.next}: <strong>${escH(nxt.s.artist)}</strong> at ${vwTime(nxt.s.start)}</div>`;
   }
-  const upcoming=shows.filter(s=>{if(cur&&s.id===cur.s.id)return false;return !_showIsPast(s);});
-  const rows=upcoming.map(s=>{
-    const showIsToday=isShowToday(s);
-    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;const isNow=_showIsLive(s);
+  const rows=upcoming.map((s,i)=>{
+    const isNow=_showIsLive(s);
     const _sa=_showStartsAt(s);const secUntil=_sa?Math.max(0,Math.round((_sa.getTime()-now)/1000)):0;
     const cdCol=secUntil<900?'#22c55e':secUntil<1800?'#f97316':'rgba(255,255,255,.3)';
+    const key=vwStatusKey(s,now);
     return`<div class="foh-srow${isNow?' live':''}">
-      <div class="foh-sr-t">${s.start.slice(0,5)}</div>
+      <div class="foh-sr-t">${vwTime(s.start)}</div>
       <div class="foh-sr-m">
         <div class="foh-sr-top">
           <div class="foh-sr-a">${escH(s.artist)}</div>
+          ${key==='scheduled'?vwChip('scheduled',vwDateLabel(showDate(s))||VW_STATUS.scheduled):(i===0&&key==='next'?vwChip('next'):'')}
+          ${s.hidden?vwChip('hidden'):''}
           ${itemTypeBadge(s)}
           ${fohBoothBadge(s.booth)}
         </div>
         ${fohCrewHTML(s)}
         ${fohNotesHTML(s.id)}
-        <button class="foh-add-note" onclick="openFohnModal('${escH(s.id)}');event.stopPropagation()">+ Note</button>
+        <button class="foh-add-note" onclick="openFohnModal(${_jsArg(s.id)});event.stopPropagation()">+ Note</button>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
         <div class="foh-sr-act">
-          <button class="frb" onclick="openDrawer('${s.id}')" title="Edit">✏️</button>
-          <button class="frb d" onclick="delShow('${s.id}',event)" title="Delete">🗑</button>
+          <button class="frb" onclick="openDrawer(${_jsArg(s.id)})" title="Edit" aria-label="Edit ${escH(s.artist)}">✏️</button>
+          <button class="frb d" onclick="delShow(${_jsArg(s.id)},event)" title="Delete" aria-label="Delete ${escH(s.artist)}">🗑</button>
         </div>
-        ${_showIsFuture(s)?`<div id="foh-sr-cd-${s.id}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
-        <div style="font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.06em;">until start</div>`:''}
+        ${_showIsFuture(s)?`<div id="foh-sr-cd-${escH(s.id)}" style="font-family:var(--ffm);font-size:13px;font-weight:700;color:${cdCol};letter-spacing:-.02em;white-space:nowrap;">${s2cdH(Math.ceil(secUntil))}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:.06em;">until start</div>`:''}
       </div>
     </div>`;
-  }).join('')||`<div style="padding:16px 28px;font-size:12px;color:rgba(255,255,255,.2);">No shows</div>`;
-  document.getElementById('foh-col-body').innerHTML=liveHTML+
-    `<div class="foh-up-hdr">Schedule</div>`+rows;
+  }).join('');
+  let rest=rows;
+  if(!rows){
+    const kind=cur?'':(vwEmptyKind([G.activeStage],G.activeDay)||'finished');
+    rest=kind?vwEmptyHTML(kind,{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!_isPublicView()})
+      :`<div class="vw-empty vw-inline" role="status"><div class="vw-empty-sub">No more shows on this stage after ${escH(cur.s.artist)}.</div></div>`;
+  }
+  body.innerHTML=liveHTML+`<div class="foh-up-hdr">Schedule</div>`+rest;
 }
 
 // ══ FOH NOTES
@@ -5744,8 +5947,18 @@ function renderBS(){
   const now=nowMs();
   const n=nowSecAdj(),nm=nowMinAdj();
   const body=document.getElementById('bs-body');
+  // Rebuild only when what is drawn changed (the 8 s operator refresh and
+  // every poll used to rebuild the list and reset its scroll position);
+  // tickBS keeps the countdowns and bars moving.
+  const sig=JSON.stringify([G.activeStage,G.activeDay,activeStageObj().name,
+    shows.map(s=>[s.id,s.artist,s.start,s.end,s.booth,s.type,s.note,s.hidden,vwStatusKey(s,now)]),
+    shows.map(s=>(G.fohNotes||{})[s.id]||0)]);
+  if(vwSame(body,sig))return;
 
-  if(!shows.length){body.innerHTML=`<div style="color:rgba(255,255,255,.2);font-size:16px;text-align:center;margin-top:40px;">No shows scheduled for this day.</div>`;return;}
+  if(!shows.length||shows.every(s=>_showIsPast(s,now))){
+    body.innerHTML=vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!_isPublicView()});
+    return;
+  }
 
   const notesBlock=s=>{
     const foh=(G.fohNotes&&G.fohNotes[s.id])||[];
@@ -5754,7 +5967,7 @@ function renderBS(){
     const items=[];
     if(showNote)items.push(`<div style="font-size:12px;color:rgba(255,255,255,.55);padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.18);line-height:1.4;margin-top:6px;">${escH(showNote)}</div>`);
     foh.forEach(n=>{
-      const col=n.color||'#ffe600';
+      const col=vwColor(n.color,'#ffe600');
       items.push(`<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid ${col};line-height:1.4;margin-top:6px;">
         ${n.time?`<span style="font-family:var(--ffm);font-size:11px;font-weight:700;color:${col};flex-shrink:0;">${escH(n.time)}</span>`:''}
         <span style="font-size:12px;color:rgba(255,255,255,.78);">${escH(n.text)}</span>
@@ -5780,7 +5993,7 @@ function renderBS(){
         <div class="bs-row-top">
           <div class="bs-row-left">
             <div class="bs-badge" style="color:${col};">
-              <span class="bs-badge-dot lp" style="background:${col};"></span>LIVE
+              <span class="bs-badge-dot lp" style="background:${col};"></span>${rem<0?VW_STATUS.live+' · '+VW_STATUS.overtime:VW_STATUS.live}${s.hidden?' '+vwChip('hidden'):''}
               ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
               ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
             </div>
@@ -5798,20 +6011,19 @@ function renderBS(){
       return'';
     } else if(!showIsToday){
       // SCHEDULED (not today): static start time + date, no live countdown
-      const sd=showDate(s);
-      const dateLbl=sd?new Date(sd+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',day:'numeric',month:'short'}):'';
+      const dateLbl=vwDateLabel(showDate(s));
       return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.05);opacity:.7;">
         <div class="bs-row-top">
           <div class="bs-row-left">
             <div class="bs-badge" style="color:rgba(255,255,255,.3);">
-              SCHEDULED
+              ${VW_STATUS.scheduled}${s.hidden?' '+vwChip('hidden'):''}
               ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
             </div>
             <div class="bs-artist" style="color:rgba(255,255,255,.7);">${escH(s.artist)}</div>
           </div>
           <div class="bs-row-right">
             <div class="bs-cd-lbl">${dateLbl||'Date unknown'}</div>
-            <div class="bs-cd" style="color:rgba(255,255,255,.55);font-size:clamp(28px,7vw,40px);">${s.start.slice(0,5)}</div>
+            <div class="bs-cd" style="color:rgba(255,255,255,.55);font-size:clamp(28px,7vw,40px);">${vwTime(s.start)}</div>
           </div>
         </div>
         ${notesBlock(s)}
@@ -5832,7 +6044,7 @@ function renderBS(){
         <div class="bs-row-top">
           <div class="bs-row-left">
             <div class="bs-badge" style="color:rgba(255,255,255,.3);">
-              NEXT ${rank>0?rank:''}
+              ${VW_STATUS.next}${rank>0?' '+rank:''}${s.hidden?' '+vwChip('hidden'):''}
               ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
               ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
             </div>
@@ -6379,8 +6591,8 @@ function _syncMobNavActive(){
     b.classList.toggle('active',b.dataset.nav===active);
   });
 }
-function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();_syncMobNavActive();}
-function closeFOH(){document.getElementById('foh').classList.remove('open');_syncMobNavActive();}
+function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();_acquireWakeLock();_syncMobNavActive();}
+function closeFOH(){document.getElementById('foh').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();_syncMobNavActive();}
 function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openSV(){_closeAllScreens();document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();_syncMobNavActive();}
@@ -6430,10 +6642,13 @@ function closeSV(){document.getElementById('sv').classList.remove('open');_relea
 })();
 
 // ── Wake Lock: prevent the screen from sleeping during live show views.
-// Backstage and Stage View are designed to stay on a dedicated monitor /
-// phone during a set - without this, the OS dims and locks the display
-// mid-countdown. Wake Lock is a best-effort (no support on old iOS Safari,
-// fails silently). The lock is released as soon as both views are closed.
+// Stage View, Backstage, FOH, Timeline, Overview and the Control Wall are
+// designed to stay on a dedicated monitor / phone during a set - without
+// this, the OS dims and locks the display mid-countdown (BOUWPLAN B3: it
+// used to be Backstage + Stage View only). Wake Lock is a best-effort (no
+// support on old iOS Safari, fails silently). The lock is released as soon
+// as all of these views are closed.
+const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv'];
 let _wakeLock=null;
 async function _acquireWakeLock(){
   if(!('wakeLock' in navigator))return;
@@ -6445,14 +6660,14 @@ async function _acquireWakeLock(){
 }
 function _releaseWakeLockIfIdle(){
   // Keep it if any other live view is still open
-  const stillOpen=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  const stillOpen=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(stillOpen)return;
   if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}
 }
 // Reacquire on visibility-return (browsers drop wake lock when tab is hidden).
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState!=='visible')return;
-  const needLock=['bs','sv'].some(id=>document.getElementById(id)?.classList.contains('open'));
+  const needLock=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='wall')closeWV();}});
@@ -6507,8 +6722,9 @@ function openOV(){
   const el=document.getElementById('stov');
   el.classList.add('open');
   renderOV();
+  _acquireWakeLock();
 }
-function closeOV(){document.getElementById('stov').classList.remove('open');}
+function closeOV(){document.getElementById('stov').classList.remove('open');_releaseWakeLockIfIdle();}
 
 // Pick the day_id of the earliest still-upcoming (or currently-running) show for a stage.
 // Looks across ALL days and returns null when no future show exists.
@@ -6529,7 +6745,7 @@ function pickStageBestDay(stageId){
 const _OV_PER_STAGE_DAY=()=>PUBLIC_MODE==='overview';
 function renderOV(){
   const dtabs=document.getElementById('stov-dtabs');
-  if(dtabs){dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayOV','stovhbtn');}
+  if(dtabs&&!vwSame(dtabs,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])]))){dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayOV','stovhbtn');}
   // Project logos removed - Stagetimer brand is the only chrome mark.
   const dayToday=isActiveDayToday();
   const perStage=_OV_PER_STAGE_DAY();
@@ -6548,20 +6764,40 @@ function renderOV(){
   }).sort((a,b)=>a.name.localeCompare(b.name,'nl'));
   // Stash for tickOV
   window._stovStageDay=perStage?stageDay:null;
+  // Which day each card shows. The public overview picks a day per stage, so
+  // stages can be on different days: then every card names its day, and the
+  // header says so. One day for all: the header names it.
+  const dayOf=st=>perStage?stageDay[st.id]:G.activeDay;
+  const shownDays=[...new Set(stages.map(dayOf))];
+  const mixed=shownDays.length>1;
+  const lbl=document.getElementById('stov-daylbl');
+  if(lbl){
+    const txt=perStage&&shownDays.length?(mixed?'Stages show different days':vwDayById(shownDays[0])):'';
+    if(lbl.textContent!==txt)lbl.textContent=txt;
+    lbl.className=mixed?'mixed':'';
+  }
   const grid=document.getElementById('stov-grid');
-  if(!stages.length){grid.innerHTML='<div style="color:rgba(255,255,255,.2);font-size:13px;padding:20px;">No shows scheduled for this day.</div>';return;}
-  grid.innerHTML=stages.map(st=>`
-    <div class="stov-card" id="stovc-${st.id}">
-      <div class="stov-stage-name" id="stovname-${st.id}" style="color:#ef4444;">
-        <span class="stov-stage-dot" id="stovdot-${st.id}" style="background:#ef4444;"></span>
-        ${escH(st.name)}
+  if(!stages.length){
+    const ids=(G.stages||[]).map(st=>st.id);
+    const html=vwEmptyHTML(vwEmptyKind(ids,G.activeDay)||'finished',{dayId:G.activeDay,stageIds:ids,canPickDay:!perStage});
+    if(!vwSame(grid,html))grid.innerHTML=html;
+    return;
+  }
+  // Short chip ("Sat 11 Jul", the day name when undated); the full label is the tooltip.
+  const cards=stages.map(st=>{const d=(G.days||[]).find(x=>x.id===dayOf(st));return[st.id,st.name,mixed?(vwDateLabel(d&&d.date)||vwDayLabel(d)):'',mixed?vwDayLabel(d):''];});
+  // Card shells only change with the stage list; tickOV fills them.
+  if(!vwSame(grid,JSON.stringify(cards)))grid.innerHTML=cards.map(([id,name,dayLbl,dayFull])=>`
+    <div class="stov-card" id="stovc-${escH(id)}">
+      <div class="stov-stage-name" id="stovname-${escH(id)}" style="color:#ef4444;">
+        <span class="stov-stage-dot" id="stovdot-${escH(id)}" style="background:#ef4444;"></span>
+        ${escH(name)}${dayLbl?`<span class="stov-day" title="This stage shows ${escH(dayFull)}">${escH(dayLbl)}</span>`:''}
       </div>
-      <div class="stov-next" id="stovnx-${st.id}"></div>
-      <div class="stov-artist" id="stovart-${st.id}">-</div>
-      <div class="stov-bw"><div class="stov-bar" id="stovbar-${st.id}" style="width:0%;"></div></div>
+      <div class="stov-next" id="stovnx-${escH(id)}"></div>
+      <div class="stov-artist" id="stovart-${escH(id)}">-</div>
+      <div class="stov-bw"><div class="stov-bar" id="stovbar-${escH(id)}" style="width:0%;"></div></div>
       <div class="stov-cd-wrap">
-        <div class="stov-cd" id="stovcd-${st.id}" style="color:rgba(255,255,255,.2);">--:--</div>
-        <div class="stov-status" id="stovst-${st.id}" style="color:rgba(255,255,255,.28);">-</div>
+        <div class="stov-cd" id="stovcd-${escH(id)}" style="color:rgba(255,255,255,.2);">--:--</div>
+        <div class="stov-status" id="stovst-${escH(id)}" style="color:rgba(255,255,255,.28);">-</div>
       </div>
     </div>`).join('');
   tickOV();
@@ -6599,14 +6835,14 @@ function tickOV(){
       if(card.className!==wantLiveClass)card.className=wantLiveClass;
       card.style.borderColor=nxPrio?'':col+'44';card.style.opacity='1';
       dotEl.style.background='#22c55e';if(nameEl)nameEl.style.color='#22c55e';
-      stEl.textContent=rem<0?'OVERTIME':'Running';stEl.style.color=col;
+      stEl.textContent=rem<0?VW_STATUS.overtime:VW_STATUS.live;stEl.style.color=col;
       artEl.textContent=cur.s.artist;artEl.style.color='#fff';
       const remA=Math.ceil(Math.abs(rem)),remSgn=rem<0?-1:1;
       const remTxt=rem>=0&&rem>900?Math.ceil(rem/60)+' min':s2cdH(remA*remSgn);
       cdEl.textContent=remTxt;cdEl.style.color=col;cdEl.className='stov-cd'+(shouldBlink(rem)?' ot':'');
       barEl.style.width=pct.toFixed(1)+'%';barEl.style.background=col;
       nxEl.className='stov-next'+(nxPrio?' priority-next':'');
-      nxEl.innerHTML=nx?`↑ <strong>${nxPrio?'⭐ ':''}${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
+      nxEl.innerHTML=nx?`↑ <strong>${nxPrio?'⭐ ':''}${escH(nx.artist)}</strong> · ${vwTime(nx.start)}`:'';
     }else if(nxtObj){
       const isPrio=!!nxtObj.s.priority;
       const upCol=isPrio?'#fbbf24':nxtObj.startsIn<600?'#22c55e':nxtObj.startsIn<1800?'#f97316':'#6366f1';
@@ -6614,7 +6850,9 @@ function tickOV(){
       if(card.className!==wantClass)card.className=wantClass;
       card.style.borderColor=isPrio?'':''+upCol+'33';
       dotEl.style.background=isPrio?'#fbbf24':'#ef4444';if(nameEl)nameEl.style.color=isPrio?'#fbbf24':'#ef4444';
-      stEl.textContent=(isPrio?'⭐ ':'')+'Up next · '+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
+      // Not tonight: name the weekday too ("Next · Sat 20:00"), the card's day chip has the date.
+      const nxDay=isShowToday(nxtObj.s)?'':(vwDateLabel(showDate(nxtObj.s)).split(' ')[0]+' ');
+      stEl.textContent=(isPrio?'⭐ ':'')+VW_STATUS.next+' · '+nxDay+nxtObj.s.start.slice(0,5);stEl.style.color=upCol;
       // Show arrival status for the up-next artist - critical info for the
       // operator: green pill if the artist checked in, dim "Awaiting" if not.
       const arrPill=nxtObj.s.arrived
@@ -6629,26 +6867,25 @@ function tickOV(){
       const nxIdx=shows.indexOf(nxtObj.s)+1;
       const nx=shows[nxIdx];
       nxEl.className='stov-next';
-      nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
+      nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${vwTime(nx.start)}`:'';
     }else if(shows.length){
       if(!dayIsToday){
         // Active day is not today → don't mark as "Ended"; show as Scheduled with first artist.
         const first=shows[0];
-        const sd=showDate(first);
-        const sdLbl=sd?sd.split('-').reverse().slice(0,2).join('/'):'';
+        const sdLbl=vwDateLabel(showDate(first));
         card.className='stov-card';card.style.borderColor='rgba(99,102,241,.2)';card.style.opacity='1';
         dotEl.style.background='#6366f1';if(nameEl)nameEl.style.color='#6366f1';
-        stEl.textContent='Scheduled'+(sdLbl?' · '+sdLbl:'');stEl.style.color='#6366f1';
+        stEl.textContent=VW_STATUS.scheduled+(sdLbl?' · '+sdLbl:'');stEl.style.color='#6366f1';
         artEl.textContent=first.artist;artEl.style.color='#fff';
         cdEl.textContent=first.start.slice(0,5);cdEl.style.color='#6366f1';cdEl.className='stov-cd';
         barEl.style.width='0%';barEl.style.background='rgba(255,255,255,.12)';
         const nx=shows[1];
         nxEl.className='stov-next';
-        nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${nx.start.slice(0,5)}`:'';
+        nxEl.innerHTML=nx?`↑ <strong>${escH(nx.artist)}</strong> · ${vwTime(nx.start)}`:'';
       }else{
         card.className='stov-card stov-past';card.style.borderColor='rgba(255,255,255,.07)';card.style.opacity='1';
         dotEl.style.background='#ef4444';if(nameEl)nameEl.style.color='#ef4444';
-        stEl.textContent='Ended';stEl.style.color='rgba(255,255,255,.28)';
+        stEl.textContent=VW_STATUS.done;stEl.style.color='rgba(255,255,255,.5)';
         artEl.textContent=shows[shows.length-1].artist;artEl.style.color='#fff';
         cdEl.textContent='--:--';cdEl.style.color='rgba(255,255,255,.2)';cdEl.className='stov-cd';
         barEl.style.width='100%';barEl.style.background='rgba(255,255,255,.12)';nxEl.innerHTML='';
@@ -6669,22 +6906,11 @@ function tickOV(){
 // huge countdown, current + next artist with start times, nothing else.
 // Same data sources as Stage Overview but a totally different layout
 // optimised for "what eist mijn aandacht NU?" at distance.
-function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');wvApplyTheme();renderWV();}
-function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').classList.remove('open');}
-function _wvDayLabel(d){
-  if(!d)return '';
-  if(d.name&&d.date){
-    // A festival calendar date: noon festival time, read back in festival
-    // time. new Date('YYYY-MM-DD') is UTC midnight, which is the previous
-    // day on any device west of Greenwich.
-    try{
-      const ms=parseFestivalISO(`${d.date}T12:00:00`);if(isNaN(ms))throw new Error('bad day date '+d.date);
-      const mo=new Date(ms).toLocaleString('nl-NL',{month:'long',timeZone:festivalTZ()});
-      return `Geplande tijden ${d.name.toLowerCase()} — ${amsParts(ms).Da} ${mo}`;
-    }catch(e){console.warn('[wall] day label without date:',e?.message||e);return `Geplande tijden ${d.name.toLowerCase()}`;}
-  }
-  return d.name?`Geplande tijden ${d.name.toLowerCase()}`:'';
-}
+function openWV(){_closeAllScreens();const el=document.getElementById('wv');el.classList.add('open');wvApplyTheme();renderWV();_acquireWakeLock();}
+function closeWV(){if(PUBLIC_MODE==='wall')return;document.getElementById('wv').classList.remove('open');_releaseWakeLockIfIdle();}
+// Same day label as every other view ("Friday · Fri 19 Jun"); it used to be
+// a Dutch sentence on an otherwise English screen.
+function _wvDayLabel(d){return vwDayLabel(d);}
 // Light/dark theme - persisted in localStorage so the same wall display
 // keeps its preference across page reloads / SW updates.
 const WV_THEME_KEY='st_wall_theme';
@@ -6777,9 +7003,9 @@ function wvToggleDayMenu(e){
   // Build menu HTML on open so the day list stays fresh
   const overrideId=_wvDayOverrideId();
   const days=G.days||[];
-  let html=`<button class="${overrideId===''?'on':''}" onclick="wvDaySet('')"><span>Auto (today)</span><span class="sub">${_wvDayShortLabel(_wvAutoDay())}</span></button>`;
+  let html=`<button class="${overrideId===''?'on':''}" onclick="wvDaySet('')"><span>Auto (today)</span><span class="sub">${escH(_wvDayShortLabel(_wvAutoDay()))}</span></button>`;
   if(days.length){html+='<div class="sep"></div>';}
-  html+=days.map(d=>`<button class="${overrideId===d.id?'on':''}" onclick="wvDaySet('${d.id}')"><span>${escH(d.name||'(unnamed)')}</span><span class="sub">${d.date||''}</span></button>`).join('');
+  html+=days.map(d=>`<button class="${overrideId===d.id?'on':''}" onclick="wvDaySet(${_jsArg(d.id)})"><span>${escH(d.name||'(unnamed)')}</span><span class="sub">${escH(vwDateLabel(d.date))}</span></button>`).join('');
   m.innerHTML=html;
   m.classList.add('open');
   // Close on outside click
@@ -6800,7 +7026,7 @@ function _wvAutoDay(){
 }
 function _wvDayShortLabel(d){
   if(!d)return '—';
-  return (d.name||'')+(d.date?' · '+d.date:'');
+  return vwDayLabel(d);
 }
 
 // HH:MM:SS formatter used by the Wall countdowns. Always 8 chars,
@@ -6868,28 +7094,36 @@ function renderWV(){
   const body=document.getElementById('wv-body');if(!body)return;
   body.dataset.stages=String(Math.min(stages.length,16));
   body.dataset.day=useDay||'';
+  if(!stages.length){
+    const html=`<div class="vw-empty" style="grid-column:1/-1;align-self:center;">${''}<div class="vw-empty-title">No stages yet</div><div class="vw-empty-sub">Add a stage in Project management to fill the wall.</div></div>`;
+    if(!vwSame(body,html))body.innerHTML=html;
+    return;
+  }
+  // Cell shells only depend on the stage list: a poll that changed show data
+  // no longer rebuilds 16 cells (tickWV fills them by id every 250 ms).
+  if(vwSame(body,JSON.stringify(stages.slice(0,16).map(st=>[st.id,st.name])))){tickWV();return;}
   // Build cell shells once - tickWV mutates content by id, no re-render.
   // Bloomberg-terminal aesthetic: stage label, status text, NOW + countdown,
   // hairline divider, NEXT. Nothing decorative.
   const cells=stages.slice(0,16).map(st=>`
-    <div class="wv-cell idle" id="wvc-${st.id}">
+    <div class="wv-cell idle" id="wvc-${escH(st.id)}">
       <div class="wv-stage-row">
         <div class="wv-stage">${escH(st.name)}</div>
-        <div class="wv-status-txt" id="wvp-${st.id}">—</div>
+        <div class="wv-status-txt" id="wvp-${escH(st.id)}">—</div>
       </div>
       <div class="wv-row">
         <span>Now</span>
-        <span class="wv-time" id="wvt-${st.id}"></span>
+        <span class="wv-time" id="wvt-${escH(st.id)}"></span>
       </div>
-      <div class="wv-artist placeholder" id="wva-${st.id}">—</div>
+      <div class="wv-artist placeholder" id="wva-${escH(st.id)}">—</div>
       <div class="wv-cd-row">
-        <div class="wv-cd dim" id="wvcd-${st.id}"></div>
-        <div class="wv-cd-cap" id="wvcc-${st.id}"></div>
+        <div class="wv-cd dim" id="wvcd-${escH(st.id)}"></div>
+        <div class="wv-cd-cap" id="wvcc-${escH(st.id)}"></div>
       </div>
       <div class="wv-divider"></div>
       <div class="wv-up-wrap">
         <div class="wv-up-label">Next up</div>
-        <div class="wv-up-list" id="wvup-${st.id}"></div>
+        <div class="wv-up-list" id="wvup-${escH(st.id)}"></div>
       </div>
     </div>`).join('');
   const total=stages.length;
@@ -6975,7 +7209,7 @@ function tickWV(){
       _wvSetUpcoming(upEl,shows.slice(idx,idx+WV_UPCOMING),'End of programme');
     }else if(shows.length){
       cls+=' dark idle';
-      if(stEl){stEl.textContent='Ended';stEl.className='wv-status-txt';}
+      if(stEl){stEl.textContent=VW_STATUS.done;stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='No show';artEl.className='wv-artist placeholder';}
       if(tEl)tEl.textContent='No more shows today';
       if(cdEl){cdEl.textContent='';cdEl.className='wv-cd dim';}
@@ -6983,12 +7217,14 @@ function tickWV(){
       _wvSetUpcoming(upEl,[],'End of programme');
     }else{
       cls+=' dark idle';
+      // Nothing on this day: say whether the stage plays on another day.
+      const other=vwEmptyKind([st.id],dayId)==='otherday';
       if(stEl){stEl.textContent='No shows';stEl.className='wv-status-txt';}
       if(artEl){artEl.textContent='No show';artEl.className='wv-artist placeholder';}
-      if(tEl)tEl.textContent='Nothing scheduled';
+      if(tEl)tEl.textContent=other?'Plays on another day':'Nothing scheduled';
       if(cdEl){cdEl.textContent='';cdEl.className='wv-cd dim';}
       if(capEl)capEl.textContent='';
-      _wvSetUpcoming(upEl,[],'No shows on this stage');
+      _wvSetUpcoming(upEl,[],other?'No shows on this day':'No shows on this stage');
     }
     if(cell.className!==cls)cell.className=cls;
   });
@@ -7347,6 +7583,7 @@ function tick(){
   tickSched();
   tickOTV();
   tickOV();
+  vwTickSync();
 }
 
 // ══ STAGE MANAGEMENT
@@ -9371,6 +9608,7 @@ function openTL(){
   _closeAllScreens();
   document.getElementById('tl').classList.add('open');
   renderTL();
+  _acquireWakeLock();
   requestAnimationFrame(()=>{
     const c=document.getElementById('tl-content');
     const minSec=Number(c.dataset.minSec||0);
@@ -9381,7 +9619,7 @@ function openTL(){
   });
   _syncMobNavActive();
 }
-function closeTL(){document.getElementById('tl').classList.remove('open');_syncMobNavActive();}
+function closeTL(){document.getElementById('tl').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 
 function renderTL(){
   if(!document.getElementById('tl').classList.contains('open'))return;
@@ -9404,35 +9642,40 @@ function renderTL(){
   const adjES=s=>{const ss=adjSS(s);const sec=t2s(s.end);const ae=sec<NIGHT_S?sec+86400:sec;return ae<=ss?ae+86400:ae;};
   const content=document.getElementById('tl-content');
 
-  if(!stages.length){content.innerHTML='<div style="padding:40px 28px;color:rgba(255,255,255,.25);font-size:13px;">No stages created.</div>';return;}
+  if(!stages.length){content.innerHTML=vwEmptyHTML('nostages');return;}
+  // Nothing on this day at all: say why (nothing planned vs. another day).
+  const emptyBanner=shows.length?'':vwEmptyHTML(vwEmptyKind(stages.map(st=>st.id),G.activeDay)||'none',{dayId:G.activeDay,stageIds:stages.map(st=>st.id),canPickDay:true,inline:true});
+  // Status words, the same everywhere (vwStatusKey): Live / Done / Cancelled / Hidden.
+  const statusOf=s=>vwStatusKey(s);
 
   // Mobile: vertical list per stage. Always render stages even when there are
   // no shows for the current day - otherwise a wrong activeDay or stale cache
   // could hide a stage that DOES have artists planned (just on another day).
   if(window.innerWidth<=700){
-    const nm=nowMinAdj();
     const stageIds=new Set(stages.map(st=>st.id));
     const activeStages=stages;
     const orphans=shows.filter(s=>!stageIds.has(s.stage)).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
     const makeRow=s=>{
-      const showIsToday=isShowToday(s);
-      const sm=adjM(t2m(s.start)),em=adjM(t2m(s.end));const emF=em<=sm?em+1440:em;
-      const isNow=_showIsLive(s),isPast=_showIsPast(s);
+      const key=statusOf(s);
+      const isNow=key==='live',isPast=key==='done',isCancelled=key==='cancelled';
       const bCol=isNow?'#fbbf24':s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.6)';
       const bbCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':null;
       const bbBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.16)':null;
-      const boothBadge=s.booth?`<div style="font-size:9px;font-weight:800;color:${bbCol};background:${bbBg};padding:2px 7px;border-radius:99px;flex-shrink:0;letter-spacing:.04em;">${escH(s.booth)}</div>`:'';
+      const boothBadge=s.booth&&!isCancelled?`<div style="font-size:10px;font-weight:800;color:${bbCol||'rgba(255,255,255,.7)'};background:${bbBg||'rgba(255,255,255,.08)'};padding:2px 7px;border-radius:99px;flex-shrink:0;letter-spacing:.04em;" title="Booth ${escH(s.booth)}">${escH(s.booth)}</div>`:'';
       // Arrival indicator: small green check when the artist is checked in via
       // the share-link Check-in viewer. Same state surfaces on the operator
       // schedule, overview, and now timeline so every screen agrees.
-      const arrivedBadge=s.arrived?`<div title="Checked in" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#22c55e;color:#04130a;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`:'';
-      return`<div onclick="openDrawer('${s.id}')" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.04);opacity:${isPast?.35:1};cursor:pointer;background:${isNow?'rgba(251,191,36,.1)':'transparent'};">
-        <div style="width:3px;align-self:stretch;border-radius:99px;background:${isNow?bCol:'rgba(255,255,255,.1)'};flex-shrink:0;"></div>
-        <div style="font-family:var(--ffm);font-size:11px;color:${isNow?bCol:'rgba(255,255,255,.35)'};flex-shrink:0;width:90px;">${s.start.slice(0,5)} – ${s.end.slice(0,5)}</div>
-        <div style="font-size:13px;font-weight:700;color:${isNow?'#fbbf24':'rgba(255,255,255,.7)'};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escH(s.artist)}</div>
+      const arrivedBadge=s.arrived&&!isCancelled?`<div title="Checked in" aria-label="Checked in" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#22c55e;color:#04130a;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`:'';
+      // Cancelled: struck through, red chip, never highlighted as live.
+      const nameCol=isCancelled?'rgba(252,165,165,.85)':isNow?'#fbbf24':'rgba(255,255,255,.85)';
+      const chips=(key==='live'||key==='cancelled'||key==='done'?vwChip(key):'')+(s.hidden?vwChip('hidden'):'');
+      return`<div class="tl-m-row tl-${key}" onclick="openDrawer(${_jsArg(s.id)})" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);opacity:${isPast?.55:isCancelled?.8:1};cursor:pointer;background:${isNow?'rgba(251,191,36,.1)':isCancelled?'rgba(239,68,68,.05)':'transparent'};">
+        <div style="width:3px;align-self:stretch;border-radius:99px;background:${isNow?bCol:isCancelled?'rgba(239,68,68,.5)':'rgba(255,255,255,.1)'};flex-shrink:0;"></div>
+        <div style="font-family:var(--ffm);font-size:12px;color:${isNow?bCol:'rgba(255,255,255,.6)'};flex-shrink:0;width:96px;${isCancelled?'text-decoration:line-through;':''}">${vwTime(s.start)} – ${vwTime(s.end)}</div>
+        <div style="font-size:14px;font-weight:700;color:${nameCol};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isCancelled?'text-decoration:line-through;':''}">${escH(s.artist)}</div>
         ${arrivedBadge}
         ${boothBadge}
-        ${isNow?`<div style="font-size:9px;font-weight:700;color:#08080e;background:#fbbf24;padding:2px 7px;border-radius:99px;flex-shrink:0;">NOW</div>`:''}
+        ${chips}
       </div>`;
     };
     const stageBlocks=activeStages.map(stage=>{
@@ -9441,23 +9684,23 @@ function renderTL(){
       // don't think the stage is broken/empty.
       const otherDayCount=(G.shows||[]).filter(s=>s.stage===stage.id&&s.day!==G.activeDay&&showAllowed(s,'list',tlIsPub)).length;
       const emptyHint=!stShows.length
-        ?`<div style="padding:14px;color:rgba(255,255,255,.35);font-size:12px;font-style:italic;">${otherDayCount>0?`${otherDayCount} show${otherDayCount===1?'':'s'} scheduled on other days - switch day above`:'No shows scheduled yet for this stage.'}</div>`
+        ?`<div style="padding:14px;color:rgba(255,255,255,.62);font-size:13px;">${otherDayCount>0?`No shows on this day - ${otherDayCount} show${otherDayCount===1?'':'s'} on other days, switch day above.`:'No shows planned on this stage yet.'}</div>`
         :'';
       return`<div style="margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
-          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;">${escH(stage.name)}</span>
+        <div class="tl-m-stage" style="display:flex;align-items:center;gap:8px;padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.5px;">${escH(stage.name)}</span>
         </div>
         ${stShows.map(makeRow).join('')}
         ${emptyHint}
       </div>`;
     }).join('');
     const orphanBlock=orphans.length?`<div style="margin-bottom:8px;">
-        <div style="padding:10px 14px 8px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);">
-          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;">Other</span>
+        <div class="tl-m-stage" style="padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.08);">
+          <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.5px;">Other</span>
         </div>
         ${orphans.map(makeRow).join('')}
       </div>`:'';
-    content.innerHTML=stageBlocks+orphanBlock;
+    content.innerHTML=emptyBanner+stageBlocks+orphanBlock;
     return;
   }
 
@@ -9478,14 +9721,13 @@ function renderTL(){
   for(let h=fh;h<=lh;h++){
     const x=(h*3600-minSec)/3600*TL_PX;
     const lbl=String(h%24).padStart(2,'0')+':00';
-    rulerMarks+=`<div style="position:absolute;left:${x}px;bottom:7px;transform:translateX(-50%);font-family:var(--ffm);font-size:10px;font-weight:600;color:rgba(255,255,255,.28);white-space:nowrap;">${lbl}</div>`;
+    rulerMarks+=`<div style="position:absolute;left:${x}px;bottom:7px;transform:translateX(-50%);font-family:var(--ffm);font-size:11px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;">${lbl}</div>`;
     gridLines+=`<div style="position:absolute;left:${TL_LW+x}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.04);pointer-events:none;"></div>`;
     // Half-hour mark
     const xh=x+TL_PX/2;
     gridLines+=`<div style="position:absolute;left:${TL_LW+xh}px;top:0;bottom:0;width:1px;background:rgba(255,255,255,.02);pointer-events:none;"></div>`;
   }
 
-  const nm=nowMinAdj();
   const nowSecA=nowSec()<NIGHT_S?nowSec()+86400:nowSec();
   const tlDayIsToday=isActiveDayToday();
 
@@ -9498,69 +9740,91 @@ function renderTL(){
   const orphanShows=shows.filter(s=>!stageIds.has(s.stage));
   const allStageRows=[...activeStages];
   if(orphanShows.length)allStageRows.push({id:'__orphan__',name:'Other',emoji:'📋'});
+  // Overlapping shows on one stage get their own lane (stacked rows inside
+  // the stage row) instead of being drawn on top of each other. A stage
+  // without overlaps keeps the classic single-lane row.
+  const LANE_H=44,LANE_GAP=4,ROW_PAD=8;
   const rows=allStageRows.map(stage=>{
-    const stShows=(stage.id==='__orphan__'?orphanShows:shows.filter(s=>s.stage===stage.id)).sort((a,b)=>adjSS(a)-adjSS(b));
+    const stShows=(stage.id==='__orphan__'?orphanShows:shows.filter(s=>s.stage===stage.id)).sort((a,b)=>adjSS(a)-adjSS(b)||adjES(a)-adjES(b));
+    const laneEnds=[],laneOf={};
+    stShows.forEach(s=>{
+      const ss=adjSS(s);let l=laneEnds.findIndex(e=>e<=ss);
+      if(l<0){l=laneEnds.length;laneEnds.push(adjES(s));}else laneEnds[l]=adjES(s);
+      laneOf[s.id]=l;
+    });
+    const lanes=Math.max(1,laneEnds.length);
+    const rowH=lanes===1?TL_ROW:ROW_PAD*2+lanes*LANE_H+(lanes-1)*LANE_GAP;
+    const overlaps=s=>lanes>1&&stShows.some(o=>o!==s&&adjSS(o)<adjES(s)&&adjSS(s)<adjES(o));
     const blocks=stShows.map(s=>{
       const ss=adjSS(s),es=adjES(s);
       const x=(ss-minSec)/3600*TL_PX;
       const w=Math.max(14,(es-ss)/3600*TL_PX-4);
-      const isNow=_showIsLive(s),isPast=_showIsPast(s);
+      const key=statusOf(s);
+      const isNow=key==='live',isPast=key==='done';
       const isCancelled=!!s.cancelled,isPriority=!!s.priority;
       const bColBase=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':'rgba(255,255,255,.45)';
       const bCol=isCancelled?'rgba(239,68,68,.5)':isNow?'#fbbf24':bColBase;
       const bBg=isCancelled?'rgba(239,68,68,.08)':isNow?'rgba(251,191,36,.18)':s.booth==='A'?'rgba(99,102,241,.22)':s.booth==='B'?'rgba(34,197,94,.18)':'rgba(255,255,255,.07)';
-      const border=isCancelled?'rgba(239,68,68,.35)':isNow?'#fbbf24':'rgba(255,255,255,.1)';
+      const border=isCancelled?'rgba(239,68,68,.45)':isNow?'#fbbf24':'rgba(255,255,255,.1)';
       const dur=_showDurationSec(s),elapsed=_showElapsedSec(s);
       const pct=isNow&&dur>0?Math.min(100,Math.max(0,elapsed/dur*100)):0;
       const priorityDot=isPriority?`<span style="font-size:9px;line-height:1;flex-shrink:0;">⭐</span>`:'';
-      const cancelLine=isCancelled?'text-decoration:line-through;opacity:.5;':'';
+      const cancelLine=isCancelled?'text-decoration:line-through;':'';
       const boothBadgeCol=s.booth==='A'?'#a5b4fc':s.booth==='B'?'#86efac':null;
       const boothBadgeBg=s.booth==='A'?'rgba(99,102,241,.3)':s.booth==='B'?'rgba(34,197,94,.28)':null;
-      const boothBadge=(s.booth&&!isCancelled&&w>50)?`<div style="position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;color:${boothBadgeCol};background:${boothBadgeBg};padding:1px 6px;border-radius:99px;line-height:1.4;letter-spacing:.04em;">${escH(s.booth)}</div>`:'';
+      const boothBadge=(s.booth&&!isCancelled&&w>50)?`<div style="position:absolute;top:5px;right:5px;font-size:9px;font-weight:800;color:${boothBadgeCol||'rgba(255,255,255,.7)'};background:${boothBadgeBg||'rgba(255,255,255,.1)'};padding:1px 6px;border-radius:99px;line-height:1.4;letter-spacing:.04em;">${escH(s.booth)}</div>`:'';
       // Arrival marker (set via the check-in share-link). Always visible
       // regardless of block width - a 12px green dot fits even on the
       // tiniest sliver, so a control room can scan check-in status across
       // the whole timeline at a glance.
       const arrivedDot=s.arrived?`<div title="Checked in" style="position:absolute;top:4px;left:4px;width:12px;height:12px;border-radius:50%;background:#22c55e;display:inline-flex;align-items:center;justify-content:center;color:#04130a;box-shadow:0 0 0 1.5px rgba(0,0,0,.4);"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`:'';
-      return`<div onclick="openDrawer('${s.id}')" title="${escH(s.artist)} · ${s.start.slice(0,5)}–${s.end.slice(0,5)}${s.booth?' · Booth '+escH(s.booth):''}${isCancelled?' [CANCELLED]':''}${isPriority?' [PRIORITY]':''}${s.arrived?' [CHECKED IN]':''}"
-        style="position:absolute;left:${x}px;width:${w}px;top:8px;bottom:8px;
-          background:${bBg};border:1px solid ${border};border-radius:7px;
-          cursor:pointer;overflow:hidden;opacity:${isCancelled?.4:isPast?.28:1};
+      const lane=laneOf[s.id]||0;
+      const vpos=lanes===1?'top:8px;bottom:8px;':`top:${ROW_PAD+lane*(LANE_H+LANE_GAP)}px;height:${LANE_H}px;`;
+      // Second line: status word where it matters, else the times.
+      const sub=isCancelled?`${VW_STATUS.cancelled} · ${vwTime(s.start)}–${vwTime(s.end)}`:s.hidden?`${VW_STATUS.hidden} · ${vwTime(s.start)}–${vwTime(s.end)}`:`${vwTime(s.start)}–${vwTime(s.end)}`;
+      const tip=`${s.artist} · ${String(s.start).slice(0,5)}–${String(s.end).slice(0,5)}${s.booth?' · Booth '+s.booth:''}${isCancelled?' · Cancelled':''}${s.hidden?' · Hidden':''}${isPriority?' · Priority':''}${s.arrived?' · Checked in':''}${overlaps(s)?' · Overlaps another show':''}`;
+      return`<div class="tl-block tl-${key}" data-lane="${lane}" onclick="openDrawer(${_jsArg(s.id)})" title="${escH(tip)}"
+        style="position:absolute;left:${x}px;width:${w}px;${vpos}
+          background:${bBg};border:1px ${s.hidden?'dashed':'solid'} ${border};border-radius:7px;
+          cursor:pointer;overflow:hidden;opacity:${isCancelled?.75:isPast?.4:1};
           ${isNow&&!isCancelled?`box-shadow:0 0 0 2px ${bCol}33;`:''}
           ${isPriority&&!isCancelled?'box-shadow:0 0 0 1px rgba(234,179,8,.5);outline:1px solid rgba(234,179,8,.3);':''}
           transition:opacity .4s;">
         ${isNow&&!isCancelled?`<div style="position:absolute;top:0;left:0;width:${pct.toFixed(1)}%;height:2px;background:${bCol};border-radius:2px 0 0 0;"></div>`:''}
         ${arrivedDot}
         ${boothBadge}
-        <div style="padding:5px 7px;height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;${s.arrived?'padding-left:20px;':''}${s.booth&&w>50?'padding-right:24px;':''}">
-          <div style="font-size:${w>100?'11':'10'}px;font-weight:700;color:${isCancelled?'rgba(239,68,68,.7)':isNow?bCol:'rgba(255,255,255,.7)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;display:flex;align-items:center;gap:3px;">${priorityDot}<span style="${cancelLine}">${escH(s.artist)}</span></div>
-          ${w>70?`<div style="font-size:9px;color:rgba(255,255,255,.3);font-family:var(--ffm);margin-top:2px;white-space:nowrap;">${s.start.slice(0,5)}–${s.end.slice(0,5)}</div>`:''}
+        <div style="padding:${lanes===1?'5px 7px':'3px 7px'};height:100%;overflow:hidden;display:flex;flex-direction:column;justify-content:center;${s.arrived?'padding-left:20px;':''}${s.booth&&w>50?'padding-right:24px;':''}">
+          <div style="font-size:${w>100?'12':'11'}px;font-weight:700;color:${isCancelled?'#fca5a5':isNow?bCol:'rgba(255,255,255,.85)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;display:flex;align-items:center;gap:3px;">${priorityDot}<span style="${cancelLine}overflow:hidden;text-overflow:ellipsis;">${escH(s.artist)}</span></div>
+          ${w>70?`<div style="font-size:10px;color:${isCancelled?'rgba(252,165,165,.85)':'rgba(255,255,255,.55)'};font-family:var(--ffm);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sub}</div>`:''}
         </div>
       </div>`;
     }).join('');
-    return`<div style="display:flex;border-bottom:1px solid rgba(255,255,255,.04);">
-      <div style="width:${TL_LW}px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 14px;position:sticky;left:0;background:#08080e;z-index:5;border-right:1px solid rgba(255,255,255,.06);">
-        <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(stage.name)}</span>
+    // Stage labels stay visible while scrolling sideways (sticky left, above
+    // the now line); the time ruler stays visible while scrolling down.
+    return`<div class="tl-row" style="display:flex;border-bottom:1px solid rgba(255,255,255,.04);">
+      <div class="tl-stage-lbl" style="width:${TL_LW}px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding:0 14px;position:sticky;left:0;background:#08080e;z-index:9;border-right:1px solid rgba(255,255,255,.06);">
+        <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escH(stage.name)}">${escH(stage.name)}</span>
       </div>
-      <div style="flex:1;position:relative;height:${TL_ROW}px;min-width:${totalSec/3600*TL_PX}px;">${blocks}</div>
+      <div style="flex:1;position:relative;height:${rowH}px;min-width:${totalSec/3600*TL_PX}px;">${blocks}</div>
     </div>`;
   }).join('');
 
-  // Now line - only on today
+  // Now line - only on today. Its time label lives in the sticky ruler so it
+  // stays readable while scrolling down.
   const nowX=TL_LW+(nowSecA-minSec)/3600*TL_PX;
   const nowLbl=amsTimeStr(nowMs(),false);
   const nowLine=tlDayIsToday?`<div id="tl-now-line" style="position:absolute;top:${TL_RH}px;bottom:0;left:${nowX}px;width:2px;background:rgba(239,68,68,.75);pointer-events:none;z-index:8;transform:translateX(-50%);">
     <div style="position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,.6);"></div>
-    <div id="tl-now-lbl" style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-family:var(--ffm);font-size:9px;font-weight:700;color:#ef4444;white-space:nowrap;background:#08080e;padding:1px 5px;border-radius:3px;">${nowLbl}</div>
   </div>`:'';
+  const nowMark=tlDayIsToday?`<div id="tl-now-lbl" style="position:absolute;top:3px;left:${nowX-TL_LW}px;transform:translateX(-50%);font-family:var(--ffm);font-size:10px;font-weight:700;color:#fff;white-space:nowrap;background:#ef4444;padding:1px 5px;border-radius:3px;z-index:1;">${nowLbl}</div>`:'';
 
-  // Ruler (sticky top)
-  const ruler=`<div style="position:sticky;top:0;z-index:10;height:${TL_RH}px;background:#08080e;border-bottom:1px solid rgba(255,255,255,.06);display:flex;">
-    <div style="width:${TL_LW}px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-end;padding:0 14px 7px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.18);">Stage</div>
-    <div style="flex:1;position:relative;overflow:hidden;">${rulerMarks}</div>
+  // Ruler (sticky top; its "Stage" corner is sticky left too)
+  const ruler=`<div class="tl-ruler" style="position:sticky;top:0;z-index:10;height:${TL_RH}px;background:#08080e;border-bottom:1px solid rgba(255,255,255,.08);display:flex;">
+    <div style="width:${TL_LW}px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-end;padding:0 14px 7px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);position:sticky;left:0;z-index:2;background:#08080e;">Stage</div>
+    <div style="flex:1;position:relative;overflow:hidden;">${rulerMarks}${nowMark}</div>
   </div>`;
 
-  content.innerHTML=`<div style="position:relative;min-width:${totalW}px;">${gridLines}${ruler}${rows}${nowLine}</div>`;
+  content.innerHTML=emptyBanner+`<div style="position:relative;min-width:${totalW}px;">${gridLines}${ruler}${rows}${nowLine}</div>`;
   content.dataset.minSec=minSec;
 }
 
@@ -9572,7 +9836,7 @@ function tickTL(){
   const nowX=TL_LW+(nsAdj-minSec)/3600*TL_PX;
   line.style.left=nowX+'px';
   const lbl=document.getElementById('tl-now-lbl');
-  if(lbl){lbl.textContent=amsTimeStr(nowMs(),false);}
+  if(lbl){lbl.textContent=amsTimeStr(nowMs(),false);lbl.style.left=(nowX-TL_LW)+'px';}
 }
 
 // Back to dashboard button (in header)
@@ -9754,61 +10018,49 @@ async function scheduleProjectPushes(){
 
 // ══ SHARE LINKS
 const _shareBase=()=>location.origin+location.pathname;
+// What a share link lets its holder do. Every link is view-only, except
+// Check-in, which can save arrivals (and nothing else).
+const _SHARE_RW={checkin:true};
+function _shareRowHTML(label,mode,url){
+  const rw=!!_SHARE_RW[mode];
+  const tip=rw?'Anyone with this link can mark artists as arrived. It cannot change anything else.':'Anyone with this link can only look. Nothing can be changed through it.';
+  return`<div class="share-link-row" data-mode="${escH(mode)}">
+      <div class="share-link-head">
+        <span class="share-link-label">${escH(label)}</span>
+        <span class="share-access${rw?' rw':''}" title="${escH(tip)}">${rw?'Can change check-in':'Read-only'}</span>
+      </div>
+      <span class="share-link-url" title="${escH(url)}">${escH(url)}</span>
+      <button class="share-copy-btn" type="button" aria-label="Copy ${escH(label)} link" onclick="copyLink(this,${_jsArg(url)})">Copy</button>
+      <div class="share-copy-msg" role="status" aria-live="polite"></div>
+    </div>`;
+}
 function openShareModal(projId){
   const proj=APP.projects.find(p=>p.id===projId);if(!proj)return;
   const stages=proj.data?.stages||[];
   const base=_shareBase();
-  document.getElementById('share-modal-title').textContent='🔗 Links - '+escH(proj.name);
+  // textContent: the name must not be escaped twice ("Test &amp; Fest").
+  document.getElementById('share-modal-title').textContent='🔗 Links - '+proj.name;
+  const pid=encodeURIComponent(projId);
   // Timeline link (whole project, no stage)
-  const tlUrl=`${base}?mode=timeline&pid=${projId}`;
-  const ovUrl=`${base}?mode=overview&pid=${projId}`;
-  const ciUrl=`${base}?mode=checkin&pid=${projId}`;
-  const wvUrl=`${base}?mode=wall&pid=${projId}`;
+  const tlUrl=`${base}?mode=timeline&pid=${pid}`;
+  const ovUrl=`${base}?mode=overview&pid=${pid}`;
+  const ciUrl=`${base}?mode=checkin&pid=${pid}`;
+  const wvUrl=`${base}?mode=wall&pid=${pid}`;
   const tlBlock=`<div class="share-stage-block" style="margin-bottom:10px;">
-    <div class="share-stage-name">▦ Timeline, Overview, Check-in &amp; Wall</div>
-    <div class="share-link-row">
-      <span class="share-link-label">Timeline</span>
-      <span class="share-link-url" title="${tlUrl}">${tlUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${tlUrl}')">Copy</button>
-    </div>
-    <div class="share-link-row">
-      <span class="share-link-label">Overview</span>
-      <span class="share-link-url" title="${ovUrl}">${ovUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${ovUrl}')">Copy</button>
-    </div>
-    <div class="share-link-row">
-      <span class="share-link-label">Check-in</span>
-      <span class="share-link-url" title="${ciUrl}">${ciUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${ciUrl}')">Copy</button>
-    </div>
-    <div class="share-link-row">
-      <span class="share-link-label">Control Wall</span>
-      <span class="share-link-url" title="${wvUrl}">${wvUrl}</span>
-      <button class="share-copy-btn" onclick="copyLink(this,'${wvUrl}')">Copy</button>
-    </div>
+    <div class="share-stage-name">Whole project</div>
+    ${_shareRowHTML('Timeline','timeline',tlUrl)}
+    ${_shareRowHTML('Overview','overview',ovUrl)}
+    ${_shareRowHTML('Artist check-in','checkin',ciUrl)}
+    ${_shareRowHTML('Control Wall','wall',wvUrl)}
   </div>`;
   // Per-stage links
   const stageBlocks=stages.length?stages.map(st=>{
-    const stageUrl=`${base}?mode=stage&pid=${projId}&sid=${st.id}`;
-    const bsUrl=`${base}?mode=backstage&pid=${projId}&sid=${st.id}`;
-    const fohUrl=`${base}?mode=foh&pid=${projId}&sid=${st.id}`;
+    const sid=encodeURIComponent(st.id);
     return`<div class="share-stage-block">
       <div class="share-stage-name">${escH(st.name)}</div>
-      <div class="share-link-row">
-        <span class="share-link-label">Stage View</span>
-        <span class="share-link-url" title="${stageUrl}">${stageUrl}</span>
-        <button class="share-copy-btn" onclick="copyLink(this,'${stageUrl}')">Copy</button>
-      </div>
-      <div class="share-link-row">
-        <span class="share-link-label">Backstage</span>
-        <span class="share-link-url" title="${bsUrl}">${bsUrl}</span>
-        <button class="share-copy-btn" onclick="copyLink(this,'${bsUrl}')">Copy</button>
-      </div>
-      <div class="share-link-row">
-        <span class="share-link-label">FOH</span>
-        <span class="share-link-url" title="${fohUrl}">${fohUrl}</span>
-        <button class="share-copy-btn" onclick="copyLink(this,'${fohUrl}')">Copy</button>
-      </div>
+      ${_shareRowHTML('Stage View','stage',`${base}?mode=stage&pid=${pid}&sid=${sid}`)}
+      ${_shareRowHTML('Backstage','backstage',`${base}?mode=backstage&pid=${pid}&sid=${sid}`)}
+      ${_shareRowHTML('FOH','foh',`${base}?mode=foh&pid=${pid}&sid=${sid}`)}
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">No stages created in this project.</div>`;
   document.getElementById('share-stage-list').innerHTML=tlBlock+stageBlocks;
@@ -9828,13 +10080,14 @@ function _pickDayCI(id){G.activeDay=id;renderCI();}
 function renderCI(){
   const proj=APP.projects.find(p=>p.id===(PUBLIC_PID||APP.activeProjectId));
   const titleEl=document.getElementById('ci-title');
-  if(titleEl&&proj)titleEl.textContent=proj.name+' · Check-in';
+  if(titleEl&&proj)titleEl.textContent=proj.name+' · Artist check-in';
   // Day picker
   const dtabs=document.getElementById('ci-dtabs');
-  if(dtabs)dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayCI');
+  if(dtabs&&!vwSame(dtabs,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dtabs.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayCI');
   const grid=document.getElementById('ci-grid');if(!grid)return;
   const stages=(G.stages||[]).slice().sort((a,b)=>a.name.localeCompare(b.name,'nl'));
-  const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay&&!s.cancelled);
+  // Never cancelled; never hidden on the share link (same rule as every view).
+  const dayShows=(G.shows||[]).filter(s=>s.day===G.activeDay&&showAllowed(s,'live',_isPublicView()));
   let total=0,arrived=0;
   const blocks=stages.map(st=>{
     const shows=dayShows.filter(s=>s.stage===st.id).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
@@ -9846,12 +10099,15 @@ function renderCI(){
       if(isArr){arrived++;stageArr++;}
       const past=_showIsPast(s);
       const arrTime=s.arrivedAt?_fmtArrivedTime(s.arrivedAt):'';
+      // While this show's write is out the button is disabled and says so:
+      // repeat taps are ignored (_ciBusy) and now visibly so.
+      const busy=_ciBusy.has(s.id),err=_ciErr.get(s.id);
+      const label=busy?'Saving…':isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived';
       return`<div class="ci-row ${isArr?'arrived':''} ${past?'past':''}">
         <div class="ci-time">${escH((s.start||'').slice(0,5))}</div>
-        <div class="ci-artist">${escH(s.artist||'(no name)')}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${arrTime}</span>`:''}</div>
-        <button class="ci-toggle ${isArr?'on':''}" onclick="ciToggleArrived(${escH(JSON.stringify(String(s.id)))})">
-          ${isArr?`<svg class="ci-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Arrived`:'Mark arrived'}
-        </button>
+        <div class="ci-artist">${escH(s.artist||'(no name)')}${s.hidden?' '+vwChip('hidden'):''}${past?' '+vwChip('done'):''}${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${escH(arrTime)}</span>`:''}${!isArr&&!busy?`<span class="ci-arrived-meta" style="color:rgba(255,255,255,.5);">Not arrived yet</span>`:''}</div>
+        <button class="ci-toggle ${isArr?'on':''}${busy?' busy':''}"${busy?' disabled aria-busy="true"':''} aria-pressed="${isArr}" onclick="ciToggleArrived(${_jsArg(s.id)})">${label}</button>
+        ${err?`<div class="ci-err" role="alert">${escH(err)}</div>`:''}
       </div>`;
     }).join('');
     return`<div class="ci-stage">
@@ -9862,7 +10118,10 @@ function renderCI(){
       <div class="ci-stage-list">${rows}</div>
     </div>`;
   }).filter(Boolean).join('');
-  grid.innerHTML=blocks||`<div class="ci-empty">No shows scheduled for this day.</div>`;
+  const legend=`<div class="ci-legend"><span><span class="ci-lg-dot on"></span><b>Arrived</b> - the artist is on site</span><span><span class="ci-lg-dot"></span><b>Not arrived yet</b> - tap “Mark arrived” when they report</span><span>Saved for every screen straight away.</span></div>`;
+  const ids=stages.map(st=>st.id);
+  const html=blocks?legend+blocks:vwEmptyHTML(vwEmptyKind(ids,G.activeDay)||'none',{dayId:G.activeDay,stageIds:ids,canPickDay:true});
+  if(!vwSame(grid,html))grid.innerHTML=html;
   const arrEl=document.getElementById('ci-arr'),totEl=document.getElementById('ci-tot');
   if(arrEl)arrEl.textContent=arrived;
   if(totEl)totEl.textContent=total;
@@ -9875,6 +10134,16 @@ let _ciWriteInFlight=0;
 // Shows whose check-in write is still out: repeat taps are ignored meanwhile
 // (a double tap used to send two opposite writes racing each other).
 const _ciBusy=new Set();
+// Last failed check-in write per show, shown in that row (renderCI) until the
+// next tap. Replaces a blocking alert() on an unattended check-in tablet.
+const _ciErr=new Map();
+// Repaint whatever shows check-in state after a change.
+function _ciRepaint(){
+  if(PUBLIC_MODE==='checkin'){renderCI();return;}
+  try{renderSched();}catch(e){}
+  if(document.getElementById('stov')?.classList.contains('open'))renderOV();
+  if(document.getElementById('ci')?.classList.contains('open'))renderCI();
+}
 // Until the rls_prep migration is applied, set_show_arrived does not exist.
 // (PostgREST: 404 + PGRST202. A plain 404 can also be the RPC's own "show not found".)
 function _isMissingRpc(e){return /PGRST202|could not find the function/i.test(String((e&&e.message)||e||''));}
@@ -9900,14 +10169,13 @@ async function ciToggleArrived(showId){
   const wasArrived=!!s.arrived,prevAt=s.arrivedAt;
   s.arrived=!wasArrived;
   s.arrivedAt=s.arrived?Date.now():null;
+  _ciErr.delete(showId);
+  // Busy before the repaint, so the row shows "Saving…" (button disabled)
+  // for as long as repeat taps are ignored.
+  _ciBusy.add(showId);
   // Immediate UI repaint - in checkin mode just repaint the list; in
   // operator mode update the schedule + overview if open + checkin view if open.
-  if(PUBLIC_MODE==='checkin')renderCI();
-  else{
-    try{renderSched();}catch(e){console.warn('[checkin] schedule repaint failed:',e);}
-    if(document.getElementById('stov')?.classList.contains('open'))renderOV();
-    if(document.getElementById('ci')?.classList.contains('open'))renderCI();
-  }
+  _ciRepaint();
   // Operator mode: the regular save queue. Its push merges per show and per
   // field onto a fresh server copy, so only arrived/arrivedAt of this show is
   // written over what other devices did; failures stay visible on the sync
@@ -9915,14 +10183,12 @@ async function ciToggleArrived(showId){
   if(!PUBLIC_MODE){
     const pid=APP.activeProjectId;
     save({immediate:true});
-    _ciBusy.add(showId);
-    _whenSaved(pid).then(()=>_ciBusy.delete(showId));
+    _whenSaved(pid).then(()=>{_ciBusy.delete(showId);_ciRepaint();});
     return;
   }
   // Public checkin mode: one RPC. set_show_arrived does the mutation inside
   // the database, under a row lock, and it is the ONLY write an anonymous
   // visitor is granted once RLS is on.
-  _ciBusy.add(showId);
   _ciWriteInFlight++;
   const newArrived=s.arrived;
   const newArrivedAt=s.arrivedAt;
@@ -9952,20 +10218,44 @@ async function ciToggleArrived(showId){
     // Revert optimistic UI on failure
     const s2=(G.shows||[]).find(x=>x.id===showId);
     if(s2){s2.arrived=wasArrived;s2.arrivedAt=prevAt==null?null:prevAt;}
-    renderCI();
+    // Say it in the row (no blocking alert on an unattended tablet).
+    _ciErr.set(showId,humanError(e,'Saving the check-in')+' Nothing was changed - tap the button to try again.');
     console.error('[ciToggleArrived]',e);
-    _stAlert(humanError(e,'Saving the check-in'),{title:'Check-in not saved'});
   }finally{
     _ciWriteInFlight=Math.max(0,_ciWriteInFlight-1);
     _ciBusy.delete(showId);
+    renderCI(); // busy state off; success or the error message
   }
 }
 
 function copyLink(btn,url){
-  navigator.clipboard.writeText(url).then(()=>{
-    btn.textContent='✓ Copied';btn.classList.add('copied');
-    setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);
-  });
+  // Clipboard API first; when it is missing or refused (http, iframe, old
+  // Safari, permissions) select the link text and try execCommand; if that
+  // fails too the link stays selected and the row says how to copy it.
+  const row=btn&&btn.closest?btn.closest('.share-link-row'):null;
+  const msg=row&&row.querySelector('.share-copy-msg');
+  const urlEl=row&&row.querySelector('.share-link-url');
+  const show=ok=>{
+    clearTimeout(btn._copyT);
+    btn.classList.toggle('copied',ok);btn.classList.toggle('failed',!ok);
+    btn.textContent=ok?'✓ Copied':'Copy';
+    if(msg){msg.textContent=ok?'Link copied.':'Could not copy automatically. The link is selected - press Ctrl+C (⌘C on Mac) to copy it.';msg.classList.toggle('err',!ok);}
+    if(ok)btn._copyT=setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');if(msg)msg.textContent='';},2000);
+  };
+  const select=()=>{
+    if(!urlEl)return false;
+    try{const r=document.createRange();r.selectNodeContents(urlEl);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(r);return true;}catch(e){return false;}
+  };
+  const fallback=()=>{
+    let ok=false;
+    if(select()){try{ok=!!(document.execCommand&&document.execCommand('copy'));}catch(e){ok=false;}}
+    if(!ok)select(); // keep (or put back) the selection for a manual copy
+    show(ok);
+  };
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(()=>show(true),fallback);return;}
+  }catch(e){}
+  fallback();
 }
 
 // ══ PUBLIC VIEW MODE (no login needed)
@@ -10213,8 +10503,10 @@ async function _pvLoadWithRetry(){
       attempt++;
       if(!_pvTransient(e)){console.warn('[public] load failed:',e?.message||e);return null;}
       console.warn('[public] load failed (attempt '+attempt+'), retrying in '+Math.round(wait/1000)+'s:',e?.message||e);
-      const msg=document.querySelector('#loader > div:last-child');
-      if(msg)msg.textContent='Connecting…';
+      // Stage View keeps its own loader and just says "Connecting…"; control
+      // screens show the shared load-error state while we keep retrying.
+      if(PUBLIC_MODE!=='stage'&&typeof vwEmptyHTML==='function'){const ld=document.getElementById('loader');if(ld&&!ld.dataset.err){ld.innerHTML=vwEmptyHTML('error');ld.dataset.err='1';}}
+      else{const msg=document.querySelector('#loader > div:last-child');if(msg)msg.textContent='Connecting…';}
       await new Promise(r=>{
         const done=()=>{clearTimeout(t);window.removeEventListener('online',done);r();};
         const t=setTimeout(done,wait);window.addEventListener('online',done);

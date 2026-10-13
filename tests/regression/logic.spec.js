@@ -70,7 +70,7 @@ test.describe('display details', () => {
   test('Wall day label is the festival date west of Greenwich', async ({ page, st }) => {
     await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });
     expect(await page.evaluate(() => [_wvDayLabel({ name: 'Vrijdag', date: '2026-07-10' }), _wvDayLabel({ name: 'Zondag', date: '2026-11-01' })]))
-      .toEqual(['Geplande tijden vrijdag — 10 juli', 'Geplande tijden zondag — 1 november']);
+      .toEqual(['Vrijdag · Fri 10 Jul', 'Zondag · Sun 1 Nov']);   // shared view label, no UTC day shift
   });
   test('timer panel photo: src only assigned when it changes', async ({ page, st }) => {
     await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });   // m2 (with photo) is live on Main

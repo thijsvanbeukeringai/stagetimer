@@ -75,10 +75,11 @@ Legenda testbestanden:
 | Timeline (in-app + `?mode=timeline`) | `openTL` 7375, `renderTL` 7391, `tickTL` 7571 | operator: *Timeline screen*, public: *timeline view* |
 | Overview (in-app + `?mode=overview`) | `openOV` 4997, `renderOV` 5024, `tickOV` 5064, `pickStageBestDay` 5007 | operator: *Overview screen*, public: *overview view* |
 | Control Wall (`?mode=wall`) | `openWV` 5180, `renderWV` 5369, `tickWV` 5422, `wvSyncTime` 5217 (HEAD `/rest/v1/` voor servertijd), `_wvNow` 5240 | public: *control wall view* |
-| Artiesten check-in (`?mode=checkin`) | `openCI` 7796, `renderCI` 7799, `ciToggleArrived` 7849 → RPC `set_show_arrived` | public: *check-in view marks an artist arrived through the RPC* |
+| Artiesten check-in (`?mode=checkin`) | `openCI` 7796, `renderCI` 7799, `ciToggleArrived` 7849 → RPC `set_show_arrived` | public: *check-in view marks an artist arrived through the RPC*; regression/views: *check-in …* (dubbele tik zichtbaar geblokkeerd, fout in de rij, geen verborgen shows) |
 | Publieke views laden + 1 s poll | `loadPublicView` 7964, `_rpc` 2305 → RPC `get_shared_project`, early fetch in `<head>` | public (alle), public: *stage view picks up operator changes through the 1 s poll*; regression/logic: *share link first load* (5xx/timeout → "Connecting…" + backoff; null → "Project not found.") |
+| Gedeelde view-helpers (statuswoorden, datumlabel, lege staten, sync-pil) | `vwStatusKey`, `vwChip`, `vwDateLabel`, `vwDayLabel`, `vwEmptyKind`/`vwEmptyHTML`, `vwTickSync`, `vwSame` | regression/views: *empty states …*, *last sync …*, *status words …*, *timeline …*, *overview …*, *… keep their DOM across poll refreshes* |
 | Mobiele timer-sheet, navigatie | `toggleMobTimer` 8151, `_syncMobNavActive` 4862 | booth in-app 390×844 (via mob-nav), verder gat |
-| Wake lock / fullscreen | `_acquireWakeLock` 4928, `_goFullscreen` (~4906) | gat |
+| Wake lock / fullscreen | `_acquireWakeLock`, `_WAKE_VIEWS` (bs, sv, foh, tl, stov, wv), `_goFullscreen` | regression/views: *wake lock …* (FOH, Timeline, Overview, Wall, Backstage + re-acquire na visibilitychange); fullscreen: gat |
 
 ## 7. Cues en blackout
 
@@ -112,7 +113,7 @@ Legenda testbestanden:
 ## 11. Deellinks en losse timers
 
 |---|---|---|
-| Deeldialoog (alle URLs per podium) | `openShareModal` 7728, `copyLink` 7898 | operator: *share-link dialog lists every public URL* |
+| Deeldialoog (alle URLs per podium) | `openShareModal`, `_shareRowHTML`, `copyLink` | operator: *share-link dialog lists every public URL*; regression/views: *share dialog …* (alleen-lezen/check-in per link, kopieerfout + fallback, 390 px) |
 | Losse timers (one-off) | `loadOT` 8216, `saveOTTimer` 8280, `delOT` 8291, `renderOTSection` 8240, `openOTV` 8298, `tickOTV` 8322, `isOTLive` 8236 | operator: *one-off timer can be created*; over middernacht: gat (BOUWPLAN 1.4) |
 
 ## 12. Platformbeheer (super_admin)
