@@ -35,6 +35,8 @@ Legenda testbestanden:
 | Project openen | `openProject` 6529, `openProjectOnce` 6137, `loadG` 2466 | operator: *open project shows the schedule…* |
 | Project aanmaken / hernoemen / verwijderen | `createProject` 6662, `renameProject` 6561, `deleteProject` 6551, `_restWrite` 6540 | regression dialogs-forms: *rename project is a form dialog…*; smoke dialogs: *delete project from the dashboard*; aanmaken: gat |
 | Opslaan (debounce, wipe-guard, PATCH) | `save` 2501, `_pushProject` 2512, `setSyncDot` 2340 | operator (alle save-tests), harness: *injected 500 on save…*; regression/logic + unit/sync-engine.test.js: plan-limiet PT402 (`_planError`, `_dropRefusedStages`) |
+| Atomisch opslaan (`save_project`, versie, conflict → hermerge), terugval GET+PATCH | `_pushOnce`, `_saveViaRpc`, `_wipeIntended`, `_projRead`, `_srv` | regression/atomic-save: *version goes up by one per save*, *conflict, is merged…*, *two screens…*, *not newer… ignored*, *p_force*, *would_wipe*, *before the migration* (2×) |
+| Soft delete, *Recently deleted*, versiegeschiedenis | `deleteProject`, `_loadDeleted`, `_renderDeleted`, `restoreDeletedProject`, `openProjectHistory`, `_forgetProject` | regression/atomic-save: *delete moves a project to Recently deleted…*, *soft-deleted projects are not loaded…*, *hard delete… before the migration*, *version history* (mock: `backend.enableProjectVersioning()` / `enableSoftDelete()`) |
 | Realtime (postgres_changes projects + companies) | `setupRealtime` 2600 | operator: *realtime update from another device…* |
 
 ## 3. Dagen en podia
