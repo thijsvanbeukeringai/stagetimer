@@ -15,7 +15,7 @@ Elk SQL-bestand heeft bovenaan een kop met:
 Dit document zet alles in één volgorde.
 
 
-> **STAP 0, URGENT: UITGEVOERD op 13-10-2026 door Thijs via de SQL-editor. Tabelcheck: anon_insert/update/delete = false voor beide tabellen.**
+> **STAP 0, URGENT: UITGEVOERD op 13-10-2026 door Thijs via de SQL-editor. Tabelcheck: anon_insert/update/delete = false voor beide tabellen. Kolomcheck: 0 rijen.**
 >
 > Bestand: `supabase/migrations/20261013080000_urgent_anon_write_lockdown.sql`.
 > Vandaag kan iedereen met de publieke anon-key alle gebruikers en workspaces verwijderen of rollen aanpassen.
