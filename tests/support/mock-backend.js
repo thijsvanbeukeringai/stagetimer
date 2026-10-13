@@ -6,7 +6,9 @@
 //   bamjpsquhdzxvsymldpq.supabase.co
 //     /rest/v1/<table>      fake PostgREST (projects, companies, app_users)
 //     /rest/v1/rpc/<fn>     get_shared_project (1-arg legacy + 2-arg per mode, see
-//                           shareFeed()), get_shared_project_version, set_show_arrived (+ custom)
+//                           shareFeed()), get_shared_project_version, set_show_arrived (+ custom);
+//                           save_project and the soft delete / history RPCs once enabled
+//                           (enableProjectVersioning / enableSoftDelete)
 //     /rest/v1/  (HEAD)     server clock for the Wall (date header)
 //     /auth/v1/*            password / refresh grant, user, logout, recover
 //     /functions/v1/*       edge functions: recorded, configurable, never real
@@ -410,6 +412,12 @@ class MockBackend {
     // argument names). Default: migration step 3 applied (both
     // get_shared_project variants), step 6 not (no get_shared_project_version).
     this.sharedRpc = { legacy: true, modes: true, version: false };
+    // Prepared migrations, off by default (= production today). See
+    // enableProjectVersioning / enableSoftDelete.
+    this.features = { versioning: false, saveRpc: false, softDelete: false };
+    this.history = [];           // project_versions rows (soft delete migration)
+    this.saveConflicts = 0;      // save_project calls answered with {conflict:true}
+    this.realtimeOnWrite = false; // true: every project write is pushed as a realtime UPDATE (echoes)
   }
 
   /**
@@ -439,8 +447,157 @@ class MockBackend {
   projectVersion(id) {
     const pr = this.project(id);
     if (!pr) return null;
+    // With the versioning migration emulated, the real projects.version wins.
+    if (this.features && this.features.versioning && pr.version != null) return Number(pr.version);
     const h = crypto.createHash('sha1').update(JSON.stringify([pr.name, pr.company_id, pr.data])).digest('hex');
     return parseInt(h.slice(0, 12), 16);
+  }
+
+
+  // ── prepared migrations ────────────────────────────────────────────────
+  /**
+   * Emulate migration project_versioning: projects.version, bumped by every
+   * change of data / name / company_id (clients cannot set it), plus the
+   * save_project RPC (compare-and-swap + server wipe guard) unless rpc:false.
+   * Call before the first navigation.
+   */
+  enableProjectVersioning({ rpc = true } = {}) {
+    if (!this.schema.projects.includes('version')) this.schema.projects.push('version');
+    for (const p of this.db.projects) if (p.version == null) p.version = 0;
+    this.features.versioning = true;
+    this.features.saveRpc = rpc;
+    return this;
+  }
+  /**
+   * Emulate migration project_history_soft_delete (implies versioning):
+   * deleted_at / deleted_by (server-owned), snapshots in this.history, and the
+   * RPCs soft_delete_project, restore_project, list_deleted_projects,
+   * list_project_versions, restore_project_version. get_shared_project and
+   * save_project treat soft-deleted projects as gone.
+   */
+  enableSoftDelete() {
+    if (!this.features.versioning) this.enableProjectVersioning();
+    for (const c of ['deleted_at', 'deleted_by']) if (!this.schema.projects.includes(c)) this.schema.projects.push(c);
+    for (const p of this.db.projects) { if (p.deleted_at === undefined) p.deleted_at = null; if (p.deleted_by === undefined) p.deleted_by = null; }
+    this.features.softDelete = true;
+    return this;
+  }
+  // BEFORE UPDATE trigger (version bump) + AFTER UPDATE trigger (snapshot).
+  _projectWritten(row, before, reason) {
+    if (!this.features.versioning) return;
+    const changed = JSON.stringify(before.data) !== JSON.stringify(row.data) || before.name !== row.name
+      || before.company_id !== row.company_id || (this.features.softDelete && (before.deleted_at || null) !== (row.deleted_at || null));
+    row.version = Number(before.version || 0) + (changed ? 1 : 0);
+    if (!changed || !this.features.softDelete) return;
+    const len = (v) => (Array.isArray(v) ? v.length : 0);
+    const shrink = len(row.data && row.data.shows) < len(before.data && before.data.shows) || len(row.data && row.data.stages) < len(before.data && before.data.stages);
+    this._snapshot(before, 'UPDATE', reason || ((before.deleted_at || null) !== (row.deleted_at || null) ? 'soft_delete' : shrink ? 'shrink' : 'interval'));
+  }
+  _snapshot(old, op, reason) {
+    this.history.push({
+      id: this.history.length + 1, project_id: String(old.id), company_id: old.company_id || null, version: old.version, op,
+      name: old.name, data: clone(old.data), row: clone(old), changed_at: new Date().toISOString(), changed_by: this._lastCaller || 'sql', reason,
+    });
+  }
+  _afterProjectWrite(row) {
+    if (this.realtimeOnWrite) this.realtime.push({ table: 'projects', type: 'UPDATE', record: clone(row), old_record: { id: row.id } });
+  }
+  _caller(rec) {
+    const u = this._userFromBearer(rec);
+    return u ? this.db.app_users.find((x) => x.id === u.id) || null : null;
+  }
+  _noteCaller(rec) { const c = this._caller(rec); this._lastCaller = c ? c.email : 'anon'; return c; }
+  // _caller_can_write_project: own workspace, or admin / super_admin.
+  _canWrite(rec, companyId) {
+    const c = this._noteCaller(rec);
+    if (!c) return false;
+    return ['admin', 'super_admin'].includes(c.role) || (!!c.company_id && String(c.company_id) === String(companyId || ''));
+  }
+  _noAccess(what) { return pgError(403, '42501', `${what} not found or not accessible`); }
+  _findProject(id) { return this.db.projects.find((x) => String(x.id) === String(id)); }
+
+  _rpcSaveProject(b, rec) {
+    if (!b || b.p_id == null || b.p_expected_version == null) return pgError(400, '22023', 'p_id and p_expected_version are required');
+    if (!b.p_data || typeof b.p_data !== 'object' || Array.isArray(b.p_data)) return pgError(400, '22023', 'p_data must be a JSON object');
+    const pr = this._findProject(b.p_id);
+    if (!pr || !this._canWrite(rec, pr.company_id)) return this._noAccess(`project ${b.p_id}`);
+    if (this.features.softDelete && pr.deleted_at) return { json: { ok: false, error: 'deleted' } };
+    if (Number(pr.version) !== Number(b.p_expected_version)) {
+      this.saveConflicts++;
+      return { json: { ok: false, conflict: true, version: pr.version, name: pr.name, data: clone(pr.data) } };
+    }
+    const len = (v) => (Array.isArray(v) ? v.length : 0);
+    if (!b.p_force && ((len(pr.data && pr.data.shows) > 0 && len(b.p_data.shows) === 0) || (len(pr.data && pr.data.stages) > 0 && len(b.p_data.stages) === 0))) {
+      return { json: { ok: false, error: 'would_wipe', version: pr.version } };
+    }
+    const before = clone(pr);
+    pr.data = clone(b.p_data);
+    if (b.p_name) pr.name = b.p_name;
+    this._projectWritten(pr, before);
+    this._afterProjectWrite(pr);
+    return { json: { ok: true, version: pr.version } };
+  }
+
+  _rpcSoftDelete(fn, b, rec) {
+    const H = this.history;
+    if (fn === 'soft_delete_project') {
+      const pr = this._findProject(b && b.p_id);
+      if (!pr || !this._canWrite(rec, pr.company_id)) return this._noAccess(`project ${b && b.p_id}`);
+      if (!pr.deleted_at) {
+        const before = clone(pr);
+        pr.deleted_at = new Date().toISOString();
+        pr.deleted_by = this._lastCaller;
+        this._projectWritten(pr, before);
+        this._afterProjectWrite(pr);
+      }
+      return { json: { ok: true } };
+    }
+    if (fn === 'restore_project') {
+      const pr = this._findProject(b && b.p_id);
+      if (pr) {
+        if (!this._canWrite(rec, pr.company_id)) return this._noAccess(`project ${b.p_id}`);
+        if (pr.deleted_at) {
+          const before = clone(pr);
+          pr.deleted_at = null; pr.deleted_by = null;
+          this._projectWritten(pr, before);
+          this._afterProjectWrite(pr);
+        }
+        return { json: { ok: true, source: 'soft' } };
+      }
+      const snap = H.filter((v) => v.project_id === String(b && b.p_id)).sort((x, y) => y.id - x.id)[0];
+      if (!snap || !this._canWrite(rec, snap.company_id)) return this._noAccess(`no restorable copy of project ${b && b.p_id}`);
+      this.db.projects.push({ ...clone(snap.row), id: snap.row.id, name: snap.name, data: clone(snap.data), deleted_at: null, deleted_by: null, version: Number(snap.version || 0) + 1 });
+      return { json: { ok: true, source: 'history' } };
+    }
+    if (fn === 'list_deleted_projects') {
+      const soft = this.db.projects.filter((p) => p.deleted_at && this._canWrite(rec, p.company_id))
+        .map((p) => ({ id: String(p.id), name: p.name, company_id: p.company_id, deleted_at: p.deleted_at, deleted_by: p.deleted_by, source: 'soft' }));
+      const newest = new Map();
+      for (const v of H) if (!newest.has(v.project_id) || newest.get(v.project_id).id < v.id) newest.set(v.project_id, v);
+      const hard = [...newest.values()].filter((v) => !this._findProject(v.project_id) && this._canWrite(rec, v.company_id))
+        .map((v) => ({ id: v.project_id, name: v.name, company_id: v.company_id, deleted_at: v.changed_at, deleted_by: v.changed_by, source: 'history' }));
+      return { json: [...soft, ...hard].sort((x, y) => (x.deleted_at < y.deleted_at ? 1 : -1)) };
+    }
+    if (fn === 'list_project_versions') {
+      const len = (v) => (Array.isArray(v) ? v.length : 0);
+      return {
+        json: H.filter((v) => v.project_id === String(b && b.p_id) && this._canWrite(rec, v.company_id)).sort((x, y) => y.id - x.id)
+          .map((v) => ({ version_id: v.id, version: v.version, op: v.op, name: v.name, changed_at: v.changed_at, changed_by: v.changed_by, reason: v.reason, shows: len(v.data && v.data.shows), stages: len(v.data && v.data.stages) })),
+      };
+    }
+    if (fn === 'restore_project_version') {
+      const snap = H.find((v) => v.id === Number(b && b.p_version_id));
+      if (!snap || !this._canWrite(rec, snap.company_id)) return this._noAccess(`version ${b && b.p_version_id}`);
+      const pr = this._findProject(snap.project_id);
+      if (!pr) return { json: { ok: false, error: 'project_deleted_use_restore_project' } };
+      if (!this._canWrite(rec, pr.company_id)) return this._noAccess('project');
+      const before = clone(pr);
+      pr.data = clone(snap.data); pr.name = snap.name || pr.name; pr.deleted_at = null; pr.deleted_by = null;
+      this._projectWritten(pr, before, 'forced');
+      this._afterProjectWrite(pr);
+      return { json: { ok: true, version: pr.version } };
+    }
+    return null;
   }
 
   // ── seeding & inspection ───────────────────────────────────────────────
@@ -460,6 +617,7 @@ class MockBackend {
     if (!p) throw new Error(`no project ${id}`);
     const old = clone(p);
     mutate(p.data, p);
+    this._projectWritten(p, old);
     if (broadcast) return this.realtime.push({ table: 'projects', type: 'UPDATE', record: clone(p), old_record: { id: old.id } });
     return 0;
   }
@@ -681,12 +839,15 @@ class MockBackend {
   // ── RPC ────────────────────────────────────────────────────────────────
   async _rpc(fn, body, rec) {
     if (this.rpcHandlers[fn]) return this.rpcHandlers[fn](body, rec, this);
+    if (fn === 'save_project' && this.features.saveRpc) return this._rpcSaveProject(body, rec);
+    if (this.features.softDelete) { const r = this._rpcSoftDelete(fn, body, rec); if (r) return r; }
     if (fn === 'get_shared_project') {
       // PostgREST resolves the overload by the argument names in the body.
       const args = Object.keys(body || {}).sort().join(',');
       const sig = args === 'p_id' ? 'legacy' : args === 'p_id,p_mode' ? 'modes' : null;
       if (!sig || !this.sharedRpc[sig]) return this._fnMissing(fn, body);
-      const pr = this.db.projects.find((x) => String(x.id) === String(body.p_id));
+      // A soft-deleted project is gone for share links (soft delete migration).
+      const pr = this.db.projects.find((x) => String(x.id) === String(body.p_id) && !(this.features.softDelete && x.deleted_at));
       if (!pr) return { json: null };
       if (sig === 'legacy') return { json: clone({ id: pr.id, name: pr.name, company_id: pr.company_id, data: pr.data }) };
       return { json: { id: pr.id, name: pr.name, company_id: null, data: stripProjectData(pr.data, sqlMode(body.p_mode)) } };
@@ -772,7 +933,15 @@ class MockBackend {
       if (!body || typeof body !== 'object' || Array.isArray(body)) return pgError(400, 'PGRST102', 'Invalid body');
       const err = checkBody(body); if (err) return err;
       const rows = this.db[table].filter(matches);
-      for (const r of rows) Object.assign(r, clone(body));
+      // projects_lifecycle_guard: deleted_at / deleted_by only through the RPCs.
+      if (table === 'projects' && this.features.softDelete && ('deleted_at' in body || 'deleted_by' in body)) {
+        return pgError(403, '42501', 'projects.deleted_at / deleted_by can only be changed through soft_delete_project / restore_project');
+      }
+      for (const r of rows) {
+        const before = table === 'projects' ? clone(r) : null;
+        Object.assign(r, clone(body));
+        if (before) { this._noteCaller(rec); this._projectWritten(r, before); this._afterProjectWrite(r); }
+      }
       return wantRep ? respond(rows.map(project)) : { status: 204, body: '' };
     }
     if (method === 'POST') {
@@ -789,6 +958,7 @@ class MockBackend {
         } else {
           const row = {};
           for (const c of cols) row[c] = null;
+          if (table === 'projects' && this.features.versioning) row.version = 0;
           Object.assign(row, clone(item));
           this.db[table].push(row);
           out.push(row);
@@ -799,6 +969,7 @@ class MockBackend {
     if (method === 'DELETE') {
       const del = this.db[table].filter(matches);
       if (!filters.length) return pgError(400, '21000', 'DELETE requires a WHERE clause');
+      if (table === 'projects' && this.features.softDelete) { this._noteCaller(rec); for (const r of del) this._snapshot(r, 'DELETE', 'delete'); }
       this.db[table] = this.db[table].filter((r) => !del.includes(r));
       return wantRep ? respond(del.map(project)) : { status: 204, body: '' };
     }

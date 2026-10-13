@@ -163,7 +163,7 @@ Dit document zet alles in één volgorde.
 ### Stap 6: `project_versioning` (app: elke versie)
 
 - **Wat:** voer `20261013110000_project_versioning.sql` uit.
-- **Effect:** elke wijziging aan een project verhoogt `version`. De huidige app merkt daar niets van. `save_project`, `patch_show` en `get_shared_project_version` staan klaar voor de app.
+- **Effect:** elke wijziging aan een project verhoogt `version`. Een app vanaf branch `feature/atomic-save-soft-delete` ziet de kolom en slaat vanaf dan op via `save_project` (zie stap 13); een oudere app merkt er niets van. `patch_show` en `get_shared_project_version` staan klaar maar worden nog niet gebruikt.
 - **Timing:** een korte lock op `projects`. Niet tijdens een show.
 - **Rollback:** zie de kop van het bestand.
 
@@ -260,9 +260,14 @@ update public.backend_settings set value='enforce', updated_at=now() where key='
 
 ### Stap 13: app gebruikt versies, historie en soft delete (geen SQL)
 
-- `_pushProject` gaat via `save_project`. Bij een conflict wordt per show-id samengevoegd en opnieuw geprobeerd.
-- Edits van één show gaan via `patch_show`.
-- Verwijderen gaat via `soft_delete_project`. Overal wordt gefilterd op `deleted_at=is.null`. Daarna kan de policy uit het commentaarblok onderaan het historiebestand worden toegepast.
+**Gedaan in de app** (branch `feature/atomic-save-soft-delete`), met terugval. Dezelfde app werkt vóór en na stap 6 en 7; er is geen vlag en geen tweede release nodig:
+
+- **Opslaan:** `_pushOnce` leest `version` mee met de verse rij en schrijft via `save_project` (compare-and-swap). Bij `{conflict:true}` wordt per show-id opnieuw samengevoegd met de teruggegeven serverrij en opnieuw verstuurd (maximaal 4 pogingen, daarna de gewone retry met backoff). `{error:'would_wipe'}` wordt afgehandeld als de wipe guard van de client: de serverversie blijft staan en de operator ziet *Not saved*. `p_force` gaat alleen mee als elke show of stage die leeg zou raken bewust is verwijderd (`_markIntentionalRemoval`). `{error:'deleted'}` haalt het project uit de lijst.
+- **Terugval:** geeft de select op `version` een 42703, of bestaat `save_project` niet (404/PGRST202), dan blijft het die sessie bij GET + PATCH zoals nu.
+- **Echo's:** realtime-berichten met `version <=` de eigen versie worden genegeerd. Het eigen `_rev` blijft daarnaast werken.
+- **Verwijderen:** `deleteProject` gebruikt `soft_delete_project` als `list_deleted_projects` bestaat; anders de harde DELETE met de waarschuwing "cannot be undone". Lezen van projecten (`loadAPPRemote`, de verse rij bij opslaan en ophalen) filtert `deleted_at=is.null` zodra die kolom bestaat (42703 → zonder filter). Een realtime UPDATE met `deleted_at` geldt als verwijderd.
+- **Dashboard:** sectie *Recently deleted* (alleen als de RPC bestaat en er iets in staat) met de verwijderdatum, wie het deed, de resterende dagen en *Restore* (`restore_project`). Voor company_admin en hoger een knop *Version history* per project (`list_project_versions`, `restore_project_version`, met bevestiging).
+- **Nog niet gedaan:** edits van één show via `patch_show`. Pas de policy uit het commentaarblok onderaan het historiebestand pas toe als alle open tabbladen deze app-versie draaien.
 
 ### Stap 14: signup-tokens (§S.5)
 
@@ -320,8 +325,8 @@ Zie `supabase/functions/README.md`:
 | Gestripte deellinkdata | **gedaan** (branch `feature/share-link-p-mode`): `save()` en `_pushProject` doen niets in `PUBLIC_MODE`; `{p_id, p_mode: PUBLIC_MODE}` in de early fetch, `loadPublicView` en de poll, met terugval 2 → 1 argument → tabel; de booth-suite draait op de legacy- én de gestripte feed. Stap 11 blijft geblokkeerd door de iPad-app | stap 11 |
 | Abonnement in trial | `_effectiveStageLimit`: `trialing` gelijk aan `active` (B2); eventueel in `canCreateProject` ook pass en `past_due` gelijktrekken met de server | stap 12 |
 | Plan-limiet van de server | **gedaan:** HTTP 402 (of 400) met `PT402`: bij `stage_limit_exceeded` haalt de app de nieuwste stage(s) die de server nog niet had lokaal weg (tot het aantal past), markeert ze als bewust verwijderd, toont `message` aan de operator en slaat direct opnieuw op. Bij `subscription_required` op een nieuw project legt het limietvenster uit dat het project niet is aangemaakt | stap 12 |
-| Conflictdetectie | `save_project` en `patch_show` (zie de kop van het versioning-bestand); echo's met `version <=` de eigen versie negeren | stap 13 |
-| Soft delete | `soft_delete_project`; filter `&deleted_at=is.null` in `_restGet('projects')` en de peek; in realtime een UPDATE met `deleted_at` behandelen als DELETE | stap 13 |
+| Conflictdetectie | **gedaan:** opslaan via `save_project` met hermerge bij een conflict; echo's met `version <=` de eigen versie genegeerd. Terugval naar GET + PATCH als de kolom of de RPC ontbreekt. **Niet gedaan:** `patch_show` | stap 13 |
+| Soft delete | **gedaan:** `soft_delete_project` (terugval: harde DELETE); filter `&deleted_at=is.null` in `loadAPPRemote` en `_fetchProjectRow` zodra de kolom bestaat; realtime UPDATE met `deleted_at` = verwijderd; *Recently deleted* met herstel en *Version history* in het dashboard | stap 13 |
 | Goedkoop pollen (§4.3) | **gedaan** (zelfde branch): publieke views pollen `get_shared_project_version` en halen het project alleen op als de versie verandert (plus minstens één keer per minuut). Zonder de functie (vóór stap 6) blijft het de volle poll | optioneel, na stap 6 |
 | Foto's uit de blob | **gedaan** (branch `feature/photo-storage`): upload naar `project-media` met terugval op base64 zolang de bucket ontbreekt, opruimen bij vervangen/weghalen, achtergrondconversie van het open project | stap 16 |
 | Push | **gedaan:** alleen nog `send-push`; `OS_REST_KEY` verwijderd; de `endTime`/`stageId`-bug in `scheduleProjectPushes` gerepareerd. Pushen werkt weer zodra stap 15 gedaan is | stap 15 |

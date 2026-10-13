@@ -2358,6 +2358,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .ws-empty{
   padding:48px 24px;text-align:center;color:#78716C;font-size:13px;
 }
+#dash-deleted .ws-section-hdr h2{font-size:18px;font-weight:700;letter-spacing:-.4px;color:#0A0A0B;margin:0;line-height:1.1;}
+.ws-del-table tbody tr{cursor:default;}
+.ws-del-table .ws-del-by,.ws-del-table .ws-del-left{color:#78716C;font-size:12px;}
+.ws-del-table .ws-del-left{margin-top:2px;}
+.ws-del-table .ws-del-restore{padding:6px 12px;font-size:12px;}
+.ws-del-table .ws-del-restore:disabled{opacity:.6;cursor:default;}
 
 /* === SUBSCRIPTION CARDS === */
 .ws-cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
@@ -2889,7 +2895,9 @@ async function _rpc(fn,args,timeoutMs){
   if(res.status===401&&!pub&&_jwt()!==SUPA_KEY&&await _refreshAuthToken())res=await call(_jwt());
   if(!res.ok){
     const t=await res.text().catch(()=>'');
-    const err=new Error('HTTP '+res.status+(t?' - '+t:''));err.status=res.status;throw err;
+    const err=new Error('HTTP '+res.status+(t?' - '+t:''));err.status=res.status;
+    try{err.body=t?JSON.parse(t):null;}catch(_){err.body=null;}   // {code,message,details,hint}: _planError reads it
+    throw err;
   }
   return await res.json().catch(()=>null);
 }
@@ -3100,12 +3108,12 @@ function loadAPPCache(){
 // supa.from(...).select() has hung in production (same deadlock family as
 // signInWithPassword / upsert). PostgREST returns the same shape: data[] or
 // error string. We mimic { data, error } so callers don't change.
-async function _restGet(table,cols){
+async function _restGet(table,cols,filter){
   const once=async()=>{
     const ctrl=new AbortController();
     const tmo=setTimeout(()=>ctrl.abort(),10000);
     try{
-      const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}`,{
+      const res=await fetch(`${SUPA_URL}/rest/v1/${table}?select=${cols||'*'}${filter||''}`,{
         signal:ctrl.signal,
         headers:{'apikey':SUPA_KEY,'Authorization':`Bearer ${_jwt()}`,'Accept':'application/json'},
       });
@@ -3189,7 +3197,7 @@ async function loadAPPRemote(){
     const[cosRes,usrsRes,projsRes]=await Promise.all([
       _restGetCompanies(),
       _restGet('app_users'),
-      _restGet('projects')
+      _projRead(()=>_restGet('projects','*',_liveFilter()))
     ]);
     // Update companies + users whenever their fetch succeeds - even if projects
     // fetch fails (iOS Safari token expiry, transient RLS, etc.). Otherwise a
@@ -3211,6 +3219,7 @@ async function loadAPPRemote(){
         // newer than this response. Keep it; the push refetches afterwards.
         if(old&&st&&(st.inflight||st.ackSeq!==ack0[p.id])){st.serverDirty=true;return old;}
         const np={id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data||{}};
+        if(p.version!=null)np.version=+p.version;
         // Edits made on the cached copy before the server answered: replay them
         // onto the server copy instead of throwing them away.
         if(old&&_pendingPush[p.id]&&_validData(p.data)){
@@ -3383,11 +3392,13 @@ async function _pushMeta(){
 //                  once (_refreshAuthToken) and retries.
 //  _pushOnce()     GET the row, 3-way merge per item id and per field
 //                  (base = last blob the server acknowledged to us, local =
-//                  this device, server = the fresh copy), PATCH the result.
+//                  this device, server = the fresh copy), write the result.
 //                  That result becomes the new base.
-// LIMIT: GET + PATCH is not atomic. A write from another device that lands in
-// the ~100ms between our GET and PATCH is still overwritten; only a server
-// side compare-and-swap closes that window (TODO in _pushOnce).
+// The write is save_project (compare-and-swap on projects.version) once
+// migration project_versioning is applied: a write from another device
+// between our GET and our write comes back as a conflict and is merged.
+// Before that migration: PATCH, and a write landing in the ~100ms between
+// GET and PATCH is still overwritten (see _srv for the detection).
 // The sync dot shows one of: saved | saving | unsaved(reason). It is never
 // green while a save failed or the wipe guard had to step in.
 
@@ -3618,8 +3629,35 @@ async function _withAuthRetry(fn){
     throw e;
   }
 }
+// ── Server features that arrive with migrations project_versioning
+// (projects.version, save_project) and project_history_soft_delete
+// (projects.deleted_at, soft delete / restore / history RPCs). The app must
+// work before and after them, so each is detected once per page session:
+// undefined = not known yet, false = missing (keep the old path), true = there.
+const _srv={verCol:undefined,delCol:undefined,saveRpc:undefined,softDel:undefined};
+// Optional projects column a failed read named in its 42703, or ''.
+function _missingProjCol(e){
+  const b=e&&e.body,m=String((e&&e.message)||'')+' '+String((b&&b.message)||'')+' '+String((b&&b.code)||(e&&e.code)||'');
+  if(!/42703|does not exist/i.test(m))return'';
+  const c=(/column\s+"?(?:projects\.)?([a-z_]+)"?\s+does not exist/i.exec(m)||[])[1]||'';
+  return c==='version'||c==='deleted_at'?c:'';
+}
+// Hide soft-deleted projects, once the column exists.
+const _liveFilter=()=>_srv.delCol===false?'':'&deleted_at=is.null';
+// Run a projects read (it may name version / deleted_at). A 42703 on one of
+// them marks that column missing for this session and runs the read again
+// without it. Works for _restGet ({data,error}) and _sbFetch (throws).
+async function _projRead(run){
+  for(;;){   // at most two retries: each one turns a flag off for good
+    let r,err=null;
+    try{r=await run();}catch(e){err=e;}
+    const col=_missingProjCol(err||(r&&r.error)),k=col==='version'?'verCol':'delCol';
+    if(!col||_srv[k]===false){if(err)throw err;return r;}
+    _srv[k]=false;console.warn('[sync] projects.'+col+' not on the server yet (migration not applied), reading without it');
+  }
+}
 async function _fetchProjectRow(id,anon){
-  const rows=await _sbFetch(`projects?id=eq.${encodeURIComponent(id)}&select=id,name,data`,{},10000,anon);
+  const rows=await _projRead(()=>_sbFetch(`projects?id=eq.${encodeURIComponent(id)}&select=id,name,data${_srv.verCol===false?'':',version'}${_liveFilter()}`,{},10000,anon));
   return Array.isArray(rows)&&rows.length?rows[0]:null;
 }
 // return=representation + select=id: a PATCH that matched no row (deleted, or
@@ -3767,31 +3805,27 @@ async function _pushOnce(id){
   // The fresh row doubles as the wipe guard's reference and the merge input.
   const row=await _withAuthRetry(()=>_fetchProjectRow(id));
   if(!row){const e=new Error('Project row not found');e.status=404;throw e;}
-  const S=_isObj(row.data)?row.data:{};
-  const r=_mergeData(_getBase(id),L0,S,{intentional:_intentional,shared});
-  proj=APP.projects.find(p=>p.id===id);if(!proj){_pendingPush[id]=false;return;}
-  if(r.refused){
-    console.warn('[_pushProject] REFUSED: empty local lineup over',(S.shows||[]).length,'server shows - keeping the server version');
-    st.note='Not saved: this screen had an empty lineup while the server has '+(S.shows||[]).length+' shows and '+(S.stages||[]).length+' stages. The server version was kept; check the lineup and redo your last change if it is missing.';
-    _setBase(id,S);st.ackSeq++;
-    _applyAck(id,proj,S,L0,seq0,true);
-    return;
-  }
-  let out=r.data;
-  // TODO(save_project, migration 20261013110000_project_versioning, runbook
-  // step 13): once applied, select `version` with the row above and send `out`
-  // via _rpc('save_project',{p_id,p_expected_version,p_data}). On
-  // {conflict:true} use the returned data as the new S, merge again and retry;
-  // on {error:'would_wipe'} handle like r.refused. That makes this
-  // read-merge-write atomic (and `version` can replace _rev for echoes).
-  // Do not call it before the migration is applied.
-  if(_sameContent(out,S,true)){
-    out=S;   // nothing new for the server (e.g. only this device's selection changed)
-  }else{
+  let S=_isObj(row.data)?row.data:{},ver=row.version!=null?+row.version:null,r,out;
+  // GET + merge + PATCH is not atomic: a write from another device between
+  // the GET and the PATCH was overwritten. save_project (migration
+  // project_versioning) only writes while the row is still at `ver`; a
+  // conflict answers with the server row, which we merge against and send
+  // again. Bounded: a project that keeps changing fails this push, and the
+  // queue retries with backoff. Without the RPC (or the version column):
+  // the old GET+PATCH.
+  for(let tries=0;;tries++){
+    r=_mergeData(_getBase(id),L0,S,{intentional:_intentional,shared});
+    proj=APP.projects.find(p=>p.id===id);if(!proj){_pendingPush[id]=false;return;}
+    if(r.refused)return _pushRefused(id,proj,S,ver,L0,seq0);
+    out=r.data;
+    if(_sameContent(out,S,true)){out=S;break;}   // nothing new for the server (e.g. only this device's selection changed)
     out._rev=_newRev();
     _sentRevs.add(out._rev);if(_sentRevs.size>50)_sentRevs.delete(_sentRevs.values().next().value);
-    try{await _withAuthRetry(()=>_patchProjectData(id,out));}
-    catch(e){
+    let res=null;
+    try{
+      if(ver!=null&&_srv.saveRpc!==false)res=await _saveViaRpc(id,ver,S,out);
+      if(!res)await _withAuthRetry(()=>_patchProjectData(id,out));
+    }catch(e){
       // Plan limit: drop the stage(s) the server refused and return without
       // an ack. _pendingPush stays set, so _pushProject saves again at once
       // (merged as usual) - the tab never gets stuck on the refused stage.
@@ -3799,16 +3833,62 @@ async function _pushOnce(id){
       if(pe&&pe.kind==='stage_limit_exceeded'&&_dropRefusedStages(id,S,out,pe))return;
       throw e;
     }
-    st.ackRev=out._rev;
+    if(!res||res.ok===true){if(res&&res.version!=null)ver=+res.version;st.ackRev=out._rev;break;}
+    if(res.error==='deleted'){_forgetProject(id,true);return;}
+    // Server twin of the wipe guard: our blob empties shows or stages that
+    // were not all removed here on purpose. Keep the server version.
+    if(res.error==='would_wipe')return _pushRefused(id,proj,S,res.version!=null?+res.version:ver,L0,seq0);
+    if(!res.conflict||!_isObj(res.data)||tries>=3){
+      const e=new Error(res.conflict?'The project kept changing on the server while saving.':'Unexpected answer from save_project: '+JSON.stringify(res).slice(0,120));
+      if(res.conflict)e.status=409;throw e;
+    }
+    console.warn('[_pushProject] conflict: server is at version',res.version,'not',ver,'- merging with it and saving again');
+    S=res.data;ver=+res.version;
+    if(typeof res.name==='string'&&res.name!==proj.name){proj.name=res.name;_rerenderDash();}
   }
   st.ackSeq++;
   _setBase(id,out);
+  if(ver!=null)proj.version=ver;
   if(shared&&_sharedSel[id]&&_sharedSel[id].activeDay===shared.activeDay)delete _sharedSel[id];
   const n=r.restored.filter(x=>x.kind==='shows').length,nd=r.restored.length-n;
   st.note=r.restored.length?'Check the lineup: '+(n?n+' show'+(n===1?'':'s'):'')+(n&&nd?' and ':'')+(nd?nd+' day'+(nd===1?'':'s')+'/stage'+(nd===1?'':'s'):'')+' missing on this screen still exist on the server and were kept (they were not deleted here).':'';
   if(r.restored.length)console.warn('[_pushProject] restored items missing locally:',r.restored);
   proj=APP.projects.find(p=>p.id===id)||proj;
   _applyAck(id,proj,out,L0,seq0,false);
+}
+// The wipe guard kept the server version S: adopt it, tell the operator.
+function _pushRefused(id,proj,S,ver,L0,seq0){
+  const st=_syncSt(id);
+  console.warn('[_pushProject] REFUSED: empty local lineup over',(S.shows||[]).length,'server shows - keeping the server version');
+  st.note='Not saved: this screen had an empty lineup while the server has '+(S.shows||[]).length+' shows and '+(S.stages||[]).length+' stages. The server version was kept; check the lineup and redo your last change if it is missing.';
+  _setBase(id,S);st.ackSeq++;
+  if(ver!=null)proj.version=ver;
+  _applyAck(id,proj,S,L0,seq0,true);
+}
+// save_project -> its answer, or null when the RPC is not deployed (the
+// caller PATCHes; remembered for this page session). p_force only where the
+// client wipe guard already let an empty list through on purpose.
+async function _saveViaRpc(id,ver,S,out){
+  const args={p_id:id,p_expected_version:ver,p_data:out};
+  if(_wipeIntended(S,out))args.p_force=true;
+  try{
+    const res=await _rpc('save_project',args,15000);
+    _srv.saveRpc=true;
+    if(!_isObj(res))throw new Error('save_project gave no answer');
+    return res;
+  }catch(e){
+    if(!_rpcFnMissing(e))throw e;
+    _srv.saveRpc=false;console.warn('[sync] save_project not on the server yet, saving with GET+PATCH:',e.message);
+    return null;
+  }
+}
+// Does `out` empty the server's shows or stages only through removals made
+// here on purpose (delShow, delStage, delDay, import)? save_project refuses
+// such a write without p_force (its server-side wipe guard).
+function _wipeIntended(S,out){
+  const a=v=>Array.isArray(v)?v:[],drops=k=>a(S[k]).length>0&&!a(out[k]).length;
+  const ok=k=>!drops(k)||a(S[k]).every(x=>x&&_intentional[k].has(x.id));
+  return(drops('shows')||drops('stages'))&&ok('shows')&&ok('stages');
 }
 // After the server confirmed `out`: bring the local copy in line with it.
 // Edits made while the push was out are replayed on top (3-way against L0).
@@ -3838,12 +3918,13 @@ function _rerenderActive(){
 function _rerenderDash(){const el=document.getElementById('dash');if(!window.PUBLIC_MODE&&el&&el.classList.contains('open'))renderDash();}
 
 // Take a server copy of a project (realtime payload or REST refetch).
-function _adoptServer(id,S,name){
+function _adoptServer(id,S,name,version){
   const proj=APP.projects.find(p=>p.id===id);if(!proj||!_validData(S))return;
   const st=_syncSt(id);
   if(st.inflight){st.serverDirty=true;return;}   // the push merges and refetches afterwards
   const nameChanged=typeof name==='string'&&name!==proj.name;
   if(typeof name==='string')proj.name=name;
+  if(version!=null)proj.version=+version;
   const B=_getBase(id);
   if(!_pendingPush[id]&&B&&_validData(proj.data)&&_sameContent(S,B,true)){if(nameChanged){_cacheAPP();_rerenderDash();}return;}
   if(_pendingPush[id]){
@@ -3873,7 +3954,7 @@ async function _refetchProject(id){
     if(st.ackSeq!==ack0){st.refetchAgain=true;return;}
     if(!row){console.warn('[sync] project not visible on the server (deleted / no access):',id);return;}
     if(!_validData(row.data)){console.warn('[sync] server row has no valid data, ignored:',id);return;}
-    _adoptServer(id,row.data,row.name);
+    _adoptServer(id,row.data,row.name,row.version);
   }catch(e){console.warn('[sync] refetch failed:',humanError(e,'Loading the latest data'),e);}
   finally{st.fetching=false;if(st.refetchAgain){st.refetchAgain=false;_refetchProject(id);}}
 }
@@ -3928,17 +4009,19 @@ function setupRealtime(){
     _resyncAll();
   },30000);
 }
+// Drop a project that is gone on the server (hard or soft deleted elsewhere).
+// notice: tell the operator when it was the open project.
+function _forgetProject(id,notice){
+  if(!id||window.PUBLIC_MODE||!APP.projects.some(p=>p.id===id))return;
+  const wasOpen=APP.activeProjectId===id;
+  APP.projects=APP.projects.filter(p=>p.id!==id);
+  _pendingPush[id]=false;if(_sync[id])clearTimeout(_sync[id].retryT);
+  if(wasOpen)APP.activeProjectId=null;
+  _cacheAPP();_rerenderDash();_settle(id);_refreshSaveState();
+  if(wasOpen&&notice)_opNotice('This project was deleted in your workspace. Changes made here are no longer saved.',{key:'project-deleted',sticky:true});
+}
 function _onProjectChange(payload){
-  if(payload.eventType==='DELETE'){
-    const deletedId=payload.old?.id;
-    if(deletedId&&!window.PUBLIC_MODE&&APP.projects.some(p=>p.id===deletedId)){
-      APP.projects=APP.projects.filter(p=>p.id!==deletedId);
-      _pendingPush[deletedId]=false;if(_sync[deletedId])clearTimeout(_sync[deletedId].retryT);
-      if(APP.activeProjectId===deletedId)APP.activeProjectId=null;
-      _cacheAPP();_rerenderDash();_settle(deletedId);_refreshSaveState();
-    }
-    return;
-  }
+  if(payload.eventType==='DELETE'){_forgetProject(payload.old?.id,false);return;}
   if(payload.eventType!=='UPDATE'&&payload.eventType!=='INSERT')return;
   const p=payload.new||{};if(!p.id)return;
   // Supabase may leave large (TOASTed) columns out of a realtime payload.
@@ -3961,10 +4044,15 @@ function _onProjectChange(payload){
     else if(PUBLIC_MODE==='wall'){renderWV();}
     return;
   }
+  // Soft delete (project_history_soft_delete): the row stays, deleted_at is set.
+  if(p.deleted_at){_forgetProject(p.id,true);return;}
   const proj=APP.projects.find(x=>x.id===p.id);
+  // projects.version (project_versioning): an event that is not newer than
+  // what we have is our own echo or arrived late; the push already merged it.
+  if(proj&&p.version!=null&&proj.version!=null&&+p.version<=+proj.version)return;
   if(!_validData(p.data)){if(proj)_refetchProject(p.id);return;}
   if(!proj){
-    APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data});
+    APP.projects.push({id:p.id,name:p.name,companyId:p.company_id,createdAt:p.created_at,createdBy:p.created_by||null,data:p.data,...(p.version!=null?{version:+p.version}:{})});
     _setBase(p.id,p.data);_cacheAPP();_rerenderDash();return;
   }
   const st=_syncSt(p.id),rev=p.data._rev;
@@ -3977,7 +4065,7 @@ function _onProjectChange(payload){
     if(rev===st.ackRev&&_sameContent(p.data,_getBase(p.id),true))return;
     if(rev!==st.ackRev){_refetchProject(p.id);return;}
   }
-  _adoptServer(p.id,p.data,p.name);
+  _adoptServer(p.id,p.data,p.name,p.version);
 }
 function _onCompanyChange(payload){
   const c=payload.new;
@@ -5181,6 +5269,8 @@ function renderTbar(){
           <tbody id="proj-grid"></tbody>
         </table>
       </div>
+      <!-- Recently deleted (soft delete; filled by _renderDeleted, hidden when empty or unsupported) -->
+      <div id="dash-deleted" style="margin-top:36px;" hidden></div>
       <!-- One-off timers (compact, below projects) -->
       <div style="margin-top:36px;">
         <div class="ws-section-hdr" style="padding-bottom:16px;margin-bottom:16px;">
@@ -9367,6 +9457,9 @@ function renderDash(){
             <button class="ws-icon-btn" onclick="event.stopPropagation();renameProject(${_jsArg(p.id)})" title="Rename">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
+            ${_canSeeHistory()?`<button class="ws-icon-btn" onclick="event.stopPropagation();openProjectHistory(${_jsArg(p.id)})" title="Version history" aria-label="Version history of ${escH(p.name)}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+            </button>`:''}
             <button class="ws-icon-btn danger" onclick="event.stopPropagation();deleteProject(${_jsArg(p.id)})" title="Delete">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
             </button>
@@ -9375,6 +9468,7 @@ function renderDash(){
       </tr>`;
     }).join('');
   }
+  _renderDeleted();_loadDeleted(false);
   renderOTSection();
 }
 
@@ -9901,20 +9995,131 @@ async function _restWrite(table,method,filter,body){
   let rows=[];try{rows=JSON.parse(txt||'[]');}catch(e){console.warn('[rest] '+method+' '+table+': unreadable response, counted as 0 rows:',txt.slice(0,200));}
   return Array.isArray(rows)?rows.length:0;
 }
+// Soft delete (migration project_history_soft_delete): soft_delete_project
+// keeps the row for 30 days, restorable from "Recently deleted". Before that
+// migration: the permanent DELETE, with its own warning.
 async function deleteProject(id){
   const proj=APP.projects.find(p=>p.id===id);
   const name=proj?.name||'this project';
   const nShows=(proj?.data?.shows||[]).length,nStages=(proj?.data?.stages||[]).length;
-  if(!await stDialog.confirm(`"${name}" is deleted for everyone in the workspace, with its ${nStages} stage${nStages===1?'':'s'} and ${nShows} show${nShows===1?'':'s'}. Share links stop working. This cannot be undone.`,
+  if(_srv.softDel===undefined)await _loadDeleted(true);   // the list doubles as the probe
+  // Promise "restorable" only when the probe said so. Unknown (the probe
+  // failed): warn as for a permanent delete, but still try the soft one first.
+  const known=_srv.softDel===true;let soft=_srv.softDel!==false;
+  const what=`"${name}" is deleted for everyone in the workspace, with its ${nStages} stage${nStages===1?'':'s'} and ${nShows} show${nShows===1?'':'s'}. Share links stop working.`;
+  if(!await stDialog.confirm(what+(known?' You can restore it from Recently deleted for 30 days.':' This cannot be undone.'),
     {title:'Delete this project?',okLabel:'Delete project',danger:true}))return;
   try{
-    const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
-    if(!n){await stDialog.alert('Nothing was deleted - you may not have permission for this project.',{title:'Project not deleted'});return;}
+    if(soft){
+      try{
+        const r=await _rpc('soft_delete_project',{p_id:id});
+        if(r&&r.ok===false)throw new Error(r.error||'not deleted');
+        _srv.softDel=true;
+      }catch(e){
+        if(!_rpcFnMissing(e))throw e;
+        _srv.softDel=false;soft=false;_renderDeleted();
+        if(known)return deleteProject(id);   // promised a restore: ask again with the permanent wording
+      }
+    }
+    if(!soft){
+      const n=await _restWrite('projects','DELETE',`id=eq.${encodeURIComponent(id)}`);
+      if(!n){await stDialog.alert('Nothing was deleted - you may not have permission for this project.',{title:'Project not deleted'});return;}
+    }
   }catch(e){await stDialog.alert(_friendlyError(e,'Deleting the project'),{title:'Project not deleted'});return;}
   APP.projects=APP.projects.filter(p=>p.id!==id);
+  _pendingPush[id]=false;if(_sync[id])clearTimeout(_sync[id].retryT);
   if(APP.activeProjectId===id)APP.activeProjectId=null;
   saveAPP();renderDash();
+  if(soft)_loadDeleted(true);
 }
+
+// ── Recently deleted (soft delete). Shown only when list_deleted_projects
+// exists, to users the RPC answers for (a workspace member, or a platform
+// admin), and only when something is in it. The server purges after 30 days.
+let _delList=[],_delAt=0,_delP=null;
+function _canSeeDeleted(){return!window.PUBLIC_MODE&&!!(CURRENT_USER&&(CURRENT_USER.companyId||isAdmin()));}
+function _loadDeleted(force){
+  if(_srv.softDel===false||!_canSeeDeleted())return Promise.resolve();
+  if(_delP)return _delP;
+  if(!force&&_srv.softDel!==undefined&&Date.now()-_delAt<60000)return Promise.resolve();
+  _delP=(async()=>{
+    const was=_srv.softDel;
+    try{
+      const rows=await _rpc('list_deleted_projects',{});
+      _srv.softDel=true;_delList=Array.isArray(rows)?rows:[];
+    }catch(e){
+      if(_rpcFnMissing(e)){_srv.softDel=false;_delList=[];}
+      else console.warn('[dash] recently deleted list failed:',e);
+    }finally{_delAt=Date.now();_delP=null;}
+    // First answer: the project rows gain their history button.
+    if(was===undefined&&_srv.softDel===true)_rerenderDash();else _renderDeleted();
+  })();
+  return _delP;
+}
+const _fmtStamp=ts=>{const d=new Date(ts);return isNaN(d)?'-':d.toLocaleString('en-GB',{timeZone:'Europe/Amsterdam',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});};
+function _renderDeleted(){
+  const el=document.getElementById('dash-deleted');if(!el)return;
+  const co=CURRENT_USER?.companyId||'';
+  // Platform admins get every workspace from the RPC; the dashboard is about one.
+  const rows=_srv.softDel===true&&_canSeeDeleted()?_delList.filter(r=>r&&r.id&&(!co||!r.company_id||r.company_id===co)):[];
+  el.hidden=!rows.length;
+  if(!rows.length){el.innerHTML='';return;}
+  const DAY=864e5,now=Date.now();
+  el.innerHTML=`<div class="ws-section-hdr" style="padding-bottom:16px;margin-bottom:16px;">
+      <div><h2>Recently deleted</h2>
+      <div class="ws-section-hdr-sub">Deleted projects can be restored for 30 days. After that they are removed for good.</div></div>
+    </div>
+    <div class="ws-table-wrap"><table class="ws-table ws-del-table">
+      <thead><tr><th style="width:38%;">Project</th><th>Deleted</th><th style="width:200px;text-align:right;">Actions</th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const left=Math.min(30,Math.max(0,Math.ceil((new Date(r.deleted_at).getTime()+30*DAY-now)/DAY)));   // clamped: device clock skew
+        return`<tr data-del-id="${escH(r.id)}">
+          <td class="col-name" data-label="Project">${escH(r.name||'Untitled project')}</td>
+          <td data-label="Deleted">${escH(_fmtStamp(r.deleted_at))}${r.deleted_by?` <span class="ws-del-by">by ${escH(r.deleted_by)}</span>`:''}<div class="ws-del-left">${isNaN(left)?'':left===1?'1 day left to restore':left+' days left to restore'}</div></td>
+          <td class="col-actions" data-label="Actions"><button type="button" class="ws-btn-secondary ws-del-restore" onclick="restoreDeletedProject(${_jsArg(r.id)},this)" aria-label="Restore ${escH(r.name||'project')}">Restore</button></td>
+        </tr>`;}).join('')}</tbody>
+    </table></div>`;
+}
+async function restoreDeletedProject(id,btn){
+  if(btn){btn.disabled=true;btn.textContent='Restoring…';}
+  try{
+    const r=await _rpc('restore_project',{p_id:id});
+    if(r&&r.ok===false)throw new Error(r.error||'not restored');
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Restore';}
+    await stDialog.alert(_friendlyError(e,'Restoring the project'),{title:'Project not restored'});return;
+  }
+  _delList=_delList.filter(x=>x.id!==id);_renderDeleted();
+  await loadAPPRemote();renderDash();_loadDeleted(true);
+}
+window.restoreDeletedProject=restoreDeletedProject;
+
+// ── Version history (same migration): the server keeps a copy at most every
+// 5 minutes, and before shows / stages are removed. company_admin and up.
+function _canSeeHistory(){return _srv.softDel===true&&isCompanyAdmin();}
+async function openProjectHistory(id){
+  const proj=APP.projects.find(p=>p.id===id);if(!proj||!_canSeeHistory())return;
+  let rows;
+  try{rows=await _rpc('list_project_versions',{p_id:id});}
+  catch(e){await stDialog.alert(_friendlyError(e,'Loading the version history'),{title:'Version history'});return;}
+  rows=(Array.isArray(rows)?rows:[]).filter(v=>v&&v.version_id!=null&&v.op!=='DELETE');
+  const why={interval:'Autosave',shrink:'Before shows or stages were removed',soft_delete:'When the project was deleted',forced:'Before a version was restored'};
+  const n=(k,w)=>`${k} ${w}${k===1?'':'s'}`;
+  const html=rows.length
+    ?`<div class="st-dlg-opts">${rows.map(v=>`<button type="button" class="st-dlg-opt" data-st-value="${escH(String(v.version_id))}"><span class="st-dlg-opt-t">${escH(_fmtStamp(v.changed_at))}</span><span class="st-dlg-opt-d">${escH(n(+v.shows||0,'show')+' · '+n(+v.stages||0,'stage')+' · '+(why[v.reason]||'Saved copy')+(v.changed_by?' · '+v.changed_by:''))}</span></button>`).join('')}</div>`
+    :'<p class="st-dlg-note">No earlier copies yet. They appear after the project has been edited for a while.</p>';
+  const pick=await stDialog.open({title:'Version history',message:`Earlier copies of "${proj.name}" from the last 30 days. Choose one to restore it.`,html,wide:true,
+    actions:[{label:'Close',value:null,kind:'secondary',submit:true}],cancelValue:null});
+  const v=pick&&rows.find(x=>String(x.version_id)===String(pick));if(!v)return;
+  if(!await stDialog.confirm(`"${proj.name}" goes back to the copy from ${_fmtStamp(v.changed_at)} (${n(+v.shows||0,'show')}, ${n(+v.stages||0,'stage')}) for everyone in the workspace. The current version is kept in the history, so this can be undone.`,
+    {title:'Restore this version?',okLabel:'Restore version',danger:true}))return;
+  try{
+    const r=await _rpc('restore_project_version',{p_version_id:+v.version_id});
+    if(r&&r.ok===false)throw new Error(r.error==='project_deleted_use_restore_project'?'This project is deleted. Restore it from Recently deleted first.':(r.error||'not restored'));
+  }catch(e){await stDialog.alert(_friendlyError(e,'Restoring the version'),{title:'Version not restored'});return;}
+  _refetchProject(id);
+}
+window.openProjectHistory=openProjectHistory;
 async function renameProject(id){
   const proj=APP.projects.find(p=>p.id===id);if(!proj)return;
   const res=await stDialog.form({
