@@ -5,9 +5,10 @@
 -- STATUS: NOT APPLIED. Run by hand. Runbook: docs/MIGRATIES.md.
 --
 -- PURPOSE
---   Public viewers (?mode=stage|backstage|foh|timeline|overview|wall|checkin
---   &pid=...) have no session. Once RLS is on they have no table access, so
---   the one project behind a share link is served through these functions.
+--   Public viewers (?mode=stage|backstage|foh|timeline|overview|wall|checkin|
+--   stagemanager&pid=...) have no session. Once RLS is on they have no table
+--   access, so the one project behind a share link is served through these
+--   functions.
 --   (These definitions used to live in rls_prep; this file supersedes them.)
 --
 --   get_shared_project(p_id)          LEGACY. Unchanged output (full data
@@ -17,14 +18,19 @@
 --                                     but data only contains what that mode
 --                                     renders (company_id is always null):
 --
---     field (in data)      stage backstage foh timeline overview wall checkin
---     fohNotes               -      -       yes    -        -      -     -
---     shows[].note           -      yes      -     -        -      -     -
---     shows[].crew           -       -      yes    -        -      -     -
---     shows[].photo          -       -       -     -        -      -     -
---     memberIds              -       -       -     -        -      -     -
---     logo                   -      yes     yes    -        -      -     -
+--     field (in data)      stage backstage foh timeline overview wall checkin stagemanager
+--     fohNotes               -      -       yes    -        -      -     -        -
+--     shows[].note           -      yes      -     -        -      -     -        -
+--     shows[].crew           -       -      yes    -        -      -     -        -
+--     shows[].photo          -       -       -     -        -      -     -        -
+--     memberIds              -       -       -     -        -      -     -        -
+--     logo                   -      yes     yes    -        -      -     -        -
+--     shows[].rider          -       -       -     -        -      -    yes      yes
 --   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed.)
+--   shows[].rider = {drinks, tech}: the artist's hospitality and technical
+--   rider (free text, set in the show editor or the lineup import). Only the
+--   check-in desk and the stage manager act on it; it is the artist's
+--   business, so no other screen receives it (2026-10-13, feature/rider-data).
 --   The JS twin of this matrix is tests/support/share-modes.js (the mock
 --   backend serves the 2-arg call with it; tests/regression/share-mode.spec.js
 --   checks this table and keep_* below against it).
@@ -37,10 +43,11 @@
 --             endsNextDay, cancelled, hidden
 --                                  all modes (live / next / done maths)
 --     shows[].genre                stage (#sv-genre)
---     shows[].booth                backstage, foh, timeline (booth badge)
+--     shows[].booth                backstage, foh, timeline, stagemanager (booth badge)
 --     shows[].type                 backstage, foh (item-type badge)
 --     shows[].priority             wall, timeline, overview (star / tint)
---     shows[].arrived, arrivedAt   checkin, overview, timeline (check-in dot)
+--     shows[].arrived, arrivedAt   checkin, stagemanager, overview, timeline
+--                                  (check-in dot / arrival state)
 --     activeStage, activeDay       all (fallback when the link has no sid /
 --                                  no day is dated today)
 --     timerMode                    loadG default; harmless
@@ -54,7 +61,11 @@
 --   _renderCueOverlay, renderBlackout), renderBS (notesBlock: show note only -
 --   timed FOH cues stay off Backstage, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
 --   renderTL, renderOV, renderWV / tickWV and renderCI: none of the last
---   four reads note, crew or fohNotes; Stage View reads none of the six.
+--   four reads note, crew or fohNotes; Stage View reads none of the seven.
+--   stagemanager (the stage manager screen: running order, arrivals and
+--   riders for one stage, sid) gets the check-in set: shows, stages, days,
+--   times, flags, booth, arrived/arrivedAt and rider; no notes, crew, FOH
+--   notes, logo. cue / blackout reach it like every mode (it ignores them).
 --   Photos are only used by the operator timer panel and editor drawer,
 --   memberIds only by the operator crew picker / push, logo only by
 --   refreshLogo on Backstage and FOH (customer logo top-left, 2026-10-13,
@@ -76,7 +87,8 @@
 --     * arrivedAt is clamped to server time when the device clock is > 12h
 --       off;
 --     * returns the checkin-mode view of the data (no fohNotes/crew/notes/
---       photos), not the full blob.
+--       photos; rider kept, so a check-in or stage manager screen that adopts
+--       the answer keeps showing riders after a tap), not the full blob.
 --
 -- APP CHANGE to use the per-mode version:
 --   1. DONE: save()/_pushProject are a no-op when PUBLIC_MODE is set (except
@@ -112,6 +124,11 @@
 --          public.get_shared_project('<pid>','stage') -> 'data' -> 'fohNotes'; -- true, {}
 --   select octet_length(public.get_shared_project('<pid>')::text),
 --          octet_length(public.get_shared_project('<pid>','stage')::text);  -- 2nd much smaller with photos
+--   -- rider only for checkin / stagemanager (false, true, true):
+--   select jsonb_path_exists(public.get_shared_project('<pid>','foh') -> 'data', '$.shows[*].rider'),
+--          jsonb_path_exists(public.get_shared_project('<pid>','checkin') -> 'data', '$.shows[*].rider'),
+--          jsonb_path_exists(public.get_shared_project('<pid>','stagemanager') -> 'data', '$.shows[*].rider');
+--   -- (true only when at least one show has a rider)
 --   -- arrived toggle, then toggle back (inside a transaction to leave no trace):
 --   begin; select public.set_show_arrived('<pid>','<show id>', true, null) -> 'shows' -> 0; rollback;
 --   -- helpers are not callable by clients (both false):
@@ -170,6 +187,7 @@ declare
   keep_note  boolean := p_mode in ('backstage', 'legacy');
   keep_crew  boolean := p_mode in ('foh', 'legacy');
   keep_logo  boolean := p_mode in ('backstage', 'foh', 'legacy');
+  keep_rider boolean := p_mode in ('checkin', 'stagemanager', 'legacy');
   drop_show  text[]  := array['photo'];
   out        jsonb;
 begin
@@ -178,6 +196,7 @@ begin
   end if;
   if not keep_note then drop_show := array_append(drop_show, 'note'); end if;
   if not keep_crew then drop_show := array_append(drop_show, 'crew'); end if;
+  if not keep_rider then drop_show := array_append(drop_show, 'rider'); end if;
 
   out := case when keep_logo then p_data else p_data - 'logo' end;
   if out ? 'memberIds' then out := jsonb_set(out, '{memberIds}', '[]'::jsonb); end if;
@@ -226,7 +245,7 @@ as $$
            'company_id', null,   -- public views do not need it
            'data', public._strip_project_data(
                      p.data,
-                     case when p_mode in ('stage','backstage','foh','timeline','overview','wall','checkin')
+                     case when p_mode in ('stage','backstage','foh','timeline','overview','wall','checkin','stagemanager')
                           then p_mode else 'strict' end))
   from public.projects p
   where p.id::text = p_id
@@ -335,8 +354,8 @@ grant execute on function public.set_show_arrived(text, text, boolean, bigint) t
 -- is live, (2) the app never saves in PUBLIC_MODE (done), (3) a few days have
 -- passed so cached tabs reloaded, and (4) the iPad app is known to work with
 -- the narrowed legacy output. After this, the legacy call returns the union
--- of what any public mode needs (fohNotes, notes, crew, logo) but no photos /
--- memberIds, and no company_id.
+-- of what any public mode needs (fohNotes, notes, crew, logo, rider) but no
+-- photos / memberIds, and no company_id.
 --
 -- create or replace function public.get_shared_project(p_id text)
 -- returns jsonb language sql stable security definer set search_path = public as $$

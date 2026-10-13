@@ -1738,6 +1738,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .sc-status.st-next{border-color:rgba(165,180,252,.5);color:var(--accent-txt);}
 .sc-status.st-cancelled{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.5);color:#fca5a5;}
 .sc-status.st-hidden{border-style:dashed;}
+/* Rider chip: an indicator, not a status (.sc-status stays the show's state). */
+.sc-rider{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-2xs);font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:2px 8px;border-radius:var(--r-pill);border:1px solid rgba(45,212,191,.45);color:#5eead4;line-height:1.35;cursor:help;}
 .scard.state-now{background:rgba(99,102,241,.1);border-color:var(--accent-line);box-shadow:inset 3px 0 0 var(--accent);}
 .scard.state-cued{box-shadow:inset 3px 0 0 var(--accent);}
 .scard.state-next{border-color:rgba(165,180,252,.28);}
@@ -2874,6 +2877,12 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);color:#fdba74;}
 .fi[aria-invalid="true"]{border-color:#ef4444;}
 #dur-prev .st-auto{color:#fbbf24;}
+/* Show editor: rider (drinks / tech) */
+#drawer .dr-rider-hint{font-size:11.5px;color:var(--sub);line-height:1.45;margin:0 0 8px;}
+#drawer .dr-rider-fld{margin-bottom:10px;}
+#drawer .dr-rider-fld:last-child{margin-bottom:0;}
+#drawer .dr-rider-cnt{display:block;font-size:11px;color:var(--sub);text-align:right;margin-top:3px;font-variant-numeric:tabular-nums;}
+#drawer .dr-rider-cnt.over{color:#fca5a5;font-weight:700;}
 button.booth-opt{font-family:inherit;min-width:32px;}
 #drawer :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
 /* Cue panel / manual timer (operator side only, never Stage View) */
@@ -4911,7 +4920,8 @@ function renderTbar(){
       <button onclick="closeJSONModal()" style="background:none;border:none;color:var(--sub);font-size:18px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="font-size:11px;color:var(--sub);line-height:1.6;">Expected format - each day as a key with <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
-    <code style="font-size:10px;color:var(--sub);">{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code></div>
+    <code style="font-size:10px;color:var(--sub);">{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code><br>
+    Optional rider per act: <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">drinks</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">tech</code> (text, up to 2,000 characters each), or <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">"rider":{"drinks":"…","tech":"…"}</code>. Only the check-in and stage manager screens show it.</div>
     <textarea id="json-input-area" oninput="if(_importPending)_resetImportPreview()" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artist name"}]}]}}'></textarea>
     <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
     <div id="json-import-preview" style="display:none;max-height:220px;overflow-y:auto;padding:8px 10px;background:var(--s3);border:1px solid var(--border2);border-radius:7px;font-size:12px;color:var(--sub);line-height:1.5;"></div>
@@ -5399,6 +5409,12 @@ function renderTbar(){
       <div class="fg" style="flex:0 0 auto;"><div class="fl" id="booth-lbl">Booth</div><div id="booth-sel" role="group" aria-labelledby="booth-lbl"><button type="button" class="booth-opt sel-none" id="bo-none" onclick="selBooth('')" aria-label="No booth" aria-pressed="true">-</button><button type="button" class="booth-opt" id="bo-A" onclick="selBooth('A')" aria-label="Booth A" aria-pressed="false">A</button><button type="button" class="booth-opt" id="bo-B" onclick="selBooth('B')" aria-label="Booth B" aria-pressed="false">B</button></div></div>
     </div>
     <div class="fg"><label class="fl" for="f-n">Note</label><textarea class="fi" id="f-n" placeholder="Internal note…"></textarea></div>
+    <fieldset class="fg st-fset" aria-describedby="f-rider-hint">
+      <legend class="fl">Rider <span style="color:var(--sub);font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></legend>
+      <p class="dr-rider-hint" id="f-rider-hint">Shown on the artist check-in and stage manager screens only.</p>
+      <div class="st-sub dr-rider-fld"><label class="st-sublbl" for="f-rider-drinks">Drinks / hospitality</label><textarea class="fi" id="f-rider-drinks" rows="3" placeholder="e.g. 6x Club-Mate, still water (no ice), 4 towels, vegan dinner for 3" aria-describedby="f-rider-drinks-err f-rider-drinks-cnt"></textarea><div class="st-fld-err" id="f-rider-drinks-err" hidden></div><span class="dr-rider-cnt" id="f-rider-drinks-cnt"></span></div>
+      <div class="st-sub dr-rider-fld"><label class="st-sublbl" for="f-rider-tech">Technical requirements</label><textarea class="fi" id="f-rider-tech" rows="3" placeholder="e.g. 2x CDJ-3000 + DJM-900NXS2, booth monitor left, 1 vocal mic (SM58)" aria-describedby="f-rider-tech-err f-rider-tech-cnt"></textarea><div class="st-fld-err" id="f-rider-tech-err" hidden></div><span class="dr-rider-cnt" id="f-rider-tech-cnt"></span></div>
+    </fieldset>
   </div>
   <div id="drfooter">
     <div class="dr-flag-row">
@@ -6441,6 +6457,25 @@ function setNxt(nxt){
   document.getElementById('tp-nt').textContent=nxt?nxt.s.start.slice(0,5):'';
 }
 
+// ══ RIDER - show.rider = {drinks, tech}
+// The artist's hospitality and technical rider: two optional free-text
+// fields (multi-line, trimmed, max RIDER_MAX characters each). Absent, {} or
+// empty strings all mean "no rider". Set in the show editor and the lineup
+// import; shown on the operator schedule (chip) and on the check-in and
+// stage manager share screens. Share links: only p_mode checkin /
+// stagemanager receive it (get_shared_project matrix, migration
+// 20261013100000); every other share screen gets the show without it.
+const RIDER_KEYS=['drinks','tech'],RIDER_MAX=2000;
+const RIDER_LABEL={drinks:'Drinks / hospitality',tech:'Technical requirements'};
+// {drinks, tech} as trimmed strings ('' when missing or not text).
+function riderOf(s){const r=s&&_isObj(s.rider)?s.rider:{};return{drinks:typeof r.drinks==='string'?r.drinks.trim():'',tech:typeof r.tech==='string'?r.tech.trim():''};}
+function hasRider(s){const r=riderOf(s);return!!(r.drinks||r.tech);}
+// Plain text for a tooltip (escape it where it lands): each part capped.
+function _riderSummary(s,max=160){
+  const r=riderOf(s),cut=t=>t.length>max?t.slice(0,max-1).trimEnd()+'…':t;
+  return RIDER_KEYS.filter(k=>r[k]).map(k=>`${k==='drinks'?'Drinks':'Tech'}: ${cut(r[k])}`).join('\n');
+}
+
 // ══ RENDER SCHEDULE (FOH-style cards)
 function renderSched(){
   const allShows=getShows(G.activeStage,G.activeDay);
@@ -6500,6 +6535,8 @@ function renderSched(){
     const stLbl={cancelled:VW_STATUS.cancelled,now:VW_STATUS.live,cued:'Cued',next:VW_STATUS.next,past:VW_STATUS.done}[state];
     const statusChip=stLbl?`<span class="sc-status st-${state}">${stLbl}</span>`:'';
     const hiddenChip=s.hidden?`<span class="sc-status st-hidden" title="Hidden from public share screens"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10 10 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/></svg>${VW_STATUS.hidden}</span>`:'';
+    const rid=riderOf(s);
+    const riderChip=rid.drinks||rid.tech?`<span class="sc-rider" title="${escH(_riderSummary(s))}"><span aria-hidden="true">🍹</span>Rider<span class="vh"> (${[rid.drinks&&'drinks',rid.tech&&'technical'].filter(Boolean).join(' and ')})</span></span>`:'';
     const aName=escH(s.artist);
     // A tap on a card never cues or resets the timer: manual mode has an explicit Cue button.
     return`<div class="scard state-${state} ${isNow||isSel?'now sel':''} ${isPast?'past':''} ${s.hidden?'hidden-from-public':''} ${s.cancelled?'cancelled':''}">
@@ -6507,7 +6544,7 @@ function renderSched(){
       <div class="scard-top">
         <span class="scard-time">${escH(String(s.start||'').slice(0,5))}<span class="scard-time-sep"> – </span>${escH(String(s.end||'').slice(0,5))}</span>
         <span class="scard-name" title="${aName}">${aName}</span>
-        <span class="scard-meta">${itemTypeBadge(s)}${s.booth?`<span class="sc-booth booth-${s.booth==='A'?'a':'b'}" style="background:${bBg};color:${bCol};">Booth ${escH(s.booth)}</span>`:''}${statusChip}${hiddenChip}</span>
+        <span class="scard-meta">${itemTypeBadge(s)}${s.booth?`<span class="sc-booth booth-${s.booth==='A'?'a':'b'}" style="background:${bBg};color:${bCol};">Booth ${escH(s.booth)}</span>`:''}${statusChip}${hiddenChip}${riderChip}</span>
         <span class="scard-act">
           <button class="rb" onclick="openDrawer(${_jsArg(s.id)});event.stopPropagation()" aria-label="Edit ${aName}" title="Edit show"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
           <button class="rb d" onclick="delShow(${_jsArg(s.id)},event)" aria-label="Delete ${aName}" title="Delete show"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
@@ -7353,6 +7390,7 @@ function openDrawer(id,booth=null){
   _photoDiscard();
   editId=id;prefillBooth=booth;
   _drFlags={cancelled:false,priority:false,hidden:false};
+  _drRiderOpen={drinks:'',tech:''};
   document.getElementById('drtitle').textContent=id?'Edit show':'New show';
   document.getElementById('dr-save').textContent=id?'Save':'Create';
   if(id){
@@ -7362,6 +7400,7 @@ function openDrawer(id,booth=null){
       document.getElementById('f-g').value=s.genre||'';
       document.getElementById('f-type').value=s.type||'';
       document.getElementById('f-n').value=s.note||'';
+      _drRiderOpen=riderOf(s);
       selBooth(s.booth||'');
       _photoB64=s.photo||'';_photoRemoved=false;
       _drFlags.cancelled=!!s.cancelled;
@@ -7394,6 +7433,7 @@ function openDrawer(id,booth=null){
     _drSetDT('start',startMs);
     _drSetDT('end',startMs+90*60*1000);
   }
+  RIDER_KEYS.forEach(k=>{document.getElementById('f-rider-'+k).value=_drRiderOpen[k];_drRiderCount(k);});
   _updateDrFlagBtns();
   _drAutoNote='';_drClearErrors();
   updDur();
@@ -7412,7 +7452,7 @@ const _drVal=id=>document.getElementById(id)?.value||'';
 function _drState(){
   return JSON.stringify([_drVal('f-a'),_drVal('f-start-date'),_drVal('f-start-time'),_drVal('f-start-sec'),
     _drVal('f-end-date'),_drVal('f-end-time'),_drVal('f-end-sec'),_drVal('f-type'),_drVal('f-n'),
-    curBooth,_drFlags,_photoB64,_photoRemoved]);
+    curBooth,_drFlags,_photoB64,_photoRemoved,_drVal('f-rider-drinks'),_drVal('f-rider-tech')]);
 }
 const _drIsOpen=()=>document.getElementById('drawer').classList.contains('open');
 function _drDirty(){return _drIsOpen()&&_drState()!==_drSnap;}
@@ -7459,7 +7499,7 @@ function _drSetDT(which,ms){
   document.getElementById(`f-${which}-sec`).value=_p2(amsParts(ms).s);
 }
 // ── Field errors next to the field (no alert, no silent correction)
-const _DR_ERR={'f-a':'f-a-err','f-start-date':'f-start-err','f-start-time':'f-start-err','f-start-sec':'f-start-err','f-end-date':'f-end-err','f-end-time':'f-end-err','f-end-sec':'f-end-err'};
+const _DR_ERR={'f-a':'f-a-err','f-start-date':'f-start-err','f-start-time':'f-start-err','f-start-sec':'f-start-err','f-end-date':'f-end-err','f-end-time':'f-end-err','f-end-sec':'f-end-err','f-rider-drinks':'f-rider-drinks-err','f-rider-tech':'f-rider-tech-err'};
 function _drSetErr(field,msg){
   const box=document.getElementById(_DR_ERR[field]);if(!box)return;
   box.textContent=msg||'';box.hidden=!msg;
@@ -7501,6 +7541,36 @@ const _drIso=dt=>`${amsDateStr(dt.getTime())}T${amsTimeStr(dt.getTime(),true)}`;
   });
 });
 document.getElementById('f-a').addEventListener('input',()=>_drSetErr('f-a',''));
+// ── Rider fields: a counter from 80% of the limit, the error as soon as the
+// text is too long (not only on Save), and only the fields edited in this
+// drawer session are written back (_drApplyRider).
+let _drRiderOpen={drinks:'',tech:''};
+function _drRiderErr(k){
+  const n=_drVal('f-rider-'+k).trim().length;
+  return n>RIDER_MAX?`${RIDER_LABEL[k]} is ${n.toLocaleString('en-US')} characters. Keep it to ${RIDER_MAX.toLocaleString('en-US')} (${(n-RIDER_MAX).toLocaleString('en-US')} too many).`:'';
+}
+function _drRiderCount(k){
+  const el=document.getElementById(`f-rider-${k}-cnt`);if(!el)return;
+  const n=_drVal('f-rider-'+k).trim().length,show=n>=RIDER_MAX*.8;
+  el.textContent=show?`${n.toLocaleString('en-US')} / ${RIDER_MAX.toLocaleString('en-US')}`:'';
+  el.classList.toggle('over',n>RIDER_MAX);
+}
+RIDER_KEYS.forEach(k=>document.getElementById('f-rider-'+k).addEventListener('input',()=>{_drRiderCount(k);_drSetErr('f-rider-'+k,_drRiderErr(k));}));
+// Write the edited rider fields onto `show`. An untouched field keeps what G
+// holds now (a peer's edit that arrived while this drawer was open), so two
+// operators editing drinks and tech do not overwrite each other; the 3-way
+// merge then also works per field. A rider whose last field is cleared stays
+// {} instead of vanishing: the merge keeps a field a peer added meanwhile
+// only while both sides are objects.
+function _drApplyRider(show){
+  const cur=_isObj(show.rider)?show.rider:null,next={...(cur||{})};
+  for(const k of RIDER_KEYS){
+    const v=_drVal('f-rider-'+k).trim();
+    if(v===_drRiderOpen[k])continue;
+    if(v)next[k]=v;else delete next[k];
+  }
+  if(cur||Object.keys(next).length)show.rider=next;
+}
 // Start pushed past the end: the end follows to start + 1h30m. That is an
 // automatic change, so the duration preview says so.
 document.getElementById('f-start-date').addEventListener('change',_maybeBumpEnd);
@@ -7755,6 +7825,7 @@ async function saveShow(){
   if(b.err)errs.push([b.field,b.err]);
   const sd=a.dt,ed=b.dt;
   if(sd&&ed&&ed<=sd)errs.push(['f-end-date','End must be after start. To run past midnight, pick the next day\'s date in End.']);
+  RIDER_KEYS.forEach(k=>{const m=_drRiderErr(k);if(m)errs.push(['f-rider-'+k,m]);});
   if(errs.length){
     errs.forEach(([f,m])=>_drSetErr(f,m));
     document.getElementById(errs[0][0])?.focus();
@@ -7812,7 +7883,9 @@ async function saveShow(){
     priority:_drFlags.priority||false,
     hidden:_drFlags.hidden||false,
   };
-  if(existing)Object.assign(existing,obj);else G.shows.push({id:uid(),stage:G.activeStage,day:G.activeDay,...obj});
+  const target=existing?Object.assign(existing,obj):{id:uid(),stage:G.activeStage,day:G.activeDay,...obj};
+  _drApplyRider(target);
+  if(!existing)G.shows.push(target);
   _photoTemp=_photoTemp.filter(u=>u!==photo);   // saved now: closeDrawer must not delete it
   save();
   if(oldPhoto&&oldPhoto!==photo)_dropMediaAfterSave(oldPhoto,APP.activeProjectId);
@@ -9405,6 +9478,10 @@ function _renderImportPreview(plan){
   const inv=plan.invalid.slice(0,25).map(r=>li(`<span style="color:#fca5a5;">${escH(r.label)}</span>: ${escH(r.reason)}`)).join('')
     +(plan.invalid.length>25?li(`…and ${plan.invalid.length-25} more`):'');
   const replaced=plan.groups.reduce((n,g)=>n+g.replace,0);
+  const withRider=plan.shows.map(r=>r.show).filter(hasRider),cut=t=>t.length>70?t.slice(0,69).trimEnd()+'…':t;
+  const riders=withRider.slice(0,10).map(x=>{const r=riderOf(x);
+    return li(`<strong>${escH(x.artist)}</strong>${r.drinks?` · Drinks: ${escH(cut(r.drinks))}`:''}${r.tech?` · Tech: ${escH(cut(r.tech))}`:''}`);}).join('')
+    +(withRider.length>10?li(`…and ${withRider.length-10} more`):'');
   pv.innerHTML=`
     <div style="font-weight:800;color:var(--text);margin-bottom:4px;">Check before importing</div>
     ${li(`${plan.shows.length} show${plan.shows.length===1?'':'s'} will be added${replaced?`, ${replaced} existing show${replaced===1?'':'s'} replaced`:''}. Other stages and days are not touched.`)}
@@ -9412,6 +9489,7 @@ function _renderImportPreview(plan){
     ${plan.newStages.length?li(`New stages: ${plan.newStages.map(escH).join(', ')}`):''}
     ${plan.newDays.length?li(`New days: ${plan.newDays.map(escH).join(', ')}`):''}
     ${plan.earlyMorning?li('Times before 07:00 count as part of the previous night (the festival day runs 07:00 to 07:00).'):''}
+    ${withRider.length?`<div style="font-weight:700;color:var(--text);margin-top:6px;">Rider for ${withRider.length} show${withRider.length===1?'':'s'}:</div>${riders}`:''}
     ${plan.invalid.length?`<div style="font-weight:700;color:#fca5a5;margin-top:6px;">${plan.invalid.length} row${plan.invalid.length===1?'':'s'} will be skipped:</div>${inv}`:''}`;
   pv.style.display='block';
 }
@@ -9515,6 +9593,24 @@ function _importShowTimes(startDate,startTime,endDate,endTime){
     endsNextDay:startDate!==endDate,
   };
 }
+// Optional rider on a row / act: "drinks" and "tech", or "rider":{"drinks",
+// "tech"} (a flat key wins over the nested one). Text (a number is read as
+// text), trimmed, at most RIDER_MAX characters. Returns {rider} (undefined
+// when there is none) or {err}: a bad rider skips the row, like a bad time.
+function _importRider(row){
+  if(row.rider!=null&&!_isObj(row.rider))return{err:'"rider" must be an object like {"drinks":"…","tech":"…"}'};
+  const nest=row.rider||{},out={};
+  for(const k of RIDER_KEYS){
+    let v=row[k]!=null?row[k]:nest[k];
+    if(v==null)continue;
+    if(typeof v==='number')v=String(v);
+    if(typeof v!=='string')return{err:`"${k}" must be text`};
+    v=v.trim();if(!v)continue;
+    if(v.length>RIDER_MAX)return{err:`"${k}" is ${v.length.toLocaleString('en-US')} characters, the maximum is ${RIDER_MAX.toLocaleString('en-US')}`};
+    out[k]=v;
+  }
+  return{rider:Object.keys(out).length?out:undefined};
+}
 // Returns {error} for an unusable paste, otherwise a plan:
 //   {shows:[{dayRef,stageRef,show}], newDays, newStages, groups, invalid}
 // dayRef/stageRef point at existing ids or at entries in plan.dayObjs /
@@ -9545,10 +9641,11 @@ function _planLineupImport(data){
     if(!d){d={id:uid(),name:label,...(date?{date}:{})};plan.dayObjs.push(d);plan.newDays.push(label);}
     return d;
   };
-  const add=(day,stage,artist,t)=>{
+  const add=(day,stage,artist,t,rider)=>{
     plan.shows.push({dayId:day.id,stageId:stage.id,show:{
       id:uid(),stage:stage.id,day:day.id,artist,...t,
       genre:'',booth:'',type:'',note:'',crew:{},photo:'',cancelled:false,priority:false,hidden:false,
+      ...(rider?{rider}:{}),
     }});
   };
   const bad=(label,reason)=>plan.invalid.push({label,reason});
@@ -9574,12 +9671,13 @@ function _planLineupImport(data){
       const ms=new Date(t.endsAt)-new Date(t.startsAt);
       if(!(ms>0)){bad(label,'end is not after start');return;}
       if(ms>86400000){bad(label,'show is longer than 24 hours, check the end date');return;}
+      const rd=_importRider(row);if(rd.err){bad(label,rd.err);return;}
       // Same 07:00 festival-day rule as the rest of the app: a 01:00 start
       // belongs to the night that began the day before.
       const festDate=t2s(s.time)<NIGHT_END_MIN*60?_addDaysISO(s.date,-1):s.date;
       if(festDate!==s.date)plan.earlyMorning=true;
       const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
-      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t);
+      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t,rd.rider);
     });
   }else{
     // ── Nested format: {"friday":{"date":"2025-06-20","stages":[{stage,acts:[{time:"16:45-17:30",artist}]}]}}
@@ -9609,13 +9707,14 @@ function _planLineupImport(data){
           const start=_normImportTime(tm[1]),end=_normImportTime(tm[2]);
           if(!start||!end){bad(label,`time "${act.time}" is not a valid time range`);return;}
           if(start===end){bad(label,'end is not after start');return;}
+          const rd=_importRider(act);if(rd.err){bad(label,rd.err);return;}
           const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
           const base=dayDate();
           // Before 07:00 = the night after this day (festival day rule).
           const early=t2s(start)<NIGHT_END_MIN*60;
           if(early)plan.earlyMorning=true;
           const sd=base?(early?_addDaysISO(base,1):base):null;
-          add(day,st.stage,artist,_importShowTimes(sd,start,null,end));
+          add(day,st.stage,artist,_importShowTimes(sd,start,null,end),rd.rider);
         });
       });
     }
@@ -12111,21 +12210,12 @@ function copyLink(btn,url){
   fallback();
 }
 
-// ══ ARTIST RIDER - what the artist wants to drink and needs technically.
-// show.rider = {drinks, tech}: optional free text (multi-line), entered while
-// preparing the project. Check-in and Stage manager show it; the other share
-// links do not receive it (get_shared_project strips it per mode).
-function _rider(s){
-  const r=s&&s.rider&&typeof s.rider==='object'?s.rider:{};
-  const t=v=>typeof v==='string'?v.replace(/\r\n?/g,'\n').trim():'';
-  return{drinks:t(r.drinks),tech:t(r.tech)};
-}
-// Escaped text in a pre-wrap block, so the rider keeps its line breaks.
-// empty: also draw a block without text ("Not specified").
+// Rider blocks (see RIDER) for Check-in and Stage manager: escaped text in a
+// pre-wrap block, so the rider keeps its line breaks. empty: also draw a
+// part that has no text ("Not specified").
 function _riderHTML(s,cls,{empty=false}={}){
-  const r=_rider(s);
-  const blk=(k,lbl,v)=>v||empty?`<div class="${cls}-blk ${cls}-${k}"><div class="${cls}-k">${lbl}</div><div class="${cls}-v${v?'':' none'}">${v?escH(v):'Not specified'}</div></div>`:'';
-  const h=blk('drinks','Drinks',r.drinks)+blk('tech','Technical requirements',r.tech);
+  const r=riderOf(s);
+  const h=RIDER_KEYS.map(k=>r[k]||empty?`<div class="${cls}-blk ${cls}-${k}"><div class="${cls}-k">${escH(RIDER_LABEL[k])}</div><div class="${cls}-v${r[k]?'':' none'}">${r[k]?escH(r[k]):'Not specified'}</div></div>`:'').join('');
   return h?`<div class="${cls}">${h}</div>`:'';
 }
 
@@ -12169,6 +12259,8 @@ function _smCdText(s,kind,n){
   if(kind==='end'){const rem=Math.round((iv.endMs-n)/1000);return s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));}
   return s2cdH(Math.max(0,Math.round((iv.startMs-n)/1000)));
 }
+// Crew in the app only: the stagemanager share link does not receive
+// shows[].crew (field matrix), so it would differ between feeds.
 function _smCrewHTML(s){
   const crew=s.crew&&typeof s.crew==='object'?s.crew:{};
   const items=CREW_ROLES.filter(r=>crew[r.id]&&crew[r.id].name).map(r=>{
@@ -12198,7 +12290,7 @@ function _smCardHTML(s,n,isNow){
     </div>
     ${err?`<div class="ci-err" role="alert">${escH(err)}</div>`:''}
     ${_riderHTML(s,'smv-rider',{empty:true})}
-    ${_smCrewHTML(s)}
+    ${PUBLIC_MODE?'':_smCrewHTML(s)}
   </article>`;
 }
 function renderSM(){

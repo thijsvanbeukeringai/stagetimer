@@ -7,10 +7,8 @@
 // (DJ O'Neil, multi-line), m4 (markup that must stay text) and m6.
 // Main Stage, Friday: m2 15:30-16:30, m3 17:00-18:15, m4 19:00-20:30, m6 23:00.
 //
-// Share-link specs use backend.shareFeed('legacy') (full blob): until the
-// share-link field matrix knows the stagemanager mode, the per-mode feed treats
-// it as an unknown mode and strips crew. Switch to the default feed once
-// tests/support/share-modes.js lists stagemanager (rider + crew).
+// Share-link specs run on the default per-mode feed (share-modes.js): checkin
+// and stagemanager receive the rider, not the crew (crew shows in the app only).
 //
 // Screenshots: tests/output/sm/ (gitignored).
 const fs = require('fs');
@@ -106,8 +104,8 @@ test.describe('check-in in the app', () => {
     await expect(row.locator('.ci-booth')).toHaveText('Booth B');
     await expect(row).toContainText('Not arrived yet');
     const drinks = row.locator('.ci-rider-drinks .ci-rider-v');
-    expect(await innerText(drinks)).toBe('2x Club-Mate\nStill water, room temperature');
-    expect(await innerText(row.locator('.ci-rider-tech .ci-rider-v'))).toBe('2x CDJ-3000 + DJM-V10\nBooth monitor on the left');
+    expect(await innerText(drinks)).toBe('6x Club-Mate\nStill water, no ice');
+    expect(await innerText(row.locator('.ci-rider-tech .ci-rider-v'))).toBe('2x CDJ-3000 + DJM-900NXS2\nBooth monitor left');
     expect(await drinks.evaluate((e) => getComputedStyle(e).whiteSpace)).toBe('pre-wrap');
     // A show without a rider gets no empty rider box.
     await expect(ciRow(page, 'Opening Act').locator('.ci-rider')).toHaveCount(0);
@@ -158,13 +156,11 @@ test.describe('check-in in the app', () => {
 
 // ── Check-in share link ───────────────────────────────────────────────────
 test.describe('check-in share link', () => {
-  test.beforeEach(({ backend }) => backend.shareFeed('legacy'));
-
   test('shows the rider, as text', async ({ page, st }) => {
     await st.gotoPublic({ mode: 'checkin', at: at('15:45') });
     await expect(page.locator('#ci-ssel')).toHaveValue('');
     const row = ciRow(page, "DJ O'Neil");
-    expect(await innerText(row.locator('.ci-rider-drinks .ci-rider-v'))).toBe('2x Club-Mate\nStill water, room temperature');
+    expect(await innerText(row.locator('.ci-rider-drinks .ci-rider-v'))).toBe('6x Club-Mate\nStill water, no ice');
     const m4 = ciRow(page, 'Headliner Priority');
     await expect(m4.locator('.ci-rider-drinks .ci-rider-v')).toContainText('Champagne <b>Brut</b> & "ice"');
     await expect(m4.locator('.ci-rider-drinks .ci-rider-v')).toContainText('<img src=x onerror="window.__xss=1">');
@@ -193,11 +189,9 @@ test.describe('check-in share link', () => {
 
 // ── Stage manager share link ──────────────────────────────────────────────
 test.describe('stage manager share link', () => {
-  test.beforeEach(({ backend }) => backend.shareFeed('legacy'));
-
   test.describe('with an arrived act', () => {
     test.use({ stSeed: withArrived(['m2'], at('14:50').getTime()) });
-    test('current show with countdown to its end, next shows with start countdowns, rider and crew', async ({ page, st }) => {
+    test('current show with countdown to its end, next shows with start countdowns, rider', async ({ page, st }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await st.gotoPublic({ mode: 'stagemanager', sid: S.main, at: at('15:45:00.400'), paused: true });
       await expect(page.locator('#smv')).toHaveClass(/open/);
@@ -212,10 +206,10 @@ test.describe('stage manager share link', () => {
       await expect(now.locator('.smv-time')).toHaveText('15:30–16:30');
       await expect(now.locator('.smv-arr-txt')).toHaveText('Arrived 14:50');
       await expect(now).toHaveClass(/smv-lvl-ok/);
-      expect(await innerText(now.locator('.smv-rider-drinks .smv-rider-v'))).toBe('2x Club-Mate\nStill water, room temperature');
-      expect(await innerText(now.locator('.smv-rider-tech .smv-rider-v'))).toBe('2x CDJ-3000 + DJM-V10\nBooth monitor on the left');
-      await expect(now.locator('.smv-crew-i', { hasText: 'Bram' })).toContainText('On the way');
-      await expect(now.locator('.smv-crew-i', { hasText: 'Anna' })).toContainText('On site');
+      expect(await innerText(now.locator('.smv-rider-drinks .smv-rider-v'))).toBe('6x Club-Mate\nStill water, no ice');
+      expect(await innerText(now.locator('.smv-rider-tech .smv-rider-v'))).toBe('2x CDJ-3000 + DJM-900NXS2\nBooth monitor left');
+      // The share link does not receive crew; the app shows it (see below).
+      await expect(now.locator('.smv-crew')).toHaveCount(0);
 
       const next = page.locator('.smv-col-next .smv-card .smv-artist');
       await expect(next).toHaveText(['The <b>html</b> & "Quotes" Band', 'Headliner Priority', 'Night Owl']);
@@ -278,7 +272,6 @@ test.describe('stage manager share link', () => {
     expect(backend.calls({ path: '/rest/v1/rpc/set_show_arrived' })[0].body).toMatchObject({ p_id: PID, p_show_id: 'm3', p_arrived: true });
     expect(backend.project(PID).data.shows.find((s) => s.id === 'm3').arrived).toBe(true);
     expect(backend.calls({ method: 'PATCH' })).toEqual([]);
-    // The answer is the check-in cut of the project: crew on this screen stays.
     await st.advance(2000);
     await expect(page.locator('#smv-body')).not.toContainText('Saving…');
     const btn = m3.locator('.smv-toggle');
@@ -324,6 +317,8 @@ test.describe('stage manager in the app', () => {
     const now = page.locator('.smv-col-now .smv-card');
     await expect(now.locator('.smv-artist')).toHaveText("DJ O'Neil");
     await expect(now.locator('.smv-cd')).toHaveText(/^(20|19):\d\d$/);
+    await expect(now.locator('.smv-crew-i', { hasText: 'Bram' })).toContainText('On the way');
+    await expect(now.locator('.smv-crew-i', { hasText: 'Anna' })).toContainText('On site');
     const m3 = card(page, 'Quotes');
     await expect(m3).toHaveClass(/smv-lvl-warn/);
     await m3.getByRole('button', { name: 'Mark arrived' }).click();

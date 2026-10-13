@@ -4,8 +4,8 @@
 //  * every public mode asks for its own p_mode (early <head> fetch + polls);
 //  * fallback chain 2-arg -> 1-arg -> direct table read, only on "function
 //    missing" (404 / PGRST202), remembered per session; never on 401 / 5xx;
-//  * the stripped payload holds no photos, crew, notes, FOH notes, memberIds
-//    or logo where the mode does not render them (field matrix in
+//  * the stripped payload holds no photos, crew, notes, FOH notes, memberIds,
+//    logo or rider where the mode does not render them (field matrix in
 //    tests/support/share-modes.js, checked against the SQL here);
 //  * every view renders exactly the same DOM on the stripped feed as on the
 //    full legacy blob;
@@ -23,8 +23,12 @@ const PID = FESTIVAL.projectId;
 const AT = ams(FESTIVAL.dates.d1, '16:00');   // DJ O'Neil (note, crew, photo, FOH note) live on Main
 const RPC = '/rest/v1/rpc/get_shared_project';
 const VER = '/rest/v1/rpc/get_shared_project_version';
-const SID = { stage: S.main, backstage: S.main, foh: S.main };
-const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci' };
+const SID = { stage: S.main, backstage: S.main, foh: S.main, stagemanager: S.main };
+const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci', stagemanager: '#smv' };
+// Modes with a screen in this build. A mode the server knows without a screen
+// here is checked on the RPC alone; add it to VIEW together with its screen.
+const VIEW_MODES = SHARE_MODES.filter((m) => VIEW[m]);
+const RIDER_MODES = SHARE_FIELD_MATRIX['shows[].rider'].filter((m) => m !== 'legacy');
 const SQL_FILE = path.join(__dirname, '..', '..', 'supabase', 'migrations', '20261013100000_share_link_rpcs.sql');
 
 const reads = (backend) => backend.calls({ method: 'POST', path: RPC });
@@ -41,7 +45,7 @@ async function pollStep(page) {
 test.use({ viewport: { width: 1280, height: 800 } });
 
 test.describe('every mode asks for its own p_mode', () => {
-  for (const mode of SHARE_MODES) {
+  for (const mode of VIEW_MODES) {
     test(mode, async ({ page, st, backend }) => {
       await open(st, mode);
       await pollStep(page);
@@ -57,7 +61,7 @@ test.describe('every mode asks for its own p_mode', () => {
 });
 
 test.describe('stripped payload', () => {
-  for (const mode of SHARE_MODES) {
+  for (const mode of VIEW_MODES) {
     test(`${mode}: only what the mode renders`, async ({ page, st }) => {
       await open(st, mode);
       await pollStep(page);
@@ -73,6 +77,8 @@ test.describe('stripped payload', () => {
       expect.soft(has('crew'), 'crew').toBe(mode === 'foh');
       expect.soft(has('note'), 'note').toBe(mode === 'backstage');
       expect.soft(Object.keys(row.data.fohNotes).length > 0, 'fohNotes').toBe(mode === 'foh');   // timed cues: FOH only
+      expect.soft(has('rider'), 'rider').toBe(RIDER_MODES.includes(mode));
+      if (!RIDER_MODES.includes(mode)) expect(text).not.toContain('Club-Mate');   // rider text
       if (mode !== 'foh') expect(text).not.toContain('Bram');            // crew name
       if (mode !== 'backstage') expect(text).not.toContain('USB backup'); // show note
       // What every mode needs for the clock and overlays is still there.
@@ -80,15 +86,24 @@ test.describe('stripped payload', () => {
       expect(shows.find((s) => s.id === 'm2')).toMatchObject({ artist: "DJ O'Neil", genre: 'House', booth: 'B', startsAt: '2026-07-10T15:30:00' });
     });
   }
+  for (const mode of SHARE_MODES) {
+    test(`${mode}: the RPC strips by the matrix`, async ({ backend }) => {
+      const r = await backend._rpc('get_shared_project', { p_id: PID, p_mode: mode });
+      expect(r.json.data).toEqual(stripProjectData(festivalData(), mode));
+      const m2 = r.json.data.shows.find((s) => s.id === 'm2');
+      if (RIDER_MODES.includes(mode)) expect(m2.rider).toEqual(festivalData().shows.find((s) => s.id === 'm2').rider);
+      else expect(JSON.stringify(r.json)).not.toMatch(/"rider"|Club-Mate|CDJ/);
+    });
+  }
   test('unknown mode gets the strictest set', async ({ backend }) => {
     const r = await backend._rpc('get_shared_project', { p_id: PID, p_mode: 'nope' });
     expect(r.json.data).toEqual(stripProjectData(festivalData(), 'strict'));
-    expect(JSON.stringify(r.json)).not.toMatch(/data:image|Bram|USB backup|Extra monitor/);
+    expect(JSON.stringify(r.json)).not.toMatch(/data:image|Bram|USB backup|Extra monitor|"rider"/);
   });
 });
 
 test.describe('every view renders the same on the stripped feed', () => {
-  for (const mode of SHARE_MODES) {
+  for (const mode of VIEW_MODES) {
     test(mode, async ({ page, st, backend }) => {
       backend.shareFeed('legacy');
       await open(st, mode);
@@ -244,4 +259,9 @@ test('field matrix in the SQL equals the mock / spec matrix', () => {
   expect(keep('keep_note')).toEqual([...SHARE_FIELD_MATRIX['shows[].note']].sort());
   expect(keep('keep_crew')).toEqual([...SHARE_FIELD_MATRIX['shows[].crew']].sort());
   expect(keep('keep_logo')).toEqual([...SHARE_FIELD_MATRIX.logo].sort());
+  expect(keep('keep_rider')).toEqual([...SHARE_FIELD_MATRIX['shows[].rider']].sort());
+  // Every mode the matrix knows is a known mode in get_shared_project(p_id, p_mode).
+  const known = /case when p_mode in \(([^)]*)\)\s+then p_mode else 'strict' end/.exec(sql);
+  expect(known, 'known-mode list in get_shared_project').not.toBeNull();
+  expect(known[1].split(',').map((x) => x.trim().replace(/'/g, ''))).toEqual([...SHARE_MODES]);
 });

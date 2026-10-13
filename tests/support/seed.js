@@ -80,8 +80,7 @@ function festivalData() {
     }),
     show('m2', S.main, D.d1, T.d1, '15:30', '16:30', "DJ O'Neil", {
       genre: 'House', booth: 'B', note: "Bring O'Neil's USB backup", photo: PHOTO_PNG,
-      // Rider (show.rider): free text with line breaks, shown on Check-in and Stage manager.
-      rider: { drinks: '2x Club-Mate\nStill water, room temperature', tech: '2x CDJ-3000 + DJM-V10\nBooth monitor on the left' },
+      rider: { drinks: '6x Club-Mate\nStill water, no ice', tech: '2x CDJ-3000 + DJM-900NXS2\nBooth monitor left' },
       crew: {
         vj: { name: 'Anna', status: 'present' },
         light: { name: 'Bram', status: 'otw' },
