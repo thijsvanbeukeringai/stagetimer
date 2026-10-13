@@ -226,8 +226,9 @@ test.describe('5D delivery receipts and presence', () => {
     await openSheet(page);
     await expect(page.locator('#cm-presence')).toHaveText('1 booth screen online');
     // Freeze the operator's clock: only runFor moves it from here.
+    // (a margin: the page clock keeps running while this round trip happens)
     const now = await page.evaluate(() => Date.now());
-    await page.clock.pauseAt(now + 200);
+    await page.clock.pauseAt(now + 2000);
     await page.locator('#cm-presets .cue-btn', { hasText: '1 MIN' }).click();
     await page.clock.runFor(250);
     await expect(page.locator('#cm-receipt')).toHaveText('Sending to 1 Main Stage screen…');
