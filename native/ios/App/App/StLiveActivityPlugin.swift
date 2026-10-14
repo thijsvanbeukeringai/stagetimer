@@ -38,7 +38,7 @@ public class StLiveActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func isAvailable(_ call: CAPPluginCall) {
-        // False on iPad and when the user switched Live Activities off.
+        // False where Live Activities are unsupported (iPad) or switched off by the user.
         call.resolve(["available": ActivityAuthorizationInfo().areActivitiesEnabled])
     }
 
