@@ -150,6 +150,12 @@ Legenda testbestanden:
 | XSS via ids uit de blob (`id="scd-…"`, `delFohnNote('…')`, losse timers, vouchers) | `renderSched`, `renderOTSection`, `renderVouchers`; `_normIds` in `loadG` | *operator list: no execution…*, *share link (FOH): no execution*, *voucher ids in inline handlers…* |
 | `_restWrite` vroeg impliciet `RETURNING *` (42501 met kolomrechten op companies) | `_restWrite` (`select=id`); mock: `backend.hiddenColumns` | *workspace rename asks for select=id…*, *delete workspace (direct-write fallback)…* |
 
+## 14. Native app (fase 6)
+
+| Functie | Code | Test |
+|---|---|---|
+| Lokale nep-backend voor de iOS-simulator (echte HTTP + WebSocket op 127.0.0.1, dezelfde `MockBackend`; demo-seed rond "nu", testlogin in `tests/support/mock-server.seed.json`) | `tests/support/mock-server.js`, `MockBackend.handleRequest`, `demoSeed` in `seed.js`; `npm run mock:server` | smoke mock-server: *login, projects and realtime run through the local mock server* (app.html met `SUPA_URL` naar de server, echte CORS) |
+
 ## Bekende gaten in het vangnet
 - `confirm()`/`prompt()`/`alert()` zijn vervangen door de stDialog-component (`form.st-dlg[role=dialog]`); tests klikken op de knoppen in de dialoog. Een native dialoog laat smoke *dialogs* en regression *dialogs-forms* falen. Nog zonder eigen test: company toevoegen/verwijderen, vouchers archiveren/activeren, project aanmaken-fouten.
 - Echte Safari/iOS, pushmeldingen, e-mail, Stripe en de productiedatabase worden niet getest (BOUWPLAN "Expliciet niet getest").
