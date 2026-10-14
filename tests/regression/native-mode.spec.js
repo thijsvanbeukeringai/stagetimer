@@ -9,6 +9,7 @@
 // fake to prove the web path is unchanged. Nothing leaves localhost.
 const { test, expect } = require('../support/fixtures');
 const { FESTIVAL, ams } = require('../support/seed');
+const { goNative, callsOf, barStyles } = require('../support/native-shell');
 
 const PID = FESTIVAL.projectId;
 const MAIN = FESTIVAL.stages.main;
@@ -16,45 +17,6 @@ const AT = ams(FESTIVAL.dates.d1, '16:00');
 const OS_APP_ID = '5778eb83-1c2c-4ffd-b085-4236b5bd0188';
 const TOPIC = `st-proj-${PID}`;
 
-// Install the fake native shell. Returns the live list of recorded calls
-// [{plugin, fn, arg}].
-async function goNative(page) {
-  const calls = [];
-  await page.exposeBinding('__natRec', (_src, rec) => { calls.push(rec); });
-  await page.addInitScript(() => {
-    const rec = (plugin, fn, arg) => { try { window.__natRec({ plugin, fn, arg: arg === undefined ? null : JSON.parse(JSON.stringify(arg)) }); } catch (e) { /* binding gone during unload */ } };
-    const mk = (plugin, fns) => Object.fromEntries(fns.map((fn) => [fn, (arg) => { rec(plugin, fn, arg); return Promise.resolve(); }]));
-    window.__natListeners = {};
-    window.Capacitor = {
-      isNativePlatform: () => true,
-      getPlatform: () => 'ios',
-      Plugins: {
-        App: { addListener(ev, cb) { rec('App', 'addListener', ev); window.__natListeners[ev] = cb; return Promise.resolve({ remove() {} }); } },
-        Haptics: mk('Haptics', ['impact', 'notification']),
-        Share: mk('Share', ['share']),
-        StatusBar: mk('StatusBar', ['setStyle']),
-        SplashScreen: mk('SplashScreen', ['hide']),
-        KeepAwake: mk('KeepAwake', ['keepAwake', 'allowSleep']),
-      },
-    };
-    const os = (fn, arg) => rec('OneSignal', fn, arg);
-    window.plugins = {
-      OneSignal: {
-        initialize: (id) => os('initialize', id),
-        login: (id) => os('login', id),
-        logout: () => os('logout'),
-        User: { addTags: (t) => os('User.addTags', t) },
-        Notifications: {
-          requestPermission: (fallback) => { os('Notifications.requestPermission', fallback); return Promise.resolve(true); },
-          getPermissionAsync: () => Promise.resolve(false),
-          addEventListener: (ev) => os('Notifications.addEventListener', ev),
-        },
-      },
-    };
-  });
-  return calls;
-}
-const callsOf = (calls, plugin, fn) => calls.filter((c) => c.plugin === plugin && (!fn || c.fn === fn));
 
 // Count service-worker calls without ever registering one (the pending promise
 // stops the app's registration flow right there).
@@ -77,8 +39,9 @@ test.describe('logged in', () => {
   test('native: share links point at https://stagetimer.nl/app, Share opens the iOS sheet, Copy still copies', async ({ page, st }) => {
     const calls = await goNative(page);
     await st.gotoApp({ at: AT });
-    // Start-up: status bar style once, deep-link listener registered.
-    expect(callsOf(calls, 'StatusBar', 'setStyle')).toEqual([{ plugin: 'StatusBar', fn: 'setStyle', arg: { style: 'DARK' } }]);
+    // Start-up: light status-bar text on the dark loader, dark text once the
+    // off-white dashboard is up (each only on a change); deep-link listener registered.
+    await expect.poll(() => barStyles(calls)).toEqual(['DARK', 'LIGHT']);
     expect(callsOf(calls, 'App', 'addListener').map((c) => c.arg)).toEqual(['appUrlOpen']);
 
     const urls = await shareUrls(page);
