@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01290EF3EFA0D9F4AF992E47 /* StLiveActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 823BA21502B36279379F728D /* StLiveActivityPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		3939C554BE23CADA70007D0C /* StagetimerLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 374ED0B8F3C5EB0801CA9EC2 /* StagetimerLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -15,11 +17,43 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		5F53607258F4796CF868882F /* StShowAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FB0C5B567A0CBEBFEF722B /* StShowAttributes.swift */; };
+		6906A874CA2CFC845F4B1DC9 /* StagetimerLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A58D62108C9DC57E472B424 /* StagetimerLiveActivity.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		B19113C85C3B6B72E96BF0FA /* StShowAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21FB0C5B567A0CBEBFEF722B /* StShowAttributes.swift */; };
+		EB983A5A67F46CCB00737936 /* StBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A2C3A27A19408DE74BF38D /* StBridgeViewController.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		D56D48B4130DC8F455191DA6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ECA4E6B19F69B5229F41EB90;
+			remoteInfo = StagetimerLiveActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5A20423C1B3157CD02D1F842 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3939C554BE23CADA70007D0C /* StagetimerLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		1D0D7F20394089C6915E5E2C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		21FB0C5B567A0CBEBFEF722B /* StShowAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StShowAttributes.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		374ED0B8F3C5EB0801CA9EC2 /* StagetimerLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StagetimerLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		49A2C3A27A19408DE74BF38D /* StBridgeViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StBridgeViewController.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -28,9 +62,11 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		5A58D62108C9DC57E472B424 /* StagetimerLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StagetimerLiveActivity.swift; sourceTree = "<group>"; };
+		5A7E0E1A2E9F000100C0FFEE /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		823BA21502B36279379F728D /* StLiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StLiveActivityPlugin.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
-		5A7E0E1A2E9F000100C0FFEE /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,15 +78,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5B825722FDB199D428B234B6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3862C11BBC86DA17ACC2DAE7 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				21FB0C5B567A0CBEBFEF722B /* StShowAttributes.swift */,
+			);
+			name = Shared;
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				3862C11BBC86DA17ACC2DAE7 /* Shared */,
+				F77A3A087F8CE5666B887F39 /* StagetimerLiveActivity */,
 			);
 			sourceTree = "<group>";
 		};
@@ -58,6 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				374ED0B8F3C5EB0801CA9EC2 /* StagetimerLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -75,8 +130,20 @@
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				823BA21502B36279379F728D /* StLiveActivityPlugin.swift */,
+				49A2C3A27A19408DE74BF38D /* StBridgeViewController.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		F77A3A087F8CE5666B887F39 /* StagetimerLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				1D0D7F20394089C6915E5E2C /* Info.plist */,
+				5A58D62108C9DC57E472B424 /* StagetimerLiveActivity.swift */,
+			);
+			name = StagetimerLiveActivity;
+			path = StagetimerLiveActivity;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -89,10 +156,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				5A20423C1B3157CD02D1F842 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D990676A6D5D8AF82244D81C /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -101,6 +170,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		ECA4E6B19F69B5229F41EB90 /* StagetimerLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5184DEEF13D843D867D4B1F9 /* Build configuration list for PBXNativeTarget "StagetimerLiveActivity" */;
+			buildPhases = (
+				8A9CE2FAB28D9B77437DF562 /* Sources */,
+				5B825722FDB199D428B234B6 /* Frameworks */,
+				E47339EDFEAA771B763B8815 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = StagetimerLiveActivity;
+			productName = StagetimerLiveActivity;
+			productReference = 374ED0B8F3C5EB0801CA9EC2 /* StagetimerLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -115,6 +201,10 @@
 						CreatedOnToolsVersion = 9.2;
 						DevelopmentTeam = CM737LH9GZ;
 						LastSwiftMigration = 1100;
+						ProvisioningStyle = Automatic;
+					};
+					ECA4E6B19F69B5229F41EB90 = {
+						DevelopmentTeam = CM737LH9GZ;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -136,6 +226,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				ECA4E6B19F69B5229F41EB90 /* StagetimerLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -154,6 +245,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E47339EDFEAA771B763B8815 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -163,10 +261,31 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				01290EF3EFA0D9F4AF992E47 /* StLiveActivityPlugin.swift in Sources */,
+				EB983A5A67F46CCB00737936 /* StBridgeViewController.swift in Sources */,
+				5F53607258F4796CF868882F /* StShowAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A9CE2FAB28D9B77437DF562 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6906A874CA2CFC845F4B1DC9 /* StagetimerLiveActivity.swift in Sources */,
+				B19113C85C3B6B72E96BF0FA /* StShowAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D990676A6D5D8AF82244D81C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = StagetimerLiveActivity;
+			target = ECA4E6B19F69B5229F41EB90 /* StagetimerLiveActivity */;
+			targetProxy = D56D48B4130DC8F455191DA6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -220,6 +339,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -238,6 +358,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -277,6 +398,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -289,6 +411,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -304,7 +427,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CM737LH9GZ;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
@@ -312,7 +434,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = nl.stagetimer.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -328,7 +449,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CM737LH9GZ;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
@@ -336,7 +456,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = nl.stagetimer.booth;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -344,6 +463,57 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		A8BD5C2603EEC971D03C80B3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = CM737LH9GZ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StagetimerLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = nl.stagetimer.booth.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B00F282E8DA9F183DE5D83DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = CM737LH9GZ;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = StagetimerLiveActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = nl.stagetimer.booth.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -362,6 +532,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5184DEEF13D843D867D4B1F9 /* Build configuration list for PBXNativeTarget "StagetimerLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A8BD5C2603EEC971D03C80B3 /* Release */,
+				B00F282E8DA9F183DE5D83DE /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
