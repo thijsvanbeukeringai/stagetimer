@@ -31,9 +31,9 @@ npm install
 ## Sync the web app
 
 ```bash
-npm run sync:dev                                   # dev backend http://localhost:54321
+npm run sync:dev                                   # dev backend http://127.0.0.1:54350
 npm run sync:dev -- --backend http://localhost:9   # any other local backend
-BACKEND=http://192.168.1.20:54321 npm run sync:dev # e.g. a Mac on the LAN, for a real device
+BACKEND=http://192.168.1.20:54350 npm run sync:dev # e.g. a Mac on the LAN, for a real device
 npm run sync                                       # RELEASE: production backend
 ```
 

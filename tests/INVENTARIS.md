@@ -150,6 +150,25 @@ Legenda testbestanden:
 | XSS via ids uit de blob (`id="scd-…"`, `delFohnNote('…')`, losse timers, vouchers) | `renderSched`, `renderOTSection`, `renderVouchers`; `_normIds` in `loadG` | *operator list: no execution…*, *share link (FOH): no execution*, *voucher ids in inline handlers…* |
 | `_restWrite` vroeg impliciet `RETURNING *` (42501 met kolomrechten op companies) | `_restWrite` (`select=id`); mock: `backend.hiddenColumns` | *workspace rename asks for select=id…*, *delete workspace (direct-write fallback)…* |
 
+## 14. Native app (BOUWPLAN fase 6, `tests/regression/native-mode.spec.js`)
+
+Alle native takken hangen aan `IS_NATIVE` (`window.Capacitor.isNativePlatform()`). De spec zet vóór het laden een nep-`window.Capacitor` (opnemende plugins `App`, `Haptics`, `Share`, `StatusBar`, `SplashScreen`, `KeepAwake`) en een nep-`window.plugins.OneSignal` neer; elke aanroep wordt via een binding in Node bewaard, ook vlak voor een navigatie. Elke native test heeft een web-tegenhanger zonder nep-Capacitor.
+
+| Functie | Code | Test |
+|---|---|---|
+| Vlag en helpers | `IS_NATIVE`, `WEB_APP_URL`, `_nat`, `_natCall` (UTILS) | alle tests in de spec; web: *web: … no native calls* (`window.Capacitor` wordt niet eens gelezen) |
+| Deellinks naar `https://stagetimer.nl/app?mode=…&pid=…[&sid=…]`; web ongewijzigd | `_shareBase` | *native: share links point at https://stagetimer.nl/app…*, *web: share links unchanged…* (ook regression/views en checkin-stagemanager) |
+| iOS-deelmenu naast Kopiëren | `_shareRowHTML` (knop *Share* alleen met de Share-plugin), `shareLink`; `copyLink` ongewijzigd | *native: share links …, Share opens the iOS sheet, Copy still copies* |
+| Wachtwoordherstel en Stripe-retour naar de webapp | `sendReset` (`redirect_to`), `manageSubscription` (`returnUrl`) | gat (alleen via code-review; de knop naar de portal is in native verborgen) |
+| Geen aankoop-UI (Apple 3.1.1) | `renderSubscriptionPage` (geen prijzen, geen *Invite member*, geen *Manage billing in Stripe*), `renderSubscriptionBanner` (neutrale tekst, geen knop/link), `showLimitModal` (geen actieknop), `canCreateProject`, `checkStageLimit`, `_planText` (ook in `humanError`, `_dropRefusedStages`, `createProject`), beheerknop *Manage subscription*, `manageSubscription`/`openInviteMemberPrompt` doen niets | *native: no purchase UI …*, *web: purchase UI present as before*, *workspace without a subscription › … banner …* |
+| Fullscreen-menu weg, geen "Add to Home Screen"-hint | `_setupFullscreen` (verwijdert `[data-fs]` + losse scheidingslijn), `openOTV` | *native: fullscreen menu items gone; web keeps them* (hint: gat) |
+| KeepAwake i.p.v. `navigator.wakeLock` | `_acquireWakeLock`, `_releaseWakeLockIfIdle` (`_natAwake`) | *native: KeepAwake on FOH / Backstage open, allowSleep…* |
+| Geen service worker | registratieblok onderaan (`!IS_NATIVE`) | *native: no service worker is registered; the web registers one as before* |
+| OneSignal native (zelfde appId, external id = user id, prompt via de crewknop, logout, geen tags) | adapter `_natOneSignal` op `window._OS` (ONESIGNAL); `initOneSignalUser`, `requestPushPermission`, `updateCrewPermBtn`, `doLogout` ongewijzigd | *native: OneSignal through the native plugin…* (ook: geen web-SDK, geen prompt bij start, uitloggen herlaadt de gebundelde pagina) |
+| Haptiek | `sendCue`, `clearCue`, `toggleBlackout` (LIGHT), `_pcOnAck` (SUCCESS bij de eerste bevestiging, nooit op Stage View of een deellink) | *native: haptics on cue, clear and blackout; success when a booth screen confirms* |
+| Universal Links (`appUrlOpen`) en statusbalk | `_natOpenUrl`, blok `// ══ NATIVE APP` vóór INIT (`StatusBar.setStyle DARK`) | *native: a Universal Link (appUrlOpen) to a share link opens that screen; other hosts are ignored* |
+| Lokale nep-backend voor de iOS-simulator (echte HTTP + WebSocket op 127.0.0.1, dezelfde `MockBackend`; demo-seed rond "nu", testlogin in `tests/support/mock-server.seed.json`) | `tests/support/mock-server.js`, `MockBackend.handleRequest`, `demoSeed` in `seed.js`; `npm run mock:server` | smoke mock-server: *login, projects and realtime run through the local mock server* (app.html met `SUPA_URL` naar de server, echte CORS) |
+
 ## Bekende gaten in het vangnet
 - `confirm()`/`prompt()`/`alert()` zijn vervangen door de stDialog-component (`form.st-dlg[role=dialog]`); tests klikken op de knoppen in de dialoog. Een native dialoog laat smoke *dialogs* en regression *dialogs-forms* falen. Nog zonder eigen test: company toevoegen/verwijderen, vouchers archiveren/activeren, project aanmaken-fouten.
 - Echte Safari/iOS, pushmeldingen, e-mail, Stripe en de productiedatabase worden niet getest (BOUWPLAN "Expliciet niet getest").

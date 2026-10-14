@@ -182,4 +182,70 @@ function festivalSeed() {
   };
 }
 
-module.exports = { FESTIVAL, PHOTO_PNG, ams, show, festivalData, festivalSeed };
+// ── Demo seed for the local mock server (iOS simulator smoke tests) ──────
+// The festival above, moved in time so that Friday 16:00 lands on `now`:
+// Main Stage plays DJ O'Neil, The Tent its band, and every stage has a next
+// show. Every show keeps its length and order; date/day are recomputed with
+// the app's own rules (Europe/Amsterdam, festival day 07:00-07:00), so the
+// result is right whatever the machine's time zone or the DST offset.
+const AMS_FMT = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+});
+/** Instant -> Amsterdam wall clock { date: 'YYYY-MM-DD', time: 'HH:MM:SS' }. */
+function amsWall(ms) {
+  const p = Object.fromEntries(AMS_FMT.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}:${p.second}` };
+}
+const festivalDateOf = (ms) => amsWall(ms - 7 * 3600e3).date;
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * festivalSeed(), shifted to `now` (ms), plus the login user `login`
+ * ({id, email, password, name, role}). The company's plan runs a year from now.
+ */
+function demoSeed(now = Date.now(), login) {
+  const seed = festivalSeed();
+  const delta = Math.floor(now / 60000) * 60000 - ams(FESTIVAL.dates.d1, '16:00').getTime();
+  const fest = seed.projects.find((p) => p.id === FESTIVAL.projectId);
+  const dayDate = Object.fromEntries(fest.data.days.map((d) => [d.id, d.date]));
+  const dayIds = {};
+  for (const s of fest.data.shows) {
+    const date = s.date || dayDate[s.day];   // legacy show: date comes from its day
+    const start = ams(date, s.start).getTime();
+    let end = ams(date, s.end).getTime();
+    if (end <= start) end += 86400e3;
+    const a = amsWall(start + delta);
+    const b = amsWall(end + delta);
+    const fd = festivalDateOf(start + delta);
+    dayIds[fd] = `day-${fd}`;
+    Object.assign(s, {
+      day: dayIds[fd], date: a.date, start: a.time, end: b.time,
+      startsAt: `${a.date}T${a.time}`, endsAt: `${b.date}T${b.time}`, endsNextDay: b.date !== a.date,
+      artist: s.artist.replace(' (legacy)', ''),   // it has ISO times now
+    });
+  }
+  const today = festivalDateOf(now);
+  dayIds[today] = `day-${today}`;
+  fest.data.days = Object.keys(dayIds).sort().map((d) => ({
+    id: dayIds[d], name: WEEKDAYS[new Date(d + 'T12:00:00Z').getUTCDay()], date: d,
+  }));
+  fest.data.activeDay = dayIds[today];
+  for (const notes of Object.values(fest.data.fohNotes || {})) {
+    for (const n of notes) n.time = amsWall(ams(FESTIVAL.dates.d1, n.time).getTime() + delta).time.slice(0, 5);
+  }
+  const small = seed.projects.find((p) => p.id === FESTIVAL.smallProjectId);
+  if (small) small.data.days[0].date = today;
+  const co = seed.companies.find((c) => c.id === FESTIVAL.companyId);
+  co.current_period_end = new Date(now + 365 * 86400e3).toISOString();
+  co.last_paid_at = new Date(now - 30 * 86400e3).toISOString();
+  if (login) {
+    // The dashboard lists only projects its user created, so the login owns the festival.
+    for (const p of seed.projects) p.created_by = login.id;
+    seed.app_users.push({ id: login.id, name: login.name, email: login.email, role: login.role || 'company_admin', company_id: FESTIVAL.companyId, created_at: '2026-01-01T10:00:00+00:00' });
+    seed.authUsers[login.email.toLowerCase()] = { id: login.id, email: login.email, password: login.password };
+  }
+  return seed;
+}
+
+module.exports = { FESTIVAL, PHOTO_PNG, ams, show, festivalData, festivalSeed, demoSeed, amsWall };

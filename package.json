@@ -8,10 +8,12 @@
     "test:booth": "playwright test --project=booth-chromium --project=booth-webkit",
     "test:smoke": "playwright test tests/smoke --project=chromium --project=webkit",
     "test:update-baseline": "node tests/support/update-baseline.mjs",
-    "test:node": "node -e \"for(const f of require('fs').readdirSync('tests/unit').filter(f=>f.endsWith('.test.js')))require('child_process').execFileSync(process.execPath,['tests/unit/'+f],{stdio:'inherit'})\""
+    "test:node": "node -e \"for(const f of require('fs').readdirSync('tests/unit').filter(f=>f.endsWith('.test.js')))require('child_process').execFileSync(process.execPath,['tests/unit/'+f],{stdio:'inherit'})\"",
+    "mock:server": "node tests/support/mock-server.js"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@supabase/supabase-js": "2.112.3"
+    "@supabase/supabase-js": "2.112.3",
+    "ws": "8.22.0"
   }
 }

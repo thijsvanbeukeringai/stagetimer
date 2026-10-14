@@ -4,7 +4,7 @@
 // files it references. Plain node, no dependencies.
 //
 //   node scripts/sync-web.mjs                      release: production backend
-//   node scripts/sync-web.mjs --dev                dev: $BACKEND or http://localhost:54321
+//   node scripts/sync-web.mjs --dev                dev: $BACKEND or http://127.0.0.1:54350
 //   node scripts/sync-web.mjs --backend <url>      dev: that backend
 //   ... --cap-sync                                 then run `cap sync ios`
 //
@@ -21,7 +21,7 @@ const ROOT = resolve(NATIVE, '..');
 const WWW = join(NATIVE, 'www');
 const PROD_HOST = 'bamjpsquhdzxvsymldpq.supabase.co';
 const PROD_URL = `https://${PROD_HOST}`;
-const DEFAULT_DEV_BACKEND = 'http://localhost:54321';
+const DEFAULT_DEV_BACKEND = 'http://127.0.0.1:54350';
 // No service worker in the native app: WKWebView does not run one on
 // capacitor://, and push goes through the native OneSignal plugin instead.
 const NEVER_COPY = new Set(['sw.js', 'OneSignalSDKWorker.js']);
