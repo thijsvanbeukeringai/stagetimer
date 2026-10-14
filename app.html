@@ -31,6 +31,20 @@
 // open the login screen instead of that screen. Without it iOS keeps the
 // share-link URL and still opens full screen (apple-mobile-web-app-capable).
 (function(){try{var q=new URLSearchParams(location.search);if(q.get('mode')&&q.get('pid')){var l=document.querySelector('link[rel=manifest]');if(l)l.remove();}}catch(e){console.warn('[pwa] share-link manifest:',e);}})();
+// Native app (BOUWPLAN fase 6 step 5), before anything paints. A device set up
+// as a booth screen (st_native_role_v1 = {role:'booth',pid,sid}) reloads the
+// bundled page as its stage's share link: the same public Stage View path a
+// browser booth uses, without a login screen flashing by first. A first launch
+// (no role, no stored login) paints the device chooser instead of the login.
+// _natRoleGate (NATIVE APP) makes the same decisions once the script runs.
+(function(){try{
+  if(!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()))return;
+  var q=new URLSearchParams(location.search);
+  if(q.get('mode')||q.get('signup')||location.hash.length>1)return;   // share link, sign-up, auth link: theirs
+  var r=null;try{r=JSON.parse(localStorage.getItem('st_native_role_v1')||'null');}catch(e){console.warn('[native] stored role unreadable:',e);}
+  if(r&&r.role==='booth'&&r.pid&&r.sid){location.replace(location.pathname+'?mode=stage&pid='+encodeURIComponent(r.pid)+'&sid='+encodeURIComponent(r.sid));return;}
+  if(!r&&!localStorage.getItem('st_auth_v1'))document.documentElement.classList.add('nat-choose');
+}catch(e){console.warn('[native] start-up role:',e);}})();
 // EARLY PUBLIC FETCH - kick off the Supabase request immediately, in parallel with the
 // supabase-js download and the rest of the page parsing. By the time loadPublicView()
 // runs, the response is often already in. Cuts public-view first-paint by ~1-3 sec on mobile.
@@ -97,6 +111,7 @@
    aren't parsed until that bundle finishes downloading. */
 html.no-session #loader{display:none !important;}
 html.no-session #login{display:flex !important;}
+html.nat-choose #nat-role{display:flex;}
 </style>
 <!-- Vendored @supabase/supabase-js 2.112.3 (dist/umd/supabase.js from the npm
      tarball, byte-identical to the jsDelivr file, same SRI hash). Served locally
@@ -1064,6 +1079,35 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #login-logo-sub{font-size:13px;color:var(--sub);}
 #login-err{display:none;padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:12px;color:#fca5a5;}
 #login-btn{padding:10px;font-size:13px;font-weight:700;}
+/* Native app device chooser + booth set-up (BOUWPLAN fase 6 step 5). The login
+   screen's look, its own nat- prefix, above login/set-pw; never shown on the
+   web. Padding keeps it clear of the notch and home indicator (the web view
+   draws under both). */
+#nat-role{position:fixed;inset:0;z-index:1002;background:var(--bg);display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(env(safe-area-inset-top) + 24px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);}
+#nat-role.open{display:flex;}
+#nat-role .nat-box{width:min(440px,100%);margin:auto;display:flex;flex-direction:column;gap:14px;}
+#nat-role .nat-logo{height:52px;width:auto;align-self:center;object-fit:contain;margin-bottom:6px;}
+#nat-role .nat-step{display:none;flex-direction:column;gap:12px;}
+#nat-role[data-step="choose"] .nat-step[data-for="choose"],#nat-role[data-step="code"] .nat-step[data-for="code"],#nat-role[data-step="stages"] .nat-step[data-for="stages"]{display:flex;}
+#nat-role .nat-title{font-size:20px;font-weight:800;letter-spacing:-.4px;color:#fff;text-align:center;}
+#nat-role .nat-title:focus{outline:none;}
+#nat-role .nat-sub{font-size:13px;color:var(--sub2);text-align:center;line-height:1.5;margin-top:-4px;}
+#nat-role .nat-opt{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;width:100%;min-height:84px;padding:16px 18px;
+  border-radius:12px;background:var(--s2);border:1px solid var(--border2);color:var(--text);font-family:var(--ff);text-align:left;cursor:pointer;}
+#nat-role .nat-opt:active{background:var(--s3);border-color:var(--accent-line);}
+#nat-role .nat-opt:focus-visible,#nat-role .nat-back:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+#nat-role .nat-opt-t{font-size:17px;font-weight:800;color:#fff;}
+#nat-role .nat-opt-d{font-size:13px;color:var(--sub2);line-height:1.45;}
+#nat-role .nat-stage{min-height:64px;}
+#nat-role .nat-stage[aria-current="true"]{border-color:var(--accent-line);}
+#nat-role .nat-stages{display:flex;flex-direction:column;gap:10px;}
+#nat-role .nat-lbl{font-size:13px;font-weight:600;color:var(--sub2);}
+#nat-role .fi{min-height:52px;font-size:16px;}
+#nat-role .nat-go{width:100%;justify-content:center;min-height:52px;font-size:15px;}
+#nat-role .nat-err{padding:10px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;font-size:13px;line-height:1.45;color:#fca5a5;}
+#nat-role .nat-err[hidden]{display:none;}
+#nat-role .nat-back{background:none;border:none;color:var(--sub2);font-family:var(--ff);font-size:13px;font-weight:600;cursor:pointer;min-height:44px;width:100%;}
 
 /* ── ONE-OFF TIMER VIEW */
 #otv{position:fixed;inset:0;z-index:205;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;}
@@ -4934,6 +4978,33 @@ function renderTbar(){
   </div>
 </div>
 
+<!-- Native app only (BOUWPLAN fase 6 step 5): what this device is for, and the
+     booth screen set-up. Steps: choose -> code -> stages. See NATIVE APP. -->
+<div id="nat-role" data-step="choose" role="dialog" aria-modal="true" aria-labelledby="nat-t-choose">
+  <div class="nat-box">
+    <img class="nat-logo" src="stagetimer-logo.png" alt="Stagetimer">
+    <section class="nat-step" data-for="choose">
+      <h1 class="nat-title" id="nat-t-choose" tabindex="-1">How will this device be used?</h1>
+      <button class="nat-opt" type="button" id="nat-opt-booth" onclick="natChooseRole('booth')"><span class="nat-opt-t">Booth screen</span><span class="nat-opt-d">Shows one stage's countdown. No login needed.</span></button>
+      <button class="nat-opt" type="button" id="nat-opt-crew" onclick="natChooseRole('crew')"><span class="nat-opt-t">Crew &amp; control</span><span class="nat-opt-d">Log in to run the show, message the booth and get alerts.</span></button>
+    </section>
+    <section class="nat-step" data-for="code">
+      <h1 class="nat-title" id="nat-t-code" tabindex="-1">Booth screen</h1>
+      <label class="nat-lbl" for="nat-code">Paste a share link or project code</label>
+      <input class="fi" id="nat-code" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://stagetimer.nl/app?mode=stage&amp;pid=…" aria-describedby="nat-err" onkeydown="if(event.key==='Enter')natBoothContinue()">
+      <div class="nat-err" id="nat-err" role="alert" hidden></div>
+      <button class="btn-p nat-go" type="button" id="nat-go" onclick="natBoothContinue()">Continue</button>
+      <button class="nat-back" type="button" onclick="natRoleBack()">← Back</button>
+    </section>
+    <section class="nat-step" data-for="stages">
+      <h1 class="nat-title" id="nat-t-stages" tabindex="-1">Pick a stage</h1>
+      <div class="nat-sub" id="nat-proj"></div>
+      <div class="nat-stages" id="nat-stages"></div>
+      <button class="nat-back" type="button" id="nat-stages-back">← Back</button>
+    </section>
+  </div>
+</div>
+
 <!-- Hidden file input for logo upload -->
 <input type="file" id="logo-file-input" accept="image/*" style="display:none;" onchange="handleLogoUpload(event)">
 <!-- JSON IMPORT MODAL -->
@@ -5093,6 +5164,10 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/></svg>
           Platform admin
         </button>
+        <button class="dd-item mob-only" data-nat-only style="display:none;" onclick="closeAllDD();natUseAsBooth()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Use this device as a booth screen
+        </button>
         <button class="dd-item danger mob-only" onclick="closeAllDD();doLogout()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Log out
@@ -5131,6 +5206,10 @@ function renderTbar(){
         <button class="dd-item" data-fs="auto" role="menuitemcheckbox" aria-checked="false" onclick="stFullscreen.setAuto(!stFullscreen.auto())">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><polyline class="fs-chk" points="8 12 11 15 16 9"/></svg>
           <span class="fs-lbl">Auto fullscreen: Off</span>
+        </button>
+        <button class="dd-item" data-nat-only style="display:none;" onclick="closeAllDD();natUseAsBooth()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Use this device as a booth screen
         </button>
         <div class="dd-sep"></div>
         <button class="dd-item danger" onclick="closeAllDD();doLogout()">
@@ -10486,6 +10565,16 @@ function renderProfilePage(){
         </button>
       </div>
     </div>
+    ${IS_NATIVE?`<div class="ws-card" style="margin-top:18px;">
+      <div class="ws-card-title">Booth screen</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#0A0A0B;">Use this device as a booth screen</div>
+          <div style="font-size:12px;color:#52525B;margin-top:3px;">It shows one stage's countdown without a login. You are logged out on this device.</div>
+        </div>
+        <button class="ws-btn-secondary" onclick="natUseAsBooth()">Use as booth screen</button>
+      </div>
+    </div>`:''}
   `;
 }
 
@@ -12661,10 +12750,10 @@ async function _rpcPublicRaw(fn,args,timeoutMs){
 // RPC, a one-row array for the direct read); _sharedProjectFromText turns
 // either into the row.
 let _sharedProjectVia=null;   // null = not known yet | 'mode' | 'pid' | 'table'
-async function _fetchSharedProjectRaw(pid,timeoutMs){
+async function _fetchSharedProjectRaw(pid,timeoutMs,mode){
   if(!_sharedProjectVia&&window._sharedProjectVia)_sharedProjectVia=window._sharedProjectVia;
   if(!_sharedProjectVia||_sharedProjectVia==='mode'){
-    try{const t=await _rpcPublicRaw('get_shared_project',{p_id:pid,p_mode:PUBLIC_MODE},timeoutMs);_sharedProjectVia='mode';return t;}
+    try{const t=await _rpcPublicRaw('get_shared_project',{p_id:pid,p_mode:mode||PUBLIC_MODE},timeoutMs);_sharedProjectVia='mode';return t;}
     catch(e){if(!e.rpcMissing)throw e;_sharedProjectVia='pid';console.warn('[public] get_shared_project(p_id, p_mode) not available - using get_shared_project(p_id)');}
   }
   if(_sharedProjectVia==='pid'){
@@ -12687,7 +12776,9 @@ function _sharedProjectFromText(text){
   if(Array.isArray(v))v=v[0]||null;
   return v||null;
 }
-async function _fetchSharedProject(pid,timeoutMs){return _sharedProjectFromText(await _fetchSharedProjectRaw(pid,timeoutMs));}
+// mode: the share-link mode to strip for when this page is not one (the native
+// booth set-up reads a project as 'stage'); default PUBLIC_MODE.
+async function _fetchSharedProject(pid,timeoutMs,mode){return _sharedProjectFromText(await _fetchSharedProjectRaw(pid,timeoutMs,mode));}
 // Kept as a name for share-view callers; _rpc already uses the anon key there.
 function _rpcPublic(fn,args,timeoutMs){return _rpc(fn,args,timeoutMs);}
 
@@ -12752,6 +12843,7 @@ function _pvAdopt(text){
   const p=APP.projects.find(x=>x.id===PUBLIC_PID);if(p)p.data=proj.data;
   loadG();
   _pvDataVer++;
+  _natBoothKeep(proj);
 }
 // Cheap poll (migration step 6, optional): get_shared_project_version is a
 // few bytes; the project itself (up to megabytes) is fetched only when that
@@ -12827,12 +12919,25 @@ async function _pvLoadWithRetry(){
   }
 }
 async function loadPublicView(){
-  // Use the early fetch started in <head> if available - saves ~1-3s on mobile
-  let proj=null;
+  // Native booth screen only (BOUWPLAN fase 6 step 5): the copy of this
+  // project kept on the device, so a cold start without network still shows
+  // the show. null on the web and on every other screen.
+  const cached=_natBoothCacheGet(PUBLIC_PID);
+  // Use the early fetch started in <head> if available - saves ~1-3s on mobile.
+  // With a copy at hand, don't wait out a request that hangs (venue wifi up,
+  // no internet behind it).
+  let proj=null,fromCache=false;
   if(window._earlyPublicFetch){
-    try{proj=await window._earlyPublicFetch;}catch(e){console.warn('[public] early fetch failed:',e?.message||e);}
+    const early=cached?Promise.race([window._earlyPublicFetch,new Promise(r=>setTimeout(()=>r(null),4000))]):window._earlyPublicFetch;
+    try{proj=await early;}catch(e){console.warn('[public] early fetch failed:',e?.message||e);}
   }
-  if(!proj){
+  if(!proj&&cached){
+    // One direct try tells "no network" (start from the copy; the poll below
+    // keeps trying) from "the server says this project is gone" (null).
+    try{proj=await _fetchSharedProject(PUBLIC_PID,4000);}
+    catch(e){console.warn('[native] booth: project feed unreachable - starting from the copy on this device:',e?.message||e);proj=cached;fromCache=true;}
+  }
+  if(!proj&&!cached){
     // RPC, not a table read: anonymous viewers have no access to `projects`.
     // "Not found" only when the server answered and there is no such project.
     // A server error, timeout or no network (a booth screen that boots before
@@ -12841,7 +12946,7 @@ async function loadPublicView(){
     proj=await _pvLoadWithRetry();
   }
   if(!proj){document.getElementById('loader').innerHTML='<div style="color:rgba(255,255,255,.4);font-size:14px;">Project not found.</div>';return;}
-  _pvSyncOk();
+  if(!fromCache){_pvSyncOk();_natBoothKeep(proj);}
   APP={companies:[],users:[],projects:[{id:proj.id,name:proj.name,companyId:proj.company_id,data:proj.data||{}}],activeProjectId:proj.id};
   // Every loadG() - ours, and the one setupRealtime() does before it
   // re-renders - re-applies this screen's own day and stage.
@@ -13629,8 +13734,212 @@ function _natOpenUrl(raw){
   location.replace(location.pathname+u.search+u.hash);
   return true;
 }
+// ── Status bar text follows the screen. The web view draws under the status
+// bar (contentInset never), so dark text on the dark screens, or light text on
+// the off-white back office, is unreadable. Light screens (#dash, #admin, the
+// light Wall) get dark text ('LIGHT'), everything else light text ('DARK').
+// The topmost visible screen decides, in z-order. Screens open and close
+// through dozens of paths (open*/close*, goToDash, openProject, start-up,
+// share links), so a 250 ms check catches them all; the plugin is called only
+// when the answer changes.
+const _NAT_BAR=[['wv',null],['ci',0],['nat-role',0],['signup-setup',0],['set-pw',0],['login',0],['loader',0],['sv',0],['admin',1],['otv',0],['foh',0],['bs',0],['tl',0],['stov',0],['smv',0],['dash',1]];
+let _natBarCur=null;
+function _natBarSync(){
+  if(!IS_NATIVE)return;
+  let light=false;
+  for(const[id,l] of _NAT_BAR){
+    const el=document.getElementById(id);
+    if(!el||!el.getClientRects().length)continue;
+    light=l===null?el.classList.contains('light'):!!l;break;
+  }
+  const style=light?'LIGHT':'DARK';
+  if(style===_natBarCur)return;
+  _natBarCur=style;_natCall('StatusBar','setStyle',{style});
+}
+
+// ── Device role (BOUWPLAN fase 6 step 5). The app ships as an update of the
+// iPad app "Stagetimer Booth", whose users paste a project code or share link
+// once and from then on the iPad only shows that stage. So the first launch
+// asks what the device is for, stored in st_native_role_v1:
+//   {role:'crew'}                 -> the normal login / app flow
+//   {role:'booth'}                -> booth set-up (paste a link or code)
+//   {role:'booth',pid,sid}        -> straight to ?mode=stage&pid&sid, the
+//                                    tested public Stage View path (no second
+//                                    Stage View); the <head> script does that
+//                                    redirect before anything paints.
+// The booth keeps its last project feed in st_native_booth_cache_v1 (offline
+// cold start, see loadPublicView). Kept apart from the role, so a full
+// storage can lose the copy but never the role.
+const NAT_ROLE_KEY='st_native_role_v1',NAT_BOOTH_CACHE_KEY='st_native_booth_cache_v1';
+function _natRole(){
+  try{const r=JSON.parse(localStorage.getItem(NAT_ROLE_KEY)||'null');return r&&(r.role==='booth'||r.role==='crew')?r:null;}
+  catch(e){console.warn('[native] stored role unreadable:',e);return null;}
+}
+function _natSetRole(r){
+  try{r?localStorage.setItem(NAT_ROLE_KEY,JSON.stringify(r)):localStorage.removeItem(NAT_ROLE_KEY);return true;}
+  catch(e){console.warn('[native] could not store the device role:',e);return false;}
+}
+const _natStageUrl=(pid,sid)=>location.pathname+'?mode=stage&pid='+encodeURIComponent(pid)+'&sid='+encodeURIComponent(sid);
+// Start-up, after share links and auth links (INIT). true = it took over.
+function _natRoleGate(){
+  let r=_natRole();
+  // Logged in on this device before roles existed: that is a crew device.
+  if(!r&&_storedAuth()?.refresh_token){r={role:'crew'};_natSetRole(r);}
+  if(r&&r.role==='crew'){document.documentElement.classList.remove('nat-choose');return false;}
+  if(r&&r.pid&&r.sid){location.replace(_natStageUrl(r.pid,r.sid));return true;}
+  _natShowRole(r?'code':'choose');
+  return true;
+}
+function natRoleStep(step){
+  const ov=document.getElementById('nat-role');
+  ov.dataset.step=step;ov.setAttribute('aria-labelledby','nat-t-'+step);
+  // Focus moves with the step (screen readers): the field, else the heading.
+  // Not the first option: WebKit draws a focus ring that reads as "selected".
+  const f=ov.querySelector(`.nat-step[data-for="${step}"] ${step==='code'?'input':'.nat-title'}`);
+  if(f)f.focus({preventScroll:true});
+}
+function _natShowRole(step){
+  _hideLoader();
+  document.getElementById('nat-role').classList.add('open');
+  document.documentElement.classList.remove('nat-choose');
+  natRoleStep(step||'choose');
+  _natBarSync();
+}
+function _natHideRole(){
+  document.getElementById('nat-role').classList.remove('open');
+  document.documentElement.classList.remove('nat-choose');
+  _natBarSync();
+}
+function natChooseRole(role){
+  if(role==='crew'){_natSetRole({role:'crew'});_natHideRole();_showLogin();return;}
+  _natSetRole({role:'booth'});
+  _natErr('');
+  natRoleStep('code');
+}
+// Back from the code step: the question is open again (also on next launch).
+function natRoleBack(){_natSetRole(null);_natErr('');natRoleStep('choose');}
+function _natErr(msg){const el=document.getElementById('nat-err');if(!el)return;el.textContent=msg||'';el.hidden=!msg;}
+// A pasted share link (any mode, with or without https://, www., /app.html) or
+// a bare project id. -> {pid, sid|null} or null. Only a stage link's sid picks
+// the stage; another mode's link just names the project.
+const _NAT_ID=/^[A-Za-z0-9_-]{1,80}$/;
+function _natParseBoothCode(raw){
+  const s=String(raw||'').trim();
+  if(!s)return null;
+  if(/^[A-Za-z0-9_-]{3,80}$/.test(s))return{pid:s,sid:null};
+  let u;
+  try{u=new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s)?s:'https://'+s);}catch(e){return null;}
+  if(!/^https?:$/.test(u.protocol))return null;
+  const pid=u.searchParams.get('pid'),sid=u.searchParams.get('sid');
+  if(!pid||!_NAT_ID.test(pid))return null;
+  return{pid,sid:u.searchParams.get('mode')==='stage'&&sid&&_NAT_ID.test(sid)?sid:null};
+}
+let _natBusy=false;
+async function natBoothContinue(){
+  if(_natBusy)return;
+  const code=_natParseBoothCode(document.getElementById('nat-code').value);
+  if(!code){_natErr('That is not a Stagetimer share link or project code. Paste the link the operator shared with you, for example https://stagetimer.nl/app?mode=stage&pid=…');return;}
+  _natErr('');
+  const btn=document.getElementById('nat-go');
+  _natBusy=true;btn.disabled=true;btn.textContent='Loading…';
+  let proj;
+  try{proj=await _fetchSharedProject(code.pid,8000,'stage');}
+  catch(e){console.warn('[native] booth set-up: project feed failed:',e);_natErr(_friendlyError(e,'Loading the project'));return;}
+  finally{_natBusy=false;btn.disabled=false;btn.textContent='Continue';}
+  const stages=proj&&proj.data&&Array.isArray(proj.data.stages)?proj.data.stages.filter(s=>s&&s.id):null;
+  if(!stages){_natErr('No project found for this link or code. Check it with the operator and try again.');return;}
+  if(!stages.length){_natErr('This project has no stages yet. Ask the operator to add one, then try again.');return;}
+  _natBoothCachePut(code.pid,proj);   // offline from the very first start
+  const pre=code.sid&&stages.find(s=>s.id===code.sid);
+  if(pre||stages.length===1){natBoothOpen(code.pid,(pre||stages[0]).id);return;}
+  _natStagePicker(code.pid,proj.name,stages,null);
+}
+function _natStagePicker(pid,name,stages,current){
+  document.getElementById('nat-proj').textContent=name||'';
+  document.getElementById('nat-stages').innerHTML=stages.map(s=>`<button class="nat-opt nat-stage" type="button"${s.id===current?' aria-current="true"':''} onclick="natBoothOpen(${_jsArg(pid)},${_jsArg(s.id)})"><span class="nat-opt-t">${escH(s.name||'Stage')}</span>${s.id===current?'<span class="nat-opt-d">On this screen now</span>':''}</button>`).join('');
+  // From the set-up: back to the code. From a running booth: back to the stage.
+  const back=document.getElementById('nat-stages-back');
+  back.textContent=current?'Cancel':'← Back';
+  back.onclick=current?_natHideRole:()=>natRoleStep('code');
+  _natShowRole('stages');
+}
+function natBoothOpen(pid,sid){
+  if(!_natSetRole({role:'booth',pid,sid}))console.warn('[native] booth role not stored: the next launch asks again');
+  location.replace(_natStageUrl(pid,sid));
+}
+// Crew device -> booth. Logs out: an unattended booth must not hold an
+// operator's session (the hidden exit below would hand it to anyone).
+async function natUseAsBooth(){
+  if(!IS_NATIVE)return;
+  const ok=await stDialog.confirm('This device will show one stage\'s countdown, without a login, and you are logged out here. To leave the booth screen later, hold the top-left corner of the screen for 3 seconds.',{title:'Use as booth screen?',okLabel:'Use as booth screen'});
+  if(!ok)return;
+  _natSetRole({role:'booth'});
+  doLogout();
+}
+
+// ── Booth copy for an offline cold start. The public feed is cached by
+// nothing else: the service worker is off in the app (and never cached the
+// POST RPCs on the web either). Photos and the logo are dropped (Stage View
+// shows neither, every renderer accepts a show without a photo), and a
+// project that is still too big is not kept rather than filling the storage
+// the role lives in.
+const _NAT_CACHE_MAX=1500000;
+const _natBoothCaching=()=>{if(!IS_NATIVE||PUBLIC_MODE!=='stage'||!PUBLIC_PID)return false;const r=_natRole();return!!(r&&r.role==='booth'&&r.pid===PUBLIC_PID);};
+function _natBoothCachePut(pid,proj){
+  if(!proj||!proj.data)return;
+  let s;
+  try{s=JSON.stringify({pid,at:Date.now(),proj:{id:proj.id,name:proj.name,company_id:proj.company_id,data:proj.data}},
+    (k,v)=>k==='photo'||k==='logo'||(typeof v==='string'&&v.length>1024&&v.startsWith('data:'))?undefined:v);}
+  catch(e){console.warn('[native] booth copy not made:',e);return;}
+  if(s.length>_NAT_CACHE_MAX){console.warn('[native] booth copy not kept: project too large ('+s.length+' chars)');return;}
+  try{localStorage.setItem(NAT_BOOTH_CACHE_KEY,s);}catch(e){console.warn('[native] booth copy not stored:',e);}
+}
+function _natBoothKeep(proj){if(_natBoothCaching())_natBoothCachePut(PUBLIC_PID,proj);}
+function _natBoothCacheGet(pid){
+  if(!_natBoothCaching())return null;
+  try{const c=JSON.parse(localStorage.getItem(NAT_BOOTH_CACHE_KEY)||'null');return c&&c.pid===pid&&c.proj&&c.proj.data&&Array.isArray(c.proj.data.stages)?c.proj:null;}
+  catch(e){console.warn('[native] booth copy unreadable:',e);return null;}
+}
+
+// ── Hidden exit from a booth screen (kiosk: never by accident). Hold one
+// finger still in the top-left corner (120 x 120 px) for 3 s. Stage View has
+// no touch handlers of its own and nothing tappable there on a share link
+// (.st-brand has pointer-events:none in public-mode, #sv-close-btn is top
+// right and hidden), a second finger or a drag cancels it, and iOS's own edge
+// gestures are swipes, not holds. Listeners only: no element, no style, so
+// Stage View stays pixel-identical. Opens a choice dialog.
+const _NAT_EXIT_MS=3000,_NAT_EXIT_PX=120;
+function _natInstallBoothExit(){
+  let t=null,x0=0,y0=0;
+  const stop=()=>{clearTimeout(t);t=null;};
+  const o={passive:true,capture:true};
+  document.addEventListener('pointerdown',e=>{
+    stop();
+    if(!e.isPrimary||e.clientX>_NAT_EXIT_PX||e.clientY>_NAT_EXIT_PX||stDialog.isOpen()||document.getElementById('nat-role').classList.contains('open'))return;
+    x0=e.clientX;y0=e.clientY;
+    t=setTimeout(()=>{t=null;_natBoothMenu();},_NAT_EXIT_MS);
+  },o);
+  document.addEventListener('pointermove',e=>{if(t&&Math.hypot(e.clientX-x0,e.clientY-y0)>24)stop();},o);
+  document.addEventListener('pointerup',stop,o);
+  document.addEventListener('pointercancel',stop,o);
+}
+async function _natBoothMenu(){
+  if(stDialog.isOpen())return;
+  const booth=_natRole()?.role==='booth';
+  const v=await stDialog.choice({title:'Booth screen',message:booth?'Show another stage on this device, or use it for crew and control.':'Leave this screen and use the app for crew and control.',
+    choices:[...(booth?[{value:'stage',label:'Change stage'}]:[]),{value:'crew',label:'Switch to Crew & control',kind:booth?'secondary':'primary'}]});
+  if(v==='stage')_natStagePicker(PUBLIC_PID,APP.projects[0]?.name,(G&&G.stages||[]).filter(s=>s&&s.id),PUBLIC_SID);
+  else if(v==='crew'){
+    _natSetRole({role:'crew'});
+    try{localStorage.removeItem(NAT_BOOTH_CACHE_KEY);}catch(e){console.warn('[native] booth copy not removed:',e);}
+    location.replace(location.pathname);
+  }
+}
+
 if(IS_NATIVE){
-  _natCall('StatusBar','setStyle',{style:'DARK'});   // light status-bar text, for the dark app chrome
+  _natBarSync();setInterval(_natBarSync,250);
+  document.querySelectorAll('[data-nat-only]').forEach(el=>{el.style.display='';});
+  if(PUBLIC_MODE==='stage')_natInstallBoothExit();
   try{
     const app=_nat('App');
     if(app&&typeof app.addListener==='function')Promise.resolve(app.addListener('appUrlOpen',e=>_natOpenUrl(e&&e.url))).catch(e=>console.warn('[native] appUrlOpen listener failed:',e));
@@ -13848,6 +14157,8 @@ async function _handleAuthLink(){
   }
   // Reset / invite / confirm links carry their own session in the hash.
   if(await _handleAuthLink())return;
+  // Native app: first launch chooser, booth set-up, or straight to the booth's stage.
+  if(IS_NATIVE&&_natRoleGate())return;
   // No stored session -> straight to login. Fast path for incognito.
   let stored=null;
   try{stored=JSON.parse(localStorage.getItem(ST_AUTH)||'null');}catch(_){}
