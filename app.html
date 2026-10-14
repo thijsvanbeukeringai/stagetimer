@@ -9043,6 +9043,85 @@ function _renderCueOverlay(){
   overlay.className='on cue-'+(c.color||'amber');
 }
 
+// ══ LIVE ACTIVITY (native) - lock screen + Dynamic Island countdown (phase 6 step 4)
+// Only in the iOS app, through its local plugin StLiveActivity
+// (native/ios/App/App/StLiveActivityPlugin.swift); on the web and on share
+// links nothing here runs. One activity per device, following what this
+// device's timer panel shows for its selected stage (G.activeStage /
+// G.activeDay / G.timerMode): the live show, else the next one today; a
+// running manual timer counts down to its own deadline. iOS ticks the
+// countdown by itself, so the plugin is called only when the picture changes
+// (key compare, at most once a second), never per tick: each call is a
+// cross-process ActivityKit update and iOS rations those.
+// Times go out on the DEVICE clock: the lock screen counts against the
+// phone's own clock, not nowMs(), so the server offset is taken back out.
+const _la={avail:undefined,checkAt:0,key:null,on:false,stage:null,busy:false,at:0,retryAt:0};
+function _laPlugin(){const P=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StLiveActivity;return P&&typeof P.start==='function'?P:null;}
+// What the activity should show, as data without a running clock in it (so
+// the key only changes when the picture does). null = no activity.
+function _laState(){
+  const stage=(G.stages||[]).find(s=>s.id===G.activeStage);if(!stage)return null;
+  const off=_clockOffsetMs||0,now=nowMs(),base={stageName:stage.name||'Stage'};
+  if(G.timerMode==='manual'){
+    const shows=_mShowsList(),i=_mIdx(shows),s=shows[i],nx=shows[i+1];
+    if(!s||!(M.durationMs>0))return null;
+    Object.assign(base,{showName:s.artist||'',nextName:nx?nx.artist||null:null,manual:true});
+    if(M.state==='running')return{...base,phase:'live',startsAt:M.deadlineMs-M.durationMs-off,endsAt:M.deadlineMs-off,overrun:now>=M.deadlineMs};
+    return{...base,phase:M.state==='paused'?'paused':'ready',remainingMs:M.remainingMs,durationMs:M.durationMs,overrun:false};
+  }
+  const{shows,cur,nxt}=stageShowAt(G.activeStage,G.activeDay,now,'live');
+  if(cur)return{...base,showName:cur.s.artist||'',nextName:nxt?nxt.s.artist||null:null,manual:false,phase:'live',startsAt:cur.startMs-off,endsAt:cur.endMs-off,overrun:false};
+  if(!nxt)return null;
+  const iv=_showIv(nxt.s);
+  // Nothing left today: no activity counting down to tomorrow for hours.
+  if(!(iv.endMs>iv.startMs)||festivalDayOf(iv.startMs)!==festivalDayStr())return null;
+  const after=nxtShow(shows,iv.startMs);
+  return{...base,showName:nxt.s.artist||'',nextName:after?after.s.artist||null:null,manual:false,phase:'upcoming',startsAt:iv.startMs-off,endsAt:iv.endMs-off,overrun:false};
+}
+// A paused / idle manual timer is frozen at pausedAt. Date.now() on purpose:
+// these instants are read by the phone's clock (see above), not show timing.
+function _laPayload(st){
+  const p={stageName:st.stageName,showName:st.showName,nextName:st.nextName,phase:st.phase,overrun:!!st.overrun,manual:!!st.manual};
+  if(st.phase==='paused'||st.phase==='ready'){p.pausedAt=Date.now();p.endsAt=p.pausedAt+st.remainingMs;p.startsAt=p.endsAt-st.durationMs;}
+  else{p.startsAt=st.startsAt;p.endsAt=st.endsAt;}
+  return p;
+}
+function _laSync(){
+  if(window.PUBLIC_MODE||!G)return;
+  const P=_laPlugin();if(!P)return;
+  const t=Date.now();
+  if(_la.busy||t<_la.retryAt||t-_la.at<1000)return;
+  _la.at=t;
+  if(_la.avail!==true){
+    // false on iPad or with Live Activities switched off; asked again each minute.
+    if(_la.avail===null||t<_la.checkAt)return;
+    _la.avail=null;
+    Promise.resolve().then(()=>P.isAvailable()).then(r=>{_la.avail=!!(r&&r.available);},e=>{console.warn('[liveactivity] isAvailable failed:',e);_la.avail=false;}).finally(()=>{_la.checkAt=Date.now()+60000;});
+    return;
+  }
+  const st=_laState(),key=st?JSON.stringify(st):'';
+  if(key===_la.key)return;
+  if(!st&&!_la.on){_la.key=key;return;}
+  // Stage name is a static attribute of an activity: another stage = a new one.
+  const op=!st?'end':_la.on&&_la.stage===st.stageName?'update':'start';
+  _la.busy=true;
+  Promise.resolve().then(()=>op==='end'?P.end():P[op](_laPayload(st))).then(()=>{
+    _la.key=key;_la.on=op!=='end';_la.stage=st?st.stageName:null;
+  },e=>{
+    // Swiped away or ended by iOS: the next round starts a fresh one.
+    if(op==='update'&&e&&e.code==='NO_ACTIVITY'){_la.on=false;return;}
+    console.warn('[liveactivity] '+op+' failed:',e);
+    if(op==='start')_la.on=false;
+    _la.retryAt=Date.now()+30000;
+  }).finally(()=>{_la.busy=false;});
+}
+// Logout: the lock screen must not keep counting for an operator who left.
+function _laEnd(){
+  const P=_laPlugin();if(!P||(!_la.on&&!_la.busy))return;
+  _la.on=false;_la.key=null;
+  Promise.resolve().then(()=>P.end()).catch(e=>console.warn('[liveactivity] end failed:',e));
+}
+
 // ══ BOOTH LINK (phase 5D) - delivery receipts and screen presence
 // One Realtime channel per open project, `st-proj-<pid>`, with BROADCAST and
 // PRESENCE only: no postgres_changes, no database write, no migration.
@@ -9358,6 +9437,7 @@ function tick(){
   // Booth link (receipts / presence): last, so a failure there can never
   // keep a screen from rendering.
   try{_pcSync();_pcRender();}catch(e){console.warn('[booth-link] tick:',e);}
+  try{_laSync();}catch(e){console.warn('[liveactivity] tick:',e);}
 }
 
 // ══ STAGE MANAGEMENT
@@ -13389,6 +13469,7 @@ async function doLogout(){
   // Wipe Supabase session keys from localStorage directly so reload sees no session
   Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k);});
   try{if(window._OS?.logout)window._OS.logout();}catch(e){console.warn('[logout] OneSignal logout:',e);}
+  try{_laEnd();}catch(e){console.warn('[liveactivity] logout:',e);}
   // Native app: '/' is not the web site there; reload the bundled page instead.
   location.href=IS_NATIVE?location.pathname:'/';
 }
