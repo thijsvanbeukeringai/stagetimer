@@ -1,0 +1,21 @@
+{
+  "appId": "nl.stagetimer.booth",
+  "appName": "Stagetimer",
+  "webDir": "www",
+  "backgroundColor": "#0b0b0e",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0b0b0e"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b0b0e",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK"
+    }
+  }
+}
