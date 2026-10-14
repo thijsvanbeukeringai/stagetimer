@@ -485,6 +485,8 @@ body.public-mode #smv-close-btn{display:none!important;}
 .share-copy-msg:empty{display:none;}
 .share-copy-msg.err{color:#fca5a5;}
 .share-copy-btn.failed{border-color:rgba(239,68,68,.5);color:#fca5a5;}
+/* Native app only: Share sits before Copy; one auto margin pushes the pair right on phones. */
+.share-native-btn+.share-copy-btn{margin-left:0;}
 @media (max-width:700px){
   #share-modal{max-height:calc(100dvh - 24px);}
   .share-link-row{gap:6px;margin-bottom:12px;}
@@ -3030,6 +3032,23 @@ if(window._OS_ENABLED){
 <script>
 // ══ UTILS
 const uid=()=>Math.random().toString(36).slice(2,9);
+// Native app (BOUWPLAN fase 6): the iOS app is a Capacitor shell that ships
+// this file and serves it from capacitor://localhost. Anything built from
+// location.origin there (share links, password-reset and Stripe return URLs)
+// would point at the phone itself and open nowhere else, so those use
+// WEB_APP_URL. Every native-only branch sits behind IS_NATIVE: on the web
+// window.Capacitor does not exist and nothing changes.
+const IS_NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+const WEB_APP_URL='https://stagetimer.nl/app';
+// A native plugin, or null (web, or a shell built without it).
+const _nat=name=>(IS_NATIVE&&window.Capacitor.Plugins&&window.Capacitor.Plugins[name])||null;
+// Fire-and-forget plugin call: a missing plugin or a native error must never
+// break the screen it was called from.
+function _natCall(name,fn,arg){
+  const p=_nat(name);if(!p||typeof p[fn]!=='function')return null;
+  try{return Promise.resolve(p[fn](arg)).catch(e=>{console.warn('[native] '+name+'.'+fn+' failed:',e);return null;});}
+  catch(e){console.warn('[native] '+name+'.'+fn+' failed:',e);return null;}
+}
 // Time helpers (t2s, t2m, durSec, nowSec, nowMin, nowSecAdj, todayStr,
 // festivalDayStr, ...) live in the PURE TIME MODULE further down this script.
 const s2cd=s=>{const neg=s<0,a=Math.abs(s)|0,m=Math.floor(a/60),sc=a%60;return(neg?'-':'')+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0');};
@@ -3611,7 +3630,7 @@ function humanError(e,action){
   if(_isQuota(e)||/quota/i.test(String((e&&e.message)||'')))return'This device ran out of storage space. Changes still go to the server, but the offline copy on this device is incomplete.';
   if(typeof navigator!=='undefined'&&navigator.onLine===false)return'You are offline. Changes stay on this device and are saved when the connection is back.';
   const pe=_planError(e);
-  if(pe)return pe.message||(pe.kind==='subscription_required'?'This workspace has no active subscription or event pass.':'Your plan does not include more live stages.');
+  if(pe)return _planText(pe);
   return _friendlyError(e,action||'Saving');
 }
 
@@ -3888,6 +3907,9 @@ function _planError(e){
   const lim=hint&&hint.limit!=null?Number(hint.limit):NaN;
   return{kind,message:typeof b.message==='string'?b.message:'',limit:Number.isFinite(lim)?lim:null};
 }
+// What to tell people about a plan refusal. Native app (Apple 3.1.1): not the
+// server's own sentence, which asks to upgrade; only what happened.
+const _planText=pe=>(!IS_NATIVE&&pe.message)||(pe.kind==='subscription_required'?'This workspace has no active subscription or event pass.':'Your plan does not include more live stages.');
 // The server refused `out` because it has more stages than the plan allows.
 // It only checks growth: a save may keep the stage count the server already
 // has (S) or stay within the limit. Remove the newest stages that are not on
@@ -3926,10 +3948,12 @@ function _dropRefusedStages(id,S,out,pe){
   _cacheAPP();
   if(id===APP.activeProjectId){loadG();_rerenderActive();}
   const names=drop.map(x=>'"'+(x.name||'Stage')+'"').join(', ');
-  const msg=(pe.message||'Your plan does not include more live stages.')
+  const msg=_planText(pe)
     +` ${drop.length===1?'Stage':'Stages'} ${names} ${drop.length===1?'was':'were'} removed again`
     +(goneShows.length?`, with the ${goneShows.length} show${goneShows.length===1?'':'s'} planned on ${drop.length===1?'it':'them'},`:'')
-    +` so your other changes can be saved. Upgrade the plan to add ${drop.length===1?'it':'them'}.`;
+    +' so your other changes can be saved.'
+    // Native app (Apple 3.1.1): no upgrade call to action.
+    +(IS_NATIVE?'':` Upgrade the plan to add ${drop.length===1?'it':'them'}.`);
   console.warn('[_pushProject] plan limit: removed stages the server refused:',[...ids],pe);
   if(typeof _opNotice==='function')_opNotice(msg,{key:'plan-stage-limit',sticky:true});
   return true;
@@ -7947,6 +7971,15 @@ function _svZoomLock(on){
 //   - one-shot per page load - we don't re-trigger after the user exits
 //   - only when "Auto fullscreen" is on for this device (stFullscreen)
 (function _setupFullscreen(){
+  // Native app: it already runs full screen and WKWebView offers the page no
+  // fullscreen of its own, so both menu items would do nothing. Drop them
+  // (with the separator above the desktop pair, else two lines touch).
+  if(IS_NATIVE){
+    window.stFullscreen={toggle(){},auto:()=>false,setAuto(){}};
+    document.querySelectorAll('[data-fs="toggle"]').forEach(el=>{const s=el.previousElementSibling;if(s&&s.classList.contains('dd-sep'))s.remove();});
+    document.querySelectorAll('[data-fs]').forEach(el=>el.remove());
+    return;
+  }
   function _isStandalone(){
     return window.matchMedia?.('(display-mode: fullscreen)').matches ||
            window.matchMedia?.('(display-mode: standalone)').matches ||
@@ -8022,7 +8055,12 @@ function _svZoomLock(on){
 // as all of these views are closed.
 const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv','smv'];
 let _wakeLock=null;
+// Native app: the KeepAwake plugin switches off the iOS idle timer for the
+// whole app. navigator.wakeLock in WKWebView is missing or unreliable across
+// iOS versions, and the native switch also survives a trip to the background.
+let _natAwake=false;
 async function _acquireWakeLock(){
+  if(IS_NATIVE){if(!_natAwake&&_nat('KeepAwake')){_natAwake=true;_natCall('KeepAwake','keepAwake');}return;}
   if(!('wakeLock' in navigator))return;
   if(_wakeLock)return;
   try{
@@ -8034,6 +8072,7 @@ function _releaseWakeLockIfIdle(){
   // Keep it if any other live view is still open
   const stillOpen=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(stillOpen)return;
+  if(_natAwake){_natAwake=false;_natCall('KeepAwake','allowSleep');}
   if(_wakeLock){_wakeLock.release().catch(()=>{});_wakeLock=null;}
 }
 // Reacquire on visibility-return (browsers drop wake lock when tab is hidden).
@@ -8877,6 +8916,7 @@ function toggleBlackout(){
   G.blackout=!G.blackout;
   save({immediate:true});
   renderBlackout();
+  _natCall('Haptics','impact',{style:'LIGHT'});   // native app: the press is felt (operator only)
 }
 window.toggleBlackout=toggleBlackout;
 function renderBlackout(){
@@ -8920,6 +8960,7 @@ function sendCue(text,color,durationMs,opts){
          durationMs:(durationMs&&durationMs>0)?durationMs:null};
   save({immediate:true});            // fire-and-forget realtime push
   renderCueStatus();
+  _natCall('Haptics','impact',{style:'LIGHT'});   // native app: the send is felt (operator only)
 }
 function sendCustomCue(){
   const inp=document.getElementById('cue-input');if(!inp)return;
@@ -8929,6 +8970,7 @@ function sendCustomCue(){
 }
 function clearCue(){
   G.cue=null;save({immediate:true});renderCueStatus();
+  _natCall('Haptics','impact',{style:'LIGHT'});   // native app: the clear is felt (operator only)
 }
 window.sendCue=sendCue;window.sendCustomCue=sendCustomCue;window.clearCue=clearCue;
 
@@ -9116,6 +9158,9 @@ function _pcOnAck(p){
   if(_pc.acks.id!==c.id)_pc.acks={id:c.id,dev:new Map()};
   if(_pc.acks.dev.size>=200||_pc.acks.dev.has(p.device))return;
   _pc.acks.dev.set(p.device,nowMs());
+  // Native app: one success tap when the first booth screen confirms this cue.
+  // Not for this device's own Stage View ack, never on a booth screen.
+  if(IS_NATIVE&&_pc.acks.dev.size===1&&!window.PUBLIC_MODE&&p.device!==_pc.device&&!document.getElementById('sv')?.classList.contains('open'))_natCall('Haptics','notification',{type:'SUCCESS'});
 }
 function _pcOnPresence(){
   const ch=_pc.chan;let st={};
@@ -9390,7 +9435,8 @@ function checkStageLimit(){
   const planLabel={freelancer:'Freelancer',team:'Team',festival:'Festival'}[co?.planSlug]||co?.planSlug||'your plan';
   return{
     allowed:false,limit,current,
-    reason:`Your ${planLabel} plan includes ${limit} live stage${limit===1?'':'s'}. Remove a stage or upgrade to add more.`
+    // Native app (Apple 3.1.1): no upgrade call to action.
+    reason:`Your ${planLabel} plan includes ${limit} live stage${limit===1?'':'s'}. `+(IS_NATIVE?'Remove a stage to add another.':'Remove a stage or upgrade to add more.')
   };
 }
 
@@ -10150,6 +10196,8 @@ function renderSubscriptionPage(){
   const seatsAnnualized=cycle==='year'?seatPrice*seats:seatPrice*12*seats;
   const totalAnnualized=baseAnnualized+seatsAnnualized;
   const totalMonthly=totalAnnualized/12;
+  // Native app (Apple 3.1.1): plan, status and dates only. No prices, no paid
+  // seat invite, no Stripe portal: buying and billing stay on the website.
   // Event pass without a subscription: show the pass, not a recurring price.
   const passOnly=!!pi.pass&&!['active','trialing','past_due'].includes(status);
 
@@ -10166,18 +10214,18 @@ function renderSubscriptionPage(){
           ${pi.pass?`<br>${escH(pi.pass.name)} · active until ${_fmtDate(pi.pass.expiresAt)}`:''}`}
         </div>
       </div>
-      <div class="ws-card">
+      ${IS_NATIVE?'':`<div class="ws-card">
         <div class="ws-card-title">Monthly cost (effective)</div>
         ${passOnly
           ?`<div class="ws-card-value">One-time pass</div>
         <div class="ws-card-meta">No recurring charge</div>`
           :`<div class="ws-card-value">${_fmtEur(totalMonthly)}</div>
         <div class="ws-card-meta">Total annualized: ${_fmtEur(totalAnnualized)}</div>`}
-      </div>
+      </div>`}
     </div>
-    <div class="ws-card" style="margin-top:18px;">
-      <div class="ws-card-title">Plan breakdown</div>
-      <div class="ws-divrow">
+    ${IS_NATIVE&&!co.currentPeriodEnd&&!co.lastPaidAt?'':`<div class="ws-card" style="margin-top:18px;">
+      <div class="ws-card-title">${IS_NATIVE?'Plan dates':'Plan breakdown'}</div>
+      ${IS_NATIVE?'':`<div class="ws-divrow">
         <div class="ws-divrow-label">${escH(pi.name)} · base seat</div>
         <div class="ws-divrow-value">${_fmtEur(basePrice)} / ${cycleLabel}</div>
       </div>
@@ -10188,14 +10236,14 @@ function renderSubscriptionPage(){
       <div class="ws-divrow" style="border-top:1px solid rgba(28,25,23,.14);">
         <div class="ws-divrow-label" style="font-weight:600;color:#0A0A0B;">Total</div>
         <div class="ws-divrow-value" style="font-size:14px;">${_fmtEur((basePrice+seats*seatPrice))} / ${cycleLabel}</div>
-      </div>
+      </div>`}
       ${co.currentPeriodEnd?`<div class="ws-divrow"><div class="ws-divrow-label">${status==='trialing'?'Trial ends':status==='canceled'?'Access until':'Next renewal'}</div><div class="ws-divrow-value">${_fmtDate(co.currentPeriodEnd)}</div></div>`:''}
       ${co.lastPaidAt?`<div class="ws-divrow"><div class="ws-divrow-label">Last payment</div><div class="ws-divrow-value">${_fmtDate(co.lastPaidAt)}</div></div>`:''}
-    </div>
+    </div>`}
     <div class="ws-card" style="margin-top:18px;">
       <div class="ws-card-title">Members</div>
       <div id="ws-seats-list" style="margin-bottom:14px;"></div>
-      ${isCompanyAdmin()?`<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">
+      ${IS_NATIVE?'':isCompanyAdmin()?`<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(28,25,23,.06);">
         <button class="ws-btn-primary" onclick="openInviteMemberPrompt()">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Invite member · ${_fmtEur(seatPrice)}/${cycleShort}
@@ -10405,6 +10453,8 @@ window.saveProfilePassword=saveProfilePassword;
 // invite-member edge function stay in the dialog. Same request as the
 // Platform admin form (_inviteMember).
 async function openInviteMemberPrompt(){
+  // Native app (Apple 3.1.1): an invite buys a paid seat, so it is web-only; the button is not rendered there.
+  if(IS_NATIVE){console.warn('[native] paid seat invite is web-only: openInviteMemberPrompt ignored');return;}
   const ws=APP.companies.find(c=>c.id===CURRENT_USER?.companyId);
   if(!isCompanyAdmin()){await stDialog.alert('Only workspace admins can invite members.',{title:'No permission'});return;}
   if(!ws){await stDialog.alert('You are not linked to a workspace. Contact support.',{title:'No workspace'});return;}
@@ -10712,6 +10762,11 @@ function renderSubscriptionBanner(){
     msg=`"${co.name}" does not have an active subscription. Start a Stagetimer subscription to create projects.`;
     btn=`<a class="btn-p" href="/#pricing" style="padding:8px 14px;font-size:12px;text-decoration:none;">Start subscription</a>`;
   }
+  // Native app (Apple 3.1.1): state the fact, no payment button or link.
+  if(msg&&IS_NATIVE){
+    btn='';
+    msg=status==='past_due'?`The last payment for "${co.name}" did not go through.`:`"${co.name}" does not have an active subscription.`;
+  }
   if(!msg){el.style.display='none';return;}
   el.style.display='flex';
   el.style.background=bg;
@@ -10730,7 +10785,7 @@ function canCreateProject(companyId){
     return{ok:false,reason:`Workspace "${co.name}" does not have an active subscription.`,action:'subscribe',company:co};
   }
   if(status==='past_due'){
-    return{ok:false,reason:`Workspace "${co.name}" has a past due payment. Update your payment method in Stripe to continue.`,action:'portal',company:co};
+    return{ok:false,reason:`Workspace "${co.name}" has a past due payment.`+(IS_NATIVE?'':' Update your payment method in Stripe to continue.'),action:'portal',company:co};
   }
   // No project limit - active subscription = unlimited projects
   return{ok:true};
@@ -10758,7 +10813,9 @@ function showLimitModal(chk){
   if(!ov)return stDialog.alert(chk.reason,{title:'Limit reached'});
   document.getElementById('limit-modal-msg').textContent=chk.reason;
   const btn=document.getElementById('limit-modal-action');
-  if(chk.action==='subscribe'){
+  // Native app (Apple 3.1.1): the reason only, no purchase or portal button.
+  if(IS_NATIVE){btn.style.display='none';btn.onclick=null;}
+  else if(chk.action==='subscribe'){
     btn.textContent='Start subscription';
     btn.onclick=()=>{location.href='/#pricing';};
     btn.style.display='block';
@@ -10844,7 +10901,7 @@ async function createProject(){
       if(pe&&pe.kind==='subscription_required'){
         closeProjModal();
         showLimitModal({ok:false,action:'subscribe',company:APP.companies.find(c=>c.id===companyId)||null,
-          reason:(pe.message||'This workspace has no active subscription or event pass.')+' The project was not created.'});
+          reason:_planText(pe)+' The project was not created.'});
         return;
       }
       await stDialog.alert(_friendlyError(e,'Creating the project'),{title:'Project not created'});
@@ -11229,9 +11286,9 @@ function renderAdmin(){
           ${isAdmin()?`<button class="admin-item-del" onclick="editCompany(${_jsArg(c.id)})" title="Rename workspace" aria-label="Rename ${escH(c.name)}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           </button>`:''}
-          <button class="admin-item-del" onclick="manageSubscription(${_jsArg(c.id)})" title="Manage subscription" aria-label="Manage subscription of ${escH(c.name)}" style="color:#a5b4fc;">
+          ${IS_NATIVE?'':`<button class="admin-item-del" onclick="manageSubscription(${_jsArg(c.id)})" title="Manage subscription" aria-label="Manage subscription of ${escH(c.name)}" style="color:#a5b4fc;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-          </button>
+          </button>`}
           ${isAdmin()?`<button class="admin-item-del" onclick="delCompany(${_jsArg(c.id)})" title="Delete workspace" aria-label="Delete ${escH(c.name)}">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>
           </button>`:''}
@@ -11488,6 +11545,9 @@ async function delUser(id){
   }
 }
 async function manageSubscription(coId){
+  // Native app (Apple 3.1.1): no billing outside the App Store. Every button
+  // that leads here is hidden there; this catches any that was missed.
+  if(IS_NATIVE){console.warn('[native] billing is web-only: manageSubscription ignored');return;}
   const c=APP.companies.find(x=>x.id===coId);if(!c)return;
   const status=c.subscriptionStatus||'inactive';
   if(!c.stripeCustomerId){
@@ -11504,7 +11564,7 @@ async function manageSubscription(coId){
     const res=await fetch(`${SUPA_URL}/functions/v1/portal-link`,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`,'apikey':SUPA_KEY},
-      body:JSON.stringify({companyId:coId,returnUrl:location.origin+'/app'})
+      body:JSON.stringify({companyId:coId,returnUrl:IS_NATIVE?WEB_APP_URL:location.origin+'/app'})
     });
     if(!res.ok){const t=await res.text();throw new Error(t||'HTTP '+res.status);}
     const data=await res.json();
@@ -11870,6 +11930,34 @@ async function requestPushPermission(){
     updateCrewPermBtn();
   }catch(e){console.warn('OneSignal permission:',e);}
 }
+// Native app: the web SDK only runs on stagetimer.nl, so the app registers
+// through the native OneSignal SDK (cordova plugin, APNs) on the same app id.
+// window._OS becomes a small adapter with exactly what the web code above
+// uses (login, logout, Notifications.permission / requestPermission), so
+// initOneSignalUser, requestPushPermission, updateCrewPermBtn and doLogout
+// stay one path: same external id (the user id, which send-push targets),
+// same prompt moment (the crew button), no tags (the web sets none). Not on
+// share links, like the web. The plugin attaches after cordova's deviceready,
+// so wait for it a little.
+if(IS_NATIVE&&!_isPublic){
+  (function _natOneSignal(tries){
+    const os=window.plugins&&window.plugins.OneSignal;
+    if(!os){if(tries<40)setTimeout(()=>_natOneSignal(tries+1),250);else console.warn('[native] OneSignal plugin not found: no push on this device');return;}
+    try{os.initialize('5778eb83-1c2c-4ffd-b085-4236b5bd0188');}catch(e){console.warn('[native] OneSignal initialize failed:',e);return;}
+    const N=os.Notifications||{};
+    const ad={native:true,
+      login:id=>os.login(id),
+      logout:()=>os.logout(),
+      Notifications:{permission:false,
+        requestPermission:async()=>{const ok=await N.requestPermission(true);ad.Notifications.permission=!!ok;return ok;}}};
+    const setPerm=v=>{ad.Notifications.permission=!!v;updateCrewPermBtn();};
+    try{
+      if(typeof N.getPermissionAsync==='function')Promise.resolve(N.getPermissionAsync()).then(setPerm,e=>console.warn('[native] OneSignal permission state:',e));
+      if(typeof N.addEventListener==='function')N.addEventListener('permissionChange',setPerm);
+    }catch(e){console.warn('[native] OneSignal permission state:',e);}
+    window._OS=ad;
+  })(0);
+}
 
 // "About 10 minutes left" pushes for the crew (G.memberIds), one per show of
 // the selected day, sent when the project is opened. Shows are read the way
@@ -11931,7 +12019,9 @@ async function scheduleProjectPushes(){
 }
 
 // ══ SHARE LINKS
-const _shareBase=()=>location.origin+location.pathname;
+// Native app: capacitor://localhost/... opens nowhere else, so links point at
+// the web app (which the iOS app also claims as a Universal Link).
+const _shareBase=()=>IS_NATIVE?WEB_APP_URL:location.origin+location.pathname;
 // What a share link lets its holder do. Every link is view-only, except
 // Check-in and Stage manager, which can save arrivals (and nothing else:
 // set_show_arrived is the only write an anonymous visitor has).
@@ -11944,7 +12034,8 @@ function _shareRowHTML(label,mode,url){
         <span class="share-link-label">${escH(label)}</span>
         <span class="share-access${rw?' rw':''}" title="${escH(tip)}">${rw?'Can change check-in':'Read-only'}</span>
       </div>
-      <span class="share-link-url" title="${escH(url)}">${escH(url)}</span>
+      <span class="share-link-url" title="${escH(url)}">${escH(url)}</span>${_nat('Share')?`
+      <button class="share-copy-btn share-native-btn" type="button" aria-label="Share ${escH(label)} link" onclick="shareLink(this,${_jsArg(url)},${_jsArg(label)})">Share</button>`:''}
       <button class="share-copy-btn" type="button" aria-label="Copy ${escH(label)} link" onclick="copyLink(this,${_jsArg(url)})">Copy</button>
       <div class="share-copy-msg" role="status" aria-live="polite"></div>
     </div>`;
@@ -11983,6 +12074,19 @@ function openShareModal(projId){
   document.getElementById('share-ov').classList.add('open');
 }
 function closeShareModal(){document.getElementById('share-ov').classList.remove('open');}
+// Native app: the iOS share sheet (Messages, Mail, AirDrop, ...) next to Copy.
+// Without the plugin it copies, through the row's own Copy button.
+function shareLink(btn,url,label){
+  const sh=_nat('Share'),copy=()=>copyLink(btn&&btn.parentNode&&btn.parentNode.querySelector('.share-copy-btn:not(.share-native-btn)')||btn,url);
+  if(!sh||typeof sh.share!=='function'){copy();return;}
+  try{
+    Promise.resolve(sh.share({title:'Stagetimer · '+label,url})).catch(e=>{
+      if(/cancel/i.test(String(e&&e.message||e)))return;   // closed the sheet: not an error
+      console.warn('[native] Share failed, copying instead:',e);copy();
+    });
+  }catch(e){console.warn('[native] Share failed, copying instead:',e);copy();}
+}
+window.shareLink=shareLink;
 
 // ══ ARTIST CHECK-IN viewer (share-link mode=checkin).
 // Operator and check-in viewer share the same projects.data column.
@@ -12403,7 +12507,7 @@ async function completeSignup(){
           <img src="stagetimer-logo.png" alt="Stagetimer" style="height:38px;margin-bottom:16px;">
           <div style="font-size:20px;font-weight:800;letter-spacing:-.5px;color:#fff;margin-bottom:8px;">Confirm your email address</div>
           <div style="font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:18px;">We have sent a verification link to <strong style="color:#fff;">${(data.email||'').replace(/[<>]/g,'')}</strong>. Click the link in that email to activate your account.</div>
-          <a class="btn-p" href="/app" style="display:block;text-decoration:none;padding:10px;">Go to log in</a>
+          <a class="btn-p" href="${IS_NATIVE?escH(location.pathname):'/app'}" style="display:block;text-decoration:none;padding:10px;">Go to log in</a>
         </div>`;
       }
     }else{
@@ -13122,6 +13226,8 @@ const _isStandalone=()=>window.navigator.standalone===true||window.matchMedia('(
 function openOTV(id){
   _currentOTId=id;renderOTV();
   document.getElementById('otv').classList.add('open');
+  // Native app: already full screen; the "Add to Home Screen" hint would be wrong there.
+  if(IS_NATIVE)return;
   // Try fullscreen (works on Chrome/Android/desktop, not iOS Safari)
   const el=document.documentElement;
   if(el.requestFullscreen)el.requestFullscreen().catch(()=>{});
@@ -13282,8 +13388,9 @@ async function doLogout(){
   localStorage.removeItem('st_current_user');
   // Wipe Supabase session keys from localStorage directly so reload sees no session
   Object.keys(localStorage).forEach(k=>{if(k.startsWith('sb-'))localStorage.removeItem(k);});
-  try{if(window._OS?.logout)window._OS.logout();}catch(e){}
-  location.href='/';
+  try{if(window._OS?.logout)window._OS.logout();}catch(e){console.warn('[logout] OneSignal logout:',e);}
+  // Native app: '/' is not the web site there; reload the bundled page instead.
+  location.href=IS_NATIVE?location.pathname:'/';
 }
 function _showLogoutBtn(session){
   const mobBtn=document.getElementById('mob-logout-btn');
@@ -13348,7 +13455,8 @@ async function sendReset(){
   const ctrl=new AbortController();
   const tmo=setTimeout(()=>ctrl.abort(),10000);
   try{
-    const res=await fetch(`${SUPA_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(location.origin+location.pathname)}`,{
+    // Native app: the mail is opened on any device, so the link must go to the web app.
+    const res=await fetch(`${SUPA_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(IS_NATIVE?WEB_APP_URL:location.origin+location.pathname)}`,{
       method:'POST',signal:ctrl.signal,
       headers:{'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`},
       body:JSON.stringify({email}),
@@ -13419,6 +13527,30 @@ async function setNewPassword(){
   _showLogoutBtn(true);
   try{await _startApp({access_token:st.access_token,refresh_token:st.refresh_token,user});}
   catch(e){console.error('[set-pw] _startApp failed:',e);_hideLoader();}
+}
+
+// ══ NATIVE APP (BOUWPLAN fase 6) - start-up glue for the Capacitor shell.
+// On the web IS_NATIVE is false and none of this runs.
+// Universal Links: a tap on https://stagetimer.nl/app?... (share link, reset
+// or invite mail) opens the app instead of Safari and arrives here as
+// appUrlOpen (on a cold start too: the App plugin holds the event until a
+// listener is added). The bundled page reloads with that search + hash, so
+// the normal start-up (share-link mode, _handleAuthLink) takes over. Other
+// hosts and paths are ignored.
+function _natOpenUrl(raw){
+  let u;try{u=new URL(String(raw||''));}catch(e){console.warn('[native] appUrlOpen: not a URL:',raw);return false;}
+  const host=new URL(WEB_APP_URL).hostname;
+  if(u.protocol!=='https:'||(u.hostname!==host&&u.hostname!=='www.'+host)||!/^\/app(\.html)?\/?$/.test(u.pathname))return false;
+  if(u.search===location.search&&u.hash===location.hash)return false;   // already showing it: no reload loop
+  location.replace(location.pathname+u.search+u.hash);
+  return true;
+}
+if(IS_NATIVE){
+  _natCall('StatusBar','setStyle',{style:'DARK'});   // light status-bar text, for the dark app chrome
+  try{
+    const app=_nat('App');
+    if(app&&typeof app.addListener==='function')Promise.resolve(app.addListener('appUrlOpen',e=>_natOpenUrl(e&&e.url))).catch(e=>console.warn('[native] appUrlOpen listener failed:',e));
+  }catch(e){console.warn('[native] appUrlOpen listener failed:',e);}
 }
 
 // ══ INIT
@@ -13715,7 +13847,10 @@ function _offerSwUpdate(d){
 }
 window.addEventListener('st:sw-update',e=>_offerSwUpdate(e.detail));
 if(window._stSwUpdate)_offerSwUpdate(window._stSwUpdate);
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
+// Native app: no service worker. The app ships its own files (offline from the
+// first start), updates come through the App Store, and capacitor://localhost
+// passes the localhost test below although no /sw.js scope belongs to it.
+if(!IS_NATIVE&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>{
     setTimeout(async()=>{
       try{

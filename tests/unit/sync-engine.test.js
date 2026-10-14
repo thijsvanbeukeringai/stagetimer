@@ -58,7 +58,7 @@ function makeEnv(server,opts={}){
   const g={localStorage,window,document,fetch,supa,
     setTimeout:(f,ms)=>setTimeout(f,(ms||0)/SPEED),clearTimeout,setInterval:()=>0,
     navigator:{onLine:true},CustomEvent:function(){},
-    SUPA_URL:'https://x.supabase.co',SUPA_KEY:'anon',
+    SUPA_URL:'https://x.supabase.co',SUPA_KEY:'anon',IS_NATIVE:false,
     _jwt:()=>server.token||'anon',setSyncDot:s=>{dot.className=s;},
     supabase:null,uid:()=>Math.random().toString(36).slice(2,9),fmtDateLabel:d=>d,festivalDayStr:()=>opts.today||'2026-10-13',
     renderAll:()=>{renders.all++;},refreshLogo:()=>{},renderFOH(){},renderBS(){},renderTL(){},renderCI(){},renderWV(){},renderDash(){},renderAdmin(){},renderOV(){},renderSV(){},
