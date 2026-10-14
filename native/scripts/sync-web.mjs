@@ -121,7 +121,7 @@ for (const rel of [...assets].sort()) {
 }
 for (const f of NEVER_COPY) if (existsSync(join(WWW, f))) die(`${f} ended up in www/`);
 
-log(`www/ ready: index.html + ${[...new Set([...assets].map(a => a.includes('/') ? a.split('/')[0] + '/' : a))].sort().join(', ')}`);
+log(`www/ ready: index.html + ${[...new Set([...assets].map(a => a.split('/')[0]))].sort().join(', ')}`);
 log(backend === null
   ? `backend: PRODUCTION (${PROD_URL}). Release builds only, never run this build to test.`
   : `backend: ${backend} (dev; production host removed from index.html)`);
