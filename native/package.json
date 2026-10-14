@@ -7,7 +7,7 @@
   "scripts": {
     "sync": "node scripts/sync-web.mjs --cap-sync",
     "sync:dev": "node scripts/sync-web.mjs --cap-sync --dev",
-    "ios:build-sim": "xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build"
+    "ios:build-sim": "node scripts/assert-dev-build.mjs && ONESIGNAL_DISABLE_LOCATION=true xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData build"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "8.0.1",
