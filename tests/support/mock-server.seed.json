@@ -1,0 +1,8 @@
+{
+  "_comment": "Test login for the LOCAL fake Supabase (tests/support/mock-server.js) only. Not a real account anywhere; .test is a reserved TLD. Never deployed (tests/ is in .vercelignore).",
+  "email": "demo@stagetimer.test",
+  "password": "EJoHDjOS2cefhMZE",
+  "id": "usr-demo",
+  "name": "Demo Admin",
+  "role": "company_admin"
+}
