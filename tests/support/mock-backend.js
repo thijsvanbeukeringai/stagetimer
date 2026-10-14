@@ -26,6 +26,9 @@
 //
 // Nothing here can reach production: unknown hosts/paths are aborted, and the
 // websocket route never calls connectToServer().
+//
+// The request logic is transport-neutral (handleRequest): mock-server.js
+// serves this same fake over real HTTP + WebSocket for the iOS simulator.
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -669,61 +672,84 @@ class MockBackend {
     }
   }
 
+  // Playwright transport: route -> handleRequest -> route.fulfill / abort.
   async _handle(route) {
     const req = route.request();
-    const url = new URL(req.url());
-    const method = req.method();
+    const res = await this.handleRequest({
+      method: req.method(), url: req.url(), raw: req.postData(),
+      headers: await req.allHeaders().catch(() => req.headers()),
+      buffer: () => req.postDataBuffer(),
+    });
+    if (res.hang) return new Promise(() => {});
+    if (res.abort) return res.quiet ? route.abort(res.abort).catch(() => {}) : route.abort(res.abort);
+    if (res.path) return route.fulfill({ status: res.status, headers: res.headers, path: res.path });
+    return route.fulfill({ status: res.status, headers: res.headers, body: res.body });
+  }
+
+  /**
+   * Transport-neutral core, shared by the Playwright route (above) and the
+   * local HTTP server for the iOS simulator (mock-server.js), so there is one
+   * fake, not two.
+   *   in:  { method, url, headers (lowercase keys), raw (body text or null), buffer () => Buffer }
+   *   out: { status, headers, body } | { status, headers, path } (serve that file)
+   *        | { abort: reason, quiet } (network error) | { hang: true } (never answer)
+   *        | + violation: msg when the request was not mockable (Playwright aborts it,
+   *          the local server answers 404).
+   * opts.supabase: treat the request as aimed at the Supabase project whatever its
+   * host (the local server listens on 127.0.0.1, not on SUPA_HOST).
+   */
+  async handleRequest({ method, url: href, headers, raw = null, buffer }, { supabase = false } = {}) {
+    const url = new URL(href);
     let body = null;
-    const raw = req.postData();
     if (raw != null) { try { body = JSON.parse(raw); } catch { body = raw; } }
     const rec = {
-      method, url: req.url(), host: url.hostname, path: url.pathname,
-      query: Object.fromEntries(url.searchParams), body, headers: await req.allHeaders().catch(() => req.headers()),
+      method, url: href, host: url.hostname, path: url.pathname,
+      query: Object.fromEntries(url.searchParams), body, headers,
       at: Date.now(),
     };
     // Binary uploads: postData() is lossy for non-UTF-8 bytes.
-    if (url.pathname.startsWith('/storage/')) rec.buffer = req.postDataBuffer();
+    if (url.pathname.startsWith('/storage/')) rec.buffer = typeof buffer === 'function' ? buffer() : buffer;
     this.requests.push(rec);
 
-    if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
+    if (method === 'OPTIONS') return { status: 204, headers: CORS, body: '' };
 
     // failure injection
     const rule = this.rules.find((r) => r.hits < r.times &&
       (!r.method || r.method === method) &&
       (!r.path || (r.path instanceof RegExp ? r.path.test(url.pathname) : url.pathname.includes(r.path))) &&
-      (!r.url || (r.url instanceof RegExp ? r.url.test(req.url()) : req.url().includes(r.url))));
+      (!r.url || (r.url instanceof RegExp ? r.url.test(href) : href.includes(r.url))));
     if (rule) {
       rule.hits++;
       rec.injected = true;
-      if (rule.hang) return new Promise(() => {});
-      if (rule.abort) return route.abort(rule.abort);
+      if (rule.hang) return { hang: true };
+      if (rule.abort) return { abort: rule.abort };
       if (rule.delayMs) await new Promise((r) => setTimeout(r, rule.delayMs));
       if (rule.status) {
-        return route.fulfill({
+        return {
           status: rule.status,
           headers: { ...CORS, 'content-type': 'application/json', ...(rule.headers || {}) },
           body: rule.body != null ? rule.body : JSON.stringify(rule.json || { message: `injected ${rule.status}` }),
-        });
+        };
       }
     }
 
     try {
-      const res = await this._dispatch(url, method, body, rec);
-      if (!res) return; // already handled
+      const res = await (supabase ? this._supabase(url, method, body, rec) : this._dispatch(url, method, body, rec));
+      if (!res) return { hang: true }; // a custom handler returned nothing: the request stays unanswered
       const headers = { ...CORS, ...(res.headers || {}) };
       if (res.json !== undefined) {
         headers['content-type'] = headers['content-type'] || 'application/json; charset=utf-8';
-        return route.fulfill({ status: res.status || 200, headers, body: JSON.stringify(res.json) });
+        return { status: res.status || 200, headers, body: JSON.stringify(res.json) };
       }
-      if (res.path) return route.fulfill({ status: res.status || 200, headers, path: res.path });
-      return route.fulfill({ status: res.status || 200, headers, body: res.body == null ? '' : res.body });
+      if (res.path) return { status: res.status || 200, headers, path: res.path };
+      return { status: res.status || 200, headers, body: res.body == null ? '' : res.body };
     } catch (e) {
       if (e && e.violation) {
         this.violations.push(e.violation);
-        return route.abort('blockedbyclient').catch(() => {});
+        return { abort: 'blockedbyclient', quiet: true, violation: e.violation };
       }
-      this.violations.push(`mock crashed on ${method} ${req.url()}: ${e && e.stack}`);
-      return route.fulfill({ status: 500, headers: CORS, body: 'mock error' });
+      this.violations.push(`mock crashed on ${method} ${href}: ${e && e.stack}`);
+      return { status: 500, headers: CORS, body: 'mock error' };
     }
   }
 
