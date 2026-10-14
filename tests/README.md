@@ -99,7 +99,7 @@ Generated from commit 845eb0d (`npm run test:update-baseline` adds a temporary `
 `app.html` hardcodes the production `SUPA_URL`, so the native dev build rewrites it to a local URL and this server answers there. It is the same fake as above, not a second one: `MockBackend.handleRequest` serves HTTP and `RealtimeStub` serves a real `ws` websocket (wrapped to look like Playwright's `WebSocketRoute`).
 
 ```bash
-npm run mock:server                                   # http://127.0.0.1:54321, demo seed
+npm run mock:server                                   # http://127.0.0.1:54350, demo seed
 node tests/support/mock-server.js --port 54330 --seed festival   # --seed demo | festival | empty, --port 0 = any free port
 ```
 
@@ -107,5 +107,5 @@ node tests/support/mock-server.js --port 54330 --seed festival   # --seed demo |
 - Bound to `127.0.0.1` only. CORS is open: it echoes `Origin` (`capacitor://localhost`) and the requested headers, because a wildcard never covers `Authorization` in a real browser. One log line per request; Ctrl-C exits cleanly. State is in memory and gone on exit.
 - Seed `demo` (default): the festival from `seed.js`, shifted so Friday 16:00 is now (Main Stage and The Tent are live, every stage has a next show; Amsterdam time, festival day from 07:00), the company's plan active for a year. `festival`: the fixed July 2026 seed the specs use. `empty`: no projects.
 - Login: `tests/support/mock-server.seed.json` (a `.test` address and a generated password, printed on startup). These are test values for this local fake only. The `FESTIVAL.users` from `seed.js` work too.
-- Port clash: Supabase CLI (`supabase start`, e.g. in Docker/colima) also uses 54321 on all interfaces, and macOS still lets this server bind `127.0.0.1:54321` beside it. The server then prints a WARNING: `127.0.0.1` reaches the mock, but the LAN address reaches the other service, and so does `127.0.0.1` once the mock stops. Stop that service or pick another `--port` (and the same port in the dev build's `SUPA_URL`).
+- Port clash: Supabase CLI (`supabase start`, e.g. in Docker/colima) uses 54321 on all interfaces, which is why the default here is 54350, and macOS still lets this server bind `127.0.0.1:54321` beside it. The server then prints a WARNING: `127.0.0.1` reaches the mock, but the LAN address reaches the other service, and so does `127.0.0.1` once the mock stops. Stop that service or pick another `--port` (and the same port in the dev build's `SUPA_URL`).
 - `tests/smoke/mock-server.spec.js` starts the server on a free port, serves `app.html` with `SUPA_URL` pointed at it and logs in, opens a project and checks realtime through real HTTP/WS, with the network guard still active.

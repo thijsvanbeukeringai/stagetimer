@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Local fake Supabase over real HTTP + WebSocket, for the iOS simulator.
 //
-//   node tests/support/mock-server.js [--port 54321|0] [--seed demo|festival|empty]
-//   npm run mock:server -- --port 54321
+//   node tests/support/mock-server.js [--port 54350|0] [--seed demo|festival|empty]
+//   npm run mock:server -- --port 54350
 //
 // Why: app.html hardcodes the production SUPA_URL. The native dev build
 // rewrites it to http://127.0.0.1:<port>, and this server answers there, so a
@@ -35,10 +35,10 @@ const HOST = '127.0.0.1'; // loopback only: this is a dev fake with open CORS an
 const args = process.argv.slice(2);
 const arg = (name, def) => { const i = args.indexOf(`--${name}`); return i >= 0 && args[i + 1] ? args[i + 1] : def; };
 if (args.includes('--help') || args.includes('-h')) {
-  console.log('node tests/support/mock-server.js [--port 54321] [--seed demo|festival|empty]');
+  console.log('node tests/support/mock-server.js [--port 54350] [--seed demo|festival|empty]');
   process.exit(0);
 }
-let PORT = Number(arg('port', process.env.MOCK_PORT || 54321)); // 0: any free port (printed on startup)
+let PORT = Number(arg('port', process.env.MOCK_PORT || 54350)); // 0: any free port (printed on startup)
 const SEED = arg('seed', 'demo');
 const LOGIN = JSON.parse(fs.readFileSync(path.join(__dirname, 'mock-server.seed.json'), 'utf8'));
 
