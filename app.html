@@ -1091,6 +1091,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #nat-role .nat-step{display:none;flex-direction:column;gap:12px;}
 #nat-role[data-step="choose"] .nat-step[data-for="choose"],#nat-role[data-step="code"] .nat-step[data-for="code"],#nat-role[data-step="stages"] .nat-step[data-for="stages"]{display:flex;}
 #nat-role .nat-title{font-size:20px;font-weight:800;letter-spacing:-.4px;color:#fff;text-align:center;}
+#nat-role .nat-title:focus{outline:none;}
 #nat-role .nat-sub{font-size:13px;color:var(--sub2);text-align:center;line-height:1.5;margin-top:-4px;}
 #nat-role .nat-opt{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;width:100%;min-height:84px;padding:16px 18px;
   border-radius:12px;background:var(--s2);border:1px solid var(--border2);color:var(--text);font-family:var(--ff);text-align:left;cursor:pointer;}
@@ -4983,12 +4984,12 @@ function renderTbar(){
   <div class="nat-box">
     <img class="nat-logo" src="stagetimer-logo.png" alt="Stagetimer">
     <section class="nat-step" data-for="choose">
-      <h1 class="nat-title" id="nat-t-choose">How will this device be used?</h1>
+      <h1 class="nat-title" id="nat-t-choose" tabindex="-1">How will this device be used?</h1>
       <button class="nat-opt" type="button" id="nat-opt-booth" onclick="natChooseRole('booth')"><span class="nat-opt-t">Booth screen</span><span class="nat-opt-d">Shows one stage's countdown. No login needed.</span></button>
       <button class="nat-opt" type="button" id="nat-opt-crew" onclick="natChooseRole('crew')"><span class="nat-opt-t">Crew &amp; control</span><span class="nat-opt-d">Log in to run the show, message the booth and get alerts.</span></button>
     </section>
     <section class="nat-step" data-for="code">
-      <h1 class="nat-title" id="nat-t-code">Booth screen</h1>
+      <h1 class="nat-title" id="nat-t-code" tabindex="-1">Booth screen</h1>
       <label class="nat-lbl" for="nat-code">Paste a share link or project code</label>
       <input class="fi" id="nat-code" type="text" inputmode="url" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://stagetimer.nl/app?mode=stage&amp;pid=…" aria-describedby="nat-err" onkeydown="if(event.key==='Enter')natBoothContinue()">
       <div class="nat-err" id="nat-err" role="alert" hidden></div>
@@ -4996,7 +4997,7 @@ function renderTbar(){
       <button class="nat-back" type="button" onclick="natRoleBack()">← Back</button>
     </section>
     <section class="nat-step" data-for="stages">
-      <h1 class="nat-title" id="nat-t-stages">Pick a stage</h1>
+      <h1 class="nat-title" id="nat-t-stages" tabindex="-1">Pick a stage</h1>
       <div class="nat-sub" id="nat-proj"></div>
       <div class="nat-stages" id="nat-stages"></div>
       <button class="nat-back" type="button" id="nat-stages-back">← Back</button>
@@ -13708,7 +13709,9 @@ function _natRoleGate(){
 function natRoleStep(step){
   const ov=document.getElementById('nat-role');
   ov.dataset.step=step;ov.setAttribute('aria-labelledby','nat-t-'+step);
-  const f=ov.querySelector(`.nat-step[data-for="${step}"] ${step==='code'?'input':'button'}`);
+  // Focus moves with the step (screen readers): the field, else the heading.
+  // Not the first option: WebKit draws a focus ring that reads as "selected".
+  const f=ov.querySelector(`.nat-step[data-for="${step}"] ${step==='code'?'input':'.nat-title'}`);
   if(f)f.focus({preventScroll:true});
 }
 function _natShowRole(step){
