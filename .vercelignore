@@ -12,6 +12,9 @@ push-secrets.sh
 push-smtp.sh
 .claude/
 .github/
+# Native app shell (Capacitor): build tooling, and after a sync a copy of
+# app.html that may point at a dev backend. Never served.
+native/
 
 # Legal page DRAFTS with placeholders - not published until filled in and reviewed
 privacy.html

@@ -1,0 +1,26 @@
+{
+  "name": "stagetimer-native",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Capacitor shell for the Stagetimer iPhone/iPad app (bundles ../app.html)",
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-web.mjs --cap-sync",
+    "sync:dev": "node scripts/sync-web.mjs --cap-sync --dev",
+    "ios:build-sim": "xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO build"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "8.0.1",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/share": "8.0.3",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.4",
+    "onesignal-cordova-plugin": "5.6.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3"
+  }
+}
