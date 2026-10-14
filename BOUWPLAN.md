@@ -448,6 +448,44 @@ Op een gewone festivalwifi kunnen browsers niet rechtstreeks met elkaar praten. 
 - Uitbreiding van het harnas: een gesimuleerde hub naast de gesimuleerde Supabase. Te testen: wisselen tussen cloud en lokaal, de klok van de hub als tijdbron, conflicten bij het terugsynchroniseren.
 - De booth-suite blijft de norm: Stage View pixel-identiek met data uit de hub.
 
+## FASE 6 — Native app: iPhone eerst, Android later (uitwerking van 5C)
+
+Besloten door Thijs op 14-10-2026. Branch `feature/native-ios`.
+- **Aanpak:** Capacitor-schil die `app.html` zelf meelevert (offline vanaf de eerste start), plus native extra's. Geen herschrijving in Swift.
+- **Bundle-ID:** `nl.stagetimer.booth` (team CM737LH9GZ). De app wordt een universele update van de iPad-app Stagetimer Booth (iPad + iPhone).
+- **Android:** later, uit hetzelfde project (`npx cap add android`). Daarvoor zijn Android Studio en een Play-account nodig.
+
+### Vondsten die het ontwerp sturen
+- Deellinks en wachtwoordherstel bouwen hun adres uit `location.origin`. In de app is dat `capacitor://localhost`. Daarom wijzen ze in native mode altijd naar `https://stagetimer.nl/app`.
+- OneSignal web draait alleen op `stagetimer.nl`. De app gebruikt de native OneSignal-plugin met hetzelfde appId.
+- Apple-regel 3.1.1: geen abonnement kopen buiten Apple om. Daarom zijn betaalknoppen en upgrade-links verborgen in de app. Aanmelden en betalen blijft op de website; de app kent alleen inloggen.
+- `SUPA_URL` staat vast op productie. De simulatorbuild wijst daarom naar een lokale nep-backend, nooit naar productie.
+
+### Stappen
+1. **Fundament:** `native/` (Capacitor, iOS, Swift Package Manager). Een kopieerscript zet `app.html`, `vendor/`, `fonts/` en de iconen in de app; dat is geen bundler. `native/` staat in `.vercelignore`.
+2. **Native mode in `app.html`:** afgeschermd met `IS_NATIVE`, op het web verandert niets. Deellinks en redirects gaan naar stagetimer.nl. Betaal- en fullscreen-knoppen zijn verborgen. Native keep-awake vervangt de wake lock. Geen service worker. Stage View blijft pixel-identiek.
+3. **Native functies:**
+   - APNs-push via OneSignal;
+   - haptiek bij een verstuurde of ontvangen cue;
+   - safe areas en statusbalk;
+   - iOS-deelmenu;
+   - Universal Links (`/.well-known/apple-app-site-association`).
+4. **Live Activity:** de countdown van de huidige show op het vergrendelscherm en in het Dynamic Island. Updates via de server (push-to-start) volgen later.
+5. **Eerste start:** kiezen tussen "Booth screen" en "Crew & control". De boothmodus vervangt de iPad-app (deellink of code, offline cache). Eerst inventariseren wat de oude app doet.
+6. **Testen:**
+   - regressietest native mode in WebKit;
+   - lokale nep-backend-server voor de simulator;
+   - rooktest in de iPhone-simulator;
+   - `npm test` en de booth-suite groen.
+7. **TestFlight:** privacylabels en review-notities. Indienen doet Thijs.
+
+### Actie voor Thijs
+- Een APNs-sleutel (.p8) in OneSignal zetten. De bestaande sleutels gelden voor het hele team; een nieuwe mag ook.
+- Het bijgewerkte Apple Developer Program License Agreement accepteren vóór 29-10-2026.
+- `privacy.html` definitief maken en publiceren (App Store eist een privacy-URL).
+- Later `apple-app-site-association` deployen.
+- Een demo-account aanmaken voor Apple Review.
+
 ## Buiten de scope van deze ronde (advies, actie voor Thijs)
 - **De backend in git zetten:** `supabase db pull` plus `supabase functions download` voor de 7 functies en de Stripe-webhook. Zonder die broncode kunnen we finalize-signup, invites en betalingen niet controleren.
 - **Staging:** een tweede Supabase-project, Vercel-previews daarop laten wijzen, en een beveiligde `main`.
