@@ -9056,7 +9056,10 @@ function _renderCueOverlay(){
 // Times go out on the DEVICE clock: the lock screen counts against the
 // phone's own clock, not nowMs(), so the server offset is taken back out.
 const _la={avail:undefined,checkAt:0,key:null,on:false,stage:null,busy:false,at:0,retryAt:0};
-function _laPlugin(){const P=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.StLiveActivity;return P&&typeof P.start==='function'?P:null;}
+// The shell injects window.Capacitor before page scripts run: read it once
+// here, so the web never touches it again per tick (native-mode.spec checks).
+const _laCap=window.Capacitor||null;
+function _laPlugin(){const P=_laCap&&_laCap.Plugins&&_laCap.Plugins.StLiveActivity;return P&&typeof P.start==='function'?P:null;}
 // What the activity should show, as data without a running clock in it (so
 // the key only changes when the picture does). null = no activity.
 function _laState(){
