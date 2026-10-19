@@ -47,7 +47,7 @@ test.describe('logged in', () => {
     const urls = await shareUrls(page);
     expect(urls).toContain(`https://stagetimer.nl/app?mode=timeline&pid=${PID}`);
     expect(urls).toContain(`https://stagetimer.nl/app?mode=stage&pid=${PID}&sid=${MAIN}`);
-    for (const u of urls) expect(u).toMatch(/^https:\/\/stagetimer\.nl\/app\?mode=[a-z]+&pid=proj-fest(&sid=[A-Za-z0-9_-]+)?$/);
+    for (const u of urls) expect(u).toMatch(/^https:\/\/stagetimer\.nl\/app\?mode=[a-z]+&pid=proj-fest(&(sid|shid)=[A-Za-z0-9_-]+)?$/);   // shid: dressing room links
 
     const row = page.locator('.share-link-row[data-mode="foh"]').first();
     await row.getByRole('button', { name: /^Share FOH link/ }).click();
