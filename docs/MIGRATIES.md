@@ -114,22 +114,31 @@ Dit document zet alles in één volgorde.
   ```
 - **Rollback:** `drop function public.get_shared_project(text, text);`. De andere twee functies zijn achterwaarts compatibel en mogen blijven.
 
-**Veldmatrix van `get_shared_project(p_id, p_mode)`.** Gecontroleerd tegen elke publieke renderer in `app.html`: `renderSV` (met `_svMode`, cue en blackout), `renderBS`, `renderFOH`, `renderTL`, `renderOV`, `renderWV`/`tickWV` en `renderCI`. Elke modus houdt wat hij toont. De migratie hoefde niet te veranderen.
+**Veldmatrix van `get_shared_project(p_id, p_mode)`.** Gecontroleerd tegen elke publieke renderer in `app.html`: `renderSV` (met `_svMode`, cue en blackout), `renderBS`, `renderFOH`, `renderTL`, `renderOV`, `renderWV`/`tickWV`, `renderCI`, `renderSM` en `renderDres`. Elke modus houdt wat hij toont. De migratie hoefde niet te veranderen.
 
-| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin | stagemanager |
-|---|---|---|---|---|---|---|---|---|
-| `fohNotes` | - | - | ja | - | - | - | - | - |
-| `shows[].note` | - | ja | - | - | - | - | - | - |
-| `shows[].crew` | - | - | ja | - | - | - | - | - |
-| `shows[].photo` | - | - | - | - | - | - | - | - |
-| `memberIds` | - | - | - | - | - | - | - | - |
-| `logo` | - | ja | ja | - | - | - | - | - |
-| `shows[].rider` | - | - | - | - | - | - | ja | ja |
+| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin | stagemanager | dressing |
+|---|---|---|---|---|---|---|---|---|---|
+| `fohNotes` | - | - | ja | - | - | - | - | - | - |
+| `shows[].note` | - | ja | - | - | - | - | - | - | - |
+| `shows[].crew` | - | - | ja | - | - | - | - | - | - |
+| `shows[].photo` | - | - | - | - | - | - | - | - | - |
+| `memberIds` | - | - | - | - | - | - | - | - | - |
+| `logo` | - | ja | ja | - | - | - | - | - | ja |
+| `shows[].rider` | - | - | - | - | - | - | ja | ja | - |
+| `shows[].bgImage` | - | - | - | - | - | - | - | - | ja |
 
 - `-` betekent gestript: `fohNotes` wordt `{}`, `memberIds` wordt `[]` en de rest verdwijnt. `company_id` is altijd `null`.
 - Alles anders blijft in elke modus staan. Het gaat om stages, days, de tijden en vlaggen van shows, `genre`, `booth`, `type`, `priority`, `arrived`, `activeStage`/`activeDay`, `timerMode`, `svModes`, `cue`, `blackout` en `branding` (drie booleans: waar het klantlogo staat). Het tijdmodel, de overlays en de schermen hebben die nodig, en er zit niets persoonlijks of groots in.
 - `shows[].rider` (`{drinks, tech}`, vrije tekst, max. 2000 tekens per veld) is de rider van de artiest: drank/hospitality en technische eisen. Alleen de check-in-balie (`checkin`) en de stagemanager (`stagemanager`, nieuwe modus: `?mode=stagemanager&pid=..&sid=..`) krijgen hem; elke andere modus niet, ook stage, foh en backstage niet. `set_show_arrived` geeft de checkin-weergave terug en houdt de rider dus ook. Een onbekende modus valt op de strengste set (zonder rider). Let op: een database met een oudere versie van dit bestand kent `rider` niet en stript het dus nergens, dan krijgt elke modus de rider mee. Is stap 3 al eerder uitgevoerd, voer hem dan opnieuw uit voordat de rider-feature live gaat (feature/rider-data, 13-10-2026); het is alleen `CREATE OR REPLACE`, dus veilig, ook tijdens een show.
 - De Stage View leest geen van de zeven gestripte velden. Foto's gebruikt alleen het operatorpaneel, `memberIds` alleen de crewkiezer en push. `logo` toont alleen Backstage en FOH (klantlogo linksboven, branch `feature/project-logo`, 13-10-2026); daarom houden `backstage` en `foh` (en de legacy/PHASE B-variant) het veld, alle andere modi niet. Wordt deze stap uitgevoerd met een oudere versie van het bestand (logo overal gestript), dan tonen de deellinks gewoon geen logo; er breekt niets. Een base64-logo (zolang stap 16 niet is uitgevoerd) reist mee in elke backstage/foh-poll; na stap 16 is het een URL van ~120 bytes.
+- `dressing` (kleedkamerscherm, `?mode=dressing&pid=..&shid=<show-id>`, branch `dressing/web`, 19-10-2026) toont de countdown van één artiest over een achtergrondvideo (`shows[].bgVideo`, een YouTube-id van 11 tekens, nergens gestript) of -foto (`shows[].bgImage`), en na de show een bedankscherm met het klantlogo. Daarom houdt `dressing` het `logo` (los van de branding-schakelaars) en als enige modus `shows[].bgImage`: zolang stap 16 niet is uitgevoerd kan dat een base64-foto van een paar honderd kB zijn, en die hoort niet in elke booth-poll. Wordt stap 3 uitgevoerd met een oudere versie van dit bestand, dan valt `dressing` op `strict`: geen logo en geen achtergrondfoto, het scherm toont dan alleen tekst en de video; er breekt niets. Was stap 3 al eerder uitgevoerd, voer hem dan opnieuw uit voordat het kleedkamerscherm live gaat (alleen `CREATE OR REPLACE`, veilig tijdens een show). Controle:
+  ```sql
+  select (public.get_shared_project('<pid>','stage') -> 'data') ? 'logo',
+         (public.get_shared_project('<pid>','dressing') -> 'data') ? 'logo',
+         jsonb_path_exists(public.get_shared_project('<pid>','stage') -> 'data', '$.shows[*].bgImage'),
+         jsonb_path_exists(public.get_shared_project('<pid>','dressing') -> 'data', '$.shows[*].bgImage');
+  -- f, t, f, t (t alleen als het project een logo / een show een achtergrondfoto heeft)
+  ```
 - De matrix staat in de kop van het SQL-bestand. De JS-tweeling `tests/support/share-modes.js` voedt de mock-backend. `share-mode.spec.js` controleert dat de twee gelijk zijn.
 - Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip. Na de logo-wijziging (`keep_logo`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle negen modi (inclusief `strict` en `legacy`) gelijk aan de JS-strip, `logo` alleen in backstage, foh en legacy. Na de rider-wijziging (`keep_rider`, modus `stagemanager`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle acht modi plus `strict`, `legacy`, twee onbekende modi, de 1-argumentvariant en het antwoord van `set_show_arrived` gelijk aan de JS-strip; `rider` alleen in checkin, stagemanager, legacy en het `set_show_arrived`-antwoord; de controlequery uit de kop geeft `f, t, t`.
 

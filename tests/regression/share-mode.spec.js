@@ -260,6 +260,7 @@ test('field matrix in the SQL equals the mock / spec matrix', () => {
   expect(keep('keep_crew')).toEqual([...SHARE_FIELD_MATRIX['shows[].crew']].sort());
   expect(keep('keep_logo')).toEqual([...SHARE_FIELD_MATRIX.logo].sort());
   expect(keep('keep_rider')).toEqual([...SHARE_FIELD_MATRIX['shows[].rider']].sort());
+  expect(keep('keep_bg')).toEqual([...SHARE_FIELD_MATRIX['shows[].bgImage']].sort());
   // Every mode the matrix knows is a known mode in get_shared_project(p_id, p_mode).
   const known = /case when p_mode in \(([^)]*)\)\s+then p_mode else 'strict' end/.exec(sql);
   expect(known, 'known-mode list in get_shared_project').not.toBeNull();
