@@ -85,6 +85,25 @@ test.describe('existing modals', () => {
 });
 
 test.describe('show editor', () => {
+  // Simulator, 2026-10-20: the drawer focused Artist 240 ms after opening,
+  // whatever had focus by then, so a quick tap-and-paste into another field
+  // (a dressing room video link) ended up in the artist name.
+  test('opening focuses Artist, but never steals focus from a field already chosen', async ({ page, st }) => {
+    await openOperator({ page, st });
+    await page.locator('#new-show-btn').click();
+    await expect(page.locator('#drawer')).toHaveClass(/open/);
+    await page.locator('#f-n').focus();
+    await st.advance(400);
+    await expect(page.locator('#f-n')).toBeFocused();
+    await page.keyboard.type('pasted');
+    await expect(page.locator('#f-n')).toHaveValue('pasted');
+    await expect(page.locator('#f-a')).toHaveValue('');
+    await page.evaluate(() => closeDrawer(true));
+    await page.evaluate(() => openDrawer(null));
+    await st.advance(400);
+    await expect(page.locator('#f-a')).toBeFocused();   // nothing chosen: Artist as before
+  });
+
   test('field errors sit next to the field, invalid seconds are not corrected', async ({ page, st, backend }) => {
     await openOperator({ page, st });
     await page.locator('#new-show-btn').click();

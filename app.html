@@ -476,6 +476,7 @@ body.public-mode #smv-close-btn{display:none!important;}
    then a calm thank-you. Share link only; read from 3-4 m on an iPad in
    either orientation, still fits a phone. Everything scoped to #dres. ══ */
 #dres{position:fixed;inset:0;z-index:200;display:none;overflow:hidden;color:#fff;font-family:var(--ff);
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
   background:radial-gradient(120% 90% at 50% 0%,#1b1b2c 0%,#09090f 55%,#030305 100%);}
 #dres.open{display:block;}
 #dres-media{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
@@ -1126,6 +1127,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   padding:calc(env(safe-area-inset-top) + 24px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);}
 #nat-role.open{display:flex;}
 #nat-role .nat-box{width:min(440px,100%);margin:auto;display:flex;flex-direction:column;gap:14px;}
+/* The code step opens the on-screen keyboard. Centred, its field and Continue
+   sat behind it on an iPad in landscape (seen in the simulator): top-align it. */
+#nat-role[data-step="code"] .nat-box{margin-top:0;}
 #nat-role .nat-logo{height:52px;width:auto;align-self:center;object-fit:contain;margin-bottom:6px;}
 #nat-role .nat-step{display:none;flex-direction:column;gap:12px;}
 #nat-role[data-step="choose"] .nat-step[data-for="choose"],#nat-role[data-step="code"] .nat-step[data-for="code"],#nat-role[data-step="stages"] .nat-step[data-for="stages"],#nat-role[data-step="artists"] .nat-step[data-for="artists"]{display:flex;}
@@ -7643,7 +7647,9 @@ function openDrawer(id,booth=null){
   dr.removeAttribute('inert');dr.removeAttribute('aria-hidden');
   dr.classList.add('open');
   document.body.classList.add('drawer-open');
-  setTimeout(()=>document.getElementById('f-a').focus(),240);
+  // After the slide-in, unless a field in the drawer already has focus: a
+  // quick tap-and-paste into another field landed in Artist instead.
+  setTimeout(()=>{if(!dr.contains(document.activeElement))document.getElementById('f-a').focus();},240);
 }
 // ── Show editor: unsaved-changes guard, Escape, focus
 let _drSnap='',_drTrigger=null,_drAutoNote='';
@@ -14373,7 +14379,11 @@ function _natInstallBoothExit(){
     stop();
     if(!e.isPrimary||e.clientX>_NAT_EXIT_PX||e.clientY>_NAT_EXIT_PX||stDialog.isOpen()||document.getElementById('nat-role').classList.contains('open'))return;
     x0=e.clientX;y0=e.clientY;
-    t=setTimeout(()=>{t=null;_natBoothMenu();},_NAT_EXIT_MS);
+    // The hold is also iOS's text-selection gesture (body's unprefixed
+    // user-select:none does not stop WebKit): a selection left behind keeps
+    // its Copy/Look Up callout up and swallows the taps on the menu below
+    // (seen in the simulator). Clear it rather than restyle Stage View.
+    t=setTimeout(()=>{t=null;try{window.getSelection()?.removeAllRanges();}catch(e){console.warn('[native] clearing the selection failed:',e);}_natBoothMenu();},_NAT_EXIT_MS);
   },o);
   document.addEventListener('pointermove',e=>{if(t&&Math.hypot(e.clientX-x0,e.clientY-y0)>24)stop();},o);
   document.addEventListener('pointerup',stop,o);

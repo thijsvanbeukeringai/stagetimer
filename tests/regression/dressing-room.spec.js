@@ -335,6 +335,16 @@ test.describe('layout', () => {
   }
 });
 
+// Simulator, 2026-10-20: the 3 s hold for the native app's hidden exit also
+// started iOS text selection on this screen; its Copy/Look Up callout then
+// swallowed the taps on the exit menu. Nothing on the screen is selectable.
+test('nothing on the screen can be selected (the hidden-exit hold is a long press)', async ({ page, st }) => {
+  await openDres(st, 'm3', '16:00:00.400');
+  await expect(page.locator('#dres')).toHaveClass(/open/);
+  const sel = await page.evaluate(() => [...document.querySelectorAll('#dres, #dres-main *')].map((e) => getComputedStyle(e).webkitUserSelect || getComputedStyle(e).userSelect));
+  expect(new Set(sel)).toEqual(new Set(['none']));
+});
+
 // ── Operator side ─────────────────────────────────────────────────────────
 test.describe('show editor', () => {
   test.use({ stAuth: 'admin' });
