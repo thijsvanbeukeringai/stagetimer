@@ -24,7 +24,8 @@ const AT = ams(FESTIVAL.dates.d1, '16:00');   // DJ O'Neil (note, crew, photo, F
 const RPC = '/rest/v1/rpc/get_shared_project';
 const VER = '/rest/v1/rpc/get_shared_project_version';
 const SID = { stage: S.main, backstage: S.main, foh: S.main, stagemanager: S.main };
-const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci', stagemanager: '#smv' };
+const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci', stagemanager: '#smv', dressing: '#dres' };
+const XQ = { dressing: '&shid=m2' };   // the dressing room link names one show
 // Modes with a screen in this build. A mode the server knows without a screen
 // here is checked on the RPC alone; add it to VIEW together with its screen.
 const VIEW_MODES = SHARE_MODES.filter((m) => VIEW[m]);
@@ -34,7 +35,7 @@ const SQL_FILE = path.join(__dirname, '..', '..', 'supabase', 'migrations', '202
 const reads = (backend) => backend.calls({ method: 'POST', path: RPC });
 const tableReads = (backend) => backend.calls({ method: 'GET', path: '/rest/v1/projects' });
 const variant = (c) => Object.keys(c.body || {}).sort().join(',');
-const open = (st, mode, extra = {}) => st.gotoPublic({ mode, sid: SID[mode], at: AT, paused: true, ...extra });
+const open = (st, mode, extra = {}) => st.gotoPublic({ mode, sid: SID[mode], at: AT, paused: true, extra: XQ[mode] || '', ...extra });
 
 // One second of fake time (one poll), then wait until that poll is applied.
 async function pollStep(page) {

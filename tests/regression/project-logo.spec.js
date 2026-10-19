@@ -277,10 +277,11 @@ test.describe('share links', () => {
     });
   }
 
-  test('only backstage and foh receive the logo from get_shared_project(p_id, p_mode)', async ({ backend }) => {
+  // dressing: the thank-you on the artist's dressing room screen (dressing-room.spec.js).
+  test('only backstage, foh and dressing receive the logo from get_shared_project(p_id, p_mode)', async ({ backend }) => {
     for (const mode of [...SHARE_MODES, 'nope']) {
       const r = await backend._rpc('get_shared_project', { p_id: PID, p_mode: mode });
-      expect('logo' in r.json.data, mode).toBe(mode === 'backstage' || mode === 'foh');
+      expect('logo' in r.json.data, mode).toBe(['backstage', 'foh', 'dressing'].includes(mode));
     }
   });
 
