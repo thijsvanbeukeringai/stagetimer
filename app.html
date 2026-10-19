@@ -13923,9 +13923,11 @@ function natBoothOpen(pid,sid){
 // booth (link or code), but the device is tied to a show instead of a stage.
 // The screen itself is the ?mode=dressing share link (#dres); this only
 // picks the show and remembers it.
-// Shows an artist can be picked for: what the share link may list (never
-// hidden shows). Cancelled shows stay pickable and are labelled.
-const _natDressingShows=data=>(data&&Array.isArray(data.shows)?data.shows:[]).filter(s=>s&&s.id&&showAllowed(s,'list',true));
+// Shows an artist can be picked for: every show, hidden ones included. A
+// dressing link names one show and is that artist's private screen; secret
+// acts (hidden from public screens) are exactly the ones that need it, and
+// #dres shows a hidden show on its own link. Hidden and cancelled are labelled.
+const _natDressingShows=data=>(data&&Array.isArray(data.shows)?data.shows:[]).filter(s=>s&&s.id);
 function _natDressingSetUp(code,proj){
   const shows=_natDressingShows(proj.data);
   if(!shows.length){_natErr('This project has no shows yet. Ask the operator to add the artist\'s show, then try again.');return;}
@@ -13949,7 +13951,7 @@ function _natArtistPicker(pid,name,data,current){
   const known=new Set(days.map(d=>d.id));
   const row=s=>{
     const cur=s.id===current;
-    const meta=[stages.get(s.stage),String(s.start||'').slice(0,5),s.cancelled?'Cancelled':''].filter(Boolean).join(' · ');
+    const meta=[stages.get(s.stage),String(s.start||'').slice(0,5),s.cancelled?'Cancelled':'',s.hidden?'Hidden from public screens':''].filter(Boolean).join(' · ');
     return`<button class="nat-opt nat-artist" type="button"${cur?' aria-current="true"':''} onclick="natDressingOpen(${_jsArg(pid)},${_jsArg(s.id)})"><span class="nat-opt-t">${escH(s.artist||'Artist')}</span>${meta?`<span class="nat-opt-d">${escH(meta)}</span>`:''}${cur?'<span class="nat-opt-d">On this screen now</span>':''}</button>`;
   };
   const html=groups.map(g=>{

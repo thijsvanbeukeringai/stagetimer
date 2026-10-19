@@ -46,7 +46,7 @@ async function hold(page, st, x, y, ms) {
   await page.mouse.up();
 }
 
-const FRIDAY = ['Opening Act', "DJ O'Neil", 'Tent Band (legacy)', 'The <b>html</b> & "Quotes" Band', 'Headliner Priority',
+const FRIDAY = ['Opening Act', 'Hidden Guest', "DJ O'Neil", 'Tent Band (legacy)', 'The <b>html</b> & "Quotes" Band', 'Headliner Priority',
   'Club Opener', 'Cancelled Act', 'Late Tent', 'Night Owl', 'After Midnight'];
 const SATURDAY = ['Day Two Opener', 'Tent Saturday', 'Saturday Headliner', 'Club Closing'];
 
@@ -72,11 +72,14 @@ test('native: Dressing room with a project code shows the artists by day (today 
   const picker = page.locator('#nat-role');
   await expect(picker.getByRole('heading', { name: 'Pick an artist' })).toBeVisible();
   await expect(picker.locator('#nat-artists-proj')).toHaveText('Zomerfeest 2026');
-  // Friday is today (16:00 on day 1); hidden shows are never offered; festival-night order.
+  // Friday is today (16:00 on day 1); hidden shows are offered too (a secret act's
+  // private screen), labelled like cancelled ones; festival-night order.
   await expect(picker.locator('.nat-day')).toHaveText(['Vrijdag · Fri 10 Jul · Today', 'Zaterdag · Sat 11 Jul']);
   await expect(picker.locator('.nat-artist .nat-opt-t')).toHaveText([...FRIDAY, ...SATURDAY]);
   await expect(picker.locator('.nat-artist').filter({ hasText: 'Cancelled Act' })).toContainText('Main Stage · 21:00 · Cancelled');
   await expect(picker.locator('.nat-artist').filter({ hasText: 'After Midnight' })).toContainText('Club Stage · 00:30');
+  await expect(picker.locator('.nat-artist').filter({ hasText: 'Hidden Guest' })).toContainText('The Tent · 15:00 · Hidden from public screens');
+  await expect(picker.locator('.nat-artist').filter({ hasText: 'Hidden from public screens' })).toHaveCount(1);
   expect(await page.evaluate(() => window.__xss)).toBeUndefined();
   // The set-up read the project like the dressing share link will: anon key, dressing mode.
   const setup = backend.calls({ method: 'POST', path: '/rest/v1/rpc/get_shared_project' })[0];
