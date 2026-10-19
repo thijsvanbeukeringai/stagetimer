@@ -472,12 +472,13 @@ Besloten door Thijs op 14-10-2026. Branch `feature/native-ios`.
    - Universal Links (`/.well-known/apple-app-site-association`).
 4. **Live Activity:** de countdown van de huidige show op het vergrendelscherm en in het Dynamic Island. Updates via de server (push-to-start) volgen later.
 5. **Eerste start:** kiezen tussen "Booth screen" en "Crew & control". De boothmodus vervangt de iPad-app (deellink of code, offline cache). Eerst inventariseren wat de oude app doet.
-6. **Testen:**
+6. **Kleedkamerscherm** (goedgekeurd door Thijs): derde keuze "Dressing room screen". Zelfde instelling als de booth (deellink of code), daarna een artiestkiezer per festivaldag (vandaag eerst). Het toestel opent daarna altijd `?mode=dressing&pid&shid`: de countdown naar die ene show over de eigen video (https-MP4 van de klant, gedempt en herhalend) of foto van de artiest (het webscherm `#dres` is een apart onderdeel). Offline kopie en verborgen uitgang zoals bij de booth (*Change artist* / *Switch to Crew & control*); crew-toestellen krijgen "Use this device as a dressing room screen". Native config hoeft niet te veranderen: Capacitor 8.5.3 staat inline afspelen en autoplay zonder tik al toe. De video wordt gestreamd, niet offline bewaard; zonder netwerk valt het scherm terug op foto of donkere achtergrond en loopt de countdown door. Alleen in de simulator met netwerk te controleren (zie `native/README.md`).
+7. **Testen:**
    - regressietest native mode in WebKit;
    - lokale nep-backend-server voor de simulator;
    - rooktest in de iPhone-simulator;
    - `npm test` en de booth-suite groen.
-7. **TestFlight:** privacylabels en review-notities. Indienen doet Thijs.
+8. **TestFlight:** privacylabels en review-notities. Indienen doet Thijs.
 
 ### Actie voor Thijs
 - Een APNs-sleutel (.p8) in OneSignal zetten. De bestaande sleutels gelden voor het hele team; een nieuwe mag ook.
