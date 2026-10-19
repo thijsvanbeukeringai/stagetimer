@@ -37,7 +37,8 @@ Elke view behalve de bediening is ook beschikbaar als **deellink** zonder login.
 - **Cues en blackout** naar een gekozen podium; **losse timers** (one-off) met hetzelfde middernachtmodel als shows.
 - **Bericht naar booth** (telefoon-eerst sheet, knop *Message booth* / *Booth*): podium of alle podia, presets, vrije tekst (max. 40 tekens), duur, wissen en blackout, met **ontvangstbevestiging** ("Delivered to 1 of 1 Main Stage screen · seen 22:41:05") en het aantal boothschermen online. Zie *Booth link*.
 - **Push-meldingen** voor crew via de edge function `send-push` (zie *Tech stack*).
-- **Wake lock** op FOH, Backstage, Stage View, Tijdlijn, Overzicht en Control Wall, zodat monitoren niet op zwart gaan.
+- **Kleedkamerscherm** per artiest (deellink `mode=dressing`): een grote countdown naar de show over een eigen achtergrondvideo of -foto, tijdens de show de resterende settijd, daarna een bedankscherm met het klantlogo. Zie *Kleedkamerscherm* hieronder.
+- **Wake lock** op FOH, Backstage, Stage View, Tijdlijn, Overzicht, Control Wall, Stage manager en het kleedkamerscherm, zodat monitoren niet op zwart gaan.
 - **Offline opstarten**: de app-shell (HTML, supabase-js, fonts, iconen) staat in de service-worker-cache. Een opgeslagen login blijft geldig als de auth-server even onbereikbaar is.
 - **Toegankelijke dialogen**: één dialoogcomponent (`stDialog`) met focus trap, Escape en focus-terugkeer, in plaats van `alert()`/`confirm()`/`prompt()`.
 
@@ -65,7 +66,8 @@ Alles van één project leeft in één rij in de tabel `projects`, als JSONB in 
   "shows":   [ { "id", "stage", "day", "artist",
                  "start", "end",                     // "HH:MM:SS", festivaltijd
                  "date", "startsAt", "endsAt", "endsNextDay",   // ISO-model, festivaltijd zonder zone
-                 "booth", "genre", "type", "note", "photo", "crew",
+                 "booth", "genre", "type", "note", "photo", "crew", "rider",
+                 "bgVideo", "bgImage",                // kleedkamerscherm, optioneel
                  "cancelled", "priority", "hidden", "arrived", "arrivedAt" } ],
   "fohNotes":  { "<showId>": [ ... ] },
   "memberIds": [ ... ],
@@ -82,6 +84,7 @@ Alles van één project leeft in één rij in de tabel `projects`, als JSONB in 
 - Een show hoort via `day` bij een day-object. Het tijdstip volgt uit `startsAt`/`endsAt`, anders uit `date` (of de datum van de dag) plus `start`/`end`, anders (oude projecten zonder datums) uit de 07:00-regel. Een einde op of vóór de start valt op de volgende dag.
 - **Foto's (`show.photo`) en logo (`logo`)**: een `data:`-URL (base64, oud en terugval) **of** de publieke URL van een object in de Storage-bucket `project-media`: `https://<ref>.supabase.co/storage/v1/object/public/project-media/<pid>/<32 hex>.jpg`. Beide zijn gewoon een `<img src>`, dus elke weergave en elke oudere client werkt met allebei. Een nieuwe foto gaat na het verkleinen naar Storage (`_uploadMedia`, met het JWT van de gebruiker). Mislukt dat (bucket bestaat nog niet, offline, geen recht, deellink, uitgelogd), dan blijft de foto base64 in de blob, precies zoals vroeger. Bestaande base64-foto's van het open project verhuist de app op de achtergrond, drie per 20 s (`movePhotosToStorage`). Een vervangen of weggehaalde foto wordt na een geslaagde save uit de bucket verwijderd, behalve als een andere show hem nog gebruikt. Shows of projecten verwijderen laat de foto's staan, zodat herstellen uit de historie blijft werken. De bucket komt uit migratie `20261013150000_photo_storage.sql` (stap 16 in `docs/MIGRATIES.md`).
 - **Projectlogo (`logo` + `branding`)**: de eigenaar uploadt het per project via het logo-icoon in de dashboardrij of Project settings → Project logo. Het staat linksboven op Backstage (standaard aan) en, als dat aan staat, op FOH, in de app en op de backstage/foh-deellinks; het stagetimer.nl-merk blijft in dezelfde header staan. Stage View, Wall en de andere schermen tonen het nooit. Alleen een `data:image/(png|jpeg|webp|gif)`-URL of een URL uit de eigen bucket `project-media` wordt getoond (`_safeLogoSrc`). Een donker logo op een transparante achtergrond krijgt bij upload automatisch een witte plaat (`logoBackdrop`, uit te zetten). Een logo uit de tijd dat logo's niet getoond werden (geen `branding`) blijft verborgen tot de eigenaar het aanzet.
+- **Kleedkamerscherm (`show.bgVideo`, `show.bgImage`)**: `bgVideo` is een https-link naar een eigen videobestand van de klant (MP4, max. 2000 tekens, gecontroleerd door `_safeVideoSrc`); de video zelf staat nooit in de blob en ook niet in de bucket. `bgImage` is een achtergrondfoto en gaat door dezelfde verklein- en uploadroute als `show.photo` (Storage-URL, of base64 zolang de bucket ontbreekt). Beide sleutels ontbreken als ze leeg zijn. Geen YouTube: de voorwaarden van YouTube verbieden iets over de speler heen, en embeds werken niet in de iOS-app.
 - **`_rev`**: elke save zet een door de client gegenereerde revisie. Daarmee herkent een tabblad zijn eigen realtime-echo's. Oude clients nemen de sleutel gewoon mee.
 - **Selecties per apparaat**: `activeStage`, `activeDay` en `timerMode` staan per project in `localStorage` onder `st_sel_<pid>`. De velden in de blob blijven voor compatibiliteit. `activeDay` wordt alleen nog naar de blob geschreven als dat geen monitor van een live dag kan trekken (geen dag gedateerd op vandaag, of de operator kiest de dag van vandaag). `activeStage` en `timerMode` worden niet meer geschreven.
 - **Companies**: de client leest een expliciete kolomlijst (`COMPANY_COLS`), nooit `select=*` en nooit `setup_token`. "Awaiting activation" komt uit de afgeleide kolom `setup_pending`. Bestaat die kolom nog niet (migratie niet toegepast), dan leest de app zonder die kolom verder.
@@ -124,12 +127,18 @@ Overige `localStorage`-sleutels: `st_app_v1` (offline kopie van projecten, compa
 - `/app?mode=stage&pid=<projectId>&sid=<stageId>`: Stage View
 - `/app?mode=backstage&pid=<projectId>&sid=<stageId>`: backstage
 - `/app?mode=foh&pid=<projectId>&sid=<stageId>`: FOH
+- `/app?mode=stagemanager&pid=<projectId>&sid=<stageId>`: stage manager (mag aankomsten opslaan)
+- `/app?mode=dressing&pid=<projectId>&shid=<showId>`: kleedkamerscherm van één artiest
 - `/app?signup=success&cid=…&t=…`: afronden van een signup na betaling
 - `/festival-dashboard.html`: redirect naar `/app` (het oude bestand is weg)
 
 Deellinks laden het project via de RPC `get_shared_project(p_id)`, altijd met de anon-key (nooit met een verlopen JWT van een eerder ingelogd apparaat). Bestaat de RPC nog niet (404 / `PGRST202`), dan leest de app de rij direct uit `projects`, zoals productie dat nu doet, en onthoudt dat voor de sessie. Al bestaande deellinks blijven dus werken, voor en na de migratie.
 
 Een deellink pollt één keer per seconde, één verzoek tegelijk, en rendert alleen opnieuw als de data of de tijdsafhankelijke toestand verandert. Het scherm kiest zelf zijn dag (de festivaldag van vandaag) en podium (`sid`). Deellinks slaan nooit de blob op; check-in schrijft via de RPC `set_show_arrived`, met een terugval naar lezen-wijzigen-schrijven zolang die RPC ontbreekt.
+
+### Kleedkamerscherm
+
+`?mode=dressing&pid=<projectId>&shid=<showId>` (sectie `// ══ DRESSING ROOM`, root `#dres`) staat op een iPad of tv in de kleedkamer van één artiest. Vóór de show: artiestnaam, "Friday · Main Stage · 21:30", *Showtime in* en een grote countdown (meer dan een dag: "N days"); tijdens de show *On stage now* met de resterende settijd; daarna een rustig bedankscherm: het klantlogo (altijd, los van de branding-schakelaars van Backstage/FOH; witte plaat als `logoBackdrop` aan staat), "Thank you so much for the amazing show!", de artiest en "— Thanks from the artist team". De tijd komt uit het rooster (`_showIv` + `nowMs()`); een handmatige timer bestaat alleen in het tabblad van de operator en wordt nooit gesynct. Achtergrond: de video (`<video muted loop playsinline autoplay>`, `src` alleen opnieuw gezet als `bgVideo` verandert), anders de foto, anders donker; een video die niet afspeelt of 15 s stokt valt terug op de foto. Na de show stopt de video en ligt de foto gedimd achter de tekst. Een verborgen show heeft gewoon zijn kleedkamerscherm (de link noemt de show), een geannuleerde show toont een neutrale melding, een verwijderde show "This artist is no longer in the schedule…". Niets op het scherm is aanklikbaar; de native app gebruikt 3 s vasthouden linksboven als verborgen uitgang. De links staan per podium (ingeklapt, per dag) in het deeldialoog en per show in de showeditor. Server: `get_shared_project(p_id,'dressing')` houdt `logo` en `shows[].bgImage` (stap 3 in `docs/MIGRATIES.md`); vóór die migratie werkt het scherm op de volledige legacy-feed.
 
 ## Opslaan en sync
 

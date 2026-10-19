@@ -145,6 +145,19 @@ test.describe('states', () => {
     await expect(page.locator('#loader')).toHaveText('Project not found.');
   });
 
+  test('kiosk: keeps the screen awake (re-acquired after the tab returns), no pinch-zoom', async ({ page, st }) => {
+    await page.addInitScript(() => {
+      window.__wl = [];
+      const make = () => { const ls = []; return { addEventListener: (t, f) => { if (t === 'release') ls.push(f); }, release: async () => {}, _fire() { ls.forEach((f) => f()); } }; };
+      Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: async (type) => { const s = make(); window.__wl.push({ type, s }); return s; } } });
+    });
+    await openDres(st, 'm3', '16:00:00.400');
+    await expect.poll(() => page.evaluate(() => window.__wl.map((x) => x.type))).toEqual(['screen']);
+    await page.evaluate(() => { window.__wl[0].s._fire(); document.dispatchEvent(new Event('visibilitychange')); });
+    await expect.poll(() => page.evaluate(() => window.__wl.length)).toBe(2);
+    await expect(page.locator('meta[name=viewport]')).toHaveAttribute('content', /maximum-scale=1\.0, user-scalable=no/);
+  });
+
   test('nothing to tap; the top-left corner is free for the native hidden exit', async ({ page, st }) => {
     await page.setViewportSize({ width: 1024, height: 768 });
     await openDres(st, 'm3', '16:00:00.400');
