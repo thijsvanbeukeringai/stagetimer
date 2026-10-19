@@ -3103,6 +3103,25 @@ const escH=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,
 // Allow only literal hex / plain keywords so a crafted value cannot close the
 // attribute or smuggle extra declarations.
 const safeColor=(c,fb)=>(/^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/.test(String(c||''))?String(c):fb);
+// A YouTube video id from whatever an operator pastes: a watch / share /
+// shorts / embed / live link (www., m., music. or youtube-nocookie.com) or
+// the bare 11-character id. '' when it is none of those. Only the id is ever
+// stored (show.bgVideo), so a pasted link can never put its own URL, host or
+// parameters into the dressing room iframe.
+function ytIdOf(raw){
+  const ok=/^[A-Za-z0-9_-]{11}$/,v=String(raw==null?'':raw).trim();
+  if(ok.test(v))return v;
+  let u;try{u=new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(v)?v:'https://'+v);}catch(e){return'';}
+  if(!/^https?:$/.test(u.protocol))return'';
+  const h=u.hostname.toLowerCase().replace(/^(www|m|music)\./,''),seg=u.pathname.split('/').filter(Boolean);
+  let id='';
+  if(h==='youtu.be')id=seg[0]||'';
+  else if(h==='youtube.com'||h==='youtube-nocookie.com'){
+    if(seg[0]==='watch')id=u.searchParams.get('v')||'';
+    else if(['shorts','embed','live','v'].includes(seg[0]))id=seg[1]||'';
+  }
+  return ok.test(id)?id:'';
+}
 function fmtDateLabel(d){try{const dt=new Date(d+'T12:00:00');return['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()]+' '+dt.getDate()+'/'+String(dt.getMonth()+1);}catch{return d;}}
 
 // tColor: green > 10min, orange 5-10min, red < 5min
