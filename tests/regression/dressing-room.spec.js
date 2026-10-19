@@ -345,6 +345,30 @@ test('nothing on the screen can be selected (the hidden-exit hold is a long pres
   expect(new Set(sel)).toEqual(new Set(['none']));
 });
 
+// ── Thank-you wording per festival (data.dressing) ─────────────────────────
+// Owner request 2026-10-20: the thank-you text is set per festival, e.g. for
+// AMF in the Johan Cruijff ArenA. Empty = the defaults.
+test.describe('thank-you wording per festival', () => {
+  test.use({ stSeed: seedWith((d) => { d.logo = LOGO; d.dressing = { thanks: 'Thank you for an <b>unforgettable</b> night at AMF!', signature: '— With love from the AMF artist team' }; }) });
+  test('the screen uses the project\'s words, escaped, without a double dash', async ({ page, st }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openDres(st, 'm3', '18:20:00.400');
+    await expect(page.locator('#dres')).toHaveAttribute('data-state', 'after');
+    await expect(main(page).locator('.dres-ty')).toHaveText('Thank you for an <b>unforgettable</b> night at AMF!');
+    await expect(main(page).locator('b')).toHaveCount(0);
+    await expect(main(page).locator('.dres-sig')).toHaveText('— With love from the AMF artist team');
+    await shot(page, 'custom-thank-you.png');
+  });
+});
+test('thank-you wording: blank or odd stored values fall back to the defaults', async ({ page, st }) => {
+  const r = await (async () => { await openDres(st, 'm3', '18:20:00.400'); return page.evaluate(() => [_dresTexts({}), _dresTexts({ dressing: { thanks: '   ', signature: '—' } }), _dresTexts({ dressing: [] }), _dresTexts({ dressing: { thanks: 42, signature: 'x'.repeat(300) } })]); })();
+  const def = { thanks: 'Thank you so much for the amazing show!', signature: 'Thanks from the artist team' };
+  expect(r[0]).toEqual(def);
+  expect(r[1]).toEqual(def);
+  expect(r[2]).toEqual(def);
+  expect(r[3]).toEqual({ thanks: def.thanks, signature: 'x'.repeat(160) });
+});
+
 // ── Operator side ─────────────────────────────────────────────────────────
 test.describe('show editor', () => {
   test.use({ stAuth: 'admin' });
@@ -355,6 +379,27 @@ test.describe('show editor', () => {
     await page.evaluate((x) => openDrawer(x), id);
     await page.locator('#drawer.open').waitFor();
   }
+
+  test('project menu: thank-you wording saved per festival, prefilled, cleared = defaults', async ({ page, st, backend }) => {
+    await st.gotoApp({ at: at('16:00') });
+    await st.openProject();
+    await expect(page.locator('.dd-item[onclick*="openDressingSettings"]')).toHaveCount(1);
+    await page.evaluate(() => { openDressingSettings(APP.activeProjectId); });
+    const d = page.locator('.st-dlg[role="dialog"]');
+    await expect(d).toBeVisible();
+    await expect(d.getByLabel('Thank-you message')).toHaveAttribute('placeholder', 'Thank you so much for the amazing show!');
+    await d.getByLabel('Thank-you message').fill('Thank you for an unforgettable night at AMF!');
+    await d.getByLabel('Signed by').fill('— With love from the AMF artist team');
+    await d.getByRole('button', { name: 'Save' }).click();
+    await expect(d).toHaveCount(0);
+    await expect.poll(() => backend.project(PID).data.dressing).toEqual({ thanks: 'Thank you for an unforgettable night at AMF!', signature: 'With love from the AMF artist team' });
+    await page.evaluate(() => { openDressingSettings(APP.activeProjectId); });
+    await expect(d.getByLabel('Thank-you message')).toHaveValue('Thank you for an unforgettable night at AMF!');
+    await d.getByLabel('Thank-you message').fill('');
+    await d.getByLabel('Signed by').fill('');
+    await d.getByRole('button', { name: 'Save' }).click();
+    await expect.poll(() => 'dressing' in backend.project(PID).data).toBe(false);
+  });
 
   test('video link: checked while typing, saved as show.bgVideo, cleared = key removed', async ({ page, st, backend }) => {
     await openEditor(page, st, 'm3');

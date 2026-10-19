@@ -5188,6 +5188,10 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
           Project logo
         </button>
+        <button class="dd-item" onclick="closeAllDD();openDressingSettings(APP.activeProjectId)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+          Dressing room screen
+        </button>
         <button class="dd-item" onclick="closeAllDD();openJSONModal()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Import lineup
@@ -12934,6 +12938,38 @@ function _dresTickText(s,state,n){
   if(a&&a.textContent!==cd)a.textContent=cd;
   if(b&&b.textContent!==sub)b.textContent=sub;
 }
+// Thank-you wording per festival: data.dressing {thanks, signature}, set in
+// the project menu (Dressing room screen). Empty or missing = the defaults,
+// so projects from before this setting read as they always did. The screen
+// adds the dash before the signature; a typed leading dash is dropped so it
+// never reads "— — ".
+const DRES_TY_DEFAULT={thanks:'Thank you so much for the amazing show!',signature:'Thanks from the artist team'},DRES_TY_MAX=160;
+function _dresTexts(d){
+  const o=d&&d.dressing&&typeof d.dressing==='object'&&!Array.isArray(d.dressing)?d.dressing:{};
+  const pick=(v,def,dash)=>{let t=typeof v==='string'?v.trim().slice(0,DRES_TY_MAX):'';if(dash)t=t.replace(/^[-–—]+\s*/,'');return t||def;};
+  return{thanks:pick(o.thanks,DRES_TY_DEFAULT.thanks),signature:pick(o.signature,DRES_TY_DEFAULT.signature,true)};
+}
+async function openDressingSettings(pid){
+  if(window.PUBLIC_MODE||!pid)return;
+  const proj=APP.projects.find(p=>p.id===pid);if(!proj)return;
+  const cur=(_logoDataOf(pid)||{}).dressing||{};
+  const res=await stDialog.form({
+    title:'Dressing room screen',
+    message:'After the show, the dressing room screen thanks the artist with your logo and these words. Leave a field empty for the default.',
+    fields:[
+      {name:'thanks',label:'Thank-you message',value:typeof cur.thanks==='string'?cur.thanks:'',placeholder:DRES_TY_DEFAULT.thanks,maxlength:DRES_TY_MAX,autocomplete:'off'},
+      {name:'signature',label:'Signed by',value:typeof cur.signature==='string'?cur.signature:'',placeholder:DRES_TY_DEFAULT.signature,maxlength:DRES_TY_MAX,autocomplete:'off',help:'Shown under the artist name, after a dash.'},
+    ],
+    submitLabel:'Save',
+  });
+  if(!res)return;
+  const next={};
+  if(res.thanks)next.thanks=res.thanks.slice(0,DRES_TY_MAX);
+  if(res.signature)next.signature=res.signature.replace(/^[-–—]+\s*/,'').slice(0,DRES_TY_MAX);
+  for(const d of _logoTargets(pid,proj)){if(Object.keys(next).length)d.dressing=next;else delete d.dressing;}
+  _saveProjectById(pid);
+}
+window.openDressingSettings=openDressingSettings;
 function renderDres(){
   const root=document.getElementById('dres');if(!root||!root.classList.contains('open')||!G)return;
   const n=nowMs(),s=_dresShow(),state=_dresState(s,n);
@@ -12941,14 +12977,14 @@ function renderDres(){
   _dresBg(s,state);
   // The logo shows here whatever data.branding says for Backstage / FOH: this
   // is the customer's own thank-you to the artist.
-  const logo=state==='after'?_safeLogoSrc(G.logo):'',plate=!!logo&&_brandingOf(G).logoBackdrop;
+  const logo=state==='after'?_safeLogoSrc(G.logo):'',plate=!!logo&&_brandingOf(G).logoBackdrop,ty=_dresTexts(G);
   const main=document.getElementById('dres-main');
-  if(vwSame(main,JSON.stringify([state,s&&s.artist,s&&_dresMeta(s),logo,plate]))){_dresTickText(s,state,n);return;}
+  if(vwSame(main,JSON.stringify([state,s&&s.artist,s&&_dresMeta(s),logo,plate,ty]))){_dresTickText(s,state,n);return;}
   root.dataset.state=state;
   const artist=escH((s&&s.artist)||'');
   if(state==='missing')main.innerHTML='<div class="dres-note">This artist is no longer in the schedule. Ask the production team for a new link.</div>';
   else if(state==='cancelled')main.innerHTML=`<div class="dres-artist">${artist}</div><div class="dres-note">This show has been cancelled. Ask the production team for details.</div>`;
-  else if(state==='after')main.innerHTML=`${logo?`<img class="dres-logo${plate?' dres-plate':''}" alt="">`:''}<div class="dres-ty">Thank you so much for the amazing show!</div><div class="dres-artist dres-artist-ty">${artist}</div><div class="dres-sig">— Thanks from the artist team</div>`;
+  else if(state==='after')main.innerHTML=`${logo?`<img class="dres-logo${plate?' dres-plate':''}" alt="">`:''}<div class="dres-ty">${escH(ty.thanks)}</div><div class="dres-artist dres-artist-ty">${artist}</div><div class="dres-sig">— ${escH(ty.signature)}</div>`;
   else main.innerHTML=`<div class="dres-artist">${artist||'(no name)'}</div><div class="dres-meta">${escH(_dresMeta(s))}</div>`
     +(state==='tba'?'<div class="dres-lbl">Showtime to be announced</div>':`<div class="dres-lbl">${state==='live'?'On stage now':'Showtime in'}</div><div class="dres-cd"></div><div class="dres-sub"></div>`);
   const li=main.querySelector('.dres-logo');
