@@ -4994,7 +4994,7 @@ function renderTbar(){
     <section class="nat-step" data-for="choose">
       <h1 class="nat-title" id="nat-t-choose" tabindex="-1">How will this device be used?</h1>
       <button class="nat-opt" type="button" id="nat-opt-booth" onclick="natChooseRole('booth')"><span class="nat-opt-t">Booth screen</span><span class="nat-opt-d">Shows one stage's countdown. No login needed.</span></button>
-      <button class="nat-opt" type="button" id="nat-opt-dressing" onclick="natChooseRole('dressing')"><span class="nat-opt-t">Dressing room screen</span><span class="nat-opt-d">Counts down to one artist's show, over their video. No login needed.</span></button>
+      <button class="nat-opt" type="button" id="nat-opt-dressing" onclick="natChooseRole('dressing')"><span class="nat-opt-t">Dressing room screen</span><span class="nat-opt-d">Counts down to one artist's show, over their own video or photo. No login needed.</span></button>
       <button class="nat-opt" type="button" id="nat-opt-crew" onclick="natChooseRole('crew')"><span class="nat-opt-t">Crew &amp; control</span><span class="nat-opt-d">Log in to run the show, message the booth and get alerts.</span></button>
     </section>
     <section class="nat-step" data-for="code">
@@ -10603,7 +10603,7 @@ function renderProfilePage(){
       <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
         <div>
           <div style="font-size:13px;font-weight:600;color:#0A0A0B;">Use this device as a dressing room screen</div>
-          <div style="font-size:12px;color:#52525B;margin-top:3px;">It counts down to one artist's show, over their video, without a login. You are logged out on this device.</div>
+          <div style="font-size:12px;color:#52525B;margin-top:3px;">It counts down to one artist's show, over their own video or photo, without a login. You are logged out on this device.</div>
         </div>
         <button class="ws-btn-secondary" onclick="natUseAsDressing()">Use as dressing room screen</button>
       </div>
@@ -13919,7 +13919,7 @@ function natBoothOpen(pid,sid){
   location.replace(_natStageUrl(pid,sid));
 }
 // ── Dressing room screen (BOUWPLAN fase 6 step 6): one artist's countdown
-// over their video, on a device in the dressing room. Same set-up as the
+// over their own video or photo, on a device in the dressing room. Same set-up as the
 // booth (link or code), but the device is tied to a show instead of a stage.
 // The screen itself is the ?mode=dressing share link (#dres); this only
 // picks the show and remembers it.
@@ -13972,7 +13972,7 @@ function natDressingOpen(pid,shid){
 // booth below: a dressing room is even less supervised than a booth.
 async function natUseAsDressing(){
   if(!IS_NATIVE)return;
-  const ok=await stDialog.confirm('This device will count down to one artist\'s show, over their video, without a login, and you are logged out here. To leave the dressing room screen later, hold the top-left corner of the screen for 3 seconds.',{title:'Use as dressing room screen?',okLabel:'Use as dressing room screen'});
+  const ok=await stDialog.confirm('This device will count down to one artist\'s show, over their own video or photo, without a login, and you are logged out here. To leave the dressing room screen later, hold the top-left corner of the screen for 3 seconds.',{title:'Use as dressing room screen?',okLabel:'Use as dressing room screen'});
   if(!ok)return;
   _natSetRole({role:'dressing'});
   doLogout();
@@ -13992,8 +13992,9 @@ async function natUseAsBooth(){
 // cached the POST RPCs on the web either). Photos are dropped (neither screen
 // shows them, every renderer accepts a show without a photo), and so is the
 // logo on a booth (Stage View has none); the dressing room screen shows the
-// logo after the show, so there it stays, like bgImage / bgVideo, unless it is
-// a big inline data: URL. A project that is still too big is not kept rather
+// logo after the show, so there it stays, like the bgImage / bgVideo URLs
+// (the video itself is streamed, never kept), unless it is a big inline
+// data: URL. A project that is still too big is not kept rather
 // than filling the storage the role lives in.
 const _NAT_CACHE_MAX=1500000;
 const _natBoothCaching=()=>{
@@ -14024,7 +14025,7 @@ function _natBoothCacheGet(pid){
 // right and hidden), a second finger or a drag cancels it, and iOS's own edge
 // gestures are swipes, not holds. Listeners only: no element, no style, so
 // Stage View stays pixel-identical. Opens a choice dialog. The dressing room screen
-// uses the same gesture; it keeps that corner free of its video for it.
+// uses the same gesture; it keeps that corner free for it.
 const _NAT_EXIT_MS=3000,_NAT_EXIT_PX=120;
 function _natInstallBoothExit(){
   let t=null,x0=0,y0=0;

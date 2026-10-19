@@ -55,7 +55,7 @@ test('native: the chooser offers Booth, Dressing room and Crew & control', async
   await launch(page, st);
   const chooser = page.locator('#nat-role');
   await expect(chooser.locator('.nat-step[data-for="choose"] .nat-opt .nat-opt-t')).toHaveText(['Booth screen', 'Dressing room screen', 'Crew & control']);
-  await expect(chooser.getByRole('button', { name: /^Dressing room screen/ })).toContainText("Counts down to one artist's show, over their video. No login needed.");
+  await expect(chooser.getByRole('button', { name: /^Dressing room screen/ })).toContainText("Counts down to one artist's show, over their own video or photo. No login needed.");
   expect(await role(page)).toBeNull();
 });
 
@@ -200,10 +200,11 @@ test('native: hidden exit on a dressing room screen: Change artist and Switch to
 
 test.describe('dressing room copy for an offline cold start', () => {
   // Full blob on the feed (legacy backend), so the logo, photos and
-  // backgrounds really reach the page.
+  // backgrounds really reach the page. bgVideo is the customer's own MP4 URL:
+  // only the URL is kept, the video is streamed.
   const LOGO = 'https://bamjpsquhdzxvsymldpq.supabase.co/storage/v1/object/public/project-media/proj-fest/logo.png';
   const BG = 'https://bamjpsquhdzxvsymldpq.supabase.co/storage/v1/object/public/project-media/proj-fest/bg-m8.jpg';
-  const VIDEO = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+  const VIDEO = 'https://bamjpsquhdzxvsymldpq.supabase.co/storage/v1/object/public/project-media/proj-fest/bg-m8.mp4';
   test.use({ stSeed: { mutate(seed) {
     const d = seed.projects[0].data;
     d.logo = LOGO;
