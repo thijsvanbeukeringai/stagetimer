@@ -266,7 +266,7 @@ test.describe('logged in', () => {
   test('native: "Use this device as a booth screen" logs out and opens the booth set-up', async ({ page, st }) => {
     await goNative(page);
     await st.gotoApp({ at: AT });
-    expect(await page.evaluate(() => [...document.querySelectorAll('[data-nat-only]')].map((el) => el.style.display))).toEqual(['', '']);
+    expect(await page.evaluate(() => [...document.querySelectorAll('[data-nat-only]')].map((el) => el.style.display))).toEqual(['', '', '', '']);
     await page.getByRole('button', { name: 'Account settings' }).first().click();
     await page.getByRole('button', { name: 'Use as booth screen' }).click();
     const dlg = page.locator('.st-dlg');
@@ -283,7 +283,7 @@ test.describe('logged in', () => {
 
   test('web: no booth item in the menus or account page, no role stored, no status bar calls', async ({ page, st }) => {
     await st.gotoApp({ at: AT });
-    expect(await page.evaluate(() => [...document.querySelectorAll('[data-nat-only]')].map((el) => getComputedStyle(el).display))).toEqual(['none', 'none']);
+    expect(await page.evaluate(() => [...document.querySelectorAll('[data-nat-only]')].map((el) => getComputedStyle(el).display))).toEqual(['none', 'none', 'none', 'none']);
     await page.getByRole('button', { name: 'Account settings' }).first().click();
     await expect(page.locator('#ws-profile-pw-save')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Use as booth screen' })).toHaveCount(0);

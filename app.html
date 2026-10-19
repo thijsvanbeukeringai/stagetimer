@@ -34,7 +34,9 @@
 // Native app (BOUWPLAN fase 6 step 5), before anything paints. A device set up
 // as a booth screen (st_native_role_v1 = {role:'booth',pid,sid}) reloads the
 // bundled page as its stage's share link: the same public Stage View path a
-// browser booth uses, without a login screen flashing by first. A first launch
+// browser booth uses, without a login screen flashing by first. A dressing
+// room screen ({role:'dressing',pid,shid}, step 6) does the same with its
+// artist's ?mode=dressing link. A first launch
 // (no role, no stored login) paints the device chooser instead of the login.
 // _natRoleGate (NATIVE APP) makes the same decisions once the script runs.
 (function(){try{
@@ -43,6 +45,7 @@
   if(q.get('mode')||q.get('signup')||location.hash.length>1)return;   // share link, sign-up, auth link: theirs
   var r=null;try{r=JSON.parse(localStorage.getItem('st_native_role_v1')||'null');}catch(e){console.warn('[native] stored role unreadable:',e);}
   if(r&&r.role==='booth'&&r.pid&&r.sid){location.replace(location.pathname+'?mode=stage&pid='+encodeURIComponent(r.pid)+'&sid='+encodeURIComponent(r.sid));return;}
+  if(r&&r.role==='dressing'&&r.pid&&r.shid){location.replace(location.pathname+'?mode=dressing&pid='+encodeURIComponent(r.pid)+'&shid='+encodeURIComponent(r.shid));return;}
   if(!r&&!localStorage.getItem('st_auth_v1'))document.documentElement.classList.add('nat-choose');
 }catch(e){console.warn('[native] start-up role:',e);}})();
 // EARLY PUBLIC FETCH - kick off the Supabase request immediately, in parallel with the
@@ -1089,7 +1092,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #nat-role .nat-box{width:min(440px,100%);margin:auto;display:flex;flex-direction:column;gap:14px;}
 #nat-role .nat-logo{height:52px;width:auto;align-self:center;object-fit:contain;margin-bottom:6px;}
 #nat-role .nat-step{display:none;flex-direction:column;gap:12px;}
-#nat-role[data-step="choose"] .nat-step[data-for="choose"],#nat-role[data-step="code"] .nat-step[data-for="code"],#nat-role[data-step="stages"] .nat-step[data-for="stages"]{display:flex;}
+#nat-role[data-step="choose"] .nat-step[data-for="choose"],#nat-role[data-step="code"] .nat-step[data-for="code"],#nat-role[data-step="stages"] .nat-step[data-for="stages"],#nat-role[data-step="artists"] .nat-step[data-for="artists"]{display:flex;}
 #nat-role .nat-title{font-size:20px;font-weight:800;letter-spacing:-.4px;color:#fff;text-align:center;}
 #nat-role .nat-title:focus{outline:none;}
 #nat-role .nat-sub{font-size:13px;color:var(--sub2);text-align:center;line-height:1.5;margin-top:-4px;}
@@ -1102,6 +1105,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #nat-role .nat-stage{min-height:64px;}
 #nat-role .nat-stage[aria-current="true"]{border-color:var(--accent-line);}
 #nat-role .nat-stages{display:flex;flex-direction:column;gap:10px;}
+#nat-role .nat-artist{min-height:64px;}
+#nat-role .nat-artist[aria-current="true"]{border-color:var(--accent-line);}
+#nat-role .nat-day{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--sub2);margin:10px 0 0;}
+#nat-role .nat-day:first-child{margin-top:0;}
 #nat-role .nat-lbl{font-size:13px;font-weight:600;color:var(--sub2);}
 #nat-role .fi{min-height:52px;font-size:16px;}
 #nat-role .nat-go{width:100%;justify-content:center;min-height:52px;font-size:15px;}
@@ -4978,14 +4985,16 @@ function renderTbar(){
   </div>
 </div>
 
-<!-- Native app only (BOUWPLAN fase 6 step 5): what this device is for, and the
-     booth screen set-up. Steps: choose -> code -> stages. See NATIVE APP. -->
+<!-- Native app only (BOUWPLAN fase 6 steps 5-6): what this device is for, and the
+     booth / dressing room screen set-up. Steps: choose -> code -> stages (booth)
+     or artists (dressing room). See NATIVE APP. -->
 <div id="nat-role" data-step="choose" role="dialog" aria-modal="true" aria-labelledby="nat-t-choose">
   <div class="nat-box">
     <img class="nat-logo" src="stagetimer-logo.png" alt="Stagetimer">
     <section class="nat-step" data-for="choose">
       <h1 class="nat-title" id="nat-t-choose" tabindex="-1">How will this device be used?</h1>
       <button class="nat-opt" type="button" id="nat-opt-booth" onclick="natChooseRole('booth')"><span class="nat-opt-t">Booth screen</span><span class="nat-opt-d">Shows one stage's countdown. No login needed.</span></button>
+      <button class="nat-opt" type="button" id="nat-opt-dressing" onclick="natChooseRole('dressing')"><span class="nat-opt-t">Dressing room screen</span><span class="nat-opt-d">Counts down to one artist's show, over their video. No login needed.</span></button>
       <button class="nat-opt" type="button" id="nat-opt-crew" onclick="natChooseRole('crew')"><span class="nat-opt-t">Crew &amp; control</span><span class="nat-opt-d">Log in to run the show, message the booth and get alerts.</span></button>
     </section>
     <section class="nat-step" data-for="code">
@@ -5001,6 +5010,12 @@ function renderTbar(){
       <div class="nat-sub" id="nat-proj"></div>
       <div class="nat-stages" id="nat-stages"></div>
       <button class="nat-back" type="button" id="nat-stages-back">← Back</button>
+    </section>
+    <section class="nat-step" data-for="artists">
+      <h1 class="nat-title" id="nat-t-artists" tabindex="-1">Pick an artist</h1>
+      <div class="nat-sub" id="nat-artists-proj"></div>
+      <div class="nat-stages" id="nat-artists"></div>
+      <button class="nat-back" type="button" id="nat-artists-back">← Back</button>
     </section>
   </div>
 </div>
@@ -5168,6 +5183,10 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Use this device as a booth screen
         </button>
+        <button class="dd-item mob-only" data-nat-only style="display:none;" onclick="closeAllDD();natUseAsDressing()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V3h14v18"/><circle cx="15" cy="12" r="1"/></svg>
+          Use this device as a dressing room screen
+        </button>
         <button class="dd-item danger mob-only" onclick="closeAllDD();doLogout()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Log out
@@ -5210,6 +5229,10 @@ function renderTbar(){
         <button class="dd-item" data-nat-only style="display:none;" onclick="closeAllDD();natUseAsBooth()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Use this device as a booth screen
+        </button>
+        <button class="dd-item" data-nat-only style="display:none;" onclick="closeAllDD();natUseAsDressing()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V3h14v18"/><circle cx="15" cy="12" r="1"/></svg>
+          Use this device as a dressing room screen
         </button>
         <div class="dd-sep"></div>
         <button class="dd-item danger" onclick="closeAllDD();doLogout()">
@@ -10574,6 +10597,16 @@ function renderProfilePage(){
         </div>
         <button class="ws-btn-secondary" onclick="natUseAsBooth()">Use as booth screen</button>
       </div>
+    </div>
+    <div class="ws-card" style="margin-top:18px;">
+      <div class="ws-card-title">Dressing room screen</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#0A0A0B;">Use this device as a dressing room screen</div>
+          <div style="font-size:12px;color:#52525B;margin-top:3px;">It counts down to one artist's show, over their video, without a login. You are logged out on this device.</div>
+        </div>
+        <button class="ws-btn-secondary" onclick="natUseAsDressing()">Use as dressing room screen</button>
+      </div>
     </div>`:''}
   `;
 }
@@ -13767,12 +13800,16 @@ function _natBarSync(){
 //                                    tested public Stage View path (no second
 //                                    Stage View); the <head> script does that
 //                                    redirect before anything paints.
-// The booth keeps its last project feed in st_native_booth_cache_v1 (offline
-// cold start, see loadPublicView). Kept apart from the role, so a full
-// storage can lose the copy but never the role.
+//   {role:'dressing'}             -> dressing room set-up (step 6: link or
+//                                    code, then one artist's show)
+//   {role:'dressing',pid,shid}    -> straight to ?mode=dressing&pid&shid, the
+//                                    same share-link path a browser uses.
+// Both screens keep their last project feed in st_native_booth_cache_v1
+// (offline cold start, see loadPublicView). Kept apart from the role, so a
+// full storage can lose the copy but never the role.
 const NAT_ROLE_KEY='st_native_role_v1',NAT_BOOTH_CACHE_KEY='st_native_booth_cache_v1';
 function _natRole(){
-  try{const r=JSON.parse(localStorage.getItem(NAT_ROLE_KEY)||'null');return r&&(r.role==='booth'||r.role==='crew')?r:null;}
+  try{const r=JSON.parse(localStorage.getItem(NAT_ROLE_KEY)||'null');return r&&(r.role==='booth'||r.role==='crew'||r.role==='dressing')?r:null;}
   catch(e){console.warn('[native] stored role unreadable:',e);return null;}
 }
 function _natSetRole(r){
@@ -13780,23 +13817,34 @@ function _natSetRole(r){
   catch(e){console.warn('[native] could not store the device role:',e);return false;}
 }
 const _natStageUrl=(pid,sid)=>location.pathname+'?mode=stage&pid='+encodeURIComponent(pid)+'&sid='+encodeURIComponent(sid);
+const _natDressingUrl=(pid,shid)=>location.pathname+'?mode=dressing&pid='+encodeURIComponent(pid)+'&shid='+encodeURIComponent(shid);
 // Start-up, after share links and auth links (INIT). true = it took over.
 function _natRoleGate(){
   let r=_natRole();
   // Logged in on this device before roles existed: that is a crew device.
   if(!r&&_storedAuth()?.refresh_token){r={role:'crew'};_natSetRole(r);}
   if(r&&r.role==='crew'){document.documentElement.classList.remove('nat-choose');return false;}
+  if(r&&r.role==='dressing'&&r.pid&&r.shid){location.replace(_natDressingUrl(r.pid,r.shid));return true;}
   if(r&&r.pid&&r.sid){location.replace(_natStageUrl(r.pid,r.sid));return true;}
   _natShowRole(r?'code':'choose');
   return true;
 }
 function natRoleStep(step){
   const ov=document.getElementById('nat-role');
+  if(step==='code')_natCodeCopy();
   ov.dataset.step=step;ov.setAttribute('aria-labelledby','nat-t-'+step);
   // Focus moves with the step (screen readers): the field, else the heading.
   // Not the first option: WebKit draws a focus ring that reads as "selected".
   const f=ov.querySelector(`.nat-step[data-for="${step}"] ${step==='code'?'input':'.nat-title'}`);
   if(f)f.focus({preventScroll:true});
+}
+// One code step serves both set-ups; its wording follows the stored role, so a
+// device killed mid set-up and relaunched still says what it is being set up as.
+const _natSetupDressing=()=>_natRole()?.role==='dressing';
+function _natCodeCopy(){
+  const dres=_natSetupDressing();
+  document.getElementById('nat-t-code').textContent=dres?'Dressing room screen':'Booth screen';
+  document.getElementById('nat-code').placeholder='https://stagetimer.nl/app?mode='+(dres?'dressing':'stage')+'&pid=…';
 }
 function _natShowRole(step){
   _hideLoader();
@@ -13812,7 +13860,7 @@ function _natHideRole(){
 }
 function natChooseRole(role){
   if(role==='crew'){_natSetRole({role:'crew'});_natHideRole();_showLogin();return;}
-  _natSetRole({role:'booth'});
+  _natSetRole({role:role==='dressing'?'dressing':'booth'});
   _natErr('');
   natRoleStep('code');
 }
@@ -13820,34 +13868,37 @@ function natChooseRole(role){
 function natRoleBack(){_natSetRole(null);_natErr('');natRoleStep('choose');}
 function _natErr(msg){const el=document.getElementById('nat-err');if(!el)return;el.textContent=msg||'';el.hidden=!msg;}
 // A pasted share link (any mode, with or without https://, www., /app.html) or
-// a bare project id. -> {pid, sid|null} or null. Only a stage link's sid picks
-// the stage; another mode's link just names the project.
+// a bare project id. -> {pid, sid|null, shid|null} or null. Only a stage
+// link's sid picks the stage and only a dressing link's shid the artist;
+// another mode's link just names the project.
 const _NAT_ID=/^[A-Za-z0-9_-]{1,80}$/;
 function _natParseBoothCode(raw){
   const s=String(raw||'').trim();
   if(!s)return null;
-  if(/^[A-Za-z0-9_-]{3,80}$/.test(s))return{pid:s,sid:null};
+  if(/^[A-Za-z0-9_-]{3,80}$/.test(s))return{pid:s,sid:null,shid:null};
   let u;
   try{u=new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s)?s:'https://'+s);}catch(e){return null;}
   if(!/^https?:$/.test(u.protocol))return null;
-  const pid=u.searchParams.get('pid'),sid=u.searchParams.get('sid');
+  const pid=u.searchParams.get('pid'),sid=u.searchParams.get('sid'),shid=u.searchParams.get('shid'),mode=u.searchParams.get('mode');
   if(!pid||!_NAT_ID.test(pid))return null;
-  return{pid,sid:u.searchParams.get('mode')==='stage'&&sid&&_NAT_ID.test(sid)?sid:null};
+  return{pid,sid:mode==='stage'&&sid&&_NAT_ID.test(sid)?sid:null,shid:mode==='dressing'&&shid&&_NAT_ID.test(shid)?shid:null};
 }
 let _natBusy=false;
 async function natBoothContinue(){
   if(_natBusy)return;
+  const dres=_natSetupDressing();
   const code=_natParseBoothCode(document.getElementById('nat-code').value);
-  if(!code){_natErr('That is not a Stagetimer share link or project code. Paste the link the operator shared with you, for example https://stagetimer.nl/app?mode=stage&pid=…');return;}
+  if(!code){_natErr('That is not a Stagetimer share link or project code. Paste the link the operator shared with you, for example https://stagetimer.nl/app?mode='+(dres?'dressing':'stage')+'&pid=…');return;}
   _natErr('');
   const btn=document.getElementById('nat-go');
   _natBusy=true;btn.disabled=true;btn.textContent='Loading…';
   let proj;
-  try{proj=await _fetchSharedProject(code.pid,8000,'stage');}
+  try{proj=await _fetchSharedProject(code.pid,8000,dres?'dressing':'stage');}
   catch(e){console.warn('[native] booth set-up: project feed failed:',e);_natErr(_friendlyError(e,'Loading the project'));return;}
   finally{_natBusy=false;btn.disabled=false;btn.textContent='Continue';}
   const stages=proj&&proj.data&&Array.isArray(proj.data.stages)?proj.data.stages.filter(s=>s&&s.id):null;
   if(!stages){_natErr('No project found for this link or code. Check it with the operator and try again.');return;}
+  if(dres){_natDressingSetUp(code,proj);return;}
   if(!stages.length){_natErr('This project has no stages yet. Ask the operator to add one, then try again.');return;}
   _natBoothCachePut(code.pid,proj);   // offline from the very first start
   const pre=code.sid&&stages.find(s=>s.id===code.sid);
@@ -13867,6 +13918,65 @@ function natBoothOpen(pid,sid){
   if(!_natSetRole({role:'booth',pid,sid}))console.warn('[native] booth role not stored: the next launch asks again');
   location.replace(_natStageUrl(pid,sid));
 }
+// ── Dressing room screen (BOUWPLAN fase 6 step 6): one artist's countdown
+// over their video, on a device in the dressing room. Same set-up as the
+// booth (link or code), but the device is tied to a show instead of a stage.
+// The screen itself is the ?mode=dressing share link (#dres); this only
+// picks the show and remembers it.
+// Shows an artist can be picked for: what the share link may list (never
+// hidden shows). Cancelled shows stay pickable and are labelled.
+const _natDressingShows=data=>(data&&Array.isArray(data.shows)?data.shows:[]).filter(s=>s&&s.id&&showAllowed(s,'list',true));
+function _natDressingSetUp(code,proj){
+  const shows=_natDressingShows(proj.data);
+  if(!shows.length){_natErr('This project has no shows yet. Ask the operator to add the artist\'s show, then try again.');return;}
+  _natBoothCachePut(code.pid,proj,true);   // offline from the very first start
+  // Like a stage link for the booth: a dressing link names the artist already.
+  const pre=code.shid&&shows.find(s=>s.id===code.shid);
+  if(pre||shows.length===1){natDressingOpen(code.pid,(pre||shows[0]).id);return;}
+  _natArtistPicker(code.pid,proj.name,proj.data,null);
+}
+// Shows grouped by festival day, today's day first (the screen is usually set
+// up on the day itself), then the project's own day order; within a day in
+// festival-night order (an after-midnight show after the evening). Built from
+// the project data passed in, not G: during set-up no project is loaded.
+function _natArtistPicker(pid,name,data,current){
+  const shows=_natDressingShows(data);
+  const days=(data&&Array.isArray(data.days)?data.days:[]).filter(d=>d&&d.id);
+  const stages=new Map((data&&Array.isArray(data.stages)?data.stages:[]).filter(s=>s&&s.id).map(s=>[s.id,s.name||'Stage']));
+  const today=festivalDayStr();
+  const groups=[...days.map(d=>({id:d.id,label:vwDayLabel(d)||'Day',today:!!d.date&&d.date===today})),{id:null,label:'Other shows',today:false}]
+    .sort((a,b)=>b.today-a.today);
+  const known=new Set(days.map(d=>d.id));
+  const row=s=>{
+    const cur=s.id===current;
+    const meta=[stages.get(s.stage),String(s.start||'').slice(0,5),s.cancelled?'Cancelled':''].filter(Boolean).join(' · ');
+    return`<button class="nat-opt nat-artist" type="button"${cur?' aria-current="true"':''} onclick="natDressingOpen(${_jsArg(pid)},${_jsArg(s.id)})"><span class="nat-opt-t">${escH(s.artist||'Artist')}</span>${meta?`<span class="nat-opt-d">${escH(meta)}</span>`:''}${cur?'<span class="nat-opt-d">On this screen now</span>':''}</button>`;
+  };
+  const html=groups.map(g=>{
+    const list=shows.filter(s=>g.id?s.day===g.id:!known.has(s.day)).sort((a,b)=>adjM(t2m(a.start))-adjM(t2m(b.start)));
+    return list.length?`<h2 class="nat-day">${escH(g.label)}${g.today?' · Today':''}</h2>`+list.map(row).join(''):'';
+  }).join('');
+  document.getElementById('nat-artists-proj').textContent=name||'';
+  document.getElementById('nat-artists').innerHTML=html||'<div class="nat-sub">This project has no shows yet.</div>';
+  // From the set-up: back to the code. From a running screen: back to it.
+  const back=document.getElementById('nat-artists-back');
+  back.textContent=current?'Cancel':'← Back';
+  back.onclick=current?_natHideRole:()=>natRoleStep('code');
+  _natShowRole('artists');
+}
+function natDressingOpen(pid,shid){
+  if(!_natSetRole({role:'dressing',pid,shid}))console.warn('[native] dressing room role not stored: the next launch asks again');
+  location.replace(_natDressingUrl(pid,shid));
+}
+// Crew device -> dressing room screen. Logs out, for the same reason as the
+// booth below: a dressing room is even less supervised than a booth.
+async function natUseAsDressing(){
+  if(!IS_NATIVE)return;
+  const ok=await stDialog.confirm('This device will count down to one artist\'s show, over their video, without a login, and you are logged out here. To leave the dressing room screen later, hold the top-left corner of the screen for 3 seconds.',{title:'Use as dressing room screen?',okLabel:'Use as dressing room screen'});
+  if(!ok)return;
+  _natSetRole({role:'dressing'});
+  doLogout();
+}
 // Crew device -> booth. Logs out: an unattended booth must not hold an
 // operator's session (the hidden exit below would hand it to anyone).
 async function natUseAsBooth(){
@@ -13877,24 +13987,30 @@ async function natUseAsBooth(){
   doLogout();
 }
 
-// ── Booth copy for an offline cold start. The public feed is cached by
-// nothing else: the service worker is off in the app (and never cached the
-// POST RPCs on the web either). Photos and the logo are dropped (Stage View
-// shows neither, every renderer accepts a show without a photo), and a
-// project that is still too big is not kept rather than filling the storage
-// the role lives in.
+// ── Booth / dressing room copy for an offline cold start. The public feed is
+// cached by nothing else: the service worker is off in the app (and never
+// cached the POST RPCs on the web either). Photos are dropped (neither screen
+// shows them, every renderer accepts a show without a photo), and so is the
+// logo on a booth (Stage View has none); the dressing room screen shows the
+// logo after the show, so there it stays, like bgImage / bgVideo, unless it is
+// a big inline data: URL. A project that is still too big is not kept rather
+// than filling the storage the role lives in.
 const _NAT_CACHE_MAX=1500000;
-const _natBoothCaching=()=>{if(!IS_NATIVE||PUBLIC_MODE!=='stage'||!PUBLIC_PID)return false;const r=_natRole();return!!(r&&r.role==='booth'&&r.pid===PUBLIC_PID);};
-function _natBoothCachePut(pid,proj){
+const _natBoothCaching=()=>{
+  if(!IS_NATIVE||!PUBLIC_PID)return false;
+  const want=PUBLIC_MODE==='stage'?'booth':PUBLIC_MODE==='dressing'?'dressing':null;
+  const r=want&&_natRole();return!!(r&&r.role===want&&r.pid===PUBLIC_PID);
+};
+function _natBoothCachePut(pid,proj,dressing){
   if(!proj||!proj.data)return;
   let s;
   try{s=JSON.stringify({pid,at:Date.now(),proj:{id:proj.id,name:proj.name,company_id:proj.company_id,data:proj.data}},
-    (k,v)=>k==='photo'||k==='logo'||(typeof v==='string'&&v.length>1024&&v.startsWith('data:'))?undefined:v);}
+    (k,v)=>k==='photo'||(k==='logo'&&!dressing)||(typeof v==='string'&&v.length>1024&&v.startsWith('data:'))?undefined:v);}
   catch(e){console.warn('[native] booth copy not made:',e);return;}
   if(s.length>_NAT_CACHE_MAX){console.warn('[native] booth copy not kept: project too large ('+s.length+' chars)');return;}
   try{localStorage.setItem(NAT_BOOTH_CACHE_KEY,s);}catch(e){console.warn('[native] booth copy not stored:',e);}
 }
-function _natBoothKeep(proj){if(_natBoothCaching())_natBoothCachePut(PUBLIC_PID,proj);}
+function _natBoothKeep(proj){if(_natBoothCaching())_natBoothCachePut(PUBLIC_PID,proj,PUBLIC_MODE==='dressing');}
 function _natBoothCacheGet(pid){
   if(!_natBoothCaching())return null;
   try{const c=JSON.parse(localStorage.getItem(NAT_BOOTH_CACHE_KEY)||'null');return c&&c.pid===pid&&c.proj&&c.proj.data&&Array.isArray(c.proj.data.stages)?c.proj:null;}
@@ -13907,7 +14023,8 @@ function _natBoothCacheGet(pid){
 // (.st-brand has pointer-events:none in public-mode, #sv-close-btn is top
 // right and hidden), a second finger or a drag cancels it, and iOS's own edge
 // gestures are swipes, not holds. Listeners only: no element, no style, so
-// Stage View stays pixel-identical. Opens a choice dialog.
+// Stage View stays pixel-identical. Opens a choice dialog. The dressing room screen
+// uses the same gesture; it keeps that corner free of its video for it.
 const _NAT_EXIT_MS=3000,_NAT_EXIT_PX=120;
 function _natInstallBoothExit(){
   let t=null,x0=0,y0=0;
@@ -13925,21 +14042,30 @@ function _natInstallBoothExit(){
 }
 async function _natBoothMenu(){
   if(stDialog.isOpen())return;
+  if(PUBLIC_MODE==='dressing'){_natDressingMenu();return;}
   const booth=_natRole()?.role==='booth';
   const v=await stDialog.choice({title:'Booth screen',message:booth?'Show another stage on this device, or use it for crew and control.':'Leave this screen and use the app for crew and control.',
     choices:[...(booth?[{value:'stage',label:'Change stage'}]:[]),{value:'crew',label:'Switch to Crew & control',kind:booth?'secondary':'primary'}]});
   if(v==='stage')_natStagePicker(PUBLIC_PID,APP.projects[0]?.name,(G&&G.stages||[]).filter(s=>s&&s.id),PUBLIC_SID);
-  else if(v==='crew'){
-    _natSetRole({role:'crew'});
-    try{localStorage.removeItem(NAT_BOOTH_CACHE_KEY);}catch(e){console.warn('[native] booth copy not removed:',e);}
-    location.replace(location.pathname);
-  }
+  else if(v==='crew')_natToCrew();
+}
+async function _natDressingMenu(){
+  const own=_natRole()?.role==='dressing';
+  const v=await stDialog.choice({title:'Dressing room screen',message:own?'Show another artist on this device, or use it for crew and control.':'Leave this screen and use the app for crew and control.',
+    choices:[...(own?[{value:'artist',label:'Change artist'}]:[]),{value:'crew',label:'Switch to Crew & control',kind:own?'secondary':'primary'}]});
+  if(v==='artist')_natArtistPicker(PUBLIC_PID,APP.projects[0]?.name,G||{},new URLSearchParams(location.search).get('shid'));
+  else if(v==='crew')_natToCrew();
+}
+function _natToCrew(){
+  _natSetRole({role:'crew'});
+  try{localStorage.removeItem(NAT_BOOTH_CACHE_KEY);}catch(e){console.warn('[native] booth copy not removed:',e);}
+  location.replace(location.pathname);
 }
 
 if(IS_NATIVE){
   _natBarSync();setInterval(_natBarSync,250);
   document.querySelectorAll('[data-nat-only]').forEach(el=>{el.style.display='';});
-  if(PUBLIC_MODE==='stage')_natInstallBoothExit();
+  if(PUBLIC_MODE==='stage'||PUBLIC_MODE==='dressing')_natInstallBoothExit();
   try{
     const app=_nat('App');
     if(app&&typeof app.addListener==='function')Promise.resolve(app.addListener('appUrlOpen',e=>_natOpenUrl(e&&e.url))).catch(e=>console.warn('[native] appUrlOpen listener failed:',e));
