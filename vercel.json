@@ -40,7 +40,7 @@
         },
         {
           "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.onesignal.com; style-src 'self' 'unsafe-inline' https://cdn.onesignal.com; font-src 'self' data:; img-src 'self' data: blob: https://bamjpsquhdzxvsymldpq.supabase.co https:; connect-src 'self' https://bamjpsquhdzxvsymldpq.supabase.co wss://bamjpsquhdzxvsymldpq.supabase.co https://cdn.onesignal.com https://api.onesignal.com https://onesignal.com; worker-src 'self'; frame-src https://onesignal.com https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.onesignal.com; style-src 'self' 'unsafe-inline' https://cdn.onesignal.com; font-src 'self' data:; img-src 'self' data: blob: https://bamjpsquhdzxvsymldpq.supabase.co https:; connect-src 'self' https://bamjpsquhdzxvsymldpq.supabase.co wss://bamjpsquhdzxvsymldpq.supabase.co https://cdn.onesignal.com https://api.onesignal.com https://onesignal.com; worker-src 'self'; media-src 'self' blob: https:; frame-src https://onesignal.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
         }
       ]
     },
@@ -55,7 +55,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.onesignal.com; style-src 'self' 'unsafe-inline' https://cdn.onesignal.com; font-src 'self' data:; img-src 'self' data: blob: https://bamjpsquhdzxvsymldpq.supabase.co https:; connect-src 'self' https://bamjpsquhdzxvsymldpq.supabase.co wss://bamjpsquhdzxvsymldpq.supabase.co https://cdn.onesignal.com https://api.onesignal.com https://onesignal.com; worker-src 'self'; frame-src https://onesignal.com https://www.youtube-nocookie.com https://www.youtube.com; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.onesignal.com; style-src 'self' 'unsafe-inline' https://cdn.onesignal.com; font-src 'self' data:; img-src 'self' data: blob: https://bamjpsquhdzxvsymldpq.supabase.co https:; connect-src 'self' https://bamjpsquhdzxvsymldpq.supabase.co wss://bamjpsquhdzxvsymldpq.supabase.co https://cdn.onesignal.com https://api.onesignal.com https://onesignal.com; worker-src 'self'; media-src 'self' blob: https:; frame-src https://onesignal.com; base-uri 'self'; form-action 'self'; object-src 'none'"
         }
       ]
     },

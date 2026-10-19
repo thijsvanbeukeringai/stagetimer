@@ -8,7 +8,7 @@
 //
 // Only the fields below are ever stripped. Everything else in the blob
 // (stages, days, shows with their times/flags/genre/booth/type/priority/
-// arrived, bgVideo, activeStage/activeDay, timerMode, svModes, cue, blackout, branding) reaches
+// arrived, bgVideo (video link), activeStage/activeDay, timerMode, svModes, cue, blackout, branding) reaches
 // every mode: the shared time model, the cue/blackout overlays and the
 // Stage View need it, and none of it is personal or large.
 // 'stagemanager' (?mode=stagemanager&pid=..&sid=..): the stage manager's

@@ -38,8 +38,9 @@
 --   customer's logo. It gets the logo (always shown there, whatever
 --   branding says) and shows[].bgImage, its background photo (a Storage URL
 --   or, before the photo_storage migration, a base64 image of up to a few
---   hundred kB: so no other mode receives it). shows[].bgVideo (a YouTube
---   id, 11 characters) is not stripped anywhere.
+--   hundred kB: so no other mode receives it). shows[].bgVideo (an https
+--   link to the customer's own video file, at most 2000 characters) is not
+--   stripped anywhere.
 --   The JS twin of this matrix is tests/support/share-modes.js (the mock
 --   backend serves the 2-arg call with it; tests/regression/share-mode.spec.js
 --   checks this table and keep_* below against it).
@@ -55,7 +56,7 @@
 --     shows[].booth                backstage, foh, timeline, stagemanager (booth badge)
 --     shows[].type                 backstage, foh (item-type badge)
 --     shows[].priority             wall, timeline, overview (star / tint)
---     shows[].bgVideo              dressing (YouTube id of the background video)
+--     shows[].bgVideo              dressing (https link to the background video)
 --     shows[].arrived, arrivedAt   checkin, stagemanager, overview, timeline
 --                                  (check-in dot / arrival state)
 --     activeStage, activeDay       all (fallback when the link has no sid /
