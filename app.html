@@ -24,8 +24,9 @@
 <script>
 // Booth screen (public Stage View link): keep the zoom lock it always had, set
 // before first paint. Every other screen may be pinch-zoomed; the in-app Stage
-// View sets the same lock while it is open (_svZoomLock).
-(function(){try{if(new URLSearchParams(location.search).get('mode')==='stage'){var m=document.querySelector('meta[name=viewport]');if(m)m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');}}catch(e){}})();
+// View sets the same lock while it is open (_svZoomLock). The dressing room
+// screen is a kiosk too: an accidental pinch would hide the countdown.
+(function(){try{if(/^(stage|dressing)$/.test(new URLSearchParams(location.search).get('mode')||'')){var m=document.querySelector('meta[name=viewport]');if(m)m.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');}}catch(e){}})();
 // Share links (?mode=...&pid=...): no web app manifest. Its start_url is the
 // operator app (/app), so "Add to Home Screen" on a booth or FOH link would
 // open the login screen instead of that screen. Without it iOS keeps the
@@ -468,6 +469,36 @@ body.public-mode #smv-close-btn{display:none!important;}
   background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
 .smv-crew-i b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.6);}
 @media (max-width:1000px){#smv-body{grid-template-columns:minmax(0,1fr);}}
+/* ══ DRESSING ROOM (#dres): one artist's countdown over their video or photo,
+   then a calm thank-you. Share link only; read from 3-4 m on an iPad in
+   either orientation, still fits a phone. Everything scoped to #dres. ══ */
+#dres{position:fixed;inset:0;z-index:200;display:none;overflow:hidden;color:#fff;font-family:var(--ff);
+  background:radial-gradient(120% 90% at 50% 0%,#1b1b2c 0%,#09090f 55%,#030305 100%);}
+#dres.open{display:block;}
+#dres-media{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+#dres .dres-video,#dres .dres-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s ease;pointer-events:none;}
+#dres .dres-video[hidden]{display:none;}
+#dres .dres-video.on,#dres .dres-img.on{opacity:1;}
+#dres .dres-img.dres-dim{filter:blur(16px) brightness(.45) saturate(.85);transform:scale(1.08);}
+#dres .dres-scrim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.15) 30%,rgba(0,0,0,.45) 65%,rgba(0,0,0,.78) 100%),radial-gradient(ellipse at center,rgba(0,0,0,.4),rgba(0,0,0,0) 72%);}
+#dres .dres-main{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:clamp(6px,1.6vh,18px);
+  padding:max(28px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
+  text-shadow:0 2px 18px rgba(0,0,0,.6);}
+#dres .dres-artist{font-size:clamp(28px,min(6.4vw,9vh),104px);font-weight:900;letter-spacing:-.02em;line-height:1.05;max-width:18ch;overflow-wrap:anywhere;}
+#dres .dres-meta{font-family:var(--ffm);font-size:clamp(15px,min(2.5vw,3.5vh),32px);font-weight:700;color:rgba(255,255,255,.88);letter-spacing:.02em;}
+#dres .dres-lbl{margin-top:clamp(10px,3.4vh,40px);font-size:clamp(15px,min(2.5vw,3.5vh),34px);font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.85);}
+#dres .dres-cd{font-family:var(--ffm);font-size:clamp(56px,min(19vw,26vh),320px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;white-space:nowrap;}
+#dres .dres-sub{font-size:clamp(14px,min(2.1vw,3vh),28px);font-weight:600;color:rgba(255,255,255,.8);}
+#dres .dres-sub:empty{display:none;}
+#dres[data-state="live"] .dres-lbl{color:#86efac;}
+#dres .dres-note{font-size:clamp(18px,min(3vw,4.2vh),40px);font-weight:700;max-width:26ch;line-height:1.35;color:rgba(255,255,255,.9);}
+#dres .dres-logo{display:block;max-width:min(60vw,520px);max-height:22vh;object-fit:contain;margin-bottom:clamp(8px,2.4vh,30px);}
+#dres .dres-logo.dres-plate{background:#fff;padding:clamp(10px,2vh,22px) clamp(14px,2.6vw,30px);border-radius:14px;}
+#dres .dres-ty{font-size:clamp(26px,min(5.4vw,7.6vh),88px);font-weight:900;letter-spacing:-.02em;line-height:1.1;max-width:16ch;}
+#dres .dres-artist-ty{font-size:clamp(22px,min(4vw,5.6vh),64px);font-weight:800;color:rgba(255,255,255,.92);}
+#dres .dres-sig{margin-top:clamp(6px,2vh,24px);font-size:clamp(16px,min(2.5vw,3.5vh),34px);font-style:italic;color:rgba(255,255,255,.82);}
+@media (prefers-reduced-motion:reduce){#dres .dres-video,#dres .dres-img{transition:none;}}
 @media (max-width:700px){
   #smv-hdr{padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;gap:8px;}
   #st-brand-smv{display:inline-flex;}
@@ -1046,6 +1077,11 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #share-modal{background:var(--s2);border:1px solid var(--border2);border-radius:14px;padding:24px;width:480px;max-height:80vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
 .share-stage-block{background:var(--s3);border-radius:10px;padding:14px;}
 .share-stage-name{font-size:12px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.share-dres{margin-top:10px;border-top:1px solid var(--border);padding-top:8px;}
+.share-dres>summary{cursor:pointer;font-size:11px;font-weight:700;color:var(--text);padding:8px 0;}
+.share-dres-n{font-weight:500;color:var(--sub);}
+.share-dres-hint{font-size:11px;color:var(--sub);line-height:1.45;margin:2px 0 8px;}
+.share-dres-day{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);margin:10px 0 6px;}
 .share-link-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
 .share-link-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);width:80px;flex-shrink:0;}
 .share-link-url{flex:1;font-family:var(--ffm);font-size:10px;color:var(--sub);background:var(--s4);padding:5px 8px;border-radius:5px;border:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -2929,6 +2965,15 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 #drawer .dr-rider-fld:last-child{margin-bottom:0;}
 #drawer .dr-rider-cnt{display:block;font-size:11px;color:var(--sub);text-align:right;margin-top:3px;font-variant-numeric:tabular-nums;}
 #drawer .dr-rider-cnt.over{color:#fca5a5;font-weight:700;}
+/* Show editor: dressing room video / background photo */
+#drawer .dr-dres-row{display:flex;gap:6px;align-items:stretch;}
+#drawer .dr-dres-row .fi{flex:1;min-width:0;}
+#drawer .dr-dres-row [hidden]{display:none;}
+#drawer .dr-dres-bg[hidden]{display:none;}
+#drawer .dr-dres-bg{margin-bottom:7px;border-radius:8px;overflow:hidden;height:100px;background:var(--s3);}
+#drawer .dr-dres-bg img{width:100%;height:100%;object-fit:cover;display:block;}
+#drawer .dr-dres-link:empty{display:none;}
+#drawer .dr-dres-link .share-link-row{margin:10px 0 0;}
 button.booth-opt{font-family:inherit;min-width:32px;}
 #drawer :focus-visible{outline:2px solid #a5b4fc;outline-offset:1px;}
 /* Cue panel / manual timer (operator side only, never Stage View) */
@@ -4312,6 +4357,7 @@ function _onProjectChange(payload){
     else if(PUBLIC_MODE==='stage'){renderSV();}
     else if(PUBLIC_MODE==='checkin'){renderCI();}
     else if(PUBLIC_MODE==='stagemanager'){renderSM();}
+    else if(PUBLIC_MODE==='dressing'){renderDres();}
     else if(PUBLIC_MODE==='wall'){renderWV();}
     return;
   }
@@ -5016,7 +5062,7 @@ function renderTbar(){
     </div>
     <div style="font-size:11px;color:var(--sub);line-height:1.6;">Expected format - each day as a key with <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
     <code style="font-size:10px;color:var(--sub);">{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code><br>
-    Optional rider per act: <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">drinks</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">tech</code> (text, up to 2,000 characters each), or <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">"rider":{"drinks":"…","tech":"…"}</code>. Only the check-in and stage manager screens show it.</div>
+    Optional rider per act: <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">drinks</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">tech</code> (text, up to 2,000 characters each), or <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">"rider":{"drinks":"…","tech":"…"}</code>. Only the check-in and stage manager screens show it. Optional <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">video</code>: an https link to an MP4 for the artist's dressing room screen.</div>
     <textarea id="json-input-area" oninput="if(_importPending)_resetImportPreview()" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artist name"}]}]}}'></textarea>
     <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
     <div id="json-import-preview" style="display:none;max-height:220px;overflow-y:auto;padding:8px 10px;background:var(--s3);border:1px solid var(--border2);border-radius:7px;font-size:12px;color:var(--sub);line-height:1.5;"></div>
@@ -5517,6 +5563,24 @@ function renderTbar(){
       <p class="dr-rider-hint" id="f-rider-hint">Shown on the artist check-in and stage manager screens only.</p>
       <div class="st-sub dr-rider-fld"><label class="st-sublbl" for="f-rider-drinks">Drinks / hospitality</label><textarea class="fi" id="f-rider-drinks" rows="3" placeholder="e.g. 6x Club-Mate, still water (no ice), 4 towels, vegan dinner for 3" aria-describedby="f-rider-drinks-err f-rider-drinks-cnt"></textarea><div class="st-fld-err" id="f-rider-drinks-err" hidden></div><span class="dr-rider-cnt" id="f-rider-drinks-cnt"></span></div>
       <div class="st-sub dr-rider-fld"><label class="st-sublbl" for="f-rider-tech">Technical requirements</label><textarea class="fi" id="f-rider-tech" rows="3" placeholder="e.g. 2x CDJ-3000 + DJM-900NXS2, booth monitor left, 1 vocal mic (SM58)" aria-describedby="f-rider-tech-err f-rider-tech-cnt"></textarea><div class="st-fld-err" id="f-rider-tech-err" hidden></div><span class="dr-rider-cnt" id="f-rider-tech-cnt"></span></div>
+    </fieldset>
+    <fieldset class="fg st-fset" aria-describedby="f-dres-hint">
+      <legend class="fl">Dressing room screen <span style="color:var(--sub);font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></legend>
+      <p class="dr-rider-hint" id="f-dres-hint">A screen in this artist's dressing room counts down to the show, over the video (muted, looping) or else the photo.</p>
+      <div class="st-sub dr-rider-fld"><label class="st-sublbl" for="f-video">Dressing room video</label>
+        <p class="dr-rider-hint" id="f-video-hint">Link to an MP4 video (muted, loops). Tip: keep it short and under ~50 MB.</p>
+        <div class="dr-dres-row"><input class="fi" id="f-video" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…/video.mp4" aria-describedby="f-video-hint f-video-err"><button type="button" class="btn-g" id="f-video-clear" onclick="clearBgVideo()" aria-label="Remove video" hidden>✕</button></div>
+        <div class="st-fld-err" id="f-video-err" hidden></div>
+      </div>
+      <div class="st-sub dr-rider-fld"><span class="st-sublbl" id="f-bg-lbl">Background photo</span>
+        <div class="dr-dres-bg" id="f-bg-wrap" hidden><img id="f-bg-preview" alt="Background photo preview"></div>
+        <div class="dr-dres-row">
+          <button type="button" class="btn-g" style="flex:1;text-align:center;cursor:pointer;margin:0;" aria-describedby="f-bg-lbl" onclick="document.getElementById('f-bg').click()">🖼 Choose background photo</button>
+          <input id="f-bg" type="file" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" tabindex="-1" aria-hidden="true" onchange="previewBgImage(this)">
+          <button type="button" class="btn-g" id="f-bg-clear" onclick="clearBgImage()" aria-label="Remove background photo" hidden>✕</button>
+        </div>
+      </div>
+      <div class="dr-dres-link" id="f-dres-link"></div>
     </fieldset>
   </div>
   <div id="drfooter">
@@ -6144,6 +6208,15 @@ function renderTbar(){
     <button class="bshbtn" id="smv-close-btn" onclick="closeSM()" aria-label="Close Stage manager">✕</button>
   </div>
   <div id="smv-body"></div>
+</div>
+
+<!-- DRESSING ROOM (share link mode=dressing&pid=..&shid=<show>): one artist's
+     countdown over their background video / photo. Nothing to tap: the
+     native app keeps the top-left corner for its hidden exit (3 s hold). -->
+<div id="dres">
+  <div id="dres-media" aria-hidden="true"></div>
+  <div class="dres-scrim" aria-hidden="true"></div>
+  <div id="dres-main" class="dres-main"></div>
 </div>
 
 <!-- BACKSTAGE -->
@@ -7537,6 +7610,7 @@ function openDrawer(id,booth=null){
     _drSetDT('end',startMs+90*60*1000);
   }
   RIDER_KEYS.forEach(k=>{document.getElementById('f-rider-'+k).value=_drRiderOpen[k];_drRiderCount(k);});
+  _drDresFill(id?G.shows.find(x=>x.id===id):null);
   _updateDrFlagBtns();
   _drAutoNote='';_drClearErrors();
   updDur();
@@ -7555,7 +7629,7 @@ const _drVal=id=>document.getElementById(id)?.value||'';
 function _drState(){
   return JSON.stringify([_drVal('f-a'),_drVal('f-start-date'),_drVal('f-start-time'),_drVal('f-start-sec'),
     _drVal('f-end-date'),_drVal('f-end-time'),_drVal('f-end-sec'),_drVal('f-type'),_drVal('f-n'),
-    curBooth,_drFlags,_photoB64,_photoRemoved,_drVal('f-rider-drinks'),_drVal('f-rider-tech')]);
+    curBooth,_drFlags,_photoB64,_photoRemoved,_drVal('f-rider-drinks'),_drVal('f-rider-tech'),_drVal('f-video'),_bgImg,_bgImgRemoved]);
 }
 const _drIsOpen=()=>document.getElementById('drawer').classList.contains('open');
 function _drDirty(){return _drIsOpen()&&_drState()!==_drSnap;}
@@ -7602,7 +7676,7 @@ function _drSetDT(which,ms){
   document.getElementById(`f-${which}-sec`).value=_p2(amsParts(ms).s);
 }
 // ── Field errors next to the field (no alert, no silent correction)
-const _DR_ERR={'f-a':'f-a-err','f-start-date':'f-start-err','f-start-time':'f-start-err','f-start-sec':'f-start-err','f-end-date':'f-end-err','f-end-time':'f-end-err','f-end-sec':'f-end-err','f-rider-drinks':'f-rider-drinks-err','f-rider-tech':'f-rider-tech-err'};
+const _DR_ERR={'f-a':'f-a-err','f-start-date':'f-start-err','f-start-time':'f-start-err','f-start-sec':'f-start-err','f-end-date':'f-end-err','f-end-time':'f-end-err','f-end-sec':'f-end-err','f-rider-drinks':'f-rider-drinks-err','f-rider-tech':'f-rider-tech-err','f-video':'f-video-err'};
 function _drSetErr(field,msg){
   const box=document.getElementById(_DR_ERR[field]);if(!box)return;
   box.textContent=msg||'';box.hidden=!msg;
@@ -7674,6 +7748,49 @@ function _drApplyRider(show){
   }
   if(cur||Object.keys(next).length)show.rider=next;
 }
+// ── Dressing room screen fields: show.bgVideo (the customer's own video
+// file, an https link checked by _safeVideoSrc) and show.bgImage (a photo
+// through the same compress + upload path as the artist photo). Both keys
+// are deleted when empty, and the drawer offers the dressing room link of a
+// saved show. Video is link-only: its bytes never go into the project blob.
+const _DR_VIDEO_ERR='Use a video link that starts with https:// (at most 2,000 characters).';
+function _drVideoSync(){
+  const raw=_drVal('f-video').trim();
+  document.getElementById('f-video-clear').hidden=!raw;
+  // Wrong link: say so while typing, not only on Save. Empty is fine. Whether
+  // the file plays is up to the screen: its <video> error handler falls back.
+  _drSetErr('f-video',raw&&!_safeVideoSrc(raw)?_DR_VIDEO_ERR:'');
+}
+document.getElementById('f-video').addEventListener('input',_drVideoSync);
+function clearBgVideo(){const v=document.getElementById('f-video');v.value='';_drVideoSync();v.focus();}
+let _bgImg='',_bgImgRemoved=false,_bgImgUp=null;
+function _drBgSync(){
+  const src=_safeLogoSrc(_bgImg),img=document.getElementById('f-bg-preview');
+  document.getElementById('f-bg-wrap').hidden=!src;document.getElementById('f-bg-clear').hidden=!src;
+  if(src){if(img.getAttribute('src')!==src)img.src=src;}else img.removeAttribute('src');
+}
+function _drDresFill(s){
+  document.getElementById('f-video').value=s&&typeof s.bgVideo==='string'?s.bgVideo:'';
+  _drVideoSync();
+  _bgImg=(s&&typeof s.bgImage==='string'&&s.bgImage)||'';_bgImgRemoved=false;
+  document.getElementById('f-bg').value='';_drBgSync();
+  document.getElementById('f-dres-link').innerHTML=s&&APP.activeProjectId?_shareRowHTML('Dressing room link','dressing',dresLinkOf(APP.activeProjectId,s.id)):'';
+}
+async function previewBgImage(inp){
+  const f=_imageFileOf(inp,'Background photo not added');if(!f)return;
+  try{
+    // Full screen on an iPad: larger than the artist photo, still well under
+    // the bucket's 1 MB and small enough to stay inline without Storage.
+    const d=await _compressImage(await _readDataUrl(f),1600,.78);
+    _bgImg=d;_bgImgRemoved=false;_drBgSync();
+    _photoUpload(d,'bg');
+  }catch(e){
+    console.warn('[dressing] background photo failed:',e);
+    stDialog.alert('The photo could not be processed ('+(e.message||e)+'). Try a JPEG or PNG file.',{title:'Background photo not added'});
+    inp.value='';
+  }
+}
+function clearBgImage(){_bgImg='';_bgImgRemoved=true;document.getElementById('f-bg').value='';_drBgSync();}
 // Start pushed past the end: the end follows to start + 1h30m. That is an
 // automatic change, so the duration preview says so.
 document.getElementById('f-start-date').addEventListener('change',_maybeBumpEnd);
@@ -7808,7 +7925,7 @@ async function _uploadMedia(pid,dataUrl){
 // Still referenced by any loaded project (duplicated shows share a URL)?
 function _mediaInUse(url){
   for(const p of(APP&&APP.projects)||[]){const d=p.id===APP.activeProjectId?G:p.data;if(!d)continue;
-    if(d.logo===url||(d.shows||[]).some(s=>s.photo===url))return true;}
+    if(d.logo===url||(d.shows||[]).some(s=>s.photo===url||s.bgImage===url))return true;}
   return false;
 }
 // Best effort: an object that fails to delete is only an orphan (see the
@@ -7837,6 +7954,7 @@ async function movePhotosToStorage(max=3){
   if(_mediaMoving||_mediaOff()||typeof APP==='undefined'||!APP||!APP.activeProjectId||!G)return 0;
   const pid=APP.activeProjectId;
   const todo=(G.shows||[]).filter(s=>_mediaConvertible(s.photo)).slice(0,max).map(s=>['s',s.id,s.photo]);
+  for(const s of G.shows||[]){if(todo.length>=max)break;if(_mediaConvertible(s.bgImage))todo.push(['bg',s.id,s.bgImage]);}
   if(todo.length<max&&_mediaConvertible(G.logo))todo.push(['logo','',G.logo]);
   if(!todo.length)return 0;
   _mediaMoving=true;let n=0;
@@ -7846,8 +7964,9 @@ async function movePhotosToStorage(max=3){
       if(!url)break;
       // G may have been replaced (realtime, project switch) during the upload.
       const same=APP.activeProjectId===pid;
-      const s=same&&kind==='s'?(G.shows||[]).find(x=>x.id===id):null;
-      if(s&&s.photo===old){s.photo=url;n++;}
+      const s=same&&kind!=='logo'?(G.shows||[]).find(x=>x.id===id):null;
+      if(s&&kind==='s'&&s.photo===old){s.photo=url;n++;}
+      else if(s&&kind==='bg'&&s.bgImage===old){s.bgImage=url;n++;}
       else if(same&&kind==='logo'&&G.logo===old){G.logo=url;n++;}
       else _deleteMedia(url,pid);
     }
@@ -7860,34 +7979,40 @@ setInterval(()=>{movePhotosToStorage().catch(e=>console.warn('[media] conversion
 // upload result is dropped (and its object deleted) after the drawer closed
 // or another photo was picked. _photoTemp = uploaded, not yet saved.
 let _drSess=0,_photoUp=null,_photoTemp=[];
-function _photoUpload(d){
-  const sess=_drSess;
+// slot 'bg': the dressing room background (_bgImg / _bgImgUp) instead of
+// the artist photo; same session and clean-up rules.
+function _photoUpload(d,slot){
+  const sess=_drSess,bg=slot==='bg';
   const p=_uploadMedia(APP.activeProjectId,d).then(url=>{
     if(!url)return;
-    if(sess===_drSess&&_photoB64===d){_photoB64=url;_photoTemp.push(url);}
+    if(sess===_drSess&&(bg?_bgImg:_photoB64)===d){if(bg)_bgImg=url;else _photoB64=url;_photoTemp.push(url);}
     else _deleteMedia(url,APP.activeProjectId);
-  }).finally(()=>{if(_photoUp===p)_photoUp=null;});
-  _photoUp=p;
+  }).finally(()=>{if(bg){if(_bgImgUp===p)_bgImgUp=null;}else if(_photoUp===p)_photoUp=null;});
+  if(bg)_bgImgUp=p;else _photoUp=p;
 }
 function _photoDiscard(){
   _drSess++;
   _photoTemp.forEach(u=>_deleteMedia(u,APP.activeProjectId));
   _photoTemp=[];
 }
+// The picked file when it is an image of at most 25 MB; else null, after a
+// dialog that says why (artist photo and dressing room background).
+function _imageFileOf(inp,title){
+  const f=inp.files&&inp.files[0];if(!f)return null;
+  if(!f.type.startsWith('image/')){inp.value='';stDialog.alert(`"${f.name}" is not an image. Choose a JPEG, PNG or WebP photo.`,{title});return null;}
+  if(f.size>25*1024*1024){inp.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title});return null;}
+  return f;
+}
+const _readDataUrl=f=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>reject(new Error('read failed'));r.readAsDataURL(f);});
 async function previewPhoto(inp){
-  const f=inp.files&&inp.files[0];if(!f)return;
-  if(!f.type.startsWith('image/')){inp.value='';stDialog.alert(`"${f.name}" is not an image. Choose a JPEG, PNG or WebP photo.`,{title:'Photo not added'});return;}
-  if(f.size>25*1024*1024){inp.value='';stDialog.alert('This image is larger than 25 MB. Choose a smaller file.',{title:'Photo not added'});return;}
+  const f=_imageFileOf(inp,'Photo not added');if(!f)return;
   const wrap=document.getElementById('photo-preview-wrap');
   const preview=document.getElementById('photo-preview');
   const clearBtn=document.getElementById('f-photo-clear');
   // Show placeholder + spinner while we read & compress
   wrap.style.display='block';preview.src='';preview.style.opacity='.4';
   try{
-    const raw=await new Promise((resolve,reject)=>{
-      const r=new FileReader();r.onload=e=>resolve(e.target.result);r.onerror=()=>reject(new Error('read failed'));r.readAsDataURL(f);
-    });
-    const d=await _compressImage(raw);
+    const d=await _compressImage(await _readDataUrl(f));
     _photoB64=d;_photoRemoved=false;
     preview.src=d;preview.style.opacity='1';
     clearBtn.style.display='';
@@ -7929,6 +8054,8 @@ async function saveShow(){
   const sd=a.dt,ed=b.dt;
   if(sd&&ed&&ed<=sd)errs.push(['f-end-date','End must be after start. To run past midnight, pick the next day\'s date in End.']);
   RIDER_KEYS.forEach(k=>{const m=_drRiderErr(k);if(m)errs.push(['f-rider-'+k,m]);});
+  const videoRaw=_drVal('f-video').trim(),bgVideo=_safeVideoSrc(videoRaw);
+  if(videoRaw&&!bgVideo)errs.push(['f-video',_DR_VIDEO_ERR]);
   if(errs.length){
     errs.forEach(([f,m])=>_drSetErr(f,m));
     document.getElementById(errs[0][0])?.focus();
@@ -7949,10 +8076,10 @@ async function saveShow(){
   }
   // A photo still uploading: wait (bounded by the upload timeout), else the
   // show would be saved with the old photo and the new one lost.
-  if(_photoUp){
+  if(_photoUp||_bgImgUp){
     const btn=document.getElementById('dr-save'),lbl=btn.textContent;
     _drSaving=true;btn.disabled=true;btn.textContent='Uploading photo…';
-    try{await _photoUp;}finally{_drSaving=false;btn.disabled=false;btn.textContent=lbl;}
+    try{await Promise.all([_photoUp,_bgImgUp]);}finally{_drSaving=false;btn.disabled=false;btn.textContent=lbl;}
     if(!_drIsOpen())return;
   }
   // Resolve the show only now, after the dialog: a realtime update while it
@@ -7965,6 +8092,7 @@ async function saveShow(){
   // after an explicit ✕ the removal must stick.
   const photo=_photoB64||(_photoRemoved?'':(existing?.photo||''));
   const oldPhoto=existing?.photo||'';
+  const bgImage=_bgImg||(_bgImgRemoved?'':(existing?.bgImage||'')),oldBg=existing?.bgImage||'';
   // Festival wall time (see _drSetDT), not the device's zone.
   const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
   const endDate=amsDateStr(ed.getTime()),endTime=amsTimeStr(ed.getTime(),true);
@@ -7988,10 +8116,15 @@ async function saveShow(){
   };
   const target=existing?Object.assign(existing,obj):{id:uid(),stage:G.activeStage,day:G.activeDay,...obj};
   _drApplyRider(target);
+  // Absent rather than '' when empty: older clients and the share-link
+  // feeds never see a key they do not know for shows that do not use it.
+  if(bgVideo)target.bgVideo=bgVideo;else delete target.bgVideo;
+  if(bgImage)target.bgImage=bgImage;else delete target.bgImage;
   if(!existing)G.shows.push(target);
-  _photoTemp=_photoTemp.filter(u=>u!==photo);   // saved now: closeDrawer must not delete it
+  _photoTemp=_photoTemp.filter(u=>u!==photo&&u!==bgImage);   // saved now: closeDrawer must not delete it
   save();
   if(oldPhoto&&oldPhoto!==photo)_dropMediaAfterSave(oldPhoto,APP.activeProjectId);
+  if(oldBg&&oldBg!==bgImage)_dropMediaAfterSave(oldBg,APP.activeProjectId);
   renderAll();if(document.getElementById('foh').classList.contains('open'))renderFOH();if(document.getElementById('bs').classList.contains('open'))renderBS();if(document.getElementById('tl').classList.contains('open'))renderTL();closeDrawer(true);
 }
 async function delShow(id,e){
@@ -8076,12 +8209,12 @@ function _svZoomLock(on){
     return isIpad || isAndroidTablet || isDesktop;
   }
   // Auto fullscreen is a per-device choice (account menu). Default: off in the
-  // operator app, on for kiosk share links (Stage View, Control Wall) where
-  // nobody is around to open a menu.
+  // operator app, on for kiosk share links (Stage View, Control Wall, the
+  // dressing room screen) where nobody is around to open a menu.
   const FS_KEY='st_fs_auto';
   function _autoPref(){
     try{const v=localStorage.getItem(FS_KEY);if(v==='on')return true;if(v==='off')return false;}catch(_){}
-    return ['stage','wall'].includes(window.PUBLIC_MODE);
+    return ['stage','wall','dressing'].includes(window.PUBLIC_MODE);
   }
   const _fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
   function _syncMenu(){
@@ -8132,7 +8265,7 @@ function _svZoomLock(on){
 // used to be Backstage + Stage View only). Wake Lock is a best-effort (no
 // support on old iOS Safari, fails silently). The lock is released as soon
 // as all of these views are closed.
-const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv','smv'];
+const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv','smv','dres'];
 let _wakeLock=null;
 // Native app: the KeepAwake plugin switches off the iOS idle timer for the
 // whole app. navigator.wakeLock in WKWebView is missing or unreliable across
@@ -9515,6 +9648,7 @@ function tick(){
   tickOTV();
   tickOV();
   tickSM();
+  tickDres();
   vwTickSync();
   // Booth link (receipts / presence): last, so a failure there can never
   // keep a screen from rendering.
@@ -9849,13 +9983,17 @@ function _planLineupImport(data){
     if(!d){d={id:uid(),name:label,...(date?{date}:{})};plan.dayObjs.push(d);plan.newDays.push(label);}
     return d;
   };
-  const add=(day,stage,artist,t,rider)=>{
+  const add=(day,stage,artist,t,rider,bgVideo)=>{
     plan.shows.push({dayId:day.id,stageId:stage.id,show:{
       id:uid(),stage:stage.id,day:day.id,artist,...t,
       genre:'',booth:'',type:'',note:'',crew:{},photo:'',cancelled:false,priority:false,hidden:false,
-      ...(rider?{rider}:{}),
+      ...(rider?{rider}:{}),...(bgVideo?{bgVideo}:{}),
     }});
   };
+  // Optional "video": an https link to the dressing room video. A value that
+  // is not one skips the row, like a bad time: silently dropping it would
+  // leave an artist's screen without the video they were promised.
+  const vidOf=row=>{const v=row.video;if(v==null||v==='')return{};const u=_safeVideoSrc(String(v).trim());return u?{id:u}:{err:`video "${String(v).slice(0,60)}" is not an https link`};};
   const bad=(label,reason)=>plan.invalid.push({label,reason});
 
   if(Array.isArray(data)){
@@ -9880,12 +10018,13 @@ function _planLineupImport(data){
       if(!(ms>0)){bad(label,'end is not after start');return;}
       if(ms>86400000){bad(label,'show is longer than 24 hours, check the end date');return;}
       const rd=_importRider(row);if(rd.err){bad(label,rd.err);return;}
+      const vd=vidOf(row);if(vd.err){bad(label,vd.err);return;}
       // Same 07:00 festival-day rule as the rest of the app: a 01:00 start
       // belongs to the night that began the day before.
       const festDate=t2s(s.time)<NIGHT_END_MIN*60?_addDaysISO(s.date,-1):s.date;
       if(festDate!==s.date)plan.earlyMorning=true;
       const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
-      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t,rd.rider);
+      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t,rd.rider,vd.id);
     });
   }else{
     // ── Nested format: {"friday":{"date":"2025-06-20","stages":[{stage,acts:[{time:"16:45-17:30",artist}]}]}}
@@ -9916,13 +10055,14 @@ function _planLineupImport(data){
           if(!start||!end){bad(label,`time "${act.time}" is not a valid time range`);return;}
           if(start===end){bad(label,'end is not after start');return;}
           const rd=_importRider(act);if(rd.err){bad(label,rd.err);return;}
+          const vd=vidOf(act);if(vd.err){bad(label,vd.err);return;}
           const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
           const base=dayDate();
           // Before 07:00 = the night after this day (festival day rule).
           const early=t2s(start)<NIGHT_END_MIN*60;
           if(early)plan.earlyMorning=true;
           const sd=base?(early?_addDaysISO(base,1):base):null;
-          add(day,st.stage,artist,_importShowTimes(sd,start,null,end),rd.rider);
+          add(day,st.stage,artist,_importShowTimes(sd,start,null,end),rd.rider,vd.id);
         });
       });
     }
@@ -12198,6 +12338,22 @@ const _shareBase=()=>IS_NATIVE?WEB_APP_URL:location.origin+location.pathname;
 // Check-in and Stage manager, which can save arrivals (and nothing else:
 // set_show_arrived is the only write an anonymous visitor has).
 const _SHARE_RW={checkin:true,stagemanager:true};
+// One artist's dressing room screen (DRESSING ROOM): the link names the show.
+const dresLinkOf=(pid,shid)=>`${_shareBase()}?mode=dressing&pid=${encodeURIComponent(pid)}&shid=${encodeURIComponent(shid)}`;
+// Per stage: a collapsed list of its artists' dressing room links, by day.
+// Cancelled shows get none; hidden ones do (the link is the artist's own).
+function _shareDresHTML(proj,stageId){
+  const d=proj.data||{},days=d.days||[];
+  const shows=(d.shows||[]).filter(s=>s&&s.stage===stageId&&!s.cancelled&&s.id);
+  if(!shows.length)return'';
+  const order=(a,b)=>String(a.startsAt||'').localeCompare(String(b.startsAt||''))||adjM(t2m(a.start))-adjM(t2m(b.start));
+  const groups=days.map(day=>({label:vwDayLabel(day)||'Day',list:shows.filter(s=>s.day===day.id)}));
+  groups.push({label:'Other days',list:shows.filter(s=>!days.some(x=>x.id===s.day))});
+  const body=groups.filter(g=>g.list.length).map(g=>`<div class="share-dres-day">${escH(g.label)}</div>`+g.list.sort(order).map(s=>
+    _shareRowHTML(`${s.artist||'(no name)'}${s.start?' · '+String(s.start).slice(0,5):''}`,'dressing',dresLinkOf(proj.id,s.id))).join('')).join('');
+  return`<details class="share-dres"><summary>Dressing room screens <span class="share-dres-n">${shows.length} artist${shows.length===1?'':'s'}</span></summary>
+      <p class="share-dres-hint">One link per artist: a countdown to their show over the video or photo set in the show editor.</p>${body}</details>`;
+}
 function _shareRowHTML(label,mode,url){
   const rw=!!_SHARE_RW[mode];
   const tip=rw?'Anyone with this link can mark artists as arrived. It cannot change anything else.':'Anyone with this link can only look. Nothing can be changed through it.';
@@ -12240,6 +12396,7 @@ function openShareModal(projId){
       ${_shareRowHTML('Backstage','backstage',`${base}?mode=backstage&pid=${pid}&sid=${sid}`)}
       ${_shareRowHTML('FOH','foh',`${base}?mode=foh&pid=${pid}&sid=${sid}`)}
       ${_shareRowHTML('Stage manager','stagemanager',`${base}?mode=stagemanager&pid=${pid}&sid=${sid}`)}
+      ${_shareDresHTML(proj,st.id)}
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">No stages created in this project.</div>`;
   document.getElementById('share-stage-list').innerHTML=tlBlock+stageBlocks;
@@ -12622,11 +12779,172 @@ function tickSM(){
   });
 }
 
+// ══ DRESSING ROOM - share link mode=dressing&pid=<project>&shid=<show>: the
+// screen in one artist's dressing room. A big countdown to their show
+// ("Showtime in"), the time left while they are on stage, then a calm
+// thank-you with the customer's logo. Behind it the customer's own video
+// (show.bgVideo: muted, looping) or background photo (show.bgImage). Not
+// YouTube: its terms forbid anything drawn over an embedded player, and its
+// embeds fail inside the iOS app. The countdown never waits on the video:
+// the text moves on the global tick, the video's src is only touched when
+// show.bgVideo changes, and a missing, broken or stalled video falls back to
+// the photo or a dark background. Nothing on it can be tapped: the native
+// app uses a 3 s hold in the top-left 120x120 px as its hidden exit. A hidden
+// show still has its screen (the link names it); the share-link list filter
+// (showAllowed) does not apply here.
+const _dres={state:'',vsrc:'',vfail:'',img:'',stallT:0,warned:false};
+const _dresShow=()=>G&&PUBLIC_SHID?(G.shows||[]).find(s=>s&&s.id===PUBLIC_SHID)||null:null;
+// 'missing' | 'cancelled' | 'tba' (no usable time) | 'before' | 'live' | 'after'.
+// Straight from the schedule (_showIv + nowMs): a manual timer lives only in
+// the operator's tab and is never synced, so no share link can follow it.
+function _dresState(s,n){
+  if(!s)return'missing';
+  if(s.cancelled)return'cancelled';
+  const iv=_showIv(s);
+  if(isNaN(iv.startMs)||isNaN(iv.endMs))return'tba';
+  return n<iv.startMs?'before':n<iv.endMs?'live':'after';
+}
+const _DRES_WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+// "Friday · Main Stage · 21:30": festival day (07:00 rule), stage, start.
+function _dresMeta(s){
+  const st=(G.stages||[]).find(x=>x.id===s.stage),iv=_showIv(s);
+  let day='';
+  if(!isNaN(iv.startMs)){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(festivalDayOf(iv.startMs)||'');if(m)day=_DRES_WD[new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).getUTCDay()];}
+  return[day,st&&st.name,isNaN(iv.startMs)?'':amsTimeStr(iv.startMs,false)].filter(Boolean).join(' · ');
+}
+// [countdown, line under it] at n. Rounded up: it reads 00:01 in the last
+// second and flips to "On stage now" exactly at the start.
+function _dresCd(s,state,n){
+  const iv=_showIv(s);
+  if(state==='before'){
+    const sec=Math.ceil((iv.startMs-n)/1000);
+    if(sec>=86400){const d=Math.floor(sec/86400);return[`${d} day${d===1?'':'s'}`,`${vwDateLabel(amsDateStr(iv.startMs))} · ${amsTimeStr(iv.startMs,false)}`];}
+    return[s2cdH(sec),''];
+  }
+  if(state==='live')return[s2cdH(Math.ceil((iv.endMs-n)/1000)),'left in the set'];
+  return['',''];
+}
+// The <video>, made once and only when there is a video: muted as attribute
+// AND property before any src, or iOS will not autoplay it inline.
+function _dresVideo(){
+  let v=document.getElementById('dres-video');if(v)return v;
+  v=document.createElement('video');v.id='dres-video';v.className='dres-video';
+  for(const a of['muted','loop','playsinline','autoplay','disablepictureinpicture'])v.setAttribute(a,'');
+  v.setAttribute('preload','auto');v.setAttribute('aria-hidden','true');v.tabIndex=-1;
+  v.muted=true;v.defaultMuted=true;v.playsInline=true;v.loop=true;v.autoplay=true;
+  v.addEventListener('playing',()=>{clearTimeout(_dres.stallT);v.classList.add('on');});
+  v.addEventListener('error',()=>_dresVideoFailed(v,'could not be played'));
+  // Venue wifi that stops delivering mid-file: 15 s, then the photo / dark.
+  v.addEventListener('stalled',()=>{clearTimeout(_dres.stallT);_dres.stallT=setTimeout(()=>{if(v.readyState<3)_dresVideoFailed(v,'stalled');},15000);});
+  document.getElementById('dres-media').appendChild(v);
+  return v;
+}
+function _dresVideoFailed(v,why){
+  const src=v.getAttribute('src');if(!src||src!==_dres.vsrc||_dres.vfail===src)return;
+  _dres.vfail=src;clearTimeout(_dres.stallT);v.classList.remove('on');
+  console.warn('[dressing] background video '+why+' - showing the photo or a dark background',v.error?'(media error '+v.error.code+')':'');
+  _dresBg(_dresShow(),_dres.state);
+}
+function _dresPlay(v){
+  let p;try{p=v.play();}catch(e){p=Promise.reject(e);}
+  if(p&&p.catch)p.catch(e=>{
+    if(e&&e.name==='AbortError')return;   // paused or src changed while starting: not a failure
+    if(!_dres.warned){_dres.warned=true;console.warn('[dressing] video did not start:',(e&&e.name)||e);}
+    _dresVideoFailed(v,'did not start');
+  });
+}
+// Background photo layer: i:<src> while the video is absent or failed,
+// d:<src> dimmed behind the thank-you, '' dark. Checked like the logo
+// (data: raster or our own bucket) and assigned through img.src only.
+function _dresImg(want){
+  if(want===_dres.img)return;
+  _dres.img=want;
+  let el=document.getElementById('dres-img');
+  if(!want){if(el)el.remove();return;}
+  if(!el){
+    el=document.createElement('img');el.id='dres-img';el.alt='';el.decoding='async';el.setAttribute('aria-hidden','true');
+    el.onload=()=>el.classList.add('on');
+    el.onerror=()=>{console.warn('[dressing] background photo could not be loaded');el.classList.remove('on');};
+    const box=document.getElementById('dres-media');box.insertBefore(el,box.firstChild);
+  }
+  const src=want.slice(2),same=el.getAttribute('src')===src;
+  el.className='dres-img'+(want[0]==='d'?' dres-dim':'')+(same&&el.complete&&el.naturalWidth?' on':'');
+  if(!same)el.src=src;
+}
+// Before / during the show: the video, else the photo, else dark. After it:
+// the video pauses and hides, the photo dims behind the thank-you.
+function _dresBg(s,state){
+  const on=!!s&&(state==='before'||state==='live'||state==='tba');
+  const url=s?_safeVideoSrc(s.bgVideo):'';
+  // A src is only set while the video should play (autoplay would start it
+  // even hidden), and only touched again when show.bgVideo changes.
+  if((on&&url&&url!==_dres.vsrc)||(!url&&_dres.vsrc)){
+    const v=_dresVideo();
+    _dres.vsrc=url;_dres.vfail='';clearTimeout(_dres.stallT);v.classList.remove('on');
+    if(url)v.src=url;else{v.removeAttribute('src');v.load();}
+  }
+  const v=document.getElementById('dres-video'),play=on&&!!url&&url===_dres.vsrc&&_dres.vfail!==url;
+  if(v){v.hidden=!play;if(play){if(v.paused)_dresPlay(v);}else if(!v.paused)v.pause();}
+  const img=s?_safeLogoSrc(s.bgImage):'';
+  _dresImg(state==='after'?(img?'d:'+img:''):(on&&!play&&img?'i:'+img:''));
+}
+function _dresTickText(s,state,n){
+  if(state!=='before'&&state!=='live')return;
+  const[cd,sub]=_dresCd(s,state,n),root=document.getElementById('dres-main');
+  const a=root.querySelector('.dres-cd'),b=root.querySelector('.dres-sub');
+  if(a&&a.textContent!==cd)a.textContent=cd;
+  if(b&&b.textContent!==sub)b.textContent=sub;
+}
+function renderDres(){
+  const root=document.getElementById('dres');if(!root||!root.classList.contains('open')||!G)return;
+  const n=nowMs(),s=_dresShow(),state=_dresState(s,n);
+  _dres.state=state;
+  _dresBg(s,state);
+  // The logo shows here whatever data.branding says for Backstage / FOH: this
+  // is the customer's own thank-you to the artist.
+  const logo=state==='after'?_safeLogoSrc(G.logo):'',plate=!!logo&&_brandingOf(G).logoBackdrop;
+  const main=document.getElementById('dres-main');
+  if(vwSame(main,JSON.stringify([state,s&&s.artist,s&&_dresMeta(s),logo,plate]))){_dresTickText(s,state,n);return;}
+  root.dataset.state=state;
+  const artist=escH((s&&s.artist)||'');
+  if(state==='missing')main.innerHTML='<div class="dres-note">This artist is no longer in the schedule. Ask the production team for a new link.</div>';
+  else if(state==='cancelled')main.innerHTML=`<div class="dres-artist">${artist}</div><div class="dres-note">This show has been cancelled. Ask the production team for details.</div>`;
+  else if(state==='after')main.innerHTML=`${logo?`<img class="dres-logo${plate?' dres-plate':''}" alt="">`:''}<div class="dres-ty">Thank you so much for the amazing show!</div><div class="dres-artist dres-artist-ty">${artist}</div><div class="dres-sig">— Thanks from the artist team</div>`;
+  else main.innerHTML=`<div class="dres-artist">${artist||'(no name)'}</div><div class="dres-meta">${escH(_dresMeta(s))}</div>`
+    +(state==='tba'?'<div class="dres-lbl">Showtime to be announced</div>':`<div class="dres-lbl">${state==='live'?'On stage now':'Showtime in'}</div><div class="dres-cd"></div><div class="dres-sub"></div>`);
+  const li=main.querySelector('.dres-logo');
+  if(li){
+    const p=APP&&APP.projects.find(x=>x.id===APP.activeProjectId);
+    li.alt=((p&&p.name)||'Festival')+' logo';
+    li.onerror=()=>{console.warn('[dressing] could not load the project logo');li.remove();};
+    li.src=logo;   // checked by _safeLogoSrc, never written into the markup
+  }
+  _dresTickText(s,state,n);
+}
+// 250 ms (global tick): only the countdown text, unless the state changed.
+function tickDres(){
+  const root=document.getElementById('dres');if(!root||!root.classList.contains('open')||!G)return;
+  const s=_dresShow(),n=nowMs(),state=_dresState(s,n);
+  if(state!==_dres.state){renderDres();return;}
+  _dresTickText(s,state,n);
+}
+function openDres(){
+  document.getElementById('dres').classList.add('open');
+  renderDres();_acquireWakeLock();
+  // Back online after a video that failed or stalled: try it once more.
+  window.addEventListener('online',()=>{
+    const v=document.getElementById('dres-video');
+    if(v&&_dres.vfail&&_dres.vfail===_dres.vsrc){_dres.vfail='';v.load();_dresBg(_dresShow(),_dres.state);}
+  });
+}
+
 // ══ PUBLIC VIEW MODE (no login needed)
 const _urlP=new URLSearchParams(location.search);
 const PUBLIC_MODE=_urlP.get('mode');
 const PUBLIC_PID=_urlP.get('pid');
 const PUBLIC_SID=_urlP.get('sid');
+// Dressing room link: the one show (artist) the screen is for.
+const PUBLIC_SHID=_urlP.get('shid');
 // Mirror onto window so functions defined earlier (e.g. getShows hidden-filter)
 // can read these without hitting a TDZ if called during init.
 window.PUBLIC_MODE=PUBLIC_MODE;
@@ -13077,6 +13395,13 @@ async function loadPublicView(){
     openSM();
     _pvStartPolling(renderSM,()=>_ciWriteInFlight>0);
     setupRealtime();
+  } else if(PUBLIC_MODE==='dressing'){
+    // One artist's dressing room screen (shid). Read-only; tickDres (global
+    // tick) runs the countdown, the poll brings a changed video or time.
+    document.getElementById('app').style.display='none';
+    openDres();
+    _pvStartPolling(renderDres);
+    setupRealtime();
   }
   // No setInterval(tick) here: the global one at the bottom of the script
   // already runs on every route (it used to run twice on share links).
@@ -13120,6 +13445,17 @@ function _safeLogoSrc(v){
   else ok=_LOGO_DATA_RE.test(v)?v:'';
   _logoChecked=[v,ok];
   return ok;
+}
+// Dressing room video (show.bgVideo): the customer's own file behind an https
+// link (any host: their CDN, a file share, our bucket), at most 2000
+// characters, no user:password in it. Only ever assigned through video.src,
+// never into markup; whether it is a playable video is for the <video>
+// element's error handler to find out.
+function _safeVideoSrc(v){
+  if(typeof v!=='string'||!v||v.length>2000)return'';
+  if(_isMediaUrl(v))return v;
+  let u;try{u=new URL(v);}catch(e){return'';}
+  return u.protocol==='https:'&&!u.username&&!u.password?v:'';
 }
 function _brandingOf(d){
   const b=d&&d.branding&&typeof d.branding==='object'&&!Array.isArray(d.branding)?d.branding:null;
@@ -13742,7 +14078,7 @@ function _natOpenUrl(raw){
 // through dozens of paths (open*/close*, goToDash, openProject, start-up,
 // share links), so a 250 ms check catches them all; the plugin is called only
 // when the answer changes.
-const _NAT_BAR=[['wv',null],['ci',0],['nat-role',0],['signup-setup',0],['set-pw',0],['login',0],['loader',0],['sv',0],['admin',1],['otv',0],['foh',0],['bs',0],['tl',0],['stov',0],['smv',0],['dash',1]];
+const _NAT_BAR=[['wv',null],['ci',0],['nat-role',0],['signup-setup',0],['set-pw',0],['login',0],['loader',0],['sv',0],['admin',1],['otv',0],['foh',0],['bs',0],['tl',0],['stov',0],['smv',0],['dres',0],['dash',1]];
 let _natBarCur=null;
 function _natBarSync(){
   if(!IS_NATIVE)return;

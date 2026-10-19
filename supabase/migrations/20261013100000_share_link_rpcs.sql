@@ -6,7 +6,7 @@
 --
 -- PURPOSE
 --   Public viewers (?mode=stage|backstage|foh|timeline|overview|wall|checkin|
---   stagemanager&pid=...) have no session. Once RLS is on they have no table
+--   stagemanager|dressing&pid=...) have no session. Once RLS is on they have no table
 --   access, so the one project behind a share link is served through these
 --   functions.
 --   (These definitions used to live in rls_prep; this file supersedes them.)
@@ -18,19 +18,29 @@
 --                                     but data only contains what that mode
 --                                     renders (company_id is always null):
 --
---     field (in data)      stage backstage foh timeline overview wall checkin stagemanager
---     fohNotes               -      -       yes    -        -      -     -        -
---     shows[].note           -      yes      -     -        -      -     -        -
---     shows[].crew           -       -      yes    -        -      -     -        -
---     shows[].photo          -       -       -     -        -      -     -        -
---     memberIds              -       -       -     -        -      -     -        -
---     logo                   -      yes     yes    -        -      -     -        -
---     shows[].rider          -       -       -     -        -      -    yes      yes
+--     field (in data)      stage backstage foh timeline overview wall checkin stagemanager dressing
+--     fohNotes               -      -       yes    -        -      -     -        -          -
+--     shows[].note           -      yes      -     -        -      -     -        -          -
+--     shows[].crew           -       -      yes    -        -      -     -        -          -
+--     shows[].photo          -       -       -     -        -      -     -        -          -
+--     memberIds              -       -       -     -        -      -     -        -          -
+--     logo                   -      yes     yes    -        -      -     -        -         yes
+--     shows[].rider          -       -       -     -        -      -    yes      yes         -
+--     shows[].bgImage        -       -       -     -        -      -     -        -         yes
 --   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed.)
 --   shows[].rider = {drinks, tech}: the artist's hospitality and technical
 --   rider (free text, set in the show editor or the lineup import). Only the
 --   check-in desk and the stage manager act on it; it is the artist's
 --   business, so no other screen receives it (2026-10-13, feature/rider-data).
+--   dressing (?mode=dressing&pid=..&shid=<show id>, 2026-10-19, branch
+--   dressing/web): the dressing room screen of ONE artist - a countdown to
+--   that show over its background video or photo, then a thank-you with the
+--   customer's logo. It gets the logo (always shown there, whatever
+--   branding says) and shows[].bgImage, its background photo (a Storage URL
+--   or, before the photo_storage migration, a base64 image of up to a few
+--   hundred kB: so no other mode receives it). shows[].bgVideo (an https
+--   link to the customer's own video file, at most 2000 characters) is not
+--   stripped anywhere.
 --   The JS twin of this matrix is tests/support/share-modes.js (the mock
 --   backend serves the 2-arg call with it; tests/regression/share-mode.spec.js
 --   checks this table and keep_* below against it).
@@ -46,6 +56,7 @@
 --     shows[].booth                backstage, foh, timeline, stagemanager (booth badge)
 --     shows[].type                 backstage, foh (item-type badge)
 --     shows[].priority             wall, timeline, overview (star / tint)
+--     shows[].bgVideo              dressing (https link to the background video)
 --     shows[].arrived, arrivedAt   checkin, stagemanager, overview, timeline
 --                                  (check-in dot / arrival state)
 --     activeStage, activeDay       all (fallback when the link has no sid /
@@ -69,11 +80,14 @@
 --   Photos are only used by the operator timer panel and editor drawer,
 --   memberIds only by the operator crew picker / push, logo only by
 --   refreshLogo on Backstage and FOH (customer logo top-left, 2026-10-13,
---   feature/project-logo; Stage View, Wall and the rest never show it).
+--   feature/project-logo; Stage View, Wall and the rest never show it) and
+--   the dressing room thank-you (renderDres).
 --   Proof: the booth suite runs every public Stage
 --   View state on this stripped feed against the unchanged baseline, and
 --   share-mode.spec.js renders every mode on both feeds and compares the DOM.
 --   Unknown modes get the strictest set.
+--   dressing reads none of note, crew, rider or FOH notes (renderDres:
+--   artist, stage and day names, times, cancelled, bgVideo, bgImage, logo).
 --
 --   set_show_arrived(...)  Same signature and return shape as before (a data
 --   object with a shows array, which ciToggleArrived adopts), but:
@@ -129,6 +143,12 @@
 --          jsonb_path_exists(public.get_shared_project('<pid>','checkin') -> 'data', '$.shows[*].rider'),
 --          jsonb_path_exists(public.get_shared_project('<pid>','stagemanager') -> 'data', '$.shows[*].rider');
 --   -- (true only when at least one show has a rider)
+--   -- dressing: logo and background photo only there (false, true, false, true):
+--   select (public.get_shared_project('<pid>','stage') -> 'data') ? 'logo',
+--          (public.get_shared_project('<pid>','dressing') -> 'data') ? 'logo',
+--          jsonb_path_exists(public.get_shared_project('<pid>','stage') -> 'data', '$.shows[*].bgImage'),
+--          jsonb_path_exists(public.get_shared_project('<pid>','dressing') -> 'data', '$.shows[*].bgImage');
+--   -- (true only when the project has a logo / a show has a background photo)
 --   -- arrived toggle, then toggle back (inside a transaction to leave no trace):
 --   begin; select public.set_show_arrived('<pid>','<show id>', true, null) -> 'shows' -> 0; rollback;
 --   -- helpers are not callable by clients (both false):
@@ -186,8 +206,9 @@ declare
   keep_foh   boolean := p_mode in ('foh', 'legacy');
   keep_note  boolean := p_mode in ('backstage', 'legacy');
   keep_crew  boolean := p_mode in ('foh', 'legacy');
-  keep_logo  boolean := p_mode in ('backstage', 'foh', 'legacy');
+  keep_logo  boolean := p_mode in ('backstage', 'foh', 'dressing', 'legacy');
   keep_rider boolean := p_mode in ('checkin', 'stagemanager', 'legacy');
+  keep_bg    boolean := p_mode in ('dressing', 'legacy');
   drop_show  text[]  := array['photo'];
   out        jsonb;
 begin
@@ -197,6 +218,7 @@ begin
   if not keep_note then drop_show := array_append(drop_show, 'note'); end if;
   if not keep_crew then drop_show := array_append(drop_show, 'crew'); end if;
   if not keep_rider then drop_show := array_append(drop_show, 'rider'); end if;
+  if not keep_bg then drop_show := array_append(drop_show, 'bgImage'); end if;
 
   out := case when keep_logo then p_data else p_data - 'logo' end;
   if out ? 'memberIds' then out := jsonb_set(out, '{memberIds}', '[]'::jsonb); end if;
@@ -245,7 +267,7 @@ as $$
            'company_id', null,   -- public views do not need it
            'data', public._strip_project_data(
                      p.data,
-                     case when p_mode in ('stage','backstage','foh','timeline','overview','wall','checkin','stagemanager')
+                     case when p_mode in ('stage','backstage','foh','timeline','overview','wall','checkin','stagemanager','dressing')
                           then p_mode else 'strict' end))
   from public.projects p
   where p.id::text = p_id
@@ -354,7 +376,7 @@ grant execute on function public.set_show_arrived(text, text, boolean, bigint) t
 -- is live, (2) the app never saves in PUBLIC_MODE (done), (3) a few days have
 -- passed so cached tabs reloaded, and (4) the iPad app is known to work with
 -- the narrowed legacy output. After this, the legacy call returns the union
--- of what any public mode needs (fohNotes, notes, crew, logo, rider) but no
+-- of what any public mode needs (fohNotes, notes, crew, logo, rider, bgImage) but no
 -- photos / memberIds, and no company_id.
 --
 -- create or replace function public.get_shared_project(p_id text)

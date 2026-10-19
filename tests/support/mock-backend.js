@@ -22,6 +22,9 @@
 //   cdn.jsdelivr.net        supabase-js UMD served from node_modules (same bytes, SRI ok)
 //   fonts.googleapis/gstatic   local copies in tests/support/fonts
 //   *.onesignal.com         recorded, answered with a dummy 200, never real
+//   media.stagetimer.test   dressing room test videos: /clip.webm = a 1 s
+//                           VP8 clip from tests/support/media, /missing.mp4 =
+//                           404, /slow.mp4 = never answers (loading forever)
 //   anything else           ABORTED and recorded as a violation -> test fails
 //
 // Nothing here can reach production: unknown hosts/paths are aborted, and the
@@ -38,6 +41,8 @@ const SUPA_HOST = 'bamjpsquhdzxvsymldpq.supabase.co';
 const SUPABASE_UMD_PATH = '/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const FONTS_DIR = path.join(__dirname, 'fonts');
+const MEDIA_HOST = 'media.stagetimer.test';   // reserved TLD: can never be a real host
+const MEDIA_DIR = path.join(__dirname, 'media');
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -407,6 +412,7 @@ class MockBackend {
     this.hiddenColumns = {};
     this.realtime = new RealtimeStub(this);
     this.onesignal = [];
+    this.media = [];         // requests to MEDIA_HOST (dressing room videos)
     // Storage bucket project-media (migration 20261013150000_photo_storage).
     // objects: Map name -> { buf, type }. bucketMissing: every call answers
     // like a Supabase project without the bucket.
@@ -769,6 +775,13 @@ class MockBackend {
       const f = path.join(FONTS_DIR, 'gstatic', url.pathname);
       if (fs.existsSync(f)) return { path: f, headers: { 'content-type': 'font/woff2' } };
       return this._violation(`missing local font ${url.href} (re-download into tests/support/fonts)`);
+    }
+    if (h === MEDIA_HOST) {
+      this.media.push(rec);
+      if (url.pathname === '/clip.webm') return { path: path.join(MEDIA_DIR, 'clip.webm'), headers: { 'content-type': 'video/webm', 'accept-ranges': 'none' } };
+      if (url.pathname === '/missing.mp4') return { status: 404, body: 'not found' };
+      if (url.pathname === '/slow.mp4') return null;   // handleRequest: no answer, ever
+      return this._violation(`unmocked test media ${url.href}`);
     }
     if (/(^|\.)onesignal\.com$/.test(h)) {
       // Never real. Recorded so specs can assert what *would* have been pushed.
