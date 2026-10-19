@@ -135,3 +135,37 @@ The Dynamic Island needs an iPhone with one (iPhone 17 Pro); an iPhone 16e
 shows the activity on the lock screen only. Where Live Activities are not
 supported or switched off (Settings > Stagetimer), `isAvailable()` answers
 false and nothing starts.
+
+## Dressing room screen (step 6): video in the web view
+
+A device can be set up as a *Dressing room screen* (`st_native_role_v1 =
+{role:'dressing',pid,shid}`): it opens the `?mode=dressing&pid&shid` share
+link, one artist's countdown over their own video (`show.bgVideo`, an https
+MP4 played in a muted, looping inline `<video>`) or photo. Nothing in the
+native project had to change for that (checked against `@capacitor/ios`
+8.5.3, no build):
+
+- `CAPBridgeViewController.webViewConfiguration(for:)` already sets
+  `allowsInlineMediaPlayback = true` and
+  `mediaTypesRequiringUserActionForPlayback = []`, so a muted video may start
+  without a tap and play inside the page. The element still needs the
+  `playsinline`, `muted` and `autoplay` attributes (without `playsinline` an
+  iPhone goes to its fullscreen player).
+- A video is a subresource load, not a navigation, so
+  `WebViewDelegationHandler` and `server.allowNavigation` do not come into
+  it; leave `allowNavigation` unset (it would let the main web view itself
+  navigate away from the bundled app). The URL must be https (App Transport
+  Security).
+- The bundled page has no CSP (the web's report-only CSP comes from
+  `vercel.json`, which the app does not use).
+
+The video is streamed, never stored on the device: the offline copy
+(`st_native_booth_cache_v1`) keeps only the `bgVideo` / `bgImage` URLs and
+the logo URL. Without a network the screen falls back to the photo (when the
+image is still in WebKit's cache) or the dark background, and the countdown
+keeps running.
+
+To check in the simulator with a real network (not testable in Playwright):
+autoplay of the customer's MP4 (the server must answer byte-range requests,
+which iOS uses for MP4), behaviour in Low Power Mode, and the hold in the
+top-left corner over a playing video (hidden exit).
