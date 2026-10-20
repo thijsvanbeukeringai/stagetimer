@@ -83,5 +83,9 @@ Dan in de app (10 minuten):
 
 Gaat er iets mis: het `ROLLBACK`-blok uit de kop van `rls_enable` draaien. RLS gaat dan weer uit; stap 0 blijft staan.
 
+## Lokaal getest (20-10-2026)
+Stap 0 + B t/m E op `supabase/postgres:17.6.1.167` in Docker (zonder netwerk, niets van productie), tegen een nagebouwd schema: elke stap twee keer, ook als één querystring zoals de SQL-editor hem stuurt. Geen fouten. 98 controles per rol (anon, operator, company_admin, admin, super_admin, service_role, postgres), de veldmatrix van alle deellinkmodi inclusief `dressing`, check-in, en de rollback van stap E (laat stap 0 staan, opnieuw E werkt daarna ook). Twee kleine verbeteringen verwerkt en opnieuw getest: `authenticated` verliest TRUNCATE/TRIGGER/REFERENCES (TRUNCATE negeert RLS), en de smoke test in de kop van `rls_prep` gaf een vals "geslaagd" op een workspace die al `active` was.
+**Niet getest:** het echte productieschema (de vier onbekende migraties) en de edge functions. Daarvoor `remote_schema.sql` en de functiebroncode nodig (poort b en d).
+
 ## 3. Daarna (niet nodig voor RLS)
 Stap 5 (kolomrechten `companies`), 6, 7 en 8 uit MIGRATIES kunnen los daarna. Stap 11 (PHASE B) blijft geblokkeerd tot de oude iPad-app uitgezocht of uitgefaseerd is.

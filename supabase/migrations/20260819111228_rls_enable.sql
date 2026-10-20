@@ -227,6 +227,10 @@ create policy companies_delete on public.companies
 revoke all on public.projects  from anon;
 revoke all on public.app_users from anon;
 revoke all on public.companies from anon;
+-- authenticated: no TRUNCATE (it ignores RLS and empties the table), TRIGGER
+-- or REFERENCES. Supabase's default grants include them; PostgREST cannot
+-- issue them today, but nothing a logged-in user does should need them.
+revoke truncate, trigger, references on public.projects, public.app_users, public.companies from authenticated;
 
 -- 4a. projects: insert/delete/select via policy; UPDATE only the columns
 --     app.html PATCHes (_patchProjectData: data; renameProject: name;

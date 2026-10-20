@@ -85,7 +85,9 @@
 --   -- Guard smoke test (should FAIL with insufficient_privilege):
 --   begin;
 --     select set_config('request.jwt.claims','{"role":"authenticated","email":"nobody@example.invalid"}', true);
---     update public.companies set subscription_status = 'active' where id = (select id from public.companies limit 1);
+--     update public.companies set subscription_status = 'guard-smoke-test' where id = (select id from public.companies limit 1);
+--     (a value no row has: 'active' on an already active company changes
+--      nothing, so the guard has nothing to block and it falsely passes)
 --   rollback;
 --
 -- ROLLBACK
