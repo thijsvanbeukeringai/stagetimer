@@ -16,6 +16,22 @@ Besluit Thijs, 20-10-2026: **RLS moet aan.** Dit is de kortste veilige route van
 
 Stap B t/m D (hieronder) breken niets en werken met elke app-versie. Die kunnen dus ook al als b/c/d nog open zijn. Alleen stap E (RLS zelf) wacht op alle poorten.
 
+## 1b. Twee extra tabellen (Security Advisor, 20-10-2026)
+
+De Security Advisor meldt ook `public.stripe_processed_events` en `public._shows_backup_20260720` zonder RLS. Onze migraties kennen die tabellen niet; ze blijven dus open, ook na stap E. De app gebruikt ze niet (hele codebase doorzocht). Los van de rest, nu al veilig:
+
+```sql
+alter table public.stripe_processed_events enable row level security;
+alter table public._shows_backup_20260720 enable row level security;
+revoke all on public.stripe_processed_events from anon, authenticated;
+revoke all on public._shows_backup_20260720 from anon, authenticated;
+```
+Controle: de volgende Stripe-webhook slaagt (de webhook hoort met de service_role-key te werken, die RLS negeert). Terugdraaien: `disable row level security` en `grant all ... to anon, authenticated`.
+
+**Niet doen:** de door de Advisor voorgestelde `ENABLE ROW LEVEL SECURITY` op `projects`, `app_users` en `companies` los uitvoeren. Zonder de policies uit stap C t/m E mag dan niemand meer iets: geen login, geen project, elke deellink en booth op zwart.
+
+Productie heeft vier migraties in zijn historie die niet in git staan (20260522082505, 20260522084554, 20260526010539, 20260730073449; gezien bij `supabase db pull` op 20-10). Die kunnen policies, triggers of kolommen bevatten. Daarom eerst het schema ophalen met `supabase db dump --linked -f remote_schema.sql` (geen historiecheck, alleen lezen) en **nooit** `supabase migration repair` uitvoeren.
+
 ## 2. Volgorde
 
 Werk met twee tabbladen in de SQL-editor: één voor de stap, één met het `ROLLBACK`-blok van dat bestand klaar. Nooit tijdens een show.
