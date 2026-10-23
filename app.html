@@ -525,6 +525,9 @@ body.public-mode #smv-close-btn{display:none!important;}
 #lng-day:empty{display:none;}
 #lng-ssel{min-height:36px;color:rgba(255,255,255,.85);background-color:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);}
 #lng-ssel[hidden],#lng-dtabs[hidden]{display:none;}
+/* Clock in the top-right corner, labelled (Thijs, 23-10). */
+#lng-clockw{flex-shrink:0;display:inline-flex;align-items:baseline;gap:calc(var(--lu)*.7);margin-left:calc(var(--lu)*.6);}
+#lng .lng-clock-lbl{font-size:max(11px,calc(var(--lu)*.8));font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);}
 #lng-clock{flex-shrink:0;font-family:var(--ffm);font-size:max(20px,calc(var(--lu)*1.9));font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
 #lng .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
 /* TV: the stagetimer.nl mark sits bottom-right of the screen (Thijs, 23-10),
@@ -646,7 +649,7 @@ html:fullscreen #lng-hdr:hover #lng-fs-btn,html:-webkit-full-screen #lng-hdr:hov
   #lng .vw-st-mark{position:static;order:2;margin-left:auto;}
   #lng-close-btn,#lng-fs-btn{order:3;}
   #lng-title{order:4;flex:1 1 55%;}
-  #lng-clock{order:5;}
+  #lng-clockw{order:5;}
   #lng-sname{font-size:17px;}
   #lng-clock{font-size:18px;}
   #lng .vw-st-mark .vw-st-word{height:11px;}
@@ -6455,10 +6458,10 @@ function renderTbar(){
     <div id="lng-title"><div id="lng-sname">-</div><div id="lng-day"></div></div>
     <select id="lng-ssel" class="hsel" aria-label="Stage" onchange="_pickStageLNG(this.value)"></select>
     <div id="lng-dtabs"></div>
-    <div id="lng-clock"></div>
     <span class="vw-st-mark" role="img" aria-label="Powered by stagetimer.nl"><img class="vw-st-icon" src="/app-icon.svg" alt=""><img class="vw-st-word" src="/stagetimer-wordmark.png" alt=""></span>
     <button class="bshbtn" id="lng-fs-btn" data-fs-btn hidden onclick="stFullscreen.toggle()" aria-label="Enter fullscreen" title="Fullscreen (Esc to leave)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
     <button class="bshbtn" id="lng-close-btn" onclick="closeLNG()" aria-label="Close Artist lounge">✕</button>
+    <div id="lng-clockw"><span class="lng-clock-lbl">Local time</span><div id="lng-clock"></div></div>
   </div>
   <div id="lng-body"></div>
 </div>
