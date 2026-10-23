@@ -403,7 +403,7 @@ test.describe('show editor', () => {
 
   test('video link: checked while typing, saved as show.bgVideo, cleared = key removed', async ({ page, st, backend }) => {
     await openEditor(page, st, 'm3');
-    await expect(page.locator('#f-video-hint')).toHaveText('Link to an MP4 video (muted, loops). Tip: keep it short and under ~50 MB.');
+    await expect(page.locator('#f-video-hint')).toHaveText('Link to an MP4 video or a YouTube video (muted, loops). YouTube plays on share links only, not in the iPhone app. MP4 tip: keep it under ~50 MB.');
     await page.locator('#f-video').fill('http://cdn.example.com/a.mp4');
     await expect(page.locator('#f-video-err')).toHaveText(/starts with https:\/\//);
     await page.locator('#dr-save').click();
@@ -493,5 +493,39 @@ test.describe('share dialog', () => {
     // a hidden show has its link (the artist's own screen)
     const tent = page.locator('.share-stage-block', { has: page.locator('.share-stage-name', { hasText: 'The Tent' }) });
     await expect(tent.locator('.share-link-row[data-mode="dressing"]', { hasText: 'Hidden Guest' })).toHaveCount(1);
+  });
+});
+
+// YouTube as full-screen background (Thijs, 23-10): every common link form
+// becomes one youtube-nocookie embed built from the 11-character id only.
+test.describe('YouTube background', () => {
+  for (const link of [
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s',
+    'https://youtu.be/dQw4w9WgXcQ?si=abc',
+    'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+    'https://music.youtube.com/watch?v=dQw4w9WgXcQ',
+  ]) {
+    test.describe(link, () => {
+      test.use({ stSeed: seedWith((d) => { showIn(d, 'm2').bgVideo = link; }) });
+      test('plays behind the countdown, no <video>', async ({ page, st }) => {
+        await page.route('https://www.youtube-nocookie.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<html><body style="background:#123"></body></html>' }));
+        await openDres(st, 'm2', '15:00:00');
+        const f = page.locator('#dres-yt');
+        await expect(f).toHaveAttribute('src', /^https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?autoplay=1&mute=1&loop=1&playlist=dQw4w9WgXcQ&controls=0/);
+        await expect(f).toHaveClass(/on/);
+        await expect(main(page)).toContainText("DJ O'Neil");
+        expect(await page.locator('#dres-video[src]').count()).toBe(0);
+      });
+    });
+  }
+  test.describe('not a video id', () => {
+    test.use({ stSeed: seedWith((d) => { showIn(d, 'm2').bgVideo = 'https://www.youtube.com/watch?v=x"><img src=x onerror=alert(1)>'; }) });
+    test('crafted link never builds an embed', async ({ page, st }) => {
+      // Not a YouTube id: it is tried as a plain video link and fails there.
+      await page.route('https://www.youtube.com/**', (r) => r.fulfill({ status: 404, body: '' }));
+      await openDres(st, 'm2', '15:00:00');
+      await expect(main(page)).toContainText("DJ O'Neil");
+      expect(await page.locator('#dres-yt').count()).toBe(0);
+    });
   });
 });

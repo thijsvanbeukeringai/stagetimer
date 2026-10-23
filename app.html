@@ -480,6 +480,10 @@ body.public-mode #smv-close-btn{display:none!important;}
   background:radial-gradient(120% 90% at 50% 0%,#1b1b2c 0%,#09090f 55%,#030305 100%);}
 #dres.open{display:block;}
 #dres-media{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+/* YouTube background (Thijs chose full-screen behind the countdown, 23-10,
+   knowing YouTube's terms forbid overlays): a 16:9 frame scaled to cover. */
+#dres .dres-yt{position:absolute;top:50%;left:50%;width:max(100vw,177.78vh);height:max(100vh,56.25vw);transform:translate(-50%,-50%);border:0;pointer-events:none;opacity:0;transition:opacity .8s;}
+#dres .dres-yt.on{opacity:1;}
 #dres .dres-video,#dres .dres-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s ease;pointer-events:none;}
 #dres .dres-video[hidden]{display:none;}
 #dres .dres-video.on,#dres .dres-img.on{opacity:1;}
@@ -5797,8 +5801,8 @@ function renderTbar(){
       <legend class="fl">Dressing room screen <span style="color:var(--sub);font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></legend>
       <p class="dr-rider-hint" id="f-dres-hint">A screen in this artist's dressing room counts down to the show, over the video (muted, looping) or else the photo.</p>
       <div class="st-sub dr-rider-fld"><label class="st-sublbl" for="f-video">Dressing room video</label>
-        <p class="dr-rider-hint" id="f-video-hint">Link to an MP4 video (muted, loops). Tip: keep it short and under ~50 MB.</p>
-        <div class="dr-dres-row"><input class="fi" id="f-video" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…/video.mp4" aria-describedby="f-video-hint f-video-err"><button type="button" class="btn-g" id="f-video-clear" onclick="clearBgVideo()" aria-label="Remove video" hidden>✕</button></div>
+        <p class="dr-rider-hint" id="f-video-hint">Link to an MP4 video or a YouTube video (muted, loops). YouTube plays on share links only, not in the iPhone app. MP4 tip: keep it under ~50 MB.</p>
+        <div class="dr-dres-row"><input class="fi" id="f-video" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://…/video.mp4 or a YouTube link" aria-describedby="f-video-hint f-video-err"><button type="button" class="btn-g" id="f-video-clear" onclick="clearBgVideo()" aria-label="Remove video" hidden>✕</button></div>
         <div class="st-fld-err" id="f-video-err" hidden></div>
       </div>
       <div class="st-sub dr-rider-fld"><span class="st-sublbl" id="f-bg-lbl">Background photo</span>
@@ -13062,16 +13066,17 @@ function tickSM(){
 // screen in one artist's dressing room. A big countdown to their show
 // ("Showtime in"), the time left while they are on stage, then a calm
 // thank-you with the customer's logo. Behind it the customer's own video
-// (show.bgVideo: muted, looping) or background photo (show.bgImage). Not
-// YouTube: its terms forbid anything drawn over an embedded player, and its
-// embeds fail inside the iOS app. The countdown never waits on the video:
+// (show.bgVideo: muted, looping) or background photo (show.bgImage). A
+// YouTube link plays full-screen behind the countdown on share links (Thijs's
+// choice, 23-10, knowing YouTube's terms forbid overlays; see _dresYt); in the
+// iOS app YouTube embeds fail, so it falls back to the photo there. The countdown never waits on the video:
 // the text moves on the global tick, the video's src is only touched when
 // show.bgVideo changes, and a missing, broken or stalled video falls back to
 // the photo or a dark background. Nothing on it can be tapped: the native
 // app uses a 3 s hold in the top-left 120x120 px as its hidden exit. A hidden
 // show still has its screen (the link names it); the share-link list filter
 // (showAllowed) does not apply here.
-const _dres={state:'',vsrc:'',vfail:'',img:'',stallT:0,warned:false};
+const _dres={state:'',vsrc:'',vfail:'',img:'',stallT:0,warned:false,yt:''};
 const _dresShow=()=>G&&PUBLIC_SHID?(G.shows||[]).find(s=>s&&s.id===PUBLIC_SHID)||null:null;
 // 'missing' | 'cancelled' | 'tba' (no usable time) | 'before' | 'live' | 'after'.
 // Straight from the schedule (_showIv + nowMs): a manual timer lives only in
@@ -13152,9 +13157,40 @@ function _dresImg(want){
 }
 // Before / during the show: the video, else the photo, else dark. After it:
 // the video pauses and hides, the photo dims behind the thank-you.
+// YouTube video id from any common link form (watch, youtu.be, shorts, live,
+// embed, music.youtube); '' when it is not YouTube. The embed URL is built
+// from the 11-character id only, so nothing from the link reaches the page.
+function _ytId(v){
+  if(typeof v!=='string'||!v)return'';let u;try{u=new URL(v.trim());}catch(e){return'';}
+  const h=u.hostname.replace(/^(www|m)\./,'');let id='';
+  if(h==='youtu.be')id=u.pathname.slice(1).split('/')[0];
+  else if(h==='youtube.com'||h==='music.youtube.com'||h==='youtube-nocookie.com'){
+    if(u.pathname==='/watch')id=u.searchParams.get('v')||'';
+    else{const m=u.pathname.match(/^\/(?:embed|shorts|live|v)\/([^/?#]+)/);if(m)id=m[1];}
+  }
+  return/^[A-Za-z0-9_-]{11}$/.test(id)?id:'';
+}
+// The YouTube iframe behind the countdown: one element, src only set while it
+// should play (blank otherwise, so a hidden player never streams). Not in the
+// native app: YouTube refuses the WKWebView origin there (error 153).
+function _dresYt(id,play){
+  let f=document.getElementById('dres-yt');
+  if(!play){if(f&&_dres.yt){f.src='about:blank';f.classList.remove('on');_dres.yt='';}return;}
+  if(!f){
+    f=document.createElement('iframe');f.id='dres-yt';f.className='dres-yt';f.title='';f.tabIndex=-1;
+    f.setAttribute('aria-hidden','true');f.setAttribute('allow','autoplay; encrypted-media');f.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
+    f.addEventListener('load',()=>{if(_dres.yt)f.classList.add('on');});
+    document.getElementById('dres-media').appendChild(f);
+  }
+  if(_dres.yt===id)return;
+  _dres.yt=id;f.classList.remove('on');
+  f.src=`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&rel=0&playsinline=1&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0`;
+}
 function _dresBg(s,state){
   const on=!!s&&(state==='before'||state==='live'||state==='tba');
-  const url=s?_safeVideoSrc(s.bgVideo):'';
+  const yt=s&&!IS_NATIVE?_ytId(s.bgVideo):'';
+  _dresYt(yt,on&&!!yt);
+  const url=s&&!yt?_safeVideoSrc(s.bgVideo):'';
   // A src is only set while the video should play (autoplay would start it
   // even hidden), and only touched again when show.bgVideo changes.
   if((on&&url&&url!==_dres.vsrc)||(!url&&_dres.vsrc)){
@@ -13165,7 +13201,7 @@ function _dresBg(s,state){
   const v=document.getElementById('dres-video'),play=on&&!!url&&url===_dres.vsrc&&_dres.vfail!==url;
   if(v){v.hidden=!play;if(play){if(v.paused)_dresPlay(v);}else if(!v.paused)v.pause();}
   const img=s?_safeLogoSrc(s.bgImage):'';
-  _dresImg(state==='after'?(img?'d:'+img:''):(on&&!play&&img?'i:'+img:''));
+  _dresImg(state==='after'?(img?'d:'+img:''):(on&&!play&&!yt&&img?'i:'+img:''));
 }
 function _dresTickText(s,state,n){
   if(state!=='before'&&state!=='live')return;
