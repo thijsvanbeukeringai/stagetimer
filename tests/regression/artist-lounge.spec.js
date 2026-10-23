@@ -470,3 +470,20 @@ test.describe('in the app', () => {
     });
   });
 });
+
+// Fullscreen button in the lounge header (Thijs, 23-10): visible, toggles the
+// Fullscreen API, and fades out of the TV picture once fullscreen.
+test('fullscreen button in the header', async ({ page, st }) => {
+  await page.addInitScript(() => {
+    window.__fs = 0;
+    Element.prototype.requestFullscreen = function () { window.__fs++; return Promise.resolve(); };
+    Object.defineProperty(document, 'fullscreenEnabled', { get: () => true, configurable: true });
+  });
+  await openLounge(st, '16:00:00');
+  const btn = page.locator('#lng-fs-btn');
+  await expect(btn).toBeVisible();
+  await expect(btn).toHaveAttribute('aria-label', 'Enter fullscreen');
+  const before = await page.evaluate(() => window.__fs);
+  await btn.click();
+  await expect.poll(() => page.evaluate(() => window.__fs)).toBe(before + 1);
+});

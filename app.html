@@ -536,15 +536,23 @@ body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!impo
   box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.95),0 0 calc(var(--lu)*3.2) rgba(var(--lng-ac-rgb),.5),0 0 calc(var(--lu)*8) rgba(var(--lng-ac-rgb),.2);}
 #lng .lng-hero.lng-live::before{opacity:1;animation:lng-glow 2.8s ease-in-out infinite alternate;}
 #lng .lng-hero.lng-next::before{opacity:.6;box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.55),0 0 calc(var(--lu)*2.4) rgba(var(--lng-ac-rgb),.22);}
-#lng .lng-hero-in{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:calc(var(--lu)*3) calc(var(--lu)*2.2);
+#lng .lng-hero-in{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:calc(var(--lu)*2.2) calc(var(--lu)*2.2);
   padding:calc(var(--lu)*2.2);border-radius:inherit;overflow:hidden;border:1px solid rgba(255,255,255,.1);
   background:linear-gradient(155deg,rgba(255,255,255,.085),rgba(255,255,255,.025) 45%,rgba(0,0,0,.28));}
 #lng .lng-sheen{position:absolute;inset:-35%;z-index:-1;pointer-events:none;
   background:radial-gradient(38% 38% at 32% 30%,rgba(var(--lng-ac-rgb),.26),rgba(var(--lng-ac-rgb),0) 70%);animation:lng-drift 16s ease-in-out infinite alternate;}
-/* As tall as the card allows (its height minus padding, gap and timeline),
-   at most 44% of its width so the countdown keeps room. */
-#lng .lng-hero .lng-ph{grid-row:1;align-self:center;width:min(calc(100cqh - var(--lu)*11.5),44cqw);border-radius:calc(var(--lu)*1.3);}
-#lng .lng-hero-main{grid-row:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:calc(var(--lu)*.9);}
+/* Fullscreen button: gone from the TV picture once fullscreen, back when the
+   pointer is over the header (the way out is Esc or that button). */
+#lng-fs-btn{display:inline-flex;align-items:center;justify-content:center;transition:opacity .25s;}
+#lng-fs-btn[hidden]{display:none;}
+html:fullscreen #lng-fs-btn,html:-webkit-full-screen #lng-fs-btn{opacity:0;}
+html:fullscreen #lng-hdr:hover #lng-fs-btn,html:-webkit-full-screen #lng-hdr:hover #lng-fs-btn,#lng-fs-btn:focus-visible{opacity:1;}
+/* Badge + act name sit above the photo (Thijs, 23-10), across the card. */
+#lng .lng-hero-head{grid-column:1/-1;grid-row:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--lu)*.9);}
+/* As tall as the card allows (its height minus padding, head, gaps and
+   timeline), at most 44% of its width so the countdown keeps room. */
+#lng .lng-hero .lng-ph{grid-row:2;align-self:center;width:min(calc(100cqh - var(--lu)*22),44cqw);border-radius:calc(var(--lu)*1.3);}
+#lng .lng-hero-main{grid-row:2;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:calc(var(--lu)*.9);}
 #lng .lng-badge{display:inline-flex;align-items:center;gap:calc(var(--lu)*.75);padding:calc(var(--lu)*.5) calc(var(--lu)*1.1) calc(var(--lu)*.5) calc(var(--lu)*.85);border-radius:99px;
   font-size:max(12px,calc(var(--lu)*1));font-weight:900;letter-spacing:.2em;text-transform:uppercase;line-height:1;white-space:nowrap;color:#fff;
   background:rgba(var(--lng-ac-rgb),.2);border:1px solid rgba(var(--lng-ac-rgb),.75);box-shadow:0 0 calc(var(--lu)*1.6) rgba(var(--lng-ac-rgb),.3);}
@@ -563,7 +571,7 @@ body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!impo
   color:#fff;text-shadow:0 0 calc(var(--lu)*2.4) rgba(255,255,255,.16);}
 #lng .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6.4);}
 /* The act's own timeline: start - fill - end, a "now" dot, played / left. */
-#lng .lng-tl{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.5);}
+#lng .lng-tl{grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.5);}
 #lng .lng-tl-t{font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.25));font-weight:700;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.9);}
 #lng .lng-tl-track{position:relative;height:max(8px,calc(var(--lu)*.8));border-radius:99px;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 2px rgba(0,0,0,.45);}
 #lng .lng-tl-clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;}
@@ -620,7 +628,7 @@ body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!impo
   #lng{--lu:min(1.9vw,1.05vh);}
   #lng-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
   #lng .lng-hero{container-type:normal;}
-  #lng .lng-hero-in{grid-template-rows:auto auto;gap:calc(var(--lu)*2.4) calc(var(--lu)*2.2);}
+  #lng .lng-hero-in{grid-template-rows:auto auto auto;gap:calc(var(--lu)*2.4) calc(var(--lu)*2.2);}
   #lng .lng-hero .lng-ph{width:calc(var(--lu)*19);}
   #lng .lng-cd{font-size:calc(var(--lu)*7.2);}
   #lng .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6);}
@@ -633,21 +641,22 @@ body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!impo
   #st-brand-lng .st-brand-mark{display:none;}
   #lng.vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
   #lng .vw-st-mark{order:2;margin-left:auto;}
-  #lng-close-btn{order:3;}
+  #lng-close-btn,#lng-fs-btn{order:3;}
   #lng-title{order:4;flex:1 1 55%;}
   #lng-clock{order:5;}
   #lng-sname{font-size:17px;}
   #lng-clock{font-size:18px;}
   #lng .vw-st-mark .vw-st-word{height:11px;}
-  #lng-close-btn{min-height:44px;min-width:44px;font-size:16px;}
+  #lng-close-btn,#lng-fs-btn{min-height:44px;min-width:44px;font-size:16px;}
   #lng-ssel{order:6;flex:1 1 100%;min-height:48px;font-size:15px;font-weight:700;}
   #lng-dtabs{order:7;flex:1 1 100%;min-width:0;}
   #lng-body{display:flex;flex-direction:column;overflow-y:auto;padding:12px max(12px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 20px) max(12px,env(safe-area-inset-left));gap:16px;}
   #lng .lng-hero{flex-shrink:0;border-radius:18px;container-type:normal;}
-  #lng .lng-hero-in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;padding:14px;gap:14px;}
-  #lng .lng-hero .lng-ph{width:100%;aspect-ratio:16/10;border-radius:12px;}
-  #lng .lng-hero-main{grid-row:2;gap:8px;}
-  #lng .lng-tl{grid-row:3;}
+  #lng .lng-hero-in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto;padding:14px;gap:14px;}
+  #lng .lng-hero-head{gap:8px;}
+  #lng .lng-hero .lng-ph{grid-row:2;width:100%;aspect-ratio:16/10;border-radius:12px;}
+  #lng .lng-hero-main{grid-row:3;gap:8px;}
+  #lng .lng-tl{grid-row:4;}
   #lng .lng-name{font-size:30px;}
   #lng .lng-name.lng-n-m{font-size:26px;}
   #lng .lng-name.lng-n-s{font-size:22px;}
@@ -6445,6 +6454,7 @@ function renderTbar(){
     <div id="lng-dtabs"></div>
     <div id="lng-clock"></div>
     <span class="vw-st-mark" role="img" aria-label="Powered by stagetimer.nl"><img class="vw-st-icon" src="/app-icon.svg" alt=""><img class="vw-st-word" src="/stagetimer-wordmark.png" alt=""></span>
+    <button class="bshbtn" id="lng-fs-btn" data-fs-btn hidden onclick="stFullscreen.toggle()" aria-label="Enter fullscreen" title="Fullscreen (Esc to leave)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
     <button class="bshbtn" id="lng-close-btn" onclick="closeLNG()" aria-label="Close Artist lounge">✕</button>
   </div>
   <div id="lng-body"></div>
@@ -8454,6 +8464,8 @@ function _svZoomLock(on){
   function _syncMenu(){
     const on=!!_fsEl(),auto=_autoPref();
     document.querySelectorAll('[data-fs="toggle"] .fs-lbl').forEach(el=>{el.textContent=on?'Exit fullscreen':'Enter fullscreen';});
+    const can=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
+    document.querySelectorAll('[data-fs-btn]').forEach(b=>{b.hidden=!can;b.setAttribute('aria-label',on?'Exit fullscreen':'Enter fullscreen');b.setAttribute('aria-pressed',on?'true':'false');});
     document.querySelectorAll('[data-fs="auto"]').forEach(el=>{
       el.setAttribute('aria-checked',auto?'true':'false');
       const l=el.querySelector('.fs-lbl');if(l)l.textContent='Auto fullscreen: '+(auto?'On':'Off');
@@ -8478,8 +8490,11 @@ function _svZoomLock(on){
   ['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,_syncMenu));
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_syncMenu);else _syncMenu();
   let _tried=false;
-  function _goFullscreen(){
+  function _goFullscreen(e){
     if(_tried)return;
+    // A tap on a fullscreen button is that button's job: entering here too
+    // would make its toggle leave fullscreen again in the same gesture.
+    if(e&&e.target&&e.target.closest&&e.target.closest('[data-fs-btn],[data-fs]')){_tried=true;return;}
     if(!_autoPref())return;
     if(_isStandalone())return;
     if(!_isTabletOrDesktopBrowser())return;
@@ -13296,10 +13311,12 @@ const _lngBooth=s=>s.booth?`<span class="lng-booth">Booth ${escH(s.booth)}</span
 function _lngHeroHTML(h,phs){
   const s=h.s,live=h.kind==='live',lbl=live?'Now on stage':'Next on stage';
   const a=_lngT(live?h.iv.startMs:h.c0),b=_lngT(live?h.iv.endMs:h.iv.startMs);
-  return`<section class="lng-hero ${live?'lng-live':'lng-next'}" aria-label="${lbl}"><div class="lng-hero-in"><div class="lng-sheen" aria-hidden="true"></div>${_lngPhHTML(s,phs)}
-    <div class="lng-hero-main">
+  return`<section class="lng-hero ${live?'lng-live':'lng-next'}" aria-label="${lbl}"><div class="lng-hero-in"><div class="lng-sheen" aria-hidden="true"></div>
+    <div class="lng-hero-head">
       <div class="lng-badge"><span class="lng-dot" aria-hidden="true"></span>${lbl}</div>
       <div class="lng-name ${_lngNameCls(s.artist)}">${escH(s.artist||'(no name)')}</div>
+    </div>${_lngPhHTML(s,phs)}
+    <div class="lng-hero-main">
       <div class="lng-meta"><span>${_lngT(h.iv.startMs)}–${_lngT(h.iv.endMs)}</span>${_lngBooth(s)}</div>
       <div class="lng-cdw"><div class="lng-cd-lbl">${live?'Set ends in':'Starts in'}</div><div class="lng-cd"></div></div>
     </div>
