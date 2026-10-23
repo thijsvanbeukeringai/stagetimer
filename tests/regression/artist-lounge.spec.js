@@ -300,19 +300,19 @@ test.describe('photo fallback', () => {
 
 // ── Accent colour ─────────────────────────────────────────────────────────
 test.describe('accent colour', () => {
-  test('default festival green', async ({ page, st }) => {
+  test('default live red', async ({ page, st }) => {
     await openLounge(st, '16:00:00');
-    expect(await L(page).evaluate((e) => getComputedStyle(e).getPropertyValue('--lng-ac').trim())).toBe('#22c55e');
-    expect(await page.locator('#lng .lng-dot').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(34, 197, 94)');
+    expect(await L(page).evaluate((e) => getComputedStyle(e).getPropertyValue('--lng-ac').trim())).toBe('#ef4444');
+    expect(await page.locator('#lng .lng-dot').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(239, 68, 68)');
   });
-  test.describe('red', () => {
-    test.use({ stSeed: lounge((d) => { d.branding.accent = '#EF4444'; }) });
+  test.describe('a chosen accent', () => {
+    test.use({ stSeed: lounge((d) => { d.branding.accent = '#22C55E'; }) });
     test('data.branding.accent colours the glow, dot, highlights and initials', async ({ page, st }) => {
       await openLounge(st, '16:00:00');
-      expect(await L(page).evaluate((e) => getComputedStyle(e).getPropertyValue('--lng-ac').trim())).toBe('#ef4444');
-      expect(await page.locator('#lng .lng-dot').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(239, 68, 68)');
-      expect(await page.locator('#lng .lng-badge').evaluate((e) => getComputedStyle(e).borderTopColor)).toBe('rgba(239, 68, 68, 0.75)');
-      await shot(page, '1920x1080-accent-red.png');
+      expect(await L(page).evaluate((e) => getComputedStyle(e).getPropertyValue('--lng-ac').trim())).toBe('#22c55e');
+      expect(await page.locator('#lng .lng-dot').evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(34, 197, 94)');
+      expect(await page.locator('#lng .lng-badge').evaluate((e) => getComputedStyle(e).borderTopColor)).toBe('rgba(34, 197, 94, 0.75)');
+      await shot(page, '1920x1080-accent-green.png');
     });
   });
   test.describe('a crafted value', () => {
@@ -320,7 +320,7 @@ test.describe('accent colour', () => {
     test('falls back to the default and never reaches a style', async ({ page, st, backend }) => {
       await openLounge(st, '16:00:00');
       expect(await L(page).evaluate((e) => e.getAttribute('style'))).not.toContain('evil');
-      expect(await L(page).evaluate((e) => getComputedStyle(e).getPropertyValue('--lng-ac').trim())).toBe('#22c55e');
+      expect(await L(page).evaluate((e) => getComputedStyle(e).getPropertyValue('--lng-ac').trim())).toBe('#ef4444');
       expect(backend.violations).toEqual([]);
     });
   });
@@ -426,7 +426,7 @@ test.describe('in the app', () => {
     await page.evaluate(() => { openProjectLogo(APP.activeProjectId); });
     const dlg = page.getByRole('dialog', { name: 'Project logo' });
     await expect(dlg.getByRole('checkbox', { name: /Show on Artist lounge/ })).toBeChecked();
-    await expect(dlg.getByRole('button', { name: 'Festival green' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(dlg.getByRole('button', { name: 'Live red' })).toHaveAttribute('aria-pressed', 'true');
     await dlg.getByRole('button', { name: 'Live red' }).click();
     await expect.poll(branding).toEqual({ logoBackstage: true, logoFoh: false, logoBackdrop: false, accent: '#ef4444' });
     await expect(dlg.getByRole('button', { name: 'Live red' })).toHaveAttribute('aria-pressed', 'true');
@@ -436,7 +436,7 @@ test.describe('in the app', () => {
     await expect(hex).toHaveValue('#ef4444');
     await hex.fill('not a colour');
     await hex.press('Enter');
-    await expect(dlg.locator('.st-ac-msg')).toHaveText('Use a hex colour such as #22c55e.');
+    await expect(dlg.locator('.st-ac-msg')).toHaveText('Use a hex colour such as #ef4444.');
     await expect(dlg).toBeVisible();   // Enter did not close the dialog
     expect(branding().accent).toBe('#ef4444');
     await hex.fill('3B82F6');

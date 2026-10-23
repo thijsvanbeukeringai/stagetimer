@@ -510,7 +510,7 @@ body.public-mode #smv-close-btn{display:none!important;}
    (Stage View untouched). Sizes run off --lu, 1/100 of a 1920-wide 16:9
    screen, so 1280x720 is the same picture, smaller. --lng-ac* are set from
    data.branding.accent by renderLNG. Motion is transform / opacity only. ══ */
-#lng{--lng-ac:#22c55e;--lng-ac-rgb:34,197,94;--lng-on-ac:#05210f;--lu:min(1vw,1.778vh);
+#lng{--lng-ac:#ef4444;--lng-ac-rgb:239,68,68;--lng-on-ac:#fff;--lu:min(1vw,1.778vh);
   position:fixed;inset:0;z-index:200;display:none;flex-direction:column;overflow:hidden;color:#fff;font-family:var(--ff);
   background:radial-gradient(80% 65% at 10% -12%,rgba(var(--lng-ac-rgb),.14),rgba(var(--lng-ac-rgb),0) 62%),radial-gradient(70% 60% at 108% 112%,rgba(99,102,241,.13),rgba(99,102,241,0) 60%),#05050a;}
 #lng.open{display:flex;}
@@ -13230,9 +13230,9 @@ function openDres(){
 // when what it draws changed; _lngTick moves countdowns, bars and dots in
 // place (transforms), so photos are not re-decoded every tick.
 const LNG_SOON_SEC=600,LNG_FINAL_SEC=300,LNG_NEXT_MAX=4,LNG_LATER_MAX=6;
-const LNG_ACCENT_DEFAULT='#22c55e';
+const LNG_ACCENT_DEFAULT='#ef4444';   // live red (Thijs, 23-10): glow, NOW ON STAGE, timeline
 // Presets in the Project logo dialog; any other hex can be typed there.
-const LNG_ACCENTS=[['#22c55e','Festival green'],['#ef4444','Live red'],['#f97316','Orange'],['#facc15','Yellow'],['#06b6d4','Cyan'],['#3b82f6','Blue'],['#a855f7','Purple'],['#ec4899','Pink']];
+const LNG_ACCENTS=[['#ef4444','Live red'],['#22c55e','Festival green'],['#f97316','Orange'],['#facc15','Yellow'],['#06b6d4','Cyan'],['#3b82f6','Blue'],['#a855f7','Purple'],['#ec4899','Pink']];
 // '#rgb' / '#rrggbb' (through safeColor) as '#rrggbb'; anything else ''. The
 // lounge mixes it into rgba(), so named colours are not taken.
 function _lngHex(v){
@@ -14152,7 +14152,7 @@ function _logoAcHex(pid,inp){
   const raw=String(inp.value||'').trim();
   if(!raw){_logoAcMsg('');_setLogoBranding(pid,{accent:LNG_ACCENT_DEFAULT});return;}
   const h=_lngHex(raw[0]==='#'?raw:'#'+raw);
-  if(!h){_logoAcMsg('Use a hex colour such as #22c55e.');return;}
+  if(!h){_logoAcMsg('Use a hex colour such as #ef4444.');return;}
   _logoAcMsg('');_setLogoBranding(pid,{accent:h});
 }
 function _logoDlgSync(){
