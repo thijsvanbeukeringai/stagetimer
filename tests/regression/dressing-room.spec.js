@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/fixtures');
-const { FESTIVAL, PHOTO_PNG, ams } = require('../support/seed');
+const { FESTIVAL, PHOTO_PNG, LOUNGE_LOGO, ams } = require('../support/seed');
 
 const PID = FESTIVAL.projectId;
 const at = (t, d = FESTIVAL.dates.d1) => ams(d, t);
@@ -527,5 +527,19 @@ test.describe('YouTube background', () => {
       await expect(main(page)).toContainText("DJ O'Neil");
       expect(await page.locator('#dres-yt').count()).toBe(0);
     });
+  });
+});
+
+// Project logo centred above the artist's name in every state (Thijs, 23-10).
+test.describe('logo above the name', () => {
+  test.use({ stSeed: seedWith((d) => { d.logo = LOUNGE_LOGO; }) });
+  test('countdown: logo first, then the artist', async ({ page, st }) => {
+    await openDres(st, 'm2', '15:00:00');
+    const kids = await main(page).evaluate((m) => [...m.children].map((c) => c.className));
+    expect(kids[0]).toMatch(/dres-logo-top/);
+    expect(kids[1]).toMatch(/dres-artist/);
+    await expect(main(page).locator('img.dres-logo-top')).toHaveAttribute('src', LOUNGE_LOGO);
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await shot(page, '1920x1080-logo-countdown.png');
   });
 });

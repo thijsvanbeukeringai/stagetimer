@@ -502,6 +502,7 @@ body.public-mode #smv-close-btn{display:none!important;}
 #dres[data-state="live"] .dres-lbl{color:#86efac;}
 #dres .dres-note{font-size:clamp(18px,min(3vw,4.2vh),40px);font-weight:700;max-width:26ch;line-height:1.35;color:rgba(255,255,255,.9);}
 #dres .dres-logo{display:block;max-width:min(60vw,520px);max-height:22vh;object-fit:contain;margin-bottom:clamp(8px,2.4vh,30px);}
+#dres .dres-logo.dres-logo-top{height:clamp(48px,12vh,150px);width:auto;max-width:min(50vw,460px);max-height:none;margin-bottom:clamp(4px,1.4vh,18px);}
 #dres .dres-logo.dres-plate{background:#fff;padding:clamp(10px,2vh,22px) clamp(14px,2.6vw,30px);border-radius:14px;}
 #dres .dres-ty{font-size:clamp(26px,min(5.4vw,7.6vh),88px);font-weight:900;letter-spacing:-.02em;line-height:1.1;max-width:16ch;}
 #dres .dres-artist-ty{font-size:clamp(22px,min(4vw,5.6vh),64px);font-weight:800;color:rgba(255,255,255,.92);}
@@ -13248,16 +13249,19 @@ function renderDres(){
   _dres.state=state;
   _dresBg(s,state);
   // The logo shows here whatever data.branding says for Backstage / FOH: this
-  // is the customer's own thank-you to the artist.
-  const logo=state==='after'?_safeLogoSrc(G.logo):'',plate=!!logo&&_brandingOf(G).logoBackdrop,ty=_dresTexts(G);
+  // is the customer's own screen for the artist. Centred above the artist's
+  // name in every state (Thijs, 23-10), larger on the thank-you.
+  const logo=state==='missing'?'':_safeLogoSrc(G.logo),plate=!!logo&&_brandingOf(G).logoBackdrop,ty=_dresTexts(G);
   const main=document.getElementById('dres-main');
   if(vwSame(main,JSON.stringify([state,s&&s.artist,s&&_dresMeta(s),logo,plate,ty]))){_dresTickText(s,state,n);return;}
   root.dataset.state=state;
   const artist=escH((s&&s.artist)||'');
   if(state==='missing')main.innerHTML='<div class="dres-note">This artist is no longer in the schedule. Ask the production team for a new link.</div>';
-  else if(state==='cancelled')main.innerHTML=`<div class="dres-artist">${artist}</div><div class="dres-note">This show has been cancelled. Ask the production team for details.</div>`;
+  const topLogo=logo?`<img class="dres-logo dres-logo-top${plate?' dres-plate':''}" alt="">`:'';
+  if(state==='missing'){}
+  else if(state==='cancelled')main.innerHTML=`${topLogo}<div class="dres-artist">${artist}</div><div class="dres-note">This show has been cancelled. Ask the production team for details.</div>`;
   else if(state==='after')main.innerHTML=`${logo?`<img class="dres-logo${plate?' dres-plate':''}" alt="">`:''}<div class="dres-ty">${escH(ty.thanks)}</div><div class="dres-artist dres-artist-ty">${artist}</div><div class="dres-sig">— ${escH(ty.signature)}</div>`;
-  else main.innerHTML=`<div class="dres-artist">${artist||'(no name)'}</div><div class="dres-meta">${escH(_dresMeta(s))}</div>`
+  else main.innerHTML=`${topLogo}<div class="dres-artist">${artist||'(no name)'}</div><div class="dres-meta">${escH(_dresMeta(s))}</div>`
     +(state==='tba'?'<div class="dres-lbl">Showtime to be announced</div>':`<div class="dres-lbl">${state==='live'?'On stage now':'Showtime in'}</div><div class="dres-cd"></div><div class="dres-sub"></div>`);
   const li=main.querySelector('.dres-logo');
   if(li){
