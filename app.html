@@ -505,6 +505,7 @@ body.public-mode #smv-close-btn{display:none!important;}
 #dres .dres-logo.dres-logo-top{height:clamp(48px,12vh,150px);width:auto;max-width:min(50vw,460px);max-height:none;margin-bottom:clamp(4px,1.4vh,18px);}
 #dres .dres-logo.dres-plate{background:#fff;padding:clamp(10px,2vh,22px) clamp(14px,2.6vw,30px);border-radius:14px;}
 #dres .dres-ty{font-size:clamp(26px,min(5.4vw,7.6vh),88px);font-weight:900;letter-spacing:-.02em;line-height:1.1;max-width:16ch;}
+#dres .dres-artist-top{margin-bottom:clamp(6px,2vh,26px);}
 #dres .dres-artist-ty{font-size:clamp(22px,min(4vw,5.6vh),64px);font-weight:800;color:rgba(255,255,255,.92);}
 #dres .dres-sig{margin-top:clamp(6px,2vh,24px);font-size:clamp(16px,min(2.5vw,3.5vh),34px);font-style:italic;color:rgba(255,255,255,.82);}
 @media (prefers-reduced-motion:reduce){#dres .dres-video,#dres .dres-img{transition:none;}}
@@ -13260,7 +13261,8 @@ function renderDres(){
   const topLogo=logo?`<img class="dres-logo dres-logo-top${plate?' dres-plate':''}" alt="">`:'';
   if(state==='missing'){}
   else if(state==='cancelled')main.innerHTML=`${topLogo}<div class="dres-artist">${artist}</div><div class="dres-note">This show has been cancelled. Ask the production team for details.</div>`;
-  else if(state==='after')main.innerHTML=`${logo?`<img class="dres-logo${plate?' dres-plate':''}" alt="">`:''}<div class="dres-ty">${escH(ty.thanks)}</div><div class="dres-artist dres-artist-ty">${artist}</div><div class="dres-sig">— ${escH(ty.signature)}</div>`;
+  // Thank-you: the artist's name on top (Thijs, 23-10), then logo and text.
+  else if(state==='after')main.innerHTML=`<div class="dres-artist dres-artist-top">${artist}</div>${logo?`<img class="dres-logo${plate?' dres-plate':''}" alt="">`:''}<div class="dres-ty">${escH(ty.thanks)}</div><div class="dres-sig">${escH(ty.signature)}</div>`;
   else main.innerHTML=`${topLogo}<div class="dres-artist">${artist||'(no name)'}</div><div class="dres-meta">${escH(_dresMeta(s))}</div>`
     +(state==='tba'?'<div class="dres-lbl">Showtime to be announced</div>':`<div class="dres-lbl">${state==='live'?'On stage now':'Showtime in'}</div><div class="dres-cd"></div><div class="dres-sub"></div>`);
   const li=main.querySelector('.dres-logo');

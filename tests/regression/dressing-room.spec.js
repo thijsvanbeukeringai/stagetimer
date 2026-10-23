@@ -103,7 +103,7 @@ test.describe('states', () => {
     await expect(page.locator('#dres')).toHaveAttribute('data-state', 'after');
     await expect(main(page).locator('.dres-ty')).toHaveText('Thank you so much for the amazing show!');
     await expect(main(page).locator('.dres-artist')).toHaveText(BAND);
-    await expect(main(page).locator('.dres-sig')).toHaveText('— Thanks from the artist team');
+    await expect(main(page).locator('.dres-sig')).toHaveText('Thanks from the artist team');
     await expect(main(page).locator('.dres-logo')).toHaveCount(0);
     await expect(main(page).locator('.dres-cd')).toHaveCount(0);
     await expect(page.locator('#dres-media')).toBeEmpty();
@@ -356,7 +356,7 @@ test.describe('thank-you wording per festival', () => {
     await expect(page.locator('#dres')).toHaveAttribute('data-state', 'after');
     await expect(main(page).locator('.dres-ty')).toHaveText('Thank you for an <b>unforgettable</b> night at AMF!');
     await expect(main(page).locator('b')).toHaveCount(0);
-    await expect(main(page).locator('.dres-sig')).toHaveText('— With love from the AMF artist team');
+    await expect(main(page).locator('.dres-sig')).toHaveText('With love from the AMF artist team');
     await shot(page, 'custom-thank-you.png');
   });
 });
