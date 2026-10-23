@@ -278,10 +278,10 @@ test.describe('share links', () => {
   }
 
   // dressing: the thank-you on the artist's dressing room screen (dressing-room.spec.js).
-  test('only backstage, foh and dressing receive the logo from get_shared_project(p_id, p_mode)', async ({ backend }) => {
+  test('only backstage, foh, dressing and lounge receive the logo from get_shared_project(p_id, p_mode)', async ({ backend }) => {
     for (const mode of [...SHARE_MODES, 'nope']) {
       const r = await backend._rpc('get_shared_project', { p_id: PID, p_mode: mode });
-      expect('logo' in r.json.data, mode).toBe(['backstage', 'foh', 'dressing'].includes(mode));
+      expect('logo' in r.json.data, mode).toBe(['backstage', 'foh', 'dressing', 'lounge'].includes(mode));
     }
   });
 

@@ -114,18 +114,20 @@ Dit document zet alles in één volgorde.
   ```
 - **Rollback:** `drop function public.get_shared_project(text, text);`. De andere twee functies zijn achterwaarts compatibel en mogen blijven.
 
-**Veldmatrix van `get_shared_project(p_id, p_mode)`.** Gecontroleerd tegen elke publieke renderer in `app.html`: `renderSV` (met `_svMode`, cue en blackout), `renderBS`, `renderFOH`, `renderTL`, `renderOV`, `renderWV`/`tickWV`, `renderCI`, `renderSM` en `renderDres`. Elke modus houdt wat hij toont. De migratie hoefde niet te veranderen.
+**Veldmatrix van `get_shared_project(p_id, p_mode)`.** Gecontroleerd tegen elke publieke renderer in `app.html`: `renderSV` (met `_svMode`, cue en blackout), `renderBS`, `renderFOH`, `renderTL`, `renderOV`, `renderWV`/`tickWV`, `renderCI`, `renderSM`, `renderDres` en `renderLNG`. Elke modus houdt wat hij toont. De migratie hoefde niet te veranderen.
 
-| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin | stagemanager | dressing |
-|---|---|---|---|---|---|---|---|---|---|
-| `fohNotes` | - | - | ja | - | - | - | - | - | - |
-| `shows[].note` | - | ja | - | - | - | - | - | - | - |
-| `shows[].crew` | - | - | ja | - | - | - | - | - | - |
-| `shows[].photo` | - | - | - | - | - | - | - | - | - |
-| `memberIds` | - | - | - | - | - | - | - | - | - |
-| `logo` | - | ja | ja | - | - | - | - | - | ja |
-| `shows[].rider` | - | - | - | - | - | - | ja | ja | - |
-| `shows[].bgImage` | - | - | - | - | - | - | - | - | ja |
+| Veld in `data` | stage | backstage | foh | timeline | overview | wall | checkin | stagemanager | dressing | lounge |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `fohNotes` | - | - | ja | - | - | - | - | - | - | - |
+| `shows[].note` | - | ja | - | - | - | - | - | - | - | - |
+| `shows[].crew` | - | - | ja | - | - | - | - | - | - | - |
+| `shows[].photo` | - | - | - | - | - | - | - | - | - | ja |
+| `memberIds` | - | - | - | - | - | - | - | - | - | - |
+| `logo` | - | ja | ja | - | - | - | - | - | ja | ja |
+| `shows[].rider` | - | - | - | - | - | - | ja | ja | - | - |
+| `shows[].bgImage` | - | - | - | - | - | - | - | - | ja | - |
+| `shows[].arrived` (+ `arrivedAt`) | ja | ja | ja | ja | ja | ja | ja | ja | ja | - |
+| `shows[].bgVideo` | ja | ja | ja | ja | ja | ja | ja | ja | ja | - |
 
 - `-` betekent gestript: `fohNotes` wordt `{}`, `memberIds` wordt `[]` en de rest verdwijnt. `company_id` is altijd `null`.
 - Alles anders blijft in elke modus staan. Het gaat om stages, days, de tijden en vlaggen van shows, `genre`, `booth`, `type`, `priority`, `arrived`, `activeStage`/`activeDay`, `timerMode`, `svModes`, `cue`, `blackout` en `branding` (drie booleans: waar het klantlogo staat). Het tijdmodel, de overlays en de schermen hebben die nodig, en er zit niets persoonlijks of groots in.
@@ -139,8 +141,16 @@ Dit document zet alles in één volgorde.
          jsonb_path_exists(public.get_shared_project('<pid>','dressing') -> 'data', '$.shows[*].bgImage');
   -- f, t, f, t (t alleen als het project een logo / een show een achtergrondfoto heeft)
   ```
+- `lounge` (artist lounge, `?mode=lounge&pid=..&sid=<stage-id>`, branch `feature/artist-lounge`, 23-10-2026) is het tv-scherm in de artiestenlounge van één stage: wie nu op het podium staat (met foto, grote witte countdown en tijdlijn van de set) en wie er daarna komen, met het klantlogo (`branding.logoLounge`, standaard aan) en een accentkleur (`branding.accent`, een hexkleur uit het Project logo-venster). Het is de **enige** modus die `shows[].photo` (de artiestenfoto) krijgt: zolang stap 16 niet is uitgevoerd kan dat per act een base64-foto van een paar honderd kB zijn, dus geen ander scherm pollt ze. Omdat het alleen krijgt wat het toont, mist het als enige modus ook `arrived`/`arrivedAt` en `bgVideo`; alle andere modi houden die zoals voorheen (een onbekende modus, `strict`, verliest ze ook). De legacy/PHASE B-set krijgt géén foto's: de lounge bestaat alleen in app-versies die `p_mode` meesturen, en zonder de 2-argumentvariant geeft de 1-argumentvariant nog de volledige blob. **Stap 3 moet opnieuw worden uitgevoerd voordat de lounge live gaat** (alleen `CREATE OR REPLACE`, veilig tijdens een show). Tot dan: zonder 2-argumentvariant krijgt de lounge via de 1-argumentvariant alles en werkt hij volledig; met een oudere versie van dit bestand valt `lounge` op `strict` en toont het scherm initialen in plaats van foto's en geen logo; er breekt niets. Controle:
+  ```sql
+  select jsonb_path_exists(public.get_shared_project('<pid>','backstage') -> 'data', '$.shows[*].photo'),
+         jsonb_path_exists(public.get_shared_project('<pid>','lounge') -> 'data', '$.shows[*].photo'),
+         (public.get_shared_project('<pid>','lounge') -> 'data') ? 'logo',
+         jsonb_path_exists(public.get_shared_project('<pid>','lounge') -> 'data', '$.shows[*].arrived');
+  -- f, t, t, f (t alleen als een show een foto / het project een logo heeft)
+  ```
 - De matrix staat in de kop van het SQL-bestand. De JS-tweeling `tests/support/share-modes.js` voedt de mock-backend. `share-mode.spec.js` controleert dat de twee gelijk zijn.
-- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip. Na de logo-wijziging (`keep_logo`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle negen modi (inclusief `strict` en `legacy`) gelijk aan de JS-strip, `logo` alleen in backstage, foh en legacy. Na de rider-wijziging (`keep_rider`, modus `stagemanager`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle acht modi plus `strict`, `legacy`, twee onbekende modi, de 1-argumentvariant en het antwoord van `set_show_arrived` gelijk aan de JS-strip; `rider` alleen in checkin, stagemanager, legacy en het `set_show_arrived`-antwoord; de controlequery uit de kop geeft `f, t, t`.
+- Lokaal gevalideerd op `supabase/postgres:17.6.1.167`: het bestand twee keer gedraaid, en de SQL-uitvoer per modus is gelijk aan de JS-strip. Dat gold ook voor een onbekende modus, de legacy-variant en de PHASE B-strip. Na de logo-wijziging (`keep_logo`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle negen modi (inclusief `strict` en `legacy`) gelijk aan de JS-strip, `logo` alleen in backstage, foh en legacy. Na de rider-wijziging (`keep_rider`, modus `stagemanager`) op 13-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle acht modi plus `strict`, `legacy`, twee onbekende modi, de 1-argumentvariant en het antwoord van `set_show_arrived` gelijk aan de JS-strip; `rider` alleen in checkin, stagemanager, legacy en het `set_show_arrived`-antwoord; de controlequery uit de kop geeft `f, t, t`. Na de lounge-wijziging (`keep_photo`, `keep_arrived`, `keep_video`, modus `lounge`) op 23-10-2026 opnieuw gevalideerd: twee keer gedraaid, alle tien modi plus `strict`, een onbekende modus, `legacy`, de 1-argumentvariant (volledige blob) en het antwoord van `set_show_arrived` gelijk aan de JS-strip; de lounge-controlequery geeft `f, t, t, f`.
 
 ### Stap 4: app deployen (improve/2026-10-13)
 

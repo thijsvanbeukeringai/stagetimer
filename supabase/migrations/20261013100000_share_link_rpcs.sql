@@ -6,7 +6,7 @@
 --
 -- PURPOSE
 --   Public viewers (?mode=stage|backstage|foh|timeline|overview|wall|checkin|
---   stagemanager|dressing&pid=...) have no session. Once RLS is on they have no table
+--   stagemanager|dressing|lounge&pid=...) have no session. Once RLS is on they have no table
 --   access, so the one project behind a share link is served through these
 --   functions.
 --   (These definitions used to live in rls_prep; this file supersedes them.)
@@ -18,16 +18,19 @@
 --                                     but data only contains what that mode
 --                                     renders (company_id is always null):
 --
---     field (in data)      stage backstage foh timeline overview wall checkin stagemanager dressing
---     fohNotes               -      -       yes    -        -      -     -        -          -
---     shows[].note           -      yes      -     -        -      -     -        -          -
---     shows[].crew           -       -      yes    -        -      -     -        -          -
---     shows[].photo          -       -       -     -        -      -     -        -          -
---     memberIds              -       -       -     -        -      -     -        -          -
---     logo                   -      yes     yes    -        -      -     -        -         yes
---     shows[].rider          -       -       -     -        -      -    yes      yes         -
---     shows[].bgImage        -       -       -     -        -      -     -        -         yes
---   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed.)
+--     field (in data)      stage backstage foh timeline overview wall checkin stagemanager dressing lounge
+--     fohNotes               -      -       yes    -        -      -     -        -          -        -
+--     shows[].note           -      yes      -     -        -      -     -        -          -        -
+--     shows[].crew           -       -      yes    -        -      -     -        -          -        -
+--     shows[].photo          -       -       -     -        -      -     -        -          -       yes
+--     memberIds              -       -       -     -        -      -     -        -          -        -
+--     logo                   -      yes     yes    -        -      -     -        -         yes      yes
+--     shows[].rider          -       -       -     -        -      -    yes      yes         -        -
+--     shows[].bgImage        -       -       -     -        -      -     -        -         yes       -
+--     shows[].arrived       yes     yes     yes   yes      yes    yes   yes      yes        yes       -
+--     shows[].bgVideo       yes     yes     yes   yes      yes    yes   yes      yes        yes       -
+--   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed;
+--   shows[].arrived stands for arrived + arrivedAt.)
 --   shows[].rider = {drinks, tech}: the artist's hospitality and technical
 --   rider (free text, set in the show editor or the lineup import). Only the
 --   check-in desk and the stage manager act on it; it is the artist's
@@ -39,13 +42,31 @@
 --   branding says) and shows[].bgImage, its background photo (a Storage URL
 --   or, before the photo_storage migration, a base64 image of up to a few
 --   hundred kB: so no other mode receives it). shows[].bgVideo (an https
---   link to the customer's own video file, at most 2000 characters) is not
---   stripped anywhere.
+--   link to the customer's own video file, at most 2000 characters) reaches
+--   every mode except lounge.
+--   lounge (?mode=lounge&pid=..&sid=<stage id>, 2026-10-23, branch
+--   feature/artist-lounge): the artist lounge TV of one stage - now on
+--   stage / up next with each act's photo, the project logo (data.branding
+--   logoLounge, logoBackdrop) and the accent colour (data.branding.accent, a
+--   hex string). It is the ONLY mode that keeps shows[].photo (keep_photo):
+--   a Storage URL, or before the photo_storage migration a base64 image of
+--   up to a few hundred kB per act, so no other screen polls them. It reads
+--   none of note, crew, rider, FOH notes, bgImage, bgVideo, arrived
+--   (renderLNG: stage and day names, times, artist, booth, cancelled /
+--   hidden, photo, logo, branding), so it receives none of them either: it
+--   is the one mode that loses arrived/arrivedAt (keep_arrived) and bgVideo
+--   (keep_video), which every other mode keeps as before (unknown modes,
+--   'strict', lose them too). The legacy / PHASE B set does NOT get photos: the lounge
+--   exists only in app versions that ask for p_mode, and a backend without
+--   the 2-arg variant still serves the unnarrowed 1-arg call (full blob).
+--   A database with an older version of this file treats 'lounge' as an
+--   unknown mode ('strict'): the lounge then shows monograms instead of
+--   photos and no logo; nothing breaks. Re-run this file for the photos.
 --   The JS twin of this matrix is tests/support/share-modes.js (the mock
 --   backend serves the 2-arg call with it; tests/regression/share-mode.spec.js
 --   checks this table and keep_* below against it).
 --
---   Kept for EVERY mode (needed by the shared time model, the cue/blackout
+--   Kept for EVERY mode (except where noted; needed by the shared time model, the cue/blackout
 --   overlays and what each screen draws; nothing personal or large):
 --     stages[] (id, name)          all modes (stage name, stage columns)
 --     days[] (id, name, date)      all modes (festival day, day labels)
@@ -53,21 +74,25 @@
 --             endsNextDay, cancelled, hidden
 --                                  all modes (live / next / done maths)
 --     shows[].genre                stage (#sv-genre)
---     shows[].booth                backstage, foh, timeline, stagemanager (booth badge)
+--     shows[].booth                backstage, foh, timeline, stagemanager, lounge (booth badge)
 --     shows[].type                 backstage, foh (item-type badge)
 --     shows[].priority             wall, timeline, overview (star / tint)
---     shows[].bgVideo              dressing (https link to the background video)
+--     shows[].bgVideo              dressing (https link to the background video);
+--                                  every mode but lounge (keep_video)
 --     shows[].arrived, arrivedAt   checkin, stagemanager, overview, timeline
---                                  (check-in dot / arrival state)
+--                                  (check-in dot / arrival state); every mode
+--                                  but lounge (keep_arrived)
 --     activeStage, activeDay       all (fallback when the link has no sid /
 --                                  no day is dated today)
 --     timerMode                    loadG default; harmless
 --     svModes                      stage (countdown / clock / countup / blank)
 --     cue                          stage, backstage, foh (_renderCueOverlay)
 --     blackout                     every mode (blackout overlay; wall cells)
---     branding {logoBackstage, logoFoh, logoBackdrop}
---                                  backstage, foh (where the customer logo
---                                  shows); three booleans, harmless elsewhere
+--     branding {logoBackstage, logoFoh, logoLounge, logoBackdrop, accent}
+--                                  backstage, foh, lounge (where the customer
+--                                  logo shows; accent = the lounge's hex
+--                                  colour); booleans + one colour, harmless
+--                                  elsewhere
 --   Verified against app.html on 2026-10-13 by reading renderSV (+ _svMode,
 --   _renderCueOverlay, renderBlackout), renderBS (notesBlock: show note only -
 --   timed FOH cues stay off Backstage, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
@@ -77,7 +102,8 @@
 --   riders for one stage, sid) gets the check-in set: shows, stages, days,
 --   times, flags, booth, arrived/arrivedAt and rider; no notes, crew, FOH
 --   notes, logo. cue / blackout reach it like every mode (it ignores them).
---   Photos are only used by the operator timer panel and editor drawer,
+--   Photos are only used by the operator timer panel and editor drawer
+--   (and, since 2026-10-23, the artist lounge: keep_photo),
 --   memberIds only by the operator crew picker / push, logo only by
 --   refreshLogo on Backstage and FOH (customer logo top-left, 2026-10-13,
 --   feature/project-logo; Stage View, Wall and the rest never show it) and
@@ -88,6 +114,7 @@
 --   Unknown modes get the strictest set.
 --   dressing reads none of note, crew, rider or FOH notes (renderDres:
 --   artist, stage and day names, times, cancelled, bgVideo, bgImage, logo).
+--   lounge: see above (renderLNG).
 --
 --   set_show_arrived(...)  Same signature and return shape as before (a data
 --   object with a shows array, which ciToggleArrived adopts), but:
@@ -149,6 +176,13 @@
 --          jsonb_path_exists(public.get_shared_project('<pid>','stage') -> 'data', '$.shows[*].bgImage'),
 --          jsonb_path_exists(public.get_shared_project('<pid>','dressing') -> 'data', '$.shows[*].bgImage');
 --   -- (true only when the project has a logo / a show has a background photo)
+--   -- lounge: artist photos only there, logo too, no arrival state
+--   -- (false, true, true, false):
+--   select jsonb_path_exists(public.get_shared_project('<pid>','backstage') -> 'data', '$.shows[*].photo'),
+--          jsonb_path_exists(public.get_shared_project('<pid>','lounge') -> 'data', '$.shows[*].photo'),
+--          (public.get_shared_project('<pid>','lounge') -> 'data') ? 'logo',
+--          jsonb_path_exists(public.get_shared_project('<pid>','lounge') -> 'data', '$.shows[*].arrived');
+--   -- (true only when a show has a photo / the project has a logo)
 --   -- arrived toggle, then toggle back (inside a transaction to leave no trace):
 --   begin; select public.set_show_arrived('<pid>','<show id>', true, null) -> 'shows' -> 0; rollback;
 --   -- helpers are not callable by clients (both false):
@@ -206,19 +240,25 @@ declare
   keep_foh   boolean := p_mode in ('foh', 'legacy');
   keep_note  boolean := p_mode in ('backstage', 'legacy');
   keep_crew  boolean := p_mode in ('foh', 'legacy');
-  keep_logo  boolean := p_mode in ('backstage', 'foh', 'dressing', 'legacy');
+  keep_logo  boolean := p_mode in ('backstage', 'foh', 'dressing', 'lounge', 'legacy');
   keep_rider boolean := p_mode in ('checkin', 'stagemanager', 'legacy');
   keep_bg    boolean := p_mode in ('dressing', 'legacy');
-  drop_show  text[]  := array['photo'];
+  keep_photo boolean := p_mode in ('lounge');
+  keep_arrived boolean := p_mode in ('stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin', 'stagemanager', 'dressing', 'legacy');
+  keep_video boolean := p_mode in ('stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin', 'stagemanager', 'dressing', 'legacy');
+  drop_show  text[]  := array[]::text[];
   out        jsonb;
 begin
   if p_data is null or jsonb_typeof(p_data) <> 'object' then
     return p_data;
   end if;
+  if not keep_photo then drop_show := array_append(drop_show, 'photo'); end if;
   if not keep_note then drop_show := array_append(drop_show, 'note'); end if;
   if not keep_crew then drop_show := array_append(drop_show, 'crew'); end if;
   if not keep_rider then drop_show := array_append(drop_show, 'rider'); end if;
   if not keep_bg then drop_show := array_append(drop_show, 'bgImage'); end if;
+  if not keep_arrived then drop_show := drop_show || array['arrived', 'arrivedAt']; end if;
+  if not keep_video then drop_show := array_append(drop_show, 'bgVideo'); end if;
 
   out := case when keep_logo then p_data else p_data - 'logo' end;
   if out ? 'memberIds' then out := jsonb_set(out, '{memberIds}', '[]'::jsonb); end if;
@@ -267,7 +307,7 @@ as $$
            'company_id', null,   -- public views do not need it
            'data', public._strip_project_data(
                      p.data,
-                     case when p_mode in ('stage','backstage','foh','timeline','overview','wall','checkin','stagemanager','dressing')
+                     case when p_mode in ('stage','backstage','foh','timeline','overview','wall','checkin','stagemanager','dressing','lounge')
                           then p_mode else 'strict' end))
   from public.projects p
   where p.id::text = p_id

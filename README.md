@@ -38,7 +38,8 @@ Elke view behalve de bediening is ook beschikbaar als **deellink** zonder login.
 - **Bericht naar booth** (telefoon-eerst sheet, knop *Message booth* / *Booth*): podium of alle podia, presets, vrije tekst (max. 40 tekens), duur, wissen en blackout, met **ontvangstbevestiging** ("Delivered to 1 of 1 Main Stage screen · seen 22:41:05") en het aantal boothschermen online. Zie *Booth link*.
 - **Push-meldingen** voor crew via de edge function `send-push` (zie *Tech stack*).
 - **Kleedkamerscherm** per artiest (deellink `mode=dressing`): een grote countdown naar de show over een eigen achtergrondvideo of -foto, tijdens de show de resterende settijd, daarna een bedankscherm met het klantlogo. Zie *Kleedkamerscherm* hieronder.
-- **Wake lock** op FOH, Backstage, Stage View, Tijdlijn, Overzicht, Control Wall, Stage manager en het kleedkamerscherm, zodat monitoren niet op zwart gaan.
+- **Artist lounge** per podium (in de app onder Views, deellink `mode=lounge`): het tv-scherm in de artiestenlounge. Zie *Artist lounge* hieronder.
+- **Wake lock** op FOH, Backstage, Stage View, Tijdlijn, Overzicht, Control Wall, Stage manager, het kleedkamerscherm en de Artist lounge, zodat monitoren niet op zwart gaan.
 - **Offline opstarten**: de app-shell (HTML, supabase-js, fonts, iconen) staat in de service-worker-cache. Een opgeslagen login blijft geldig als de auth-server even onbereikbaar is.
 - **Toegankelijke dialogen**: één dialoogcomponent (`stDialog`) met focus trap, Escape en focus-terugkeer, in plaats van `alert()`/`confirm()`/`prompt()`.
 
@@ -129,12 +130,17 @@ Overige `localStorage`-sleutels: `st_app_v1` (offline kopie van projecten, compa
 - `/app?mode=foh&pid=<projectId>&sid=<stageId>`: FOH
 - `/app?mode=stagemanager&pid=<projectId>&sid=<stageId>`: stage manager (mag aankomsten opslaan)
 - `/app?mode=dressing&pid=<projectId>&shid=<showId>`: kleedkamerscherm van één artiest
+- `/app?mode=lounge&pid=<projectId>&sid=<stageId>`: Artist lounge (tv in de artiestenlounge) van één podium
 - `/app?signup=success&cid=…&t=…`: afronden van een signup na betaling
 - `/festival-dashboard.html`: redirect naar `/app` (het oude bestand is weg)
 
 Deellinks laden het project via de RPC `get_shared_project(p_id)`, altijd met de anon-key (nooit met een verlopen JWT van een eerder ingelogd apparaat). Bestaat de RPC nog niet (404 / `PGRST202`), dan leest de app de rij direct uit `projects`, zoals productie dat nu doet, en onthoudt dat voor de sessie. Al bestaande deellinks blijven dus werken, voor en na de migratie.
 
 Een deellink pollt één keer per seconde, één verzoek tegelijk, en rendert alleen opnieuw als de data of de tijdsafhankelijke toestand verandert. Het scherm kiest zelf zijn dag (de festivaldag van vandaag) en podium (`sid`). Deellinks slaan nooit de blob op; check-in schrijft via de RPC `set_show_arrived`, met een terugval naar lezen-wijzigen-schrijven zolang die RPC ontbreekt.
+
+### Artist lounge
+
+`?mode=lounge&pid=<projectId>&sid=<stageId>` en in de app via Views → *Artist lounge* (sectie `// ══ ARTIST LOUNGE`, root `#lng`, gevraagd voor Amsterdam Music Festival, 23-10-2026). Backstage-informatie voor de artiesten, leesbaar op 3-5 m: een kop (~1,5× Backstage) met het klantlogo (tot ~56 px hoog, `branding.logoLounge`, standaard aan; witte plaat via `logoBackdrop`), podium + dag, klok en het stagetimer.nl-merkje. Links de *NOW ON STAGE*-kaart: foto van de act (`show.photo`, base64 of Storage-URL, gecontroleerd als het logo; geen of kapotte foto = initialen op de accentkleur), naam (2 regels max.), boothchip, grote witte countdown naar het einde van de set en een eigen tijdlijn (start – vulling – einde, bolletje voor "nu", *played* / *left*; laatste 5 minuten amber). Tussen twee acts *NEXT ON STAGE* met countdown naar de start en de wisseltijd als tijdlijn. Rechts *Coming up*: max. 4 acts met foto, tijden, *starts in* en een mini-dagtijdlijn; de act die binnen 10 minuten begint krijgt een accentkader met *Up next*; meer acts op één regel *Later*. Klaar = gedeelde lege staat (`vwEmptyHTML`). Geannuleerde acts zijn nooit live/next, verborgen acts komen er nooit op (ook niet in de app: het is een voorbeeld van de tv). Accentkleur per project: `data.branding.accent` (hex, `lngAccentOf`, standaard groen), te kiezen in het Project logo-venster (presets + eigen hex); alleen de lounge gebruikt hem. Animaties alleen transform/opacity, uit bij `prefers-reduced-motion`; geen *Last sync*-pil (artiestgericht). Per tick worden alleen teksten, de vulling en de bolletjes bijgewerkt; herbouw alleen bij een gewijzigde handtekening. Server: `get_shared_project(p_id,'lounge')` is de enige modus met `shows[].photo`, houdt het logo en mist `arrived`/`bgVideo` (stap 3 in `docs/MIGRATIES.md`; vóór die migratie werkt het scherm op de volledige legacy-feed).
 
 ### Kleedkamerscherm
 

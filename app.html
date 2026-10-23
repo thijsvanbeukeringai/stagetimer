@@ -503,6 +503,165 @@ body.public-mode #smv-close-btn{display:none!important;}
 #dres .dres-artist-ty{font-size:clamp(22px,min(4vw,5.6vh),64px);font-weight:800;color:rgba(255,255,255,.92);}
 #dres .dres-sig{margin-top:clamp(6px,2vh,24px);font-size:clamp(16px,min(2.5vw,3.5vh),34px);font-style:italic;color:rgba(255,255,255,.82);}
 @media (prefers-reduced-motion:reduce){#dres .dres-video,#dres .dres-img{transition:none;}}
+/* ══ ARTIST LOUNGE (#lng): the TV in the artist lounge for one stage - who is
+   on stage now (photo, name, a big white countdown, the set's own timeline),
+   who is up next, the festival's logo and accent colour. Read from 3-5 m:
+   16:9 TV first, also a portrait TV and a phone. Everything is scoped to #lng
+   (Stage View untouched). Sizes run off --lu, 1/100 of a 1920-wide 16:9
+   screen, so 1280x720 is the same picture, smaller. --lng-ac* are set from
+   data.branding.accent by renderLNG. Motion is transform / opacity only. ══ */
+#lng{--lng-ac:#22c55e;--lng-ac-rgb:34,197,94;--lng-on-ac:#05210f;--lu:min(1vw,1.778vh);
+  position:fixed;inset:0;z-index:200;display:none;flex-direction:column;overflow:hidden;color:#fff;font-family:var(--ff);
+  background:radial-gradient(80% 65% at 10% -12%,rgba(var(--lng-ac-rgb),.14),rgba(var(--lng-ac-rgb),0) 62%),radial-gradient(70% 60% at 108% 112%,rgba(99,102,241,.13),rgba(99,102,241,0) 60%),#05050a;}
+#lng.open{display:flex;}
+#lng-hdr{flex-shrink:0;display:flex;align-items:center;gap:calc(var(--lu)*1.1);min-height:max(60px,calc(var(--lu)*3.9));
+  padding:calc(var(--lu)*.55) calc(var(--lu)*1.6);border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0));}
+#lng .vw-logo{display:none;}
+#lng.vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:max(36px,calc(var(--lu)*2.9));max-width:max(140px,calc(var(--lu)*15));object-fit:contain;}
+#lng.vw-logo-bd .vw-logo{background:#fff;padding:calc(var(--lu)*.3) calc(var(--lu)*.7);border-radius:max(6px,calc(var(--lu)*.5));}
+#lng-title{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+#lng-sname{font-size:max(18px,calc(var(--lu)*1.6));font-weight:900;letter-spacing:-.01em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#lng-day{font-size:max(11px,calc(var(--lu)*.82));font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#lng-day:empty{display:none;}
+#lng-ssel{min-height:36px;color:rgba(255,255,255,.85);background-color:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);}
+#lng-ssel[hidden],#lng-dtabs[hidden]{display:none;}
+#lng-clock{flex-shrink:0;font-family:var(--ffm);font-size:max(20px,calc(var(--lu)*1.9));font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+#lng .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!important;}
+#lng-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:calc(var(--lu)*1.6);padding:calc(var(--lu)*1.6);}
+#lng-body.lng-solo{grid-template-columns:minmax(0,1fr);}
+/* Hero: now on stage (glow pulses) or, between acts, next on stage. */
+#lng .lng-hero{position:relative;min-width:0;min-height:0;border-radius:calc(var(--lu)*1.6);container-type:size;}
+#lng .lng-hero::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.95),0 0 calc(var(--lu)*3.2) rgba(var(--lng-ac-rgb),.5),0 0 calc(var(--lu)*8) rgba(var(--lng-ac-rgb),.2);}
+#lng .lng-hero.lng-live::before{opacity:1;animation:lng-glow 2.8s ease-in-out infinite alternate;}
+#lng .lng-hero.lng-next::before{opacity:.6;box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.55),0 0 calc(var(--lu)*2.4) rgba(var(--lng-ac-rgb),.22);}
+#lng .lng-hero-in{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;gap:calc(var(--lu)*3) calc(var(--lu)*2.2);
+  padding:calc(var(--lu)*2.2);border-radius:inherit;overflow:hidden;border:1px solid rgba(255,255,255,.1);
+  background:linear-gradient(155deg,rgba(255,255,255,.085),rgba(255,255,255,.025) 45%,rgba(0,0,0,.28));}
+#lng .lng-sheen{position:absolute;inset:-35%;z-index:-1;pointer-events:none;
+  background:radial-gradient(38% 38% at 32% 30%,rgba(var(--lng-ac-rgb),.26),rgba(var(--lng-ac-rgb),0) 70%);animation:lng-drift 16s ease-in-out infinite alternate;}
+/* As tall as the card allows (its height minus padding, gap and timeline),
+   at most 44% of its width so the countdown keeps room. */
+#lng .lng-hero .lng-ph{grid-row:1;align-self:center;width:min(calc(100cqh - var(--lu)*11.5),44cqw);border-radius:calc(var(--lu)*1.3);}
+#lng .lng-hero-main{grid-row:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:calc(var(--lu)*.9);}
+#lng .lng-badge{display:inline-flex;align-items:center;gap:calc(var(--lu)*.75);padding:calc(var(--lu)*.5) calc(var(--lu)*1.1) calc(var(--lu)*.5) calc(var(--lu)*.85);border-radius:99px;
+  font-size:max(12px,calc(var(--lu)*1));font-weight:900;letter-spacing:.2em;text-transform:uppercase;line-height:1;white-space:nowrap;color:#fff;
+  background:rgba(var(--lng-ac-rgb),.2);border:1px solid rgba(var(--lng-ac-rgb),.75);box-shadow:0 0 calc(var(--lu)*1.6) rgba(var(--lng-ac-rgb),.3);}
+#lng .lng-dot{position:relative;flex-shrink:0;width:max(9px,calc(var(--lu)*.75));height:max(9px,calc(var(--lu)*.75));border-radius:50%;background:var(--lng-ac);box-shadow:0 0 calc(var(--lu)*.9) var(--lng-ac);}
+#lng .lng-live .lng-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--lng-ac);animation:lng-ping 1.6s cubic-bezier(0,0,.2,1) infinite;}
+#lng .lng-name{max-width:100%;font-size:calc(var(--lu)*4.6);font-weight:900;letter-spacing:-.025em;line-height:1.04;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 2px calc(var(--lu)*2) rgba(0,0,0,.35);}
+#lng .lng-name.lng-n-m{font-size:calc(var(--lu)*3.7);}
+#lng .lng-name.lng-n-s{font-size:calc(var(--lu)*2.9);}
+#lng .lng-meta{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--lu)*.7);font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.2));font-weight:700;color:rgba(255,255,255,.8);}
+#lng .lng-booth{font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.8));font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;padding:.3em .85em;border-radius:99px;
+  color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);}
+#lng .lng-cdw{margin-top:calc(var(--lu)*.5);}
+#lng .lng-cd-lbl{font-size:max(12px,calc(var(--lu)*.95));font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.68);margin-bottom:calc(var(--lu)*.35);}
+#lng .lng-cd{font-family:var(--ffm);font-size:calc(var(--lu)*8.8);font-weight:700;line-height:.95;letter-spacing:-.045em;font-variant-numeric:tabular-nums;white-space:nowrap;
+  color:#fff;text-shadow:0 0 calc(var(--lu)*2.4) rgba(255,255,255,.16);}
+#lng .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6.4);}
+/* The act's own timeline: start - fill - end, a "now" dot, played / left. */
+#lng .lng-tl{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.5);}
+#lng .lng-tl-t{font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.25));font-weight:700;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.9);}
+#lng .lng-tl-track{position:relative;height:max(8px,calc(var(--lu)*.8));border-radius:99px;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 2px rgba(0,0,0,.45);}
+#lng .lng-tl-clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;}
+#lng .lng-tl-fill{position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,rgba(var(--lng-ac-rgb),.3),var(--lng-ac));}
+#lng .lng-final .lng-tl-fill{background:linear-gradient(90deg,rgba(245,158,11,.35),#f59e0b);}
+#lng .lng-tl-dot{position:absolute;left:0;top:50%;width:max(14px,calc(var(--lu)*1.5));height:max(14px,calc(var(--lu)*1.5));border-radius:50%;transform:translate(-50%,-50%);
+  background:#fff;box-shadow:0 0 0 max(3px,calc(var(--lu)*.3)) rgba(var(--lng-ac-rgb),.55),0 0 calc(var(--lu)*1.6) var(--lng-ac);}
+#lng .lng-tl-sub{grid-column:2;display:flex;justify-content:space-between;gap:12px;font-size:max(12px,calc(var(--lu)*1.05));font-weight:700;color:rgba(255,255,255,.7);}
+#lng .lng-tl-sub b{font-family:var(--ffm);font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
+/* Artist photo, or the act's initials on the accent colour. */
+#lng .lng-ph{position:relative;flex-shrink:0;aspect-ratio:1;overflow:hidden;container-type:inline-size;
+  background:linear-gradient(135deg,var(--lng-ac) 0%,rgba(var(--lng-ac-rgb),.45) 45%,#16162a 100%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.14),0 calc(var(--lu)*.8) calc(var(--lu)*2.6) rgba(0,0,0,.55);}
+#lng .lng-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:38cqw;font-weight:900;letter-spacing:-.04em;line-height:1;color:var(--lng-on-ac);}
+#lng .lng-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+#lng .lng-ph::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.42) 100%),linear-gradient(135deg,rgba(255,255,255,.14),rgba(255,255,255,0) 42%);}
+/* Up next */
+#lng .lng-col{min-width:0;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*1);overflow:hidden;}
+#lng .lng-h{margin:0;font-size:max(12px,calc(var(--lu)*1));font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.64);}
+#lng .lng-card{position:relative;flex-shrink:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.75);align-items:center;
+  padding:calc(var(--lu)*1.05);border-radius:calc(var(--lu)*1.1);background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);}
+#lng .lng-card .lng-ph{grid-row:1/3;width:calc(var(--lu)*7.2);border-radius:calc(var(--lu)*.8);}
+#lng .lng-card-main{grid-column:2;grid-row:1;min-width:0;}
+#lng .lng-card-name{font-size:max(17px,calc(var(--lu)*1.85));font-weight:900;letter-spacing:-.015em;line-height:1.1;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+#lng .lng-card-meta{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--lu)*.6);margin-top:calc(var(--lu)*.35);font-family:var(--ffm);font-size:max(12px,calc(var(--lu)*1.05));font-weight:700;color:rgba(255,255,255,.74);}
+#lng .lng-card-cdw{grid-column:3;grid-row:1;text-align:right;}
+#lng .lng-card-lbl{font-size:max(10px,calc(var(--lu)*.75));font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;margin-bottom:calc(var(--lu)*.2);}
+#lng .lng-card-cd{font-family:var(--ffm);font-size:max(22px,calc(var(--lu)*2.6));font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap;}
+#lng .lng-tag{display:none;align-items:center;font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.72));font-weight:900;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;
+  padding:.35em .85em;border-radius:99px;background:var(--lng-ac);color:var(--lng-on-ac);}
+#lng .lng-card.lng-soon{border-color:rgba(var(--lng-ac-rgb),.9);background:linear-gradient(120deg,rgba(var(--lng-ac-rgb),.2),rgba(255,255,255,.04) 60%);
+  box-shadow:0 0 0 1px rgba(var(--lng-ac-rgb),.5),0 0 calc(var(--lu)*2.4) rgba(var(--lng-ac-rgb),.28);}
+#lng .lng-card.lng-soon .lng-tag{display:inline-flex;}
+/* Mini timeline: the day on this stage, this act's slot, where "now" is. */
+#lng .lng-mini{grid-column:2/4;grid-row:2;position:relative;height:max(6px,calc(var(--lu)*.5));border-radius:99px;background:rgba(255,255,255,.08);}
+#lng .lng-mini-slot{position:absolute;top:0;bottom:0;border-radius:inherit;background:rgba(var(--lng-ac-rgb),.65);}
+#lng .lng-mini-now{position:absolute;left:0;top:50%;width:max(3px,calc(var(--lu)*.22));height:max(14px,calc(var(--lu)*1.3));border-radius:2px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7);}
+#lng .lng-later{flex-shrink:0;font-size:max(12px,calc(var(--lu)*1));font-weight:600;color:rgba(255,255,255,.64);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#lng .lng-later b{margin-right:.8em;font-size:.85em;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.82);}
+#lng .lng-later span{margin-right:1.3em;}
+#lng .lng-later time{margin-right:.45em;font-family:var(--ffm);font-weight:700;color:rgba(255,255,255,.82);}
+#lng .lng-idle{padding:calc(var(--lu)*1.6);border:1px dashed rgba(255,255,255,.2);border-radius:calc(var(--lu)*1.1);font-size:max(15px,calc(var(--lu)*1.3));font-weight:700;color:rgba(255,255,255,.74);}
+#lng .vw-empty{grid-column:1/-1;align-self:center;justify-self:center;margin:0;max-width:min(92%,calc(var(--lu)*58));padding:calc(var(--lu)*2.6) calc(var(--lu)*3);border-radius:calc(var(--lu)*1.4);
+  border-color:rgba(var(--lng-ac-rgb),.45);background:rgba(255,255,255,.03);}
+#lng .vw-empty-title{font-size:max(22px,calc(var(--lu)*2.8));}
+#lng .vw-empty-sub{font-size:max(15px,calc(var(--lu)*1.35));margin-top:calc(var(--lu)*.8);}
+@keyframes lng-glow{from{opacity:.5;}to{opacity:1;}}
+@keyframes lng-drift{from{transform:translate3d(-8%,-6%,0);}to{transform:translate3d(12%,10%,0);}}
+@keyframes lng-ping{0%{transform:scale(1);opacity:.8;}75%,100%{transform:scale(2.9);opacity:0;}}
+/* Portrait TV (and a tablet on its side): hero on top, the list below. */
+@media (max-aspect-ratio:4/5){
+  #lng{--lu:min(1.9vw,1.05vh);}
+  #lng-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
+  #lng .lng-hero{container-type:normal;}
+  #lng .lng-hero-in{grid-template-rows:auto auto;gap:calc(var(--lu)*2.4) calc(var(--lu)*2.2);}
+  #lng .lng-hero .lng-ph{width:calc(var(--lu)*19);}
+  #lng .lng-cd{font-size:calc(var(--lu)*7.2);}
+  #lng .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6);}
+}
+/* Phone: one scrolling column, the photo across the top of the hero. */
+@media (max-width:700px){
+  #lng{--lu:min(2vw,1.1vh);}
+  #lng-hdr{flex-wrap:wrap;gap:8px 10px;min-height:0;padding:calc(env(safe-area-inset-top) + 8px) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));}
+  #st-brand-lng{display:inline-flex;}
+  #st-brand-lng .st-brand-mark{display:none;}
+  #lng.vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
+  #lng .vw-st-mark{order:2;margin-left:auto;}
+  #lng-close-btn{order:3;}
+  #lng-title{order:4;flex:1 1 55%;}
+  #lng-clock{order:5;}
+  #lng-sname{font-size:17px;}
+  #lng-clock{font-size:18px;}
+  #lng .vw-st-mark .vw-st-word{height:11px;}
+  #lng-close-btn{min-height:44px;min-width:44px;font-size:16px;}
+  #lng-ssel{order:6;flex:1 1 100%;min-height:48px;font-size:15px;font-weight:700;}
+  #lng-dtabs{order:7;flex:1 1 100%;min-width:0;}
+  #lng-body{display:flex;flex-direction:column;overflow-y:auto;padding:12px max(12px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 20px) max(12px,env(safe-area-inset-left));gap:16px;}
+  #lng .lng-hero{flex-shrink:0;border-radius:18px;container-type:normal;}
+  #lng .lng-hero-in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;padding:14px;gap:14px;}
+  #lng .lng-hero .lng-ph{width:100%;aspect-ratio:16/10;border-radius:12px;}
+  #lng .lng-hero-main{grid-row:2;gap:8px;}
+  #lng .lng-tl{grid-row:3;}
+  #lng .lng-name{font-size:30px;}
+  #lng .lng-name.lng-n-m{font-size:26px;}
+  #lng .lng-name.lng-n-s{font-size:22px;}
+  #lng .lng-cd{font-size:54px;}
+  #lng .lng-cd.lng-cd-h{font-size:46px;}
+  #lng .lng-col{flex-shrink:0;overflow:visible;gap:10px;}
+  #lng .lng-card{padding:10px;column-gap:10px;row-gap:8px;border-radius:12px;}
+  #lng .lng-card .lng-ph{width:64px;border-radius:9px;}
+  #lng .lng-card-cd{font-size:22px;}
+  #lng .lng-later{white-space:normal;}
+}
+/* Reduced motion: no glow pulse, no drifting light, no ping - a static,
+   equally clear picture. */
+@media (prefers-reduced-motion:reduce){#lng *,#lng *::before,#lng *::after{animation:none!important;transition:none!important;}}
 @media (max-width:700px){
   #smv-hdr{padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;gap:8px;}
   #st-brand-smv{display:inline-flex;}
@@ -1072,6 +1231,23 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .st-logo-status{font-size:12.5px;line-height:1.45;margin:6px 0 4px;color:var(--sub);}
 .st-logo-status:empty{display:none;}
 .st-dlg-light .st-logo-status{color:#52525B;}
+/* Artist lounge colour (presets + custom hex) in the same dialog. */
+#st-logo-dlg .st-ac{border:0;border-top:1px solid var(--border2);margin:8px 0 0;padding:12px 0 2px;min-width:0;}
+.st-dlg-light #st-logo-dlg .st-ac{border-top-color:rgba(28,25,23,.12);}
+#st-logo-dlg .st-ac legend{float:left;width:100%;padding:0;font-size:13.5px;font-weight:600;}
+#st-logo-dlg .st-ac-help{clear:both;font-size:12px;line-height:1.4;color:var(--sub);margin:2px 0 10px;}
+.st-dlg-light #st-logo-dlg .st-ac-help{color:#52525B;}
+#st-logo-dlg .st-ac-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+#st-logo-dlg .st-ac-sw{width:34px;height:34px;padding:0;border-radius:50%;cursor:pointer;background:var(--sw);border:2px solid rgba(255,255,255,.28);}
+.st-dlg-light #st-logo-dlg .st-ac-sw{border-color:rgba(28,25,23,.18);}
+#st-logo-dlg .st-ac-sw[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px #050508,0 0 0 4px var(--sw);}
+.st-dlg-light #st-logo-dlg .st-ac-sw[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 2px rgba(28,25,23,.5),0 0 0 4px var(--sw);}
+#st-logo-dlg .st-ac-hex{display:inline-flex;align-items:center;gap:6px;margin-left:4px;font-size:12.5px;}
+#st-logo-dlg .st-ac-hex input{width:96px;min-height:34px;padding:4px 8px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:inherit;font-family:var(--ffm);font-size:13px;}
+#st-logo-dlg .st-ac-msg{font-size:12px;line-height:1.4;margin-top:6px;color:#fca5a5;}
+.st-dlg-light #st-logo-dlg .st-ac-msg{color:#b91c1c;}
+#st-logo-dlg .st-ac-msg:empty{display:none;}
+@media (pointer:coarse){#st-logo-dlg .st-ac-sw{width:44px;height:44px;}#st-logo-dlg .st-ac-hex input{min-height:44px;}}
 /* Set password screen */
 #set-pw{position:fixed;inset:0;z-index:1001;background:var(--bg);display:none;align-items:center;justify-content:center;}
 #set-pw.open{display:flex;}
@@ -1912,9 +2088,10 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
   #admin-dd > .hbtn .hbtn-lbl,#admin-dd > .hbtn .dd-caret{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
   #tpanel{width:300px;}
 }
-/* Narrow tablets: seven view buttons with labels no longer fit row 2, so they
-   show their icon (name in the tooltip and for screen readers). */
-@media (min-width:701px) and (max-width:900px){
+/* Tablets and small laptops: eight view buttons with labels no longer fit
+   row 2 (since Artist lounge, up to ~1110 px), so they show their icon (name
+   in the tooltip and for screen readers). */
+@media (min-width:701px) and (max-width:1180px){
   #hdr .hbtn.hv{padding:0 9px;}
   #hdr .hbtn.hv .hbtn-lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 }
@@ -4238,7 +4415,7 @@ function _rerenderActive(){
     renderAll();refreshLogo();
     const open=id=>document.getElementById(id)?.classList.contains('open');
     if(open('foh'))renderFOH();if(open('bs'))renderBS();if(open('tl'))renderTL();
-    if(open('ci'))renderCI();if(open('wv'))renderWV();if(open('smv'))renderSM();
+    if(open('ci'))renderCI();if(open('wv'))renderWV();if(open('smv'))renderSM();if(open('lng'))renderLNG();
   }catch(e){console.warn('[sync] re-render failed:',e);}
 }
 function _rerenderDash(){const el=document.getElementById('dash');if(!window.PUBLIC_MODE&&el&&el.classList.contains('open'))renderDash();}
@@ -4360,7 +4537,7 @@ function _onProjectChange(payload){
     const keepDay=G&&G.activeDay;
     loadG();
     if(keepDay&&(G.days||[]).some(d=>d.id===keepDay))G.activeDay=keepDay;
-    if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage'||PUBLIC_MODE==='stagemanager')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
+    if((PUBLIC_MODE==='backstage'||PUBLIC_MODE==='foh'||PUBLIC_MODE==='stage'||PUBLIC_MODE==='stagemanager'||PUBLIC_MODE==='lounge')&&PUBLIC_SID)G.activeStage=PUBLIC_SID;
     if(PUBLIC_MODE==='overview'){renderOV();}
     else if(PUBLIC_MODE==='timeline'){renderTL();}
     else if(PUBLIC_MODE==='backstage'){renderBS();}
@@ -4369,6 +4546,7 @@ function _onProjectChange(payload){
     else if(PUBLIC_MODE==='checkin'){renderCI();}
     else if(PUBLIC_MODE==='stagemanager'){renderSM();}
     else if(PUBLIC_MODE==='dressing'){renderDres();}
+    else if(PUBLIC_MODE==='lounge'){renderLNG();}
     else if(PUBLIC_MODE==='wall'){renderWV();}
     return;
   }
@@ -5211,6 +5389,10 @@ function renderTbar(){
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg>
           Stage manager
         </button>
+        <button class="dd-item mob-only" onclick="closeAllDD();openLNG()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v2"/><path d="M2 11a2 2 0 0 1 4 0v3h12v-3a2 2 0 0 1 4 0v5a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M5 18v2M19 18v2"/></svg>
+          Artist lounge
+        </button>
         <button class="dd-item mob-only" onclick="closeAllDD();openCI()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><polyline points="8.5 12 11 14.5 15.5 9.5"/></svg>
           Artist check-in
@@ -5307,6 +5489,7 @@ function renderTbar(){
       <button class="hbtn hv" onclick="openOV()" id="hdr-ov-btn" title="Overview of all stages"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="hbtn-lbl">Overview</span></button>
       <button class="hbtn hv" onclick="openCI()" id="hdr-ci-btn" title="Artist check-in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><polyline points="8.5 12 11 14.5 15.5 9.5"/></svg><span class="hbtn-lbl">Check-in</span></button>
       <button class="hbtn hv" onclick="openSM()" id="hdr-sm-btn" title="Stage manager: current and next show, arrivals and riders"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></svg><span class="hbtn-lbl">Stage manager</span></button>
+      <button class="hbtn hv" onclick="openLNG()" id="hdr-lng-btn" title="Artist lounge: the lounge TV with now on stage and up next"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 9V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v2"/><path d="M2 11a2 2 0 0 1 4 0v3h12v-3a2 2 0 0 1 4 0v5a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M5 18v2M19 18v2"/></svg><span class="hbtn-lbl">Artist lounge</span></button>
     </nav>
     <button type="button" class="hbtn" id="hdr-msg-btn" onclick="openCrewMsg(this)" title="Send a message to the booth screens" aria-label="Message booth" aria-haspopup="dialog"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="hbtn-lbl">Message booth</span></button>
     <div id="mob-hdr-cd"></div>
@@ -6248,6 +6431,23 @@ function renderTbar(){
   <div id="dres-media" aria-hidden="true"></div>
   <div class="dres-scrim" aria-hidden="true"></div>
   <div id="dres-main" class="dres-main"></div>
+</div>
+
+<!-- ARTIST LOUNGE (in-app + share link mode=lounge&pid=..&sid=<stage>): the
+     lounge TV - now on stage with the act's photo, up next, logo + accent.
+     Artist-facing: no "Last sync" pill (.vw-sync), that is for crew screens. -->
+<div id="lng">
+  <div id="lng-hdr">
+    <a class="st-brand" id="st-brand-lng" href="#" onclick="closeLNG();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
+    <img class="vw-logo" id="vw-logo-lng" alt="" decoding="async" onerror="_vwLogoFailed(this)">
+    <div id="lng-title"><div id="lng-sname">-</div><div id="lng-day"></div></div>
+    <select id="lng-ssel" class="hsel" aria-label="Stage" onchange="_pickStageLNG(this.value)"></select>
+    <div id="lng-dtabs"></div>
+    <div id="lng-clock"></div>
+    <span class="vw-st-mark" role="img" aria-label="Powered by stagetimer.nl"><img class="vw-st-icon" src="/app-icon.svg" alt=""><img class="vw-st-word" src="/stagetimer-wordmark.png" alt=""></span>
+    <button class="bshbtn" id="lng-close-btn" onclick="closeLNG()" aria-label="Close Artist lounge">✕</button>
+  </div>
+  <div id="lng-body"></div>
 </div>
 
 <!-- BACKSTAGE -->
@@ -8174,7 +8374,7 @@ async function delShow(id,e){
 function setMode(m){G.timerMode=m;document.getElementById('mb-live').className='mdb'+(m==='live'?' on':'');document.getElementById('mb-man').className='mdb'+(m==='manual'?' on':'');document.getElementById('mb-live').setAttribute('aria-pressed',m==='live');document.getElementById('mb-man').setAttribute('aria-pressed',m==='manual');document.getElementById('tbar').className=m==='manual'?'vis':'';if(m==='manual')mReset();_selChanged('mode');renderAll();}
 
 // ══ OPEN/CLOSE screens
-function _closeAllScreens(){['foh','bs','sv','tl','stov','ci','smv'].forEach(id=>document.getElementById(id)?.classList.remove('open'));_svZoomLock(false);}
+function _closeAllScreens(){['foh','bs','sv','tl','stov','ci','smv','lng'].forEach(id=>document.getElementById(id)?.classList.remove('open'));_svZoomLock(false);}
 // Sync the bottom-nav active state with whichever overlay is currently open.
 // Called from open/close + goToDash so the highlighted tab always reflects
 // the view the user is on.
@@ -8243,11 +8443,12 @@ function _svZoomLock(on){
   }
   // Auto fullscreen is a per-device choice (account menu). Default: off in the
   // operator app, on for kiosk share links (Stage View, Control Wall, the
-  // dressing room screen) where nobody is around to open a menu.
+  // dressing room screen, the artist lounge TV) where nobody is around to
+  // open a menu.
   const FS_KEY='st_fs_auto';
   function _autoPref(){
     try{const v=localStorage.getItem(FS_KEY);if(v==='on')return true;if(v==='off')return false;}catch(_){}
-    return ['stage','wall','dressing'].includes(window.PUBLIC_MODE);
+    return ['stage','wall','dressing','lounge'].includes(window.PUBLIC_MODE);
   }
   const _fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
   function _syncMenu(){
@@ -8298,7 +8499,7 @@ function _svZoomLock(on){
 // used to be Backstage + Stage View only). Wake Lock is a best-effort (no
 // support on old iOS Safari, fails silently). The lock is released as soon
 // as all of these views are closed.
-const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv','smv','dres'];
+const _WAKE_VIEWS=['bs','sv','foh','tl','stov','wv','smv','dres','lng'];
 let _wakeLock=null;
 // Native app: the KeepAwake plugin switches off the iOS idle timer for the
 // whole app. navigator.wakeLock in WKWebView is missing or unreliable across
@@ -8326,7 +8527,7 @@ document.addEventListener('visibilitychange',()=>{
   const needLock=_WAKE_VIEWS.some(id=>document.getElementById(id)?.classList.contains('open'));
   if(needLock&&!_wakeLock)_acquireWakeLock();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='stagemanager')closeSM();if(PUBLIC_MODE!=='wall')closeWV();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeFohnModal();closeOTV();if(PUBLIC_MODE!=='stage')closeSV();if(PUBLIC_MODE!=='foh')closeFOH();if(PUBLIC_MODE!=='backstage')closeBS();if(PUBLIC_MODE!=='timeline')closeTL();if(PUBLIC_MODE!=='overview')closeOV();if(PUBLIC_MODE!=='checkin')closeCI();if(PUBLIC_MODE!=='stagemanager')closeSM();if(PUBLIC_MODE!=='lounge')closeLNG();if(PUBLIC_MODE!=='wall')closeWV();}});
 
 // ══ CLOCK
 function updateClock(){
@@ -9682,6 +9883,7 @@ function tick(){
   tickOV();
   tickSM();
   tickDres();
+  tickLNG();
   vwTickSync();
   // Booth link (receipts / presence): last, so a failure there can never
   // keep a screen from rendering.
@@ -12439,6 +12641,7 @@ function openShareModal(projId){
       ${_shareRowHTML('Backstage','backstage',`${base}?mode=backstage&pid=${pid}&sid=${sid}`)}
       ${_shareRowHTML('FOH','foh',`${base}?mode=foh&pid=${pid}&sid=${sid}`)}
       ${_shareRowHTML('Stage manager','stagemanager',`${base}?mode=stagemanager&pid=${pid}&sid=${sid}`)}
+      ${_shareRowHTML('Artist lounge','lounge',`${base}?mode=lounge&pid=${pid}&sid=${sid}`)}
       ${_shareDresHTML(proj,st.id)}
     </div>`;
   }).join(''):`<div style="font-size:12px;color:var(--sub);padding:8px 0;">No stages created in this project.</div>`;
@@ -13013,6 +13216,195 @@ function openDres(){
   });
 }
 
+// ══ ARTIST LOUNGE - the TV in the artist lounge of one stage (owner request
+// 2026-10-23, for Amsterdam Music Festival). Backstage's information for the
+// artists waiting there, made to be read from 3-5 m: who is on stage now
+// (photo, name, a big white countdown to the end of the set and the set's own
+// timeline), who comes next (photo, times, "starts in", where the act sits in
+// the day), the festival's logo and accent colour (data.branding.accent, set
+// in the Project logo dialog). In the app, and as share link
+// mode=lounge&pid=..&sid=<stage>. Hidden acts stay off it in the app too: the
+// operator's copy previews the TV, and a hidden act is a secret. Cancelled
+// acts are never live or next (showAllowed 'live'). Straight from the
+// schedule (_showIv + nowMs), like every share link. renderLNG rebuilds only
+// when what it draws changed; _lngTick moves countdowns, bars and dots in
+// place (transforms), so photos are not re-decoded every tick.
+const LNG_SOON_SEC=600,LNG_FINAL_SEC=300,LNG_NEXT_MAX=4,LNG_LATER_MAX=6;
+const LNG_ACCENT_DEFAULT='#22c55e';
+// Presets in the Project logo dialog; any other hex can be typed there.
+const LNG_ACCENTS=[['#22c55e','Festival green'],['#ef4444','Live red'],['#f97316','Orange'],['#facc15','Yellow'],['#06b6d4','Cyan'],['#3b82f6','Blue'],['#a855f7','Purple'],['#ec4899','Pink']];
+// '#rgb' / '#rrggbb' (through safeColor) as '#rrggbb'; anything else ''. The
+// lounge mixes it into rgba(), so named colours are not taken.
+function _lngHex(v){
+  const c=safeColor(typeof v==='string'?v.trim():'','');
+  let m=/^#([0-9a-f]{6})$/i.exec(c);if(m)return'#'+m[1].toLowerCase();
+  m=/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(c);
+  return m?('#'+m[1]+m[1]+m[2]+m[2]+m[3]+m[3]).toLowerCase():'';
+}
+const lngAccentOf=d=>_lngHex(d&&d.branding&&typeof d.branding==='object'?d.branding.accent:'')||LNG_ACCENT_DEFAULT;
+const _lngRgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(',');
+// Light accents (green, yellow) get dark text on their pills and initials.
+const _lngLight=h=>{const[r,g,b]=_lngRgb(h).split(',').map(Number);return .2126*r+.7152*g+.0722*b>150;};
+function _lngInitials(name){
+  const w=String(name||'').replace(/[^\p{L}\p{N}\s]+/gu,'').trim().split(/\s+/).filter(Boolean);
+  if(!w.length)return'?';
+  const f=x=>Array.from(x)[0]||'';
+  return(w.length>1?f(w[0])+f(w[w.length-1]):Array.from(w[0]).slice(0,2).join('')).toUpperCase();
+}
+// Long names step down a size (and clamp at two lines) instead of overflowing.
+const _lngNameCls=a=>{const n=Array.from(String(a||'')).length;return n>26?'lng-n-s':n>14?'lng-n-m':'';};
+// show.photo: an inline image or one in our own bucket (the logo's check);
+// anything else, or one that fails to load, leaves the initials.
+const _lngPhoto=s=>s&&s.photo?_safeLogoSrc(s.photo):'';
+// Stand-in for a photo in the change signature: a base64 photo can be
+// hundreds of kB and the signature is built every tick.
+const _lngPhKey=v=>typeof v==='string'&&v?v.length+':'+v.slice(-16):'';
+const _lngT=ms=>isNaN(ms)?'--:--':amsTimeStr(ms,false);
+function _lngCdText(sec){
+  sec=Math.max(0,sec);
+  if(sec>=86400){const d=Math.floor(sec/86400);return`${d} day${d===1?'':'s'}`;}
+  return s2cdH(sec);
+}
+const _lng={refs:null};
+function _lngShows(){return getShows(G.activeStage,G.activeDay,!isActiveDayToday()).filter(s=>showAllowed(s,'live',true));}
+// hero: the act on stage, else the next one (with c0, the start of its
+// changeover: the end of the act before it, or an hour before). cards / later:
+// the acts after the hero. d0..d1: the day on this stage, for the mini bars.
+function _lngModel(n){
+  const all=_lngShows();
+  const cur=pickLiveShow(all,_showIv,n);
+  const next=all.filter(s=>_showIsFuture(s,n));
+  const hero=cur?{kind:'live',s:cur.s,iv:cur.iv}:next.length?{kind:'next',s:next[0],iv:_showIv(next[0])}:null;
+  if(hero&&hero.kind==='next'){
+    const st=hero.iv.startMs;let c0=NaN;
+    for(const s of all){const e=_showIv(s).endMs;if(e<=st&&(isNaN(c0)||e>c0))c0=e;}
+    hero.c0=!isNaN(c0)&&st-c0<=6*3600e3?c0:st-3600e3;
+  }
+  const list=cur?next:next.slice(1);
+  let d0=Infinity,d1=-Infinity;
+  for(const s of all){const iv=_showIv(s);if(iv.startMs<d0)d0=iv.startMs;if(iv.endMs>d1)d1=iv.endMs;}
+  return{all,hero,cards:list.slice(0,LNG_NEXT_MAX),later:list.slice(LNG_NEXT_MAX,LNG_NEXT_MAX+LNG_LATER_MAX),d0,d1};
+}
+// Photo box: the initials always, the photo on top when there is one. Its src
+// goes in through img.src after the markup is built (phs[i]), never into it.
+function _lngPhHTML(s,phs){
+  const src=_lngPhoto(s);let img='';
+  if(src){img=`<img data-lng-ph="${phs.length}" alt="" decoding="async">`;phs.push(src);}
+  return`<div class="lng-ph"><span class="lng-mono" aria-hidden="true">${escH(_lngInitials(s.artist))}</span>${img}</div>`;
+}
+const _lngBooth=s=>s.booth?`<span class="lng-booth">Booth ${escH(s.booth)}</span>`:'';
+function _lngHeroHTML(h,phs){
+  const s=h.s,live=h.kind==='live',lbl=live?'Now on stage':'Next on stage';
+  const a=_lngT(live?h.iv.startMs:h.c0),b=_lngT(live?h.iv.endMs:h.iv.startMs);
+  return`<section class="lng-hero ${live?'lng-live':'lng-next'}" aria-label="${lbl}"><div class="lng-hero-in"><div class="lng-sheen" aria-hidden="true"></div>${_lngPhHTML(s,phs)}
+    <div class="lng-hero-main">
+      <div class="lng-badge"><span class="lng-dot" aria-hidden="true"></span>${lbl}</div>
+      <div class="lng-name ${_lngNameCls(s.artist)}">${escH(s.artist||'(no name)')}</div>
+      <div class="lng-meta"><span>${_lngT(h.iv.startMs)}–${_lngT(h.iv.endMs)}</span>${_lngBooth(s)}</div>
+      <div class="lng-cdw"><div class="lng-cd-lbl">${live?'Set ends in':'Starts in'}</div><div class="lng-cd"></div></div>
+    </div>
+    <div class="lng-tl" aria-hidden="true"><span class="lng-tl-t">${a}</span><div class="lng-tl-track"><div class="lng-tl-clip"><div class="lng-tl-fill"></div></div><i class="lng-tl-dot"></i></div><span class="lng-tl-t">${b}</span>
+      <div class="lng-tl-sub">${live?'<span class="lng-tl-el"><b></b> played</span><span class="lng-tl-rem"><b></b> left</span>':`<span>Changeover</span><span>On stage <b>${b}</b></span>`}</div></div>
+  </div></section>`;
+}
+function _lngCardHTML(s,i,m,phs){
+  const iv=_showIv(s),span=m.d1-m.d0;
+  const l=span>0?Math.max(0,Math.min(100,(iv.startMs-m.d0)/span*100)):0,w=span>0?Math.max(.6,Math.min(100-l,(iv.endMs-iv.startMs)/span*100)):0;
+  return`<article class="lng-card" data-lng-i="${i}">${_lngPhHTML(s,phs)}
+    <div class="lng-card-main"><div class="lng-card-name">${escH(s.artist||'(no name)')}</div><div class="lng-card-meta"><span class="lng-tag">Up next</span><span>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</span>${_lngBooth(s)}</div></div>
+    <div class="lng-card-cdw"><div class="lng-card-lbl">Starts in</div><div class="lng-card-cd"></div></div>
+    <div class="lng-mini" aria-hidden="true"><span class="lng-mini-slot" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"></span><i class="lng-mini-now"></i></div></article>`;
+}
+function openLNG(){
+  if(!PUBLIC_MODE)_closeAllScreens();
+  document.getElementById('lng').classList.add('open');renderLNG();_acquireWakeLock();_syncMobNavActive();
+}
+function closeLNG(){
+  if(PUBLIC_MODE==='lounge')return;
+  const el=document.getElementById('lng');if(!el||!el.classList.contains('open'))return;
+  el.classList.remove('open');_lng.refs=null;_releaseWakeLockIfIdle();_syncMobNavActive();
+}
+function _pickStageLNG(id){if(PUBLIC_MODE||!id)return;G.activeStage=id;_selChanged('stage');renderAll();renderLNG();}
+function _pickDayLNG(id){setDay(id);renderLNG();}
+function renderLNG(){
+  const root=document.getElementById('lng');if(!root||!root.classList.contains('open')||!G)return;
+  const pub=!!PUBLIC_MODE,stage=activeStageObj(),n=nowMs();
+  _vwLogo('lng');
+  const ac=lngAccentOf(G);
+  if(root.dataset.ac!==ac){
+    root.dataset.ac=ac;
+    root.style.setProperty('--lng-ac',ac);root.style.setProperty('--lng-ac-rgb',_lngRgb(ac));root.style.setProperty('--lng-on-ac',_lngLight(ac)?'#0b0b10':'#fff');
+  }
+  const sn=document.getElementById('lng-sname');if(sn.textContent!==stage.name)sn.textContent=stage.name;
+  const dl=vwDayById(G.activeDay),de=document.getElementById('lng-day');if(de.textContent!==dl)de.textContent=dl;
+  // A share link is fixed to its stage (sid) and today's festival day.
+  const ssel=document.getElementById('lng-ssel'),dt=document.getElementById('lng-dtabs');
+  ssel.hidden=pub;dt.hidden=pub;
+  if(!pub){
+    if(!vwSame(ssel,JSON.stringify((G.stages||[]).map(st=>[st.id,st.name]))))ssel.innerHTML=(G.stages||[]).map(st=>`<option value="${escH(st.id)}">${escH(st.name)}</option>`).join('');
+    if(ssel.value!==G.activeStage)ssel.value=G.activeStage;
+    if(!vwSame(dt,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dt.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayLNG','bshbtn');
+  }
+  const m=_lngModel(n),body=document.getElementById('lng-body');
+  const empty=m.hero?'':vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!pub});
+  const k=s=>{const iv=_showIv(s);return[s.id,s.artist,iv.startMs,iv.endMs,s.booth||'',_lngPhKey(s.photo)];};
+  const sig=JSON.stringify([G.activeStage,G.activeDay,m.hero&&[m.hero.kind,m.hero.c0||0,k(m.hero.s)],m.cards.map(k),m.later.map(k),m.d0,m.d1,empty]);
+  if(vwSame(body,sig)){_lngTick(n);return;}
+  _lng.refs=null;
+  body.classList.toggle('lng-solo',!m.hero);
+  if(!m.hero){body.innerHTML=empty;_lngTick(n);return;}
+  const phs=[];
+  const later=m.later.length?`<div class="lng-later"><b>Later</b>${m.later.map(s=>`<span><time>${_lngT(_showIv(s).startMs)}</time>${escH(s.artist||'(no name)')}</span>`).join('')}</div>`:'';
+  const list=m.cards.length?m.cards.map((s,i)=>_lngCardHTML(s,i,m,phs)).join('')+later:'<div class="lng-idle">No more acts after this one on this stage.</div>';
+  body.innerHTML=_lngHeroHTML(m.hero,phs)+`<section class="lng-col" aria-label="Coming up"><h2 class="lng-h">Coming up</h2>${list}</section>`;
+  body.querySelectorAll('img[data-lng-ph]').forEach(img=>{
+    img.onerror=()=>{console.warn('[lounge] an artist photo could not be loaded - showing the initials');img.remove();};
+    img.src=phs[+img.dataset.lngPh];
+  });
+  const q=sel=>body.querySelector(sel);
+  _lng.refs={d0:m.d0,d1:m.d1,
+    hero:{...m.hero,el:q('.lng-hero'),cd:q('.lng-cd'),fill:q('.lng-tl-fill'),pos:q('.lng-tl-dot'),elT:q('.lng-tl-el b'),remT:q('.lng-tl-rem b')},
+    cards:m.cards.map((s,i)=>{const c=q(`[data-lng-i="${i}"]`);return{iv:_showIv(s),el:c,cd:c.querySelector('.lng-card-cd'),pos:c.querySelector('.lng-mini-now')};})};
+  _lngTick(n);
+}
+const _lngTxt=(el,v)=>{if(el&&el.textContent!==v)el.textContent=v;};
+const _lngTx=(el,v)=>{if(el&&el.style.transform!==v)el.style.transform=v;};
+// The "now" dots sit at left:% of their track: a translated full-width layer
+// would stick out of the card and make it scroll sideways.
+const _lngLeft=(el,v)=>{if(el&&el.style.left!==v)el.style.left=v;};
+// Countdowns, the hero's fill (a transform) + dot, played / left, the "final
+// minutes" and "up next" highlights, the now-ticks on the mini bars. Only
+// written when they changed.
+function _lngTick(n){
+  _lngTxt(document.getElementById('lng-clock'),amsTimeStr(n,true));
+  const R=_lng.refs;if(!R)return;
+  const h=R.hero;
+  if(h&&h.el){
+    const live=h.kind==='live',a=live?h.iv.startMs:h.c0,b=live?h.iv.endMs:h.iv.startMs;
+    const sec=Math.ceil((b-n)/1000),txt=_lngCdText(sec);
+    _lngTxt(h.cd,txt);h.cd.classList.toggle('lng-cd-h',txt.length>5);
+    const p=b>a?Math.max(0,Math.min(1,(n-a)/(b-a))):0;
+    _lngTx(h.fill,`translateX(${(p*100-100).toFixed(3)}%)`);_lngLeft(h.pos,(p*100).toFixed(3)+'%');
+    if(live){
+      _lngTxt(h.elT,s2cdH(Math.max(0,Math.floor((n-a)/1000))));_lngTxt(h.remT,s2cdH(Math.max(0,sec)));
+      h.el.classList.toggle('lng-final',sec<=LNG_FINAL_SEC);
+    }
+  }
+  const span=R.d1-R.d0,dp=span>0?Math.max(0,Math.min(1,(n-R.d0)/span)):0,dl=(dp*100).toFixed(3)+'%';
+  for(const c of R.cards){
+    const sec=Math.ceil((c.iv.startMs-n)/1000);
+    _lngTxt(c.cd,_lngCdText(sec));
+    c.el.classList.toggle('lng-soon',sec>0&&sec<=LNG_SOON_SEC);
+    _lngLeft(c.pos,dl);
+  }
+}
+// 250 ms (global tick): renderLNG rebuilds only on a changed signature (an
+// act going live or ending, new data), then the in-place tick.
+function tickLNG(){
+  const root=document.getElementById('lng');if(!root||!root.classList.contains('open')||!G)return;
+  renderLNG();
+}
+
 // ══ PUBLIC VIEW MODE (no login needed)
 const _urlP=new URLSearchParams(location.search);
 const PUBLIC_MODE=_urlP.get('mode');
@@ -13477,6 +13869,13 @@ async function loadPublicView(){
     openDres();
     _pvStartPolling(renderDres);
     setupRealtime();
+  } else if(PUBLIC_MODE==='lounge'){
+    // Artist lounge TV for one stage (sid), today's festival day. Read-only;
+    // tickLNG (global tick) runs the countdowns, the poll brings new data.
+    document.getElementById('app').style.display='none';
+    openLNG();
+    _pvStartPolling(renderLNG);
+    setupRealtime();
   }
   // No setInterval(tick) here: the global one at the bottom of the script
   // already runs on every route (it used to run twice on share links).
@@ -13495,15 +13894,18 @@ function closeMobTimer(){
   document.getElementById('mob-sheet-ov').classList.remove('open');
 }
 
-// ══ PROJECT LOGO - customer co-branding on Backstage / FOH
+// ══ PROJECT LOGO - customer co-branding on Backstage / FOH / Artist lounge
 // data.logo: a data: URL or a project-media Storage URL (see _uploadMedia).
-// data.branding {logoBackstage, logoFoh, logoBackdrop}: which screens show
-// it (Backstage on, FOH off by default) and a white plate behind dark logos
-// that vanish on the dark screens. Older clients ignore both keys. A logo
+// data.branding {logoBackstage, logoFoh, logoLounge, logoBackdrop, accent}:
+// which screens show it (Backstage and Artist lounge on, FOH off by default),
+// a white plate behind dark logos that vanish on the dark screens, and the
+// Artist lounge's accent colour (a hex string, lngAccentOf; nothing else
+// reads it, Stage View least of all). Older clients ignore these keys and
+// keep any they do not know when they write branding. A logo
 // stored back when logos were never rendered has no branding object and
 // stays hidden until the owner switches it on: no surprise logo appearing
 // on a festival that is running when this ships. Share links get logo and
-// branding for backstage / foh only (get_shared_project p_mode matrix).
+// branding for backstage / foh / lounge only (get_shared_project p_mode matrix).
 // The stagetimer.nl mark (.vw-st-mark) shows in the same header whenever a
 // customer logo does.
 const _LOGO_DATA_RE=/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/;
@@ -13535,8 +13937,8 @@ function _safeVideoSrc(v){
 function _brandingOf(d){
   const b=d&&d.branding&&typeof d.branding==='object'&&!Array.isArray(d.branding)?d.branding:null;
   const legacy=!b&&!!_safeLogoSrc(d&&d.logo);
-  if(!b)return{logoBackstage:!legacy,logoFoh:false,logoBackdrop:false,legacy};
-  return{logoBackstage:b.logoBackstage!==false,logoFoh:b.logoFoh===true,logoBackdrop:b.logoBackdrop===true,legacy:false};
+  if(!b)return{logoBackstage:!legacy,logoFoh:false,logoLounge:!legacy,logoBackdrop:false,legacy};
+  return{logoBackstage:b.logoBackstage!==false,logoFoh:b.logoFoh===true,logoLounge:b.logoLounge!==false,logoBackdrop:b.logoBackdrop===true,legacy:false};
 }
 // proj.data and, for the open project, G (normally the same object).
 function _logoTargets(pid,proj){const t=[proj.data];if(pid===APP.activeProjectId&&G&&G!==proj.data)t.push(G);return t;}
@@ -13545,7 +13947,7 @@ function _vwLogo(view){
   const root=document.getElementById(view),img=document.getElementById('vw-logo-'+view);
   if(!root||!img)return;
   const d=G||null,b=_brandingOf(d),src=_safeLogoSrc(d&&d.logo);
-  const on=!!src&&(view==='bs'?b.logoBackstage:b.logoFoh)&&img.dataset.failed!==src;
+  const on=!!src&&(view==='bs'?b.logoBackstage:view==='lng'?b.logoLounge:b.logoFoh)&&img.dataset.failed!==src;
   if(on){
     if(img.getAttribute('src')!==src)img.src=src;
     const p=APP&&APP.projects&&APP.projects.find(x=>x.id===APP.activeProjectId);
@@ -13563,7 +13965,7 @@ function _vwLogoFailed(img){
 }
 // Load, project switch, realtime update, share-link poll (via renderBS /
 // renderFOH) and every logo edit end up here.
-function refreshLogo(){_vwLogo('bs');_vwLogo('foh');_logoDlgSync();}
+function refreshLogo(){_vwLogo('bs');_vwLogo('foh');_vwLogo('lng');_logoDlgSync();}
 function applyLogo(){refreshLogo();}
 
 // A logo that is mostly see-through with dark ink (navy type on a
@@ -13638,8 +14040,9 @@ function handleLogoUpload(event){
       // A new logo shows where the toggles say (Backstage by default) and gets
       // the plate when it needs one; the owner can change both afterwards.
       for(const d of _logoTargets(tgt,proj)){
-        const b=d.branding&&typeof d.branding==='object'?_brandingOf(d):{logoBackstage:true,logoFoh:false};
-        d.logo=logo;d.branding={logoBackstage:b.logoBackstage,logoFoh:b.logoFoh,logoBackdrop:backdrop};
+        const has=d.branding&&typeof d.branding==='object'&&!Array.isArray(d.branding);
+        const b=has?_brandingOf(d):{logoBackstage:true,logoFoh:false};
+        d.logo=logo;d.branding={...(has?d.branding:{}),logoBackstage:b.logoBackstage,logoFoh:b.logoFoh,logoBackdrop:backdrop};
       }
       // Persist + push THE SPECIFIC project (not just the active one), through
       // the save queue: quota-safe cache, and an edit sequence so a push that
@@ -13670,7 +14073,13 @@ function _setLogoBranding(pid,patch){
   if(window.PUBLIC_MODE)return;
   const proj=APP.projects.find(p=>p.id===pid);if(!proj)return;
   if(!proj.data)proj.data={};
-  for(const d of _logoTargets(pid,proj)){const b=_brandingOf(d);d.branding={logoBackstage:b.logoBackstage,logoFoh:b.logoFoh,logoBackdrop:b.logoBackdrop,...patch};}
+  // Keys this does not set (accent, logoLounge) stay: switching a toggle
+  // must not reset the lounge colour. The lounge is new, so once a branding
+  // object exists its logo is on there unless switched off (logoLounge).
+  for(const d of _logoTargets(pid,proj)){
+    const b=_brandingOf(d),old=d.branding&&typeof d.branding==='object'&&!Array.isArray(d.branding)?d.branding:{};
+    d.branding={...old,logoBackstage:b.logoBackstage,logoFoh:b.logoFoh,logoBackdrop:b.logoBackdrop,...patch};
+  }
   _saveProjectById(pid);
   refreshLogo();
 }
@@ -13694,7 +14103,15 @@ function openProjectLogo(pid,trigger){
     <div class="st-logo-acts"><button type="button" class="${sec}" data-logo-act="upload">Upload logo</button><button type="button" class="${del}" data-logo-act="remove">Remove logo</button></div>
     <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoBackstage"><span>Show on Backstage<small>Top-left on the Backstage screen and its share link.</small></span></label>
     <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoFoh"><span>Show on Front of House<small>Top-left on the FOH screen and its share link.</small></span></label>
+    <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoLounge"><span>Show on Artist lounge<small>Top-left on the Artist lounge screen and its share link.</small></span></label>
     <label class="st-logo-tg"><input type="checkbox" data-logo-k="logoBackdrop"><span>White plate behind the logo<small>For dark logos on a transparent background, which disappear on the dark screens.</small></span></label>
+    <fieldset class="st-ac">
+      <legend>Artist lounge colour</legend>
+      <p class="st-ac-help">The glow around "Now on stage" and the highlights on the Artist lounge screen.</p>
+      <div class="st-ac-row">${LNG_ACCENTS.map(([c,l])=>`<button type="button" class="st-ac-sw" data-accent="${c}" style="--sw:${c}" aria-pressed="false" aria-label="${escH(l)}" title="${escH(l)}"></button>`).join('')}
+        <label class="st-ac-hex"><span>Custom</span><input type="text" data-accent-hex maxlength="7" placeholder="${LNG_ACCENT_DEFAULT}" spellcheck="false" autocomplete="off" aria-describedby="st-ac-msg"></label></div>
+      <div class="st-ac-msg" id="st-ac-msg" aria-live="polite"></div>
+    </fieldset>
     <div class="st-logo-status" role="status" aria-live="polite"></div>
     <p class="st-dlg-note">PNG with a transparent background works best; it is scaled to 600 px. The stagetimer.nl mark stays visible next to your logo.</p>
   </div>`;
@@ -13703,11 +14120,22 @@ function openProjectLogo(pid,trigger){
   const el=document.getElementById('st-logo-dlg');
   const D=_logoDlg={pid,el,light,status:''};
   el.addEventListener('click',e=>{
+    const sw=e.target.closest('[data-accent]');
+    if(sw){e.preventDefault();_logoAcMsg('');_setLogoBranding(pid,{accent:sw.dataset.accent});return;}
     const b=e.target.closest('[data-logo-act]');if(!b||b.disabled)return;
     e.preventDefault();
     if(b.dataset.logoAct==='upload')triggerLogoUpload(pid);else _confirmRemoveLogo(pid);
   });
-  el.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.logoK;if(k)_setLogoBranding(pid,{[k]:!!e.target.checked});});
+  el.addEventListener('change',e=>{
+    if(e.target.matches('[data-accent-hex]')){_logoAcHex(pid,e.target);return;}
+    const k=e.target.dataset&&e.target.dataset.logoK;if(k)_setLogoBranding(pid,{[k]:!!e.target.checked});
+  });
+  // Enter in the hex field applies it instead of submitting (closing) the
+  // dialog. On window, capture: stDialog stops keys there before they reach
+  // the field, and only a keydown preventDefault stops the implicit submit.
+  const acKey=e=>{if(e.key==='Enter'&&e.target&&e.target.matches&&e.target.matches('#st-logo-dlg [data-accent-hex]')){e.preventDefault();_logoAcHex(pid,e.target);}};
+  window.addEventListener('keydown',acKey,true);
+  done.then(()=>window.removeEventListener('keydown',acKey,true));
   _logoDlgSync();
   done.then(()=>{if(_logoDlg===D)_logoDlg=null;});
   return done;
@@ -13718,6 +14146,15 @@ async function _confirmRemoveLogo(pid){
   if(ok)removeProjectLogo(pid);
 }
 function _logoStatus(msg){if(_logoDlg)_logoDlg.status=msg||'';_logoDlgSync();}
+function _logoAcMsg(msg){const m=_logoDlg&&_logoDlg.el.querySelector('.st-ac-msg');if(m)m.textContent=msg||'';}
+// Typed accent: '#rgb' or '#rrggbb' (the '#' may be left out); empty = back to the default.
+function _logoAcHex(pid,inp){
+  const raw=String(inp.value||'').trim();
+  if(!raw){_logoAcMsg('');_setLogoBranding(pid,{accent:LNG_ACCENT_DEFAULT});return;}
+  const h=_lngHex(raw[0]==='#'?raw:'#'+raw);
+  if(!h){_logoAcMsg('Use a hex colour such as #22c55e.');return;}
+  _logoAcMsg('');_setLogoBranding(pid,{accent:h});
+}
 function _logoDlgSync(){
   const D=_logoDlg;if(!D||!document.contains(D.el))return;
   const d=_logoDataOf(D.pid)||{},src=_safeLogoSrc(d.logo),b=_brandingOf(d),busy=_logoBusy===D.pid;
@@ -13730,6 +14167,9 @@ function _logoDlgSync(){
   up.textContent=busy?'Working…':src?'Replace logo':'Upload logo';up.disabled=busy;
   rm.style.display=src?'':'none';rm.disabled=busy;
   D.el.querySelectorAll('[data-logo-k]').forEach(i=>{i.checked=!!b[i.dataset.logoK];});
+  const ac=lngAccentOf(d);
+  D.el.querySelectorAll('[data-accent]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.accent===ac)));
+  const hx=D.el.querySelector('[data-accent-hex]');if(hx&&document.activeElement!==hx)hx.value=ac;
   D.el.querySelector('.st-logo-status').textContent=D.status||(b.legacy?'This logo was added before logos appeared on the screens, so it is not shown yet. Switch on where it should appear.':'');
 }
 
@@ -14153,7 +14593,7 @@ function _natOpenUrl(raw){
 // through dozens of paths (open*/close*, goToDash, openProject, start-up,
 // share links), so a 250 ms check catches them all; the plugin is called only
 // when the answer changes.
-const _NAT_BAR=[['wv',null],['ci',0],['nat-role',0],['signup-setup',0],['set-pw',0],['login',0],['loader',0],['sv',0],['admin',1],['otv',0],['foh',0],['bs',0],['tl',0],['stov',0],['smv',0],['dres',0],['dash',1]];
+const _NAT_BAR=[['wv',null],['ci',0],['nat-role',0],['signup-setup',0],['set-pw',0],['login',0],['loader',0],['sv',0],['admin',1],['otv',0],['foh',0],['bs',0],['tl',0],['stov',0],['smv',0],['dres',0],['lng',0],['dash',1]];
 let _natBarCur=null;
 function _natBarSync(){
   if(!IS_NATIVE)return;

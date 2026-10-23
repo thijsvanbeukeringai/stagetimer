@@ -23,13 +23,14 @@ const PID = FESTIVAL.projectId;
 const AT = ams(FESTIVAL.dates.d1, '16:00');   // DJ O'Neil (note, crew, photo, FOH note) live on Main
 const RPC = '/rest/v1/rpc/get_shared_project';
 const VER = '/rest/v1/rpc/get_shared_project_version';
-const SID = { stage: S.main, backstage: S.main, foh: S.main, stagemanager: S.main };
-const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci', stagemanager: '#smv', dressing: '#dres' };
+const SID = { stage: S.main, backstage: S.main, foh: S.main, stagemanager: S.main, lounge: S.main };
+const VIEW = { stage: '#sv', backstage: '#bs-body', foh: '#foh-col-body', timeline: '#tl', overview: '#stov', wall: '#wv-body', checkin: '#ci', stagemanager: '#smv', dressing: '#dres', lounge: '#lng' };
 const XQ = { dressing: '&shid=m2' };   // the dressing room link names one show
 // Modes with a screen in this build. A mode the server knows without a screen
 // here is checked on the RPC alone; add it to VIEW together with its screen.
 const VIEW_MODES = SHARE_MODES.filter((m) => VIEW[m]);
 const RIDER_MODES = SHARE_FIELD_MATRIX['shows[].rider'].filter((m) => m !== 'legacy');
+const PHOTO_MODES = SHARE_FIELD_MATRIX['shows[].photo'];   // the artist lounge only
 const SQL_FILE = path.join(__dirname, '..', '..', 'supabase', 'migrations', '20261013100000_share_link_rpcs.sql');
 
 const reads = (backend) => backend.calls({ method: 'POST', path: RPC });
@@ -70,11 +71,11 @@ test.describe('stripped payload', () => {
       expect(row.company_id).toBeNull();
       expect(row.data).toEqual(stripProjectData(festivalData(), mode));
       const text = JSON.stringify(row);
-      expect(text).not.toContain('data:image');            // no photo, ever (logo: project-logo.spec)
+      if (!PHOTO_MODES.includes(mode)) expect(text).not.toContain('data:image');   // no photo (logo: project-logo.spec)
       expect(row.data.memberIds).toEqual([]);
       const shows = row.data.shows;
       const has = (k) => shows.some((s) => k in s);
-      expect.soft(has('photo'), 'photo').toBe(false);
+      expect.soft(has('photo'), 'photo').toBe(PHOTO_MODES.includes(mode));
       expect.soft(has('crew'), 'crew').toBe(mode === 'foh');
       expect.soft(has('note'), 'note').toBe(mode === 'backstage');
       expect.soft(Object.keys(row.data.fohNotes).length > 0, 'fohNotes').toBe(mode === 'foh');   // timed cues: FOH only
@@ -262,6 +263,9 @@ test('field matrix in the SQL equals the mock / spec matrix', () => {
   expect(keep('keep_logo')).toEqual([...SHARE_FIELD_MATRIX.logo].sort());
   expect(keep('keep_rider')).toEqual([...SHARE_FIELD_MATRIX['shows[].rider']].sort());
   expect(keep('keep_bg')).toEqual([...SHARE_FIELD_MATRIX['shows[].bgImage']].sort());
+  expect(keep('keep_photo')).toEqual([...SHARE_FIELD_MATRIX['shows[].photo']].sort());
+  expect(keep('keep_arrived')).toEqual([...SHARE_FIELD_MATRIX['shows[].arrived']].sort());
+  expect(keep('keep_video')).toEqual([...SHARE_FIELD_MATRIX['shows[].bgVideo']].sort());
   // Every mode the matrix knows is a known mode in get_shared_project(p_id, p_mode).
   const known = /case when p_mode in \(([^)]*)\)\s+then p_mode else 'strict' end/.exec(sql);
   expect(known, 'known-mode list in get_shared_project').not.toBeNull();
