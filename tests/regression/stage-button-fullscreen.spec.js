@@ -61,3 +61,18 @@ test('kiosk share link (Stage View) keeps auto fullscreen on by default', async 
   await page.mouse.click(5, 5);
   await expect.poll(() => page.evaluate(() => window.__fsCalls)).toBe(1);
 });
+
+test.describe('rename stage', () => {
+  test.use({ stAuth: 'admin' });
+  test('Manage stages: Rename keeps the stage id (shows and share links stay)', async ({ page, st, backend }) => {
+    await st.gotoApp({ at: ams(FESTIVAL.dates.d1, '16:00') });
+    await st.openProject();
+    await page.locator('#new-stage-btn').click();
+    await page.getByRole('button', { name: 'Rename Main Stage' }).click();
+    const d = page.locator('.st-dlg[role="dialog"]');
+    await d.locator('input').fill('Mainstage');
+    await d.locator('.st-dlg-ft button').last().click();
+    await expect.poll(() => backend.project(FESTIVAL.projectId).data.stages.find(s => s.id === FESTIVAL.stages.main).name).toBe('Mainstage');
+    expect(backend.project(FESTIVAL.projectId).data.shows.some(s => s.stage === FESTIVAL.stages.main)).toBe(true);
+  });
+});

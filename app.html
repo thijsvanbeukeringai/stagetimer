@@ -9920,6 +9920,17 @@ function openStageModal(){
   document.getElementById('sm-name').value='';
 }
 function closeStageModal(){document.getElementById('stage-modal-ov').style.display='none';}
+// Rename keeps the stage id, so its shows and every share link (&sid=) stay.
+async function renameStage(id){
+  const cur=(G.stages||[]).find(x=>x.id===id);if(!cur)return;
+  let name;
+  try{name=await stDialog.prompt('New name for this stage. Its shows and share links stay as they are.',{title:'Rename stage',value:cur.name||'',okLabel:'Rename'});}
+  catch(e){console.warn('[stages] rename dialog failed:',e);return;}
+  name=(name==null?'':String(name)).trim();if(!name)return;
+  const st=(G.stages||[]).find(x=>x.id===id);   // G may have been replaced while the dialog was open
+  if(!st||st.name===name)return;
+  st.name=name;save();renderAll();renderStageList();
+}
 function _stageShowCount(id){return (G.shows||[]).filter(sh=>sh.stage===id).length;}
 function renderStageList(){
   document.getElementById('stage-list').innerHTML=(G.stages||[]).map(s=>{
@@ -9930,6 +9941,7 @@ function renderStageList(){
         <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escH(s.name)}</div>
         <div style="font-size:10px;color:var(--sub);margin-top:1px;">${n} show${n===1?'':'s'}</div>
       </div>
+      <button class="btn-g" onclick="renameStage(${_jsArg(s.id)})" title="Rename this stage" aria-label="Rename ${escH(s.name)}">Rename</button>
       <button class="btn-del" onclick="delStage(${_jsArg(s.id)})" title="Delete this stage">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         Delete
