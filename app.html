@@ -1210,6 +1210,14 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
    the Stagetimer brand never disappears behind a customer logo. Heights stay
    inside the existing header rows: no layout jump when a logo arrives. */
 #bs .vw-logo,#foh .vw-logo,#bs .vw-st-mark,#foh .vw-st-mark{display:none;}
+#st-pub-mark{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:7500;display:inline-flex;align-items:center;gap:6px;
+  padding:4px 9px 4px 4px;border-radius:8px;background:rgba(10,10,16,.55);border:1px solid rgba(255,255,255,.1);pointer-events:none;line-height:1;}
+#st-pub-mark img:first-child{width:18px;height:18px;}
+#st-pub-mark img:last-child{height:11px;width:auto;opacity:.85;}
+html.st-pub-mark .vw-st-mark{display:none!important;}
+/* Room for the mark at the end of scrolling share screens (above the Wall
+   and check-in, below dialogs). */
+html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
 #bs.vw-logo-on .vw-logo,#foh.vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:30px;max-width:180px;object-fit:contain;}
 #bs.vw-logo-bd .vw-logo,#foh.vw-logo-bd .vw-logo{background:#fff;padding:3px 7px;border-radius:6px;max-height:26px;}
 #bs.vw-logo-on .vw-st-mark,#foh.vw-logo-on .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;
@@ -13485,6 +13493,20 @@ function tickLNG(){
 // ══ PUBLIC VIEW MODE (no login needed)
 const _urlP=new URLSearchParams(location.search);
 const PUBLIC_MODE=_urlP.get('mode');
+// stagetimer.nl mark bottom-right on every share-link screen (Thijs, 23-10),
+// one fixed element instead of the per-view header marks. Never on Stage View
+// (the booth screen stays exactly as it is). Not tappable: the dressing room
+// has nothing that can be touched.
+if(PUBLIC_MODE&&PUBLIC_MODE!=='stage'){
+  const _stMark=()=>{
+    document.documentElement.classList.add('st-pub-mark');
+    if(document.getElementById('st-pub-mark'))return;
+    const m=document.createElement('span');m.id='st-pub-mark';m.setAttribute('role','img');m.setAttribute('aria-label','Powered by stagetimer.nl');
+    m.innerHTML='<img src="/app-icon.svg" alt=""><img src="/stagetimer-wordmark.png" alt="">';
+    document.body.appendChild(m);
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_stMark);else _stMark();
+}
 const PUBLIC_PID=_urlP.get('pid');
 const PUBLIC_SID=_urlP.get('sid');
 // Dressing room link: the one show (artist) the screen is for.

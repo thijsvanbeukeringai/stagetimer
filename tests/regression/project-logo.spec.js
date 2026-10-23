@@ -68,7 +68,10 @@ async function expectCoBranded(page, view) {
   const root = page.locator(`#${view}`);
   await expect(root).toHaveClass(/vw-logo-on/);
   const logo = page.locator(`#vw-logo-${view}`);
-  const mark = page.locator(`#${view} .vw-st-mark`);
+  // On share links the per-view mark gives way to one fixed mark bottom-right
+  // of the screen (#st-pub-mark, Thijs 23-10); in the app it stays in the header.
+  const pub = await page.evaluate(() => !!window.PUBLIC_MODE);
+  const mark = pub ? page.locator('#st-pub-mark') : page.locator(`#${view} .vw-st-mark`);
   const clock = page.locator(`#${view}-clock`);
   await expect(logo).toBeVisible();
   await expect(mark).toBeVisible();

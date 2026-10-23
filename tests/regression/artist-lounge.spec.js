@@ -208,8 +208,8 @@ test.describe('layout', () => {
     const lb = await logo.boundingBox();
     expect(lb.height).toBeGreaterThan(50);
     expect(lb.height).toBeLessThanOrEqual(56);
-    await expect(page.locator('#lng .vw-st-mark')).toBeVisible();
-    await expect(page.locator('#lng .vw-st-mark')).toHaveAttribute('aria-label', 'Powered by stagetimer.nl');
+    await expect(page.locator('#st-pub-mark')).toBeVisible();
+    await expect(page.locator('#st-pub-mark')).toHaveAttribute('aria-label', 'Powered by stagetimer.nl');
     await expect(page.locator('#lng-sname')).toHaveText('Main Stage');
     await expect(page.locator('#lng-day')).toHaveText('Vrijdag · Fri 10 Jul');
     await expect(page.locator('#lng-clock')).toHaveText('16:00:00');
@@ -377,7 +377,7 @@ test.describe('logo switched off for the lounge', () => {
     await openLounge(st, '16:00:00');
     await expect(page.locator('#vw-logo-lng')).toBeHidden();
     await expect(L(page)).not.toHaveClass(/vw-logo-on/);
-    await expect(page.locator('#lng .vw-st-mark')).toBeVisible();
+    await expect(page.locator('#st-pub-mark')).toBeVisible();
   });
 });
 test.describe('dark logo on a white plate', () => {
