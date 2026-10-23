@@ -527,6 +527,9 @@ body.public-mode #smv-close-btn{display:none!important;}
 #lng-ssel[hidden],#lng-dtabs[hidden]{display:none;}
 #lng-clock{flex-shrink:0;font-family:var(--ffm);font-size:max(20px,calc(var(--lu)*1.9));font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
 #lng .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+/* TV: the stagetimer.nl mark sits bottom-right of the screen (Thijs, 23-10),
+   out of the header; the phone layout keeps it in the header (below). */
+#lng .vw-st-mark{position:absolute;right:calc(var(--lu)*1.6);bottom:calc(var(--lu)*1.1);z-index:2;}
 body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!important;}
 #lng-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:calc(var(--lu)*1.6);padding:calc(var(--lu)*1.6);}
 #lng-body.lng-solo{grid-template-columns:minmax(0,1fr);}
@@ -640,7 +643,7 @@ html:fullscreen #lng-hdr:hover #lng-fs-btn,html:-webkit-full-screen #lng-hdr:hov
   #st-brand-lng{display:inline-flex;}
   #st-brand-lng .st-brand-mark{display:none;}
   #lng.vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
-  #lng .vw-st-mark{order:2;margin-left:auto;}
+  #lng .vw-st-mark{position:static;order:2;margin-left:auto;}
   #lng-close-btn,#lng-fs-btn{order:3;}
   #lng-title{order:4;flex:1 1 55%;}
   #lng-clock{order:5;}
