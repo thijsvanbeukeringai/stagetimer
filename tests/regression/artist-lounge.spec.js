@@ -54,15 +54,16 @@ async function pollStep(page) {
   await page.clock.runFor(1000);
   await expect.poll(() => page.evaluate(() => window.__stLastSyncOk === Date.now()), { message: 'poll applied' }).toBe(true);
 }
-// Nothing sideways; on the TV layouts nothing below the screen either.
+// Nothing sideways; on the TV layouts nothing below the screen either (the
+// cards in the self-scrolling column may: the column itself must fit).
 async function expectFits(page, { vertical = true } = {}) {
   const r = await page.evaluate((vertical) => {
     const out = [];
-    const sel = '#lng-hdr > *:not([hidden]), #lng .lng-hero, #lng .lng-hero .lng-ph, #lng .lng-name, #lng .lng-cd, #lng .lng-tl, #lng .lng-card, #lng .lng-card-cd, #lng .lng-later, #lng .vw-empty';
+    const sel = '#lng-hdr > *:not([hidden]), #lng .lng-hero, #lng .lng-hero .lng-ph, #lng .lng-name, #lng .lng-cd, #lng .lng-tl, #lng .lng-card, #lng .lng-card-cd, #lng .lng-cards, #lng .vw-empty';
     for (const e of document.querySelectorAll(sel)) {
       const b = e.getBoundingClientRect();
       if (!b.width && !b.height) continue;
-      if (b.left < -0.5 || b.right > innerWidth + 0.5 || (vertical && b.bottom > innerHeight + 0.5) || e.scrollWidth > e.clientWidth + 1) out.push(`${e.id || e.className} ${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.right)}x${Math.round(b.bottom)} sw=${e.scrollWidth} cw=${e.clientWidth}`);
+      if (b.left < -0.5 || b.right > innerWidth + 0.5 || (vertical && !e.closest('.lng-rows-in') && b.bottom > innerHeight + 0.5) || e.scrollWidth > e.clientWidth + 1) out.push(`${e.id || e.className} ${Math.round(b.left)},${Math.round(b.top)} ${Math.round(b.right)}x${Math.round(b.bottom)} sw=${e.scrollWidth} cw=${e.clientWidth}`);
     }
     return { doc: document.scrollingElement.scrollWidth - innerWidth, out };
   }, vertical);
@@ -74,14 +75,15 @@ test.use({ viewport: { width: 1920, height: 1080 }, stSeed: lounge() });
 
 // ── Now on stage ──────────────────────────────────────────────────────────
 test.describe('now on stage', () => {
-  test('hero: badge, photo, name, booth, white countdown, timeline at 25% and 50%', async ({ page, st, backend }) => {
+  test('hero: badge, photo, name, white countdown, timeline at 25% and 50%', async ({ page, st, backend }) => {
     await openLounge(st, '15:45:00');
     await expect(L(page)).toHaveClass(/open/);
     const h = hero(page);
     await expect(h).toHaveClass(/lng-live/);
     await expect(h.locator('.lng-badge')).toHaveText('Now on stage');
     await expect(h.locator('.lng-name')).toHaveText("DJ O'Neil");
-    await expect(h.locator('.lng-meta')).toHaveText('15:30–16:30Booth B');
+    await expect(h.locator('.lng-meta')).toHaveText('15:30–16:30');   // no booth in the lounge (owner, 24-10)
+    await expect(L(page).locator('.lng-booth')).toHaveCount(0);
     await expect(h.locator('.lng-cd-lbl')).toHaveText('Set ends in');
     await expect(h.locator('.lng-cd')).toHaveText('45:00');
     expect(await h.locator('.lng-cd').evaluate((e) => getComputedStyle(e).color)).toBe('rgb(255, 255, 255)');
@@ -157,14 +159,18 @@ test.describe('coming up', () => {
 });
 test.describe('coming up (a long day)', () => {
   test.use({ stSeed: lounge((d) => { d.shows.push(show('m9', S.main, FESTIVAL.days.d1, FESTIVAL.dates.d2, '01:30', '03:00', 'Sunrise Session')); }) });
-  test('every upcoming act is listed: three cards, the rest as "Later" rows', async ({ page, st }) => {
+  test('every upcoming act is a full card (owner, 24-10); a column that does not fit scrolls by itself', async ({ page, st }) => {
     await openLounge(st, '13:00:00');
     await expect(hero(page)).toHaveClass(/lng-next/);
     await expect(hero(page).locator('.lng-name')).toHaveText('Opening Act');
-    await expect(cards(page).locator('.lng-card-name')).toHaveText(["DJ O'Neil", BAND, 'Headliner Priority']);
-    await expect(page.locator('#lng .lng-later .lng-row-n')).toHaveText(['Night Owl', 'Sunrise Session']);
-    await expect(page.locator('#lng .lng-later .lng-row').last()).toContainText('01:30–03:00');
+    await expect(cards(page).locator('.lng-card-name')).toHaveText(["DJ O'Neil", BAND, 'Headliner Priority', 'Night Owl', 'Sunrise Session']);
+    await expect(cards(page).last().locator('.lng-card-meta')).toContainText('01:30–03:00');
+    await expect(cards(page).last().locator('.lng-card-cd')).toHaveText('12:30:00');
+    await expect(cards(page).last().locator('.lng-ph')).toBeVisible();
+    await expect(page.locator('#lng .lng-later, #lng .lng-row')).toHaveCount(0);
+    await expect(page.locator('#lng .lng-cards > .lng-rows-in')).toHaveClass(/lng-scroll/);
     await expectFits(page);
+    await shot(page, '1920x1080-all-cards.png');
   });
 });
 test.describe('coming up (soon)', () => {
@@ -266,11 +272,10 @@ test.describe('privacy', () => {
 });
 test.describe('markup stays text', () => {
   test.use({ stSeed: lounge((d) => { showIn(d, 'm4').artist = '<img src=x onerror="window.__xss=1">Evil'; showIn(d, 'm4').booth = '<b>A</b>'; showIn(d, 'm4').photo = 'javascript:window.__xss=2'; }) });
-  test('artist names, booth and photo values cannot inject anything', async ({ page, st }) => {
+  test('artist names and photo values cannot inject anything', async ({ page, st }) => {
     await openLounge(st, '17:30:00');
     await expect(hero(page).locator('.lng-name')).toHaveText(BAND);
     await expect(cards(page).first().locator('.lng-card-name')).toHaveText('<img src=x onerror="window.__xss=1">Evil');
-    await expect(cards(page).first().locator('.lng-booth')).toHaveText('Booth <b>A</b>');
     await expect(L(page).locator('b:not(.lng-tl-el b):not(.lng-tl-rem b), img:not([data-lng-ph]):not(.vw-logo):not(.vw-st-icon):not(.vw-st-word):not(.st-brand-icon):not(.st-brand-mark)')).toHaveCount(0);
     await expect(cards(page).first().locator('img')).toHaveCount(0);   // not a safe image: the initials
     await expect(cards(page).first().locator('.lng-mono')).toHaveText('IO');   // letters of the first and last word
