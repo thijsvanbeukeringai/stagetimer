@@ -22,19 +22,34 @@
 --     fohNotes               -      -       yes    -        -      -     -        -          -        -
 --     shows[].note           -      yes      -     -        -      -     -        -          -        -
 --     shows[].crew           -       -      yes    -        -      -     -        -          -        -
---     shows[].photo          -       -       -     -        -      -     -        -          -       yes
+--     shows[].photo          -      yes      -     -        -      -     -        -          -       yes
 --     memberIds              -       -       -     -        -      -     -        -          -        -
 --     logo                   -      yes     yes    -        -      -     -        -         yes      yes
 --     shows[].rider          -       -       -     -        -      -    yes      yes         -        -
+--     shows[].rider.tech     -      yes      -     -        -      -     -        -          -        -
 --     shows[].bgImage        -       -       -     -        -      -     -        -         yes       -
 --     shows[].arrived       yes     yes     yes   yes      yes    yes   yes      yes        yes       -
 --     shows[].bgVideo       yes     yes     yes   yes      yes    yes   yes      yes        yes       -
 --   ("-" = stripped; fohNotes -> {}, memberIds -> [], others removed;
---   shows[].arrived stands for arrived + arrivedAt.)
+--   shows[].arrived stands for arrived + arrivedAt; shows[].rider.tech =
+--   the rider reduced to {tech} for a mode without shows[].rider.)
 --   shows[].rider = {drinks, tech}: the artist's hospitality and technical
 --   rider (free text, set in the show editor or the lineup import). Only the
 --   check-in desk and the stage manager act on it; it is the artist's
 --   business, so no other screen receives it (2026-10-13, feature/rider-data).
+--   Exception since 2026-10-24 (branch feature/backstage-lounge-style):
+--   backstage gets the rider reduced to {tech} (keep_tech), only when tech is
+--   a non-empty string, otherwise no rider at all. The crew needs the
+--   technical requirements; the drinks (hospitality) never leave the check-in
+--   desk and the stage manager.
+--   backstage (?mode=backstage&pid=..&sid=<stage id>) is since 2026-10-24 the
+--   artist lounge screen for the crew (renderBS = the lounge renderer plus the
+--   tech rider and the show note), so it also keeps shows[].photo
+--   (keep_photo). Same size note as the lounge below: until photo_storage is
+--   applied a photo can be a base64 image of a few hundred kB per act.
+--   A database with an older version of this file still strips photos and
+--   the rider for backstage: the screen then shows initials and no tech
+--   rider; nothing breaks. Re-run this file for them.
 --   dressing (?mode=dressing&pid=..&shid=<show id>, 2026-10-19, branch
 --   dressing/web): the dressing room screen of ONE artist - a countdown to
 --   that show over its background video or photo, then a thank-you with the
@@ -48,16 +63,17 @@
 --   feature/artist-lounge): the artist lounge TV of one stage - now on
 --   stage / up next with each act's photo, the project logo (data.branding
 --   logoLounge, logoBackdrop) and the accent colour (data.branding.accent, a
---   hex string). It is the ONLY mode that keeps shows[].photo (keep_photo):
---   a Storage URL, or before the photo_storage migration a base64 image of
---   up to a few hundred kB per act, so no other screen polls them. It reads
+--   hex string). It keeps shows[].photo (keep_photo; since 2026-10-24
+--   backstage too, see above): a Storage URL, or before the photo_storage
+--   migration a base64 image of up to a few hundred kB per act, so no other
+--   screen polls them. It reads
 --   none of note, crew, rider, FOH notes, bgImage, bgVideo, arrived
 --   (renderLNG: stage and day names, times, artist, booth, cancelled /
 --   hidden, photo, logo, branding), so it receives none of them either: it
 --   is the one mode that loses arrived/arrivedAt (keep_arrived) and bgVideo
 --   (keep_video), which every other mode keeps as before (unknown modes,
 --   'strict', lose them too). The legacy / PHASE B set does NOT get photos: the lounge
---   exists only in app versions that ask for p_mode, and a backend without
+--   and the photo Backstage exist only in app versions that ask for p_mode, and a backend without
 --   the 2-arg variant still serves the unnarrowed 1-arg call (full blob).
 --   A database with an older version of this file treats 'lounge' as an
 --   unknown mode ('strict'): the lounge then shows monograms instead of
@@ -94,8 +110,9 @@
 --                                  colour); booleans + one colour, harmless
 --                                  elsewhere
 --   Verified against app.html on 2026-10-13 by reading renderSV (+ _svMode,
---   _renderCueOverlay, renderBlackout), renderBS (notesBlock: show note only -
---   timed FOH cues stay off Backstage, no crew), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
+--   _renderCueOverlay, renderBlackout), renderBS (show note only - timed FOH
+--   cues stay off Backstage, no crew; since 2026-10-24 also photo and tech
+--   rider, _lngInfoHTML), renderFOH (fohCrewHTML + fohNotesHTML, no show note),
 --   renderTL, renderOV, renderWV / tickWV and renderCI: none of the last
 --   four reads note, crew or fohNotes; Stage View reads none of the seven.
 --   stagemanager (the stage manager screen: running order, arrivals and
@@ -103,7 +120,7 @@
 --   times, flags, booth, arrived/arrivedAt and rider; no notes, crew, FOH
 --   notes, logo. cue / blackout reach it like every mode (it ignores them).
 --   Photos are only used by the operator timer panel and editor drawer
---   (and, since 2026-10-23, the artist lounge: keep_photo),
+--   (and, since 2026-10-23, the artist lounge and since 2026-10-24 Backstage: keep_photo),
 --   memberIds only by the operator crew picker / push, logo only by
 --   refreshLogo on Backstage and FOH (customer logo top-left, 2026-10-13,
 --   feature/project-logo; Stage View, Wall and the rest never show it) and
@@ -170,15 +187,20 @@
 --          jsonb_path_exists(public.get_shared_project('<pid>','checkin') -> 'data', '$.shows[*].rider'),
 --          jsonb_path_exists(public.get_shared_project('<pid>','stagemanager') -> 'data', '$.shows[*].rider');
 --   -- (true only when at least one show has a rider)
+--   -- backstage: the tech rider only, never the drinks (true, false):
+--   select jsonb_path_exists(public.get_shared_project('<pid>','backstage') -> 'data', '$.shows[*].rider.tech'),
+--          jsonb_path_exists(public.get_shared_project('<pid>','backstage') -> 'data', '$.shows[*].rider.drinks');
+--   -- (the first is true only when a show has a tech rider)
 --   -- dressing: logo and background photo only there (false, true, false, true):
 --   select (public.get_shared_project('<pid>','stage') -> 'data') ? 'logo',
 --          (public.get_shared_project('<pid>','dressing') -> 'data') ? 'logo',
 --          jsonb_path_exists(public.get_shared_project('<pid>','stage') -> 'data', '$.shows[*].bgImage'),
 --          jsonb_path_exists(public.get_shared_project('<pid>','dressing') -> 'data', '$.shows[*].bgImage');
 --   -- (true only when the project has a logo / a show has a background photo)
---   -- lounge: artist photos only there, logo too, no arrival state
---   -- (false, true, true, false):
---   select jsonb_path_exists(public.get_shared_project('<pid>','backstage') -> 'data', '$.shows[*].photo'),
+--   -- lounge and backstage: artist photos only there, logo too; lounge
+--   -- without arrival state (false, true, true, true, false):
+--   select jsonb_path_exists(public.get_shared_project('<pid>','foh') -> 'data', '$.shows[*].photo'),
+--          jsonb_path_exists(public.get_shared_project('<pid>','backstage') -> 'data', '$.shows[*].photo'),
 --          jsonb_path_exists(public.get_shared_project('<pid>','lounge') -> 'data', '$.shows[*].photo'),
 --          (public.get_shared_project('<pid>','lounge') -> 'data') ? 'logo',
 --          jsonb_path_exists(public.get_shared_project('<pid>','lounge') -> 'data', '$.shows[*].arrived');
@@ -243,7 +265,8 @@ declare
   keep_logo  boolean := p_mode in ('backstage', 'foh', 'dressing', 'lounge', 'legacy');
   keep_rider boolean := p_mode in ('checkin', 'stagemanager', 'legacy');
   keep_bg    boolean := p_mode in ('dressing', 'legacy');
-  keep_photo boolean := p_mode in ('lounge');
+  keep_photo boolean := p_mode in ('backstage', 'lounge');
+  keep_tech  boolean := p_mode in ('backstage');   -- rider reduced to {tech}
   keep_arrived boolean := p_mode in ('stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin', 'stagemanager', 'dressing', 'legacy');
   keep_video boolean := p_mode in ('stage', 'backstage', 'foh', 'timeline', 'overview', 'wall', 'checkin', 'stagemanager', 'dressing', 'legacy');
   drop_show  text[]  := array[]::text[];
@@ -255,7 +278,7 @@ begin
   if not keep_photo then drop_show := array_append(drop_show, 'photo'); end if;
   if not keep_note then drop_show := array_append(drop_show, 'note'); end if;
   if not keep_crew then drop_show := array_append(drop_show, 'crew'); end if;
-  if not keep_rider then drop_show := array_append(drop_show, 'rider'); end if;
+  if not keep_rider and not keep_tech then drop_show := array_append(drop_show, 'rider'); end if;
   if not keep_bg then drop_show := array_append(drop_show, 'bgImage'); end if;
   if not keep_arrived then drop_show := drop_show || array['arrived', 'arrivedAt']; end if;
   if not keep_video then drop_show := array_append(drop_show, 'bgVideo'); end if;
@@ -266,8 +289,14 @@ begin
 
   if jsonb_typeof(out -> 'shows') = 'array' then
     out := jsonb_set(out, '{shows}', (
-      select coalesce(jsonb_agg(case when jsonb_typeof(s) = 'object' then s - drop_show else s end
-                                order by ord), '[]'::jsonb)
+      select coalesce(jsonb_agg(case
+               when jsonb_typeof(s) <> 'object' then s
+               when keep_tech and not keep_rider and s ? 'rider' then
+                 case when jsonb_typeof(s -> 'rider' -> 'tech') = 'string' and (s -> 'rider' ->> 'tech') <> ''
+                      then jsonb_set(s - drop_show, '{rider}', jsonb_build_object('tech', s -> 'rider' -> 'tech'))
+                      else (s - drop_show) - 'rider' end
+               else s - drop_show end
+             order by ord), '[]'::jsonb)
       from jsonb_array_elements(out -> 'shows') with ordinality t(s, ord)));
   end if;
   return out;

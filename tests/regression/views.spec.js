@@ -214,9 +214,9 @@ test.describe('last sync', () => {
 // ── Same names / labels everywhere, escaped data ──────────────────────────
 test('status words and dates are the same on every view; data is text', async ({ page, st }) => {
   await st.gotoPublic({ mode: 'backstage', sid: S.main, at: AT });
-  await expect(page.locator('#bs-body .bs-live .bs-badge')).toContainText('Live');
+  await expect(page.locator('#bs-body .lng-hero.lng-live .lng-badge')).toHaveText('Now on stage');   // Backstage = the lounge screen (24-10)
   await expect(page.locator('#bs-body')).toContainText("O'Neil <b>bold</b>");
-  expect(await page.locator('#bs-body b').count()).toBe(0);
+  expect(await page.locator('#bs-body :is(.lng-name, .lng-card-name, .lng-later span) b').count()).toBe(0);   // the act name stays text (the screen's own <b> labels aside)
   await st.gotoPublic({ mode: 'foh', sid: S.main, at: AT });
   await expect(page.locator('.foh-now-lbl')).toContainText('Live · 21:30–23:00');
   await expect(page.locator('#foh-col-body')).toContainText("O'Neil <b>bold</b>");
@@ -236,7 +236,7 @@ test('status words and dates are the same on every view; data is text', async ({
 
 // ── No rebuild when nothing changed ───────────────────────────────────────
 test('overview, wall, FOH and backstage keep their DOM across poll refreshes', async ({ page, st }) => {
-  for (const [mode, sid, sel] of [['overview', null, `#stovc-${S.main}`], ['wall', null, `#wvc-${S.main}`], ['foh', S.main, '.foh-srow'], ['backstage', S.main, '#bs-body .bs-row']]) {
+  for (const [mode, sid, sel] of [['overview', null, `#stovc-${S.main}`], ['wall', null, `#wvc-${S.main}`], ['foh', S.main, '.foh-srow'], ['backstage', S.main, '#bs-body .lng-hero']]) {
     await st.gotoPublic({ mode, sid, at: AT });
     await page.evaluate((s) => { window.__el = document.querySelector(s); }, sel);
     await st.advance(31000); // crosses a 30 s render step of the public poll

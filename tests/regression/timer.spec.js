@@ -194,10 +194,10 @@ test.describe('public poll', () => {
   });
   test('no rebuild when nothing changed', async ({ page, backend, st }) => {
     await openApp({ page, backend, st }, { mode: 'backstage', at: '2026-06-19T22:30:00+02:00' });
-    await page.evaluate(() => { window.__row = document.querySelector('#bs-body .bs-row'); });
+    await page.evaluate(() => { window.__row = document.querySelector('#bs-body .lng-hero'); });
     expect(await page.evaluate(() => !!window.__row)).toBe(true);
     for (let i = 0; i < 5; i++) await pollStep(page, backend); // five polls, each answered + applied
-    expect(await page.evaluate(() => window.__row === document.querySelector('#bs-body .bs-row'))).toBe(true);
+    expect(await page.evaluate(() => window.__row === document.querySelector('#bs-body .lng-hero'))).toBe(true);
   });
   test('falls back to the direct read when the RPC is missing', async ({ page, backend, st }) => {
     await openApp({ page, backend, st }, { at: '2026-06-19T22:30:00+02:00', rpc: 'missing' });
