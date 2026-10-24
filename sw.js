@@ -30,7 +30,7 @@ if (self.location.hostname === 'stagetimer.nl') {
 //     (app.html dispatches `st:sw-update` when a new worker is waiting).
 // Without a bump the app still updates (HTML is network-first), the open tab
 // just isn't told about it.
-const SW_VERSION = 'stagetimer-sw-v51';
+const SW_VERSION = 'stagetimer-sw-v52';
 const APP_SHELL_CACHE = SW_VERSION + '-shell';
 
 // Precached on install so the app shell can boot with no network at all.

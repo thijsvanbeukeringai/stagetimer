@@ -125,12 +125,13 @@ test('coming up: photos, countdowns, tech + note clamped to four lines; markup s
   expect(await page.evaluate(() => window.__xss)).toBeUndefined();
   await expect(BS(page)).not.toContainText('Champagne');
   // Night Owl has drinks only: no info block, no drinks. On a 1080p TV its
-  // card does not fit under the two taller ones: it moves to "Later" instead
-  // of being cut off.
+  // card does not fit under the two taller ones: it moves to "Later"; there
+  // is no room left for that row either, so it is left out whole - nothing
+  // half, nothing scrolling (owner, 24-10).
   await expect(card(page, 'Night Owl').locator('.lng-info')).toHaveCount(0);
   await expect(card(page, 'Night Owl')).toBeHidden();
   await expect(page.locator('#bs .lng-later .lng-row:not([hidden]) .lng-row-n')).toHaveText(['Night Owl']);
-  await expect(page.locator('#bs .lng-later')).toBeVisible();
+  await expect(page.locator('#bs .lng-later')).toBeHidden();
   await expect(BS(page)).not.toContainText('Espresso');
 });
 
@@ -232,19 +233,20 @@ for (const mode of ['backstage', 'lounge']) {
 
 test.describe('in the app', () => {
   test.use({ stAuth: 'admin', viewport: { width: 1440, height: 900 } });
-  test('operator Backstage: same screen, stage picker, hidden acts with a chip, no drinks or FOH cues', async ({ page, st }) => {
+  test('operator Backstage: same screen, no stage / day picker (follows the app), hidden acts with a chip, no drinks or FOH cues', async ({ page, st }) => {
     await st.gotoApp({ at: at('15:20') });
     await st.openProject();
     await page.evaluate(() => openBS());
     await expect(BS(page)).toHaveClass(/open/);
-    await expect(page.locator('#bs-ssel')).toBeVisible();
+    await expect(page.locator('#bs-ssel')).toBeHidden();   // owner, 24-10: no pickers on this screen
+    await expect(page.locator('#bs-dtabs')).toBeHidden();
     await expect(page.locator('#bs-close-btn')).toBeVisible();
     await expect(hero(page).locator('.lng-name')).toHaveText("DJ O'Neil");   // next on Main
     await expect(hero(page).locator('.lng-info-tech')).toContainText('2x CDJ-3000');
     await expect(BS(page)).not.toContainText('Club-Mate');                    // G has it, the screen never shows it
     await expect(BS(page)).not.toContainText('Extra monitor for DJ O');
     await shot(page, 'in-app-1440x900.png');
-    await page.locator('#bs-ssel').selectOption(S.tent);
+    await page.evaluate((id) => { G.activeStage = id; _selChanged('stage'); renderAll(); renderBS(); }, S.tent);   // the stage chosen in the app
     await expect(page.locator('#bs-sname')).toHaveText('The Tent');
     await expect(hero(page).locator('.lng-name')).toHaveText('Hidden Guest');   // crew sees hidden acts in the app
     await expect(hero(page).locator('.vw-chip.vw-hidden')).toHaveCount(1);

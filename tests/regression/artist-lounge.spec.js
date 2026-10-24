@@ -159,16 +159,26 @@ test.describe('coming up', () => {
 });
 test.describe('coming up (a long day)', () => {
   test.use({ stSeed: lounge((d) => { d.shows.push(show('m9', S.main, FESTIVAL.days.d1, FESTIVAL.dates.d2, '01:30', '03:00', 'Sunrise Session')); }) });
-  test('every upcoming act is a full card (owner, 24-10); a column that does not fit scrolls by itself', async ({ page, st }) => {
+  test('every upcoming act is a full card (owner, 24-10); on a TV the ones that do not fit are left out whole, nothing scrolls', async ({ page, st }) => {
     await openLounge(st, '13:00:00');
     await expect(hero(page)).toHaveClass(/lng-next/);
     await expect(hero(page).locator('.lng-name')).toHaveText('Opening Act');
     await expect(cards(page).locator('.lng-card-name')).toHaveText(["DJ O'Neil", BAND, 'Headliner Priority', 'Night Owl', 'Sunrise Session']);
     await expect(cards(page).last().locator('.lng-card-meta')).toContainText('01:30–03:00');
     await expect(cards(page).last().locator('.lng-card-cd')).toHaveText('12:30:00');
-    await expect(cards(page).last().locator('.lng-ph')).toBeVisible();
     await expect(page.locator('#lng .lng-later, #lng .lng-row')).toHaveCount(0);
-    await expect(page.locator('#lng .lng-cards > .lng-rows-in')).toHaveClass(/lng-scroll/);
+    // 1080p fits four cards: the fifth is left out whole, the list stands still
+    const vis = page.locator('#lng .lng-card:not(.lng-cut)');
+    await expect(vis).toHaveCount(4);
+    await expect(cards(page).last()).toBeHidden();
+    const [box, last] = [await page.locator('#lng .lng-cards').boundingBox(), await vis.last().boundingBox()];
+    expect(last.y + last.height).toBeLessThanOrEqual(box.y + box.height + 1);
+    expect(await page.locator('#lng .lng-cards > .lng-rows-in').evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+    // as acts finish, the next ones move up by themselves
+    await page.clock.fastForward('03:00:00');   // 16:00: Opening Act done, DJ O'Neil on stage
+    await st.advance(1000);
+    await expect(hero(page).locator('.lng-name')).toHaveText("DJ O'Neil");
+    await expect(vis.locator('.lng-card-name')).toHaveText([BAND, 'Headliner Priority', 'Night Owl', 'Sunrise Session']);
     await expectFits(page);
     await shot(page, '1920x1080-all-cards.png');
   });
@@ -398,15 +408,16 @@ test.describe('dark logo on a white plate', () => {
 // ── In the app ────────────────────────────────────────────────────────────
 test.describe('in the app', () => {
   test.use({ stAuth: 'admin', viewport: { width: 1440, height: 900 } });
-  test('Views bar opens the lounge; stage picker and day tabs work; Escape closes', async ({ page, st }) => {
+  test('Views bar opens the lounge; no stage / day picker (follows the app); Escape closes', async ({ page, st }) => {
     await st.gotoApp({ at: at('16:00') });
     await st.openProject();
     await page.locator('#hdr-views').getByRole('button', { name: 'Artist lounge' }).click();
     await expect(L(page)).toHaveClass(/open/);
     await expect(hero(page).locator('.lng-name')).toHaveText("DJ O'Neil");
-    await expect(page.locator('#lng-ssel')).toBeVisible();
+    await expect(page.locator('#lng-ssel')).toBeHidden();   // owner, 24-10: no pickers on this screen
+    await expect(page.locator('#lng-dtabs')).toBeHidden();
     await expect(page.locator('#lng-close-btn')).toBeVisible();
-    await page.locator('#lng-ssel').selectOption(S.tent);
+    await page.evaluate((id) => { G.activeStage = id; _selChanged('stage'); renderAll(); renderLNG(); }, S.tent);   // the stage chosen in the app
     await expect(page.locator('#lng-sname')).toHaveText('The Tent');
     await expect(L(page)).not.toContainText('Hidden Guest');   // a preview of the TV: hidden stays hidden
     await expect(hero(page).locator('.lng-name')).toHaveText('Tent Band (legacy)');

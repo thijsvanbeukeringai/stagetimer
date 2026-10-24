@@ -633,11 +633,8 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
 :is(#lng,#bs) .lng-mini-now{position:absolute;left:0;top:50%;width:max(3px,calc(var(--lu)*.22));height:max(14px,calc(var(--lu)*1.3));border-radius:2px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7);}
 :is(#lng,#bs) .lng-later{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*.6);font-size:max(13px,calc(var(--lu)*1.25));font-weight:600;color:rgba(255,255,255,.72);}
 :is(#lng,#bs) .lng-rows{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
-:is(#lng,#bs) .lng-rows.lng-over{-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent);}
 :is(#lng,#bs) .lng-rows-in{display:flex;flex-direction:column;gap:calc(var(--lu)*.45);}
-:is(#lng,#bs) .lng-rows-in.lng-scroll{animation:lng-rows var(--lng-dur,30s) ease-in-out infinite;}
-@keyframes lng-rows{0%,18%{transform:translateY(0);}50%,68%{transform:translateY(var(--lng-shift,0));}100%{transform:translateY(0);}}
-@media (prefers-reduced-motion:reduce){:is(#lng,#bs) .lng-rows-in.lng-scroll{animation:none;}}
+:is(#lng,#bs) .lng-cut{display:none!important;}
 :is(#lng,#bs) .lng-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1);padding:calc(var(--lu)*.55) calc(var(--lu)*.9);border-radius:calc(var(--lu)*.7);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
 :is(#lng,#bs) .lng-row-n{font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 :is(#lng,#bs) .lng-row .lng-booth{font-size:.75em;}
@@ -706,7 +703,7 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
   :is(#lng,#bs) .lng-card .lng-ph{width:64px;border-radius:9px;}
   :is(#lng,#bs) .lng-card-cd{font-size:22px;}
   :is(#lng,#bs) .lng-later{white-space:normal;}
-  #lng .lng-cards{overflow:visible;-webkit-mask-image:none;mask-image:none;}
+  #lng .lng-cards{overflow:visible;}
   #lng .lng-cards>.lng-rows-in{gap:10px;}
 }
 /* Reduced motion: no glow pulse, no drifting light, no ping - a static,
@@ -13350,14 +13347,18 @@ function _lngHeroHTML(h,phs,V){
       <div class="lng-tl-sub">${live?'<span class="lng-tl-el"><b></b> played</span><span class="lng-tl-rem"><b></b> left</span>':`<span>Changeover</span><span>On stage <b>${b}</b></span>`}</div></div>
   </div></section>`;
 }
-// The "Later" rows scroll up and back down slowly when they don't fit (a TV
-// can't be scrolled by hand). Re-measured after every rebuild / fit and on resize.
+// The list stands still (Thijs, 24-10: no scrolling ticker): on a TV the
+// acts (lounge cards, Backstage "Later" rows) that don't fit are left out
+// whole, never cut in half; as acts finish, the next ones move up by
+// themselves. The lounge always keeps its first card. On a phone the page
+// scrolls, the box is as tall as its content and everything stays.
+// Re-measured after every rebuild / fit and on resize.
 function _lngRowsFit(root){
   const box=root&&root.querySelector('.lng-rows'),inn=box&&box.firstElementChild;if(!inn)return;
-  inn.classList.remove('lng-scroll');inn.style.removeProperty('--lng-shift');inn.style.removeProperty('--lng-dur');
-  const over=inn.scrollHeight-box.clientHeight;
-  if(over>4){inn.style.setProperty('--lng-shift',`-${over}px`);inn.style.setProperty('--lng-dur',`${Math.max(12,Math.round(over/18))*2+8}s`);inn.classList.add('lng-scroll');box.classList.add('lng-over');}
-  else box.classList.remove('lng-over');
+  const items=[...inn.children],later=box.closest('.lng-later'),keep=later?0:1;
+  items.forEach(e=>e.classList.remove('lng-cut'));if(later)later.classList.remove('lng-cut');
+  for(let i=items.length-1;i>=keep&&inn.scrollHeight>box.clientHeight+1;i--)items[i].classList.add('lng-cut');
+  if(later&&!inn.querySelector(':scope>:not([hidden]):not(.lng-cut)'))later.classList.add('lng-cut');
 }
 window.addEventListener('resize',()=>{['lng','bs'].forEach(id=>{if(document.getElementById(id)?.classList.contains('open')){_lngRowsFit(document.getElementById(id+'-body'));}});});
 // Backstage on a phone: a card's tech rider / note cut off at four lines
@@ -13403,7 +13404,7 @@ function _pickDayLNG(id){setDay(id);renderLNG();}
 function renderLNG(){_lngRender(_LNG_V.lng);}
 function _lngRender(V){
   const p=V.id,root=document.getElementById(p);if(!root||!root.classList.contains('open')||!G)return;
-  const pub=V.crew?_isPublicView():!!PUBLIC_MODE,stage=activeStageObj(),n=nowMs(),$=x=>document.getElementById(p+'-'+x);
+  const stage=activeStageObj(),n=nowMs(),$=x=>document.getElementById(p+'-'+x);
   _vwLogo(p);
   const ac=lngAccentOf(G);
   if(root.dataset.ac!==ac){
@@ -13412,16 +13413,12 @@ function _lngRender(V){
   }
   const sn=$('sname');if(sn.textContent!==stage.name)sn.textContent=stage.name;
   const dn=vwDayById(G.activeDay),dl=V.crew?(dn?'Backstage · '+dn:'Backstage'):dn,de=$('day');if(de.textContent!==dl)de.textContent=dl;
-  // A share link is fixed to its stage (sid) and today's festival day.
-  const ssel=$('ssel'),dt=$('dtabs');
-  ssel.hidden=pub;dt.hidden=pub;
-  if(!pub){
-    if(!vwSame(ssel,JSON.stringify((G.stages||[]).map(st=>[st.id,st.name]))))ssel.innerHTML=(G.stages||[]).map(st=>`<option value="${escH(st.id)}">${escH(st.name)}</option>`).join('');
-    if(ssel.value!==G.activeStage)ssel.value=G.activeStage;
-    if(!vwSame(dt,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dt.innerHTML=_dayPickerHTML(G.activeDay,V.pickDay,'bshbtn');
-  }
+  // No stage or day picker (Thijs, 24-10): a share link is fixed to its stage
+  // (sid) and today's festival day; in the app it shows the stage and day
+  // chosen in Stagetimer itself.
+  $('ssel').hidden=true;$('dtabs').hidden=true;
   const m=_lngModel(n,V),body=$('body');
-  const empty=m.hero?'':vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!pub});
+  const empty=m.hero?'':vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:false});
   const k=s=>{const iv=_showIv(s);return[s.id,s.artist,iv.startMs,iv.endMs,s.booth||'',_lngPhKey(s.photo),V.crew?[riderOf(s).tech,_lngNote(s),!!s.hidden,s.type||'',!!s.arrived]:0];};
   const sig=JSON.stringify([G.activeStage,G.activeDay,m.hero&&[m.hero.kind,m.hero.c0||0,k(m.hero.s)],m.cards.map(k),m.later.map(k),m.d0,m.d1,empty]);
   if(vwSame(body,sig)){_lngTick(n,V);return;}
