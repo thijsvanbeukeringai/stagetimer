@@ -4749,6 +4749,16 @@ function amsWallToMs(Y,Mo,Da,h,mi,s){
 // "YYYY-MM-DDTHH:MM[:SS]" (no zone) = festival wall time. Strings that carry
 // their own zone ("Z", "+02:00") are honoured as such. Returns ms or NaN.
 var _isoCache=null;
+// The festival wall time of an instant as "YYYY-MM-DDTHH:MM:SS". Inside the
+// hour that repeats when the clocks go back (Oct, 02:00-03:00) that string
+// means the FIRST pass, so the second pass gets its UTC offset appended
+// ("…T02:09:00+01:00"), which parseFestivalISO reads back exactly.
+function festivalISO(ms){
+  const p=amsParts(ms),wall=`${p.Y}-${_p2(p.Mo+1)}-${_p2(p.Da)}T${_p2(p.h)}:${_p2(p.m)}:${_p2(p.s)}`;
+  if(parseFestivalISO(wall)===ms)return wall;
+  const off=Math.round((Date.UTC(p.Y,p.Mo,p.Da,p.h,p.m,p.s)-ms)/60000),a=Math.abs(off);
+  return`${wall}${off<0?'-':'+'}${_p2(Math.floor(a/60))}:${_p2(a%60)}`;
+}
 function parseFestivalISO(str){
   if(!str)return NaN;
   if(!_isoCache)_isoCache=new Map();
@@ -8346,7 +8356,12 @@ async function saveShow(){
   const a=_drReadDT('start'),b=_drReadDT('end');
   if(a.err)errs.push([a.field,a.err]);
   if(b.err)errs.push([b.field,b.err]);
-  const sd=a.dt,ed=b.dt;
+  // A field the operator did not change keeps the exact instant the show had:
+  // "02:09" read back from the inputs would otherwise mean the first 02:09
+  // on the night the clocks go back.
+  const _orig=editId?_showIv(G.shows.find(x=>x.id===editId)||{}):null;
+  const _keep=(dt,oMs)=>dt&&oMs!=null&&!isNaN(oMs)&&amsDateStr(dt.getTime())===amsDateStr(oMs)&&amsTimeStr(dt.getTime(),true)===amsTimeStr(oMs,true)?new Date(oMs):dt;
+  const sd=_keep(a.dt,_orig&&_orig.startMs),ed=_keep(b.dt,_orig&&_orig.endMs);
   if(sd&&ed&&ed<=sd)errs.push(['f-end-date','End must be after start. To run past midnight, pick the next day\'s date in End.']);
   RIDER_KEYS.forEach(k=>{const m=_drRiderErr(k);if(m)errs.push(['f-rider-'+k,m]);});
   const videoRaw=_drVal('f-video').trim(),bgVideo=_safeVideoSrc(videoRaw);
@@ -8391,8 +8406,8 @@ async function saveShow(){
   // Festival wall time (see _drSetDT), not the device's zone.
   const startDate=amsDateStr(sd.getTime()),startTime=amsTimeStr(sd.getTime(),true);
   const endDate=amsDateStr(ed.getTime()),endTime=amsTimeStr(ed.getTime(),true);
-  const startsAt=`${startDate}T${startTime}`;
-  const endsAt=`${endDate}T${endTime}`;
+  const startsAt=festivalISO(sd.getTime());
+  const endsAt=festivalISO(ed.getTime());
   const endsNextDay=startDate!==endDate;
   const obj={
     artist,
@@ -9287,8 +9302,8 @@ function _writeShowTimes(s, newStart, newEnd){
   s.date=startDate;
   s.start=startTime;
   s.end=endTime;
-  s.startsAt=`${startDate}T${startTime}`;
-  s.endsAt=`${endDate}T${endTime}`;
+  s.startsAt=festivalISO(sMs);
+  s.endsAt=festivalISO(eMs);
   s.endsNextDay=startDate!==endDate;
 }
 // The two ways to apply a correction, computed WITHOUT touching the data so
