@@ -5288,7 +5288,7 @@ function renderTbar(){
     </div>
     <div style="font-size:11px;color:var(--sub);line-height:1.6;">Expected format - each day as a key with <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">date</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">stages</code>:<br>
     <code style="font-size:10px;color:var(--sub);">{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"..."}]}]}}</code><br>
-    Optional rider per act: <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">drinks</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">tech</code> (text, up to 2,000 characters each), or <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">"rider":{"drinks":"…","tech":"…"}</code>. Only the check-in and stage manager screens show it. Optional <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">video</code>: an https link to an MP4 for the artist's dressing room screen.</div>
+    Optional rider per act: <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">drinks</code> and <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">tech</code> (text, up to 2,000 characters each), or <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">"rider":{"drinks":"…","tech":"…"}</code>. Only the check-in and stage manager screens show it. Optional <code>booth</code> (e.g. "A") and <code>note</code> per act. Optional <code style="background:var(--s3);padding:1px 5px;border-radius:3px;">video</code>: an https link to an MP4 for the artist's dressing room screen.</div>
     <textarea id="json-input-area" oninput="if(_importPending)_resetImportPreview()" style="width:100%;height:220px;background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:var(--ffm);font-size:11px;padding:10px;resize:vertical;outline:none;line-height:1.5;" placeholder='{"friday":{"date":"2025-06-20","stages":[{"stage":"Phoenix","acts":[{"time":"16:45-17:30","artist":"Artist name"}]}]}}'></textarea>
     <div id="json-import-err" style="display:none;padding:8px 10px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:7px;font-size:12px;color:#fca5a5;"></div>
     <div id="json-import-preview" style="display:none;max-height:220px;overflow-y:auto;padding:8px 10px;background:var(--s3);border:1px solid var(--border2);border-radius:7px;font-size:12px;color:var(--sub);line-height:1.5;"></div>
@@ -10265,10 +10265,13 @@ function _planLineupImport(data){
     if(!d){d={id:uid(),name:label,...(date?{date}:{})};plan.dayObjs.push(d);plan.newDays.push(label);}
     return d;
   };
-  const add=(day,stage,artist,t,rider,bgVideo)=>{
+  // Optional "booth" (short text, e.g. "A") and "note" (the show note that
+  // Backstage shows, e.g. soundcheck time) per act or row.
+  const extOf=row=>({booth:String(row&&row.booth!=null?row.booth:'').trim().slice(0,20),note:String(row&&row.note!=null?row.note:'').trim().slice(0,2000)});
+  const add=(day,stage,artist,t,rider,bgVideo,ext)=>{
     plan.shows.push({dayId:day.id,stageId:stage.id,show:{
       id:uid(),stage:stage.id,day:day.id,artist,...t,
-      genre:'',booth:'',type:'',note:'',crew:{},photo:'',cancelled:false,priority:false,hidden:false,
+      genre:'',booth:(ext&&ext.booth)||'',type:'',note:(ext&&ext.note)||'',crew:{},photo:'',cancelled:false,priority:false,hidden:false,
       ...(rider?{rider}:{}),...(bgVideo?{bgVideo}:{}),
     }});
   };
@@ -10306,7 +10309,7 @@ function _planLineupImport(data){
       const festDate=t2s(s.time)<NIGHT_END_MIN*60?_addDaysISO(s.date,-1):s.date;
       if(festDate!==s.date)plan.earlyMorning=true;
       const st=stageFor(stageName);if(st.error){bad(label,st.error);return;}
-      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t,rd.rider,vd.id);
+      add(dayFor(festDate,fmtDateNLFull(festDate)),st.stage,artist,t,rd.rider,vd.id,extOf(row));
     });
   }else{
     // ── Nested format: {"friday":{"date":"2025-06-20","stages":[{stage,acts:[{time:"16:45-17:30",artist}]}]}}
@@ -10344,7 +10347,7 @@ function _planLineupImport(data){
           const early=t2s(start)<NIGHT_END_MIN*60;
           if(early)plan.earlyMorning=true;
           const sd=base?(early?_addDaysISO(base,1):base):null;
-          add(day,st.stage,artist,_importShowTimes(sd,start,null,end),rd.rider,vd.id);
+          add(day,st.stage,artist,_importShowTimes(sd,start,null,end),rd.rider,vd.id,extOf(act));
         });
       });
     }
