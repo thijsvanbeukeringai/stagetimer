@@ -5,7 +5,8 @@
 //  * fallback chain 2-arg -> 1-arg -> direct table read, only on "function
 //    missing" (404 / PGRST202), remembered per session; never on 401 / 5xx;
 //  * the stripped payload holds no photos, crew, notes, FOH notes, memberIds,
-//    logo or rider where the mode does not render them (field matrix in
+//    logo or rider where the mode does not render them; backstage gets the
+//    rider reduced to {tech}, never the drinks (field matrix in
 //    tests/support/share-modes.js, checked against the SQL here);
 //  * every view renders exactly the same DOM on the stripped feed as on the
 //    full legacy blob;
@@ -30,7 +31,9 @@ const XQ = { dressing: '&shid=m2' };   // the dressing room link names one show
 // here is checked on the RPC alone; add it to VIEW together with its screen.
 const VIEW_MODES = SHARE_MODES.filter((m) => VIEW[m]);
 const RIDER_MODES = SHARE_FIELD_MATRIX['shows[].rider'].filter((m) => m !== 'legacy');
-const PHOTO_MODES = SHARE_FIELD_MATRIX['shows[].photo'];   // the artist lounge only
+const PHOTO_MODES = SHARE_FIELD_MATRIX['shows[].photo'];   // artist lounge and backstage
+const TECH_MODES = SHARE_FIELD_MATRIX['shows[].rider.tech'];   // rider reduced to {tech}: backstage
+const M2_TECH = '2x CDJ-3000 + DJM-900NXS2\nBooth monitor left';
 const SQL_FILE = path.join(__dirname, '..', '..', 'supabase', 'migrations', '20261013100000_share_link_rpcs.sql');
 
 const reads = (backend) => backend.calls({ method: 'POST', path: RPC });
@@ -79,8 +82,8 @@ test.describe('stripped payload', () => {
       expect.soft(has('crew'), 'crew').toBe(mode === 'foh');
       expect.soft(has('note'), 'note').toBe(mode === 'backstage');
       expect.soft(Object.keys(row.data.fohNotes).length > 0, 'fohNotes').toBe(mode === 'foh');   // timed cues: FOH only
-      expect.soft(has('rider'), 'rider').toBe(RIDER_MODES.includes(mode));
-      if (!RIDER_MODES.includes(mode)) expect(text).not.toContain('Club-Mate');   // rider text
+      expect.soft(has('rider'), 'rider').toBe(RIDER_MODES.includes(mode) || TECH_MODES.includes(mode));
+      if (!RIDER_MODES.includes(mode)) expect(text).not.toContain('Club-Mate');   // drinks rider text
       if (mode !== 'foh') expect(text).not.toContain('Bram');            // crew name
       if (mode !== 'backstage') expect(text).not.toContain('USB backup'); // show note
       // What every mode needs for the clock and overlays is still there.
@@ -94,7 +97,11 @@ test.describe('stripped payload', () => {
       expect(r.json.data).toEqual(stripProjectData(festivalData(), mode));
       const m2 = r.json.data.shows.find((s) => s.id === 'm2');
       if (RIDER_MODES.includes(mode)) expect(m2.rider).toEqual(festivalData().shows.find((s) => s.id === 'm2').rider);
-      else expect(JSON.stringify(r.json)).not.toMatch(/"rider"|Club-Mate|CDJ/);
+      else if (TECH_MODES.includes(mode)) {
+        expect(m2.rider).toEqual({ tech: M2_TECH });
+        expect(JSON.stringify(r.json)).not.toMatch(/drinks|Club-Mate|Espresso|Champagne/);
+        expect(r.json.data.shows.find((s) => s.id === 'm6')).not.toHaveProperty('rider');   // drinks only: no rider at all
+      } else expect(JSON.stringify(r.json)).not.toMatch(/"rider"|Club-Mate|CDJ/);
     });
   }
   test('unknown mode gets the strictest set', async ({ backend }) => {
@@ -121,6 +128,8 @@ test.describe('every view renders the same on the stripped feed', () => {
     await open(st, 'backstage');
     await expect(page.locator('#bs-body')).toContainText("Bring O'Neil's USB backup");
     await expect(page.locator('#bs-body')).not.toContainText("Extra monitor for DJ O'Neil");   // FOH cue, not on Backstage
+    await expect(page.locator('#bs-body .lng-hero .lng-info-tech')).toContainText('2x CDJ-3000');   // tech rider, not the drinks
+    await expect(page.locator('#bs-body')).not.toContainText('Club-Mate');
     await open(st, 'foh');
     await expect(page.locator('.foh-crew-row', { hasText: 'Bram' })).toContainText('On the way');
     await expect(page.locator('#foh-col-body')).toContainText("Extra monitor for DJ O'Neil");
@@ -264,6 +273,7 @@ test('field matrix in the SQL equals the mock / spec matrix', () => {
   expect(keep('keep_rider')).toEqual([...SHARE_FIELD_MATRIX['shows[].rider']].sort());
   expect(keep('keep_bg')).toEqual([...SHARE_FIELD_MATRIX['shows[].bgImage']].sort());
   expect(keep('keep_photo')).toEqual([...SHARE_FIELD_MATRIX['shows[].photo']].sort());
+  expect(keep('keep_tech')).toEqual([...SHARE_FIELD_MATRIX['shows[].rider.tech']].sort());
   expect(keep('keep_arrived')).toEqual([...SHARE_FIELD_MATRIX['shows[].arrived']].sort());
   expect(keep('keep_video')).toEqual([...SHARE_FIELD_MATRIX['shows[].bgVideo']].sort());
   // Every mode the matrix knows is a known mode in get_shared_project(p_id, p_mode).

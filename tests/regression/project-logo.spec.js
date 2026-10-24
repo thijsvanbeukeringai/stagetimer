@@ -80,7 +80,9 @@ async function expectCoBranded(page, view) {
   const [l, m, c] = [await box(logo), await box(mark), await box(clock)];
   expect(l.x).toBeLessThan(40);
   expect(l.y).toBeLessThan(40);
-  expect(l.height).toBeLessThanOrEqual(36);
+  // Backstage has the Artist lounge's bigger header since 24-10 (logo up to
+  // max(36px, 2.9 lu)); FOH keeps its 50 px header.
+  expect(l.height).toBeLessThanOrEqual(view === 'bs' ? 48 : 36);
   expect(overlap(l, m) || overlap(l, c) || overlap(m, c)).toBe(false);
   // Every visible header item stays inside the viewport and none overlap the logo.
   const vw = page.viewportSize().width;
@@ -95,7 +97,9 @@ async function expectCoBranded(page, view) {
 async function expectNoLogo(page, view) {
   await expect(page.locator(`#${view}`)).not.toHaveClass(/vw-logo-on/);
   await expect(page.locator(`#vw-logo-${view}`)).toBeHidden();
-  await expect(page.locator(`#${view} .vw-st-mark`)).toBeHidden();
+  // FOH: the mark only comes with a customer logo. Backstage (the Artist
+  // lounge screen since 24-10) always carries it, like the lounge.
+  if (view !== 'bs') await expect(page.locator(`#${view} .vw-st-mark`)).toBeHidden();
 }
 
 test.describe('owner (dashboard)', () => {

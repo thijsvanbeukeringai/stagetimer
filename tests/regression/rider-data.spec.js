@@ -249,7 +249,8 @@ test.describe('share links', () => {
 
   for (const mode of SHARE_MODES) {
     const gets = mode === 'checkin' || mode === 'stagemanager';
-    test(`${mode}: ${gets ? 'receives' : 'never receives'} the rider`, async ({ page, st, backend }) => {
+    const techOnly = mode === 'backstage';   // since 24-10: the tech rider, never the drinks
+    test(`${mode}: ${gets ? 'receives' : techOnly ? 'receives only the tech part of' : 'never receives'} the rider`, async ({ page, st, backend }) => {
       await st.gotoPublic({ mode, sid: SID[mode], at: MID_SHOW, paused: true });
       const calls = backend.calls({ method: 'POST', path: RPC });
       expect(calls.length).toBeGreaterThanOrEqual(1);
@@ -257,7 +258,11 @@ test.describe('share links', () => {
       const row = await page.evaluate(() => window._earlyPublicFetch);
       const m2 = row.data.shows.find((s) => s.id === 'm2');
       if (gets) expect(m2.rider).toEqual(RIDER);
-      else {
+      else if (techOnly) {
+        expect(m2.rider).toEqual({ tech: RIDER.tech });
+        expect(JSON.stringify(row)).not.toMatch(/drinks|Club-Mate/);
+        expect(await page.evaluate(() => JSON.stringify(G))).not.toContain('Club-Mate');
+      } else {
         expect(m2).not.toHaveProperty('rider');
         expect(JSON.stringify(row)).not.toMatch(/"rider"|Club-Mate|CDJ-3000/);
         expect(await page.evaluate(() => JSON.stringify(G))).not.toContain('Club-Mate');

@@ -72,7 +72,7 @@ Legenda testbestanden:
 | Scherm | Code | Test |
 |---|---|---|
 | FOH (in-app + `?mode=foh`) | `openFOH` 4872, `renderFOH` 4265, `tickFOH` 4964, `fohBoothBadge` 4250 | operator: *FOH screen*, public: *FOH view* |
-| Backstage (in-app + `?mode=backstage`) | `openBS` 4874, `renderBS` 4358, `tickBS` 4473 | operator: *Backstage screen*, public: *backstage view* |
+| Backstage (in-app + `?mode=backstage`) | `openBS`/`closeBS`, `renderBS`/`tickBS` = `_lngRender(_LNG_V.bs)` (het Artist lounge-scherm, crewvariant sinds 24-10-2026), `_lngInfoHTML` (technische rider + shownotitie), `_lngFit` (kaarten die niet passen naar *Later*), `_bsShows` (verborgen acts in de app met chip) | operator: *Backstage screen*, public: *backstage view*; regression/backstage-lounge: hero met foto + tech rider (regeleinden) + notitie, geen drinks, geen FOH-cues (scherm én feed), kaarten 4 regels geklemd, markup blijft tekst, *next on stage*, accentkleur, past op 1920×1080 / 1280×720 / 390×844, in de app (stagekiezer, verborgen act met chip, sluiten + openen tikt door); regression/share-mode + rider-data: `backstage` krijgt foto's en rider als `{tech}`; screenshots in `tests/output/bs/` |
 | **Stage View / boothscreen** (in-app + `?mode=stage`) | `openSV` 4876, `renderSV` 4513, `updateClock` 4951, CSS `#sv*` (~593-610, ~1281-1291) | **booth** (alle modi/tijden/viewports), operator: *Stage View (in-app)*, public: *stage view* |
 | Stage View weergavemodi countdown / clock / countup / blank | `_svMode` 5550, `setSVMode` 5553, `renderDisplayModeBar` 5560 | booth (4 modi × 6 momenten × 3 viewports), operator: *…display modes* |
 | Timeline (in-app + `?mode=timeline`) | `openTL` 7375, `renderTL` 7391, `tickTL` 7571 | operator: *Timeline screen*, public: *timeline view* |

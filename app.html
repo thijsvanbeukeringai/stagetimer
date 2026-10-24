@@ -515,185 +515,216 @@ body.public-mode #smv-close-btn{display:none!important;}
    on stage now (photo, name, a big white countdown, the set's own timeline),
    who is up next, the festival's logo and accent colour. Read from 3-5 m:
    16:9 TV first, also a portrait TV and a phone. Everything is scoped to #lng
-   (Stage View untouched). Sizes run off --lu, 1/100 of a 1920-wide 16:9
+   and #bs (Stage View untouched). Sizes run off --lu, 1/100 of a 1920-wide 16:9
    screen, so 1280x720 is the same picture, smaller. --lng-ac* are set from
-   data.branding.accent by renderLNG. Motion is transform / opacity only. ══ */
-#lng{--lng-ac:#ef4444;--lng-ac-rgb:239,68,68;--lng-on-ac:#fff;--lu:min(1vw,1.778vh);
+   data.branding.accent by renderLNG. Motion is transform / opacity only.
+   Backstage (#bs, crew) is the same screen (owner, 24-10: "the lounge, but
+   with the technical info"): :is(#lng,#bs) keeps the id specificity of the
+   old #lng rules; its extras (tech rider, show note) are under #bs below. ══ */
+:is(#lng,#bs){--lng-ac:#ef4444;--lng-ac-rgb:239,68,68;--lng-on-ac:#fff;--lu:min(1vw,1.778vh);
   position:fixed;inset:0;z-index:200;display:none;flex-direction:column;overflow:hidden;color:#fff;font-family:var(--ff);
   background:radial-gradient(80% 65% at 10% -12%,rgba(var(--lng-ac-rgb),.14),rgba(var(--lng-ac-rgb),0) 62%),radial-gradient(70% 60% at 108% 112%,rgba(99,102,241,.13),rgba(99,102,241,0) 60%),#05050a;}
-#lng.open{display:flex;}
-#lng-hdr{flex-shrink:0;display:flex;align-items:center;gap:calc(var(--lu)*1.1);min-height:max(60px,calc(var(--lu)*3.9));
+:is(#lng,#bs).open{display:flex;}
+:is(#lng-hdr,#bs-hdr){flex-shrink:0;display:flex;align-items:center;gap:calc(var(--lu)*1.1);min-height:max(60px,calc(var(--lu)*3.9));
   padding:calc(var(--lu)*.55) calc(var(--lu)*1.6);border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0));}
-#lng .vw-logo{display:none;}
-#lng.vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:max(36px,calc(var(--lu)*2.9));max-width:max(140px,calc(var(--lu)*15));object-fit:contain;}
-#lng.vw-logo-bd .vw-logo{background:#fff;padding:calc(var(--lu)*.3) calc(var(--lu)*.7);border-radius:max(6px,calc(var(--lu)*.5));}
-#lng-title{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
-#lng-sname{font-size:max(18px,calc(var(--lu)*1.6));font-weight:900;letter-spacing:-.01em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#lng-day{font-size:max(11px,calc(var(--lu)*.82));font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#lng-day:empty{display:none;}
-#lng-ssel{min-height:36px;color:rgba(255,255,255,.85);background-color:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);}
-#lng-ssel[hidden],#lng-dtabs[hidden]{display:none;}
+:is(#lng,#bs) .vw-logo{display:none;}
+:is(#lng,#bs).vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:max(36px,calc(var(--lu)*2.9));max-width:max(140px,calc(var(--lu)*15));object-fit:contain;}
+:is(#lng,#bs).vw-logo-bd .vw-logo{background:#fff;padding:calc(var(--lu)*.3) calc(var(--lu)*.7);border-radius:max(6px,calc(var(--lu)*.5));}
+:is(#lng-title,#bs-title){flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+:is(#lng-sname,#bs-sname){font-size:max(18px,calc(var(--lu)*1.6));font-weight:900;letter-spacing:-.01em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+:is(#lng-day,#bs-day){font-size:max(11px,calc(var(--lu)*.82));font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+:is(#lng-day,#bs-day):empty{display:none;}
+:is(#lng-ssel,#bs-ssel){min-height:36px;color:rgba(255,255,255,.85);background-color:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);}
+:is(#lng-ssel,#bs-ssel)[hidden],:is(#lng-dtabs,#bs-dtabs)[hidden]{display:none;}
 /* Clock in the top-right corner, labelled (Thijs, 23-10). */
-#lng-clockw{flex-shrink:0;display:inline-flex;align-items:baseline;gap:calc(var(--lu)*.7);margin-left:calc(var(--lu)*.6);}
-#lng .lng-clock-lbl{font-size:max(11px,calc(var(--lu)*.8));font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);}
-#lng-clock{flex-shrink:0;font-family:var(--ffm);font-size:max(20px,calc(var(--lu)*1.9));font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
-#lng .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+:is(#lng-clockw,#bs-clockw){flex-shrink:0;display:inline-flex;align-items:baseline;gap:calc(var(--lu)*.7);margin-left:calc(var(--lu)*.6);}
+:is(#lng,#bs) .lng-clock-lbl{font-size:max(11px,calc(var(--lu)*.8));font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55);}
+:is(#lng-clock,#bs-clock){flex-shrink:0;font-family:var(--ffm);font-size:max(20px,calc(var(--lu)*1.9));font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;}
+:is(#lng,#bs) .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
 /* TV: the stagetimer.nl mark sits bottom-right of the screen (Thijs, 23-10),
    out of the header; the phone layout keeps it in the header (below). */
-#lng .vw-st-mark{position:absolute;right:calc(var(--lu)*1.6);bottom:calc(var(--lu)*1.1);z-index:2;}
-body.public-mode #lng-close-btn,body.public-mode #st-brand-lng{display:none!important;}
-#lng-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:calc(var(--lu)*1.6);padding:calc(var(--lu)*1.6);}
-#lng-body.lng-solo{grid-template-columns:minmax(0,1fr);}
+:is(#lng,#bs) .vw-st-mark{position:absolute;right:calc(var(--lu)*1.6);bottom:calc(var(--lu)*1.1);z-index:2;}
+body.public-mode :is(#lng-close-btn,#bs-close-btn),body.public-mode :is(#st-brand-lng,#st-brand-bs){display:none!important;}
+:is(#lng-body,#bs-body){flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:calc(var(--lu)*1.6);padding:calc(var(--lu)*1.6);}
+:is(#lng-body,#bs-body).lng-solo{grid-template-columns:minmax(0,1fr);}
 /* Hero: now on stage (glow pulses) or, between acts, next on stage. */
-#lng .lng-hero{position:relative;min-width:0;min-height:0;border-radius:calc(var(--lu)*1.6);container-type:size;}
-#lng .lng-hero::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+:is(#lng,#bs) .lng-hero{position:relative;min-width:0;min-height:0;border-radius:calc(var(--lu)*1.6);container-type:size;}
+:is(#lng,#bs) .lng-hero::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
   box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.95),0 0 calc(var(--lu)*3.2) rgba(var(--lng-ac-rgb),.5),0 0 calc(var(--lu)*8) rgba(var(--lng-ac-rgb),.2);}
-#lng .lng-hero.lng-live::before{opacity:1;animation:lng-glow 2.8s ease-in-out infinite alternate;}
-#lng .lng-hero.lng-next::before{opacity:.6;box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.55),0 0 calc(var(--lu)*2.4) rgba(var(--lng-ac-rgb),.22);}
-#lng .lng-hero-in{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:calc(var(--lu)*2.2) calc(var(--lu)*2.2);
+:is(#lng,#bs) .lng-hero.lng-live::before{opacity:1;animation:lng-glow 2.8s ease-in-out infinite alternate;}
+:is(#lng,#bs) .lng-hero.lng-next::before{opacity:.6;box-shadow:0 0 0 2px rgba(var(--lng-ac-rgb),.55),0 0 calc(var(--lu)*2.4) rgba(var(--lng-ac-rgb),.22);}
+:is(#lng,#bs) .lng-hero-in{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;gap:calc(var(--lu)*2.2) calc(var(--lu)*2.2);
   padding:calc(var(--lu)*2.2);border-radius:inherit;overflow:hidden;border:1px solid rgba(255,255,255,.1);
   background:linear-gradient(155deg,rgba(255,255,255,.085),rgba(255,255,255,.025) 45%,rgba(0,0,0,.28));}
-#lng .lng-sheen{position:absolute;inset:-35%;z-index:-1;pointer-events:none;
+:is(#lng,#bs) .lng-sheen{position:absolute;inset:-35%;z-index:-1;pointer-events:none;
   background:radial-gradient(38% 38% at 32% 30%,rgba(var(--lng-ac-rgb),.26),rgba(var(--lng-ac-rgb),0) 70%);animation:lng-drift 16s ease-in-out infinite alternate;}
 /* Fullscreen button: gone from the TV picture once fullscreen, back when the
    pointer is over the header (the way out is Esc or that button). */
-#lng-fs-btn{display:inline-flex;align-items:center;justify-content:center;transition:opacity .25s;}
-#lng-fs-btn[hidden]{display:none;}
-html:fullscreen #lng-fs-btn,html:-webkit-full-screen #lng-fs-btn{opacity:0;}
-html:fullscreen #lng-hdr:hover #lng-fs-btn,html:-webkit-full-screen #lng-hdr:hover #lng-fs-btn,#lng-fs-btn:focus-visible{opacity:1;}
+:is(#lng-fs-btn,#bs-fs-btn){display:inline-flex;align-items:center;justify-content:center;transition:opacity .25s;}
+:is(#lng-fs-btn,#bs-fs-btn)[hidden]{display:none;}
+html:fullscreen :is(#lng-fs-btn,#bs-fs-btn),html:-webkit-full-screen :is(#lng-fs-btn,#bs-fs-btn){opacity:0;}
+html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-webkit-full-screen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),:is(#lng-fs-btn,#bs-fs-btn):focus-visible{opacity:1;}
 /* Badge + act name sit above the photo (Thijs, 23-10), across the card. */
-#lng .lng-hero-head{grid-column:1/-1;grid-row:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--lu)*.9);}
+:is(#lng,#bs) .lng-hero-head{grid-column:1/-1;grid-row:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:calc(var(--lu)*.9);}
 /* As tall as the card allows (its height minus padding, head, gaps and
    timeline), at most 44% of its width so the countdown keeps room. */
-#lng .lng-hero .lng-ph{grid-row:2;align-self:center;width:min(calc(100cqh - var(--lu)*22),44cqw);border-radius:calc(var(--lu)*1.3);}
-#lng .lng-hero-main{grid-row:2;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:calc(var(--lu)*.9);}
-#lng .lng-badge{display:inline-flex;align-items:center;gap:calc(var(--lu)*.75);padding:calc(var(--lu)*.5) calc(var(--lu)*1.1) calc(var(--lu)*.5) calc(var(--lu)*.85);border-radius:99px;
+:is(#lng,#bs) .lng-hero .lng-ph{grid-row:2;align-self:center;width:min(calc(100cqh - var(--lu)*22),44cqw);border-radius:calc(var(--lu)*1.3);}
+:is(#lng,#bs) .lng-hero-main{grid-row:2;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:calc(var(--lu)*.9);}
+:is(#lng,#bs) .lng-badge{display:inline-flex;align-items:center;gap:calc(var(--lu)*.75);padding:calc(var(--lu)*.5) calc(var(--lu)*1.1) calc(var(--lu)*.5) calc(var(--lu)*.85);border-radius:99px;
   font-size:max(12px,calc(var(--lu)*1));font-weight:900;letter-spacing:.2em;text-transform:uppercase;line-height:1;white-space:nowrap;color:#fff;
   background:rgba(var(--lng-ac-rgb),.2);border:1px solid rgba(var(--lng-ac-rgb),.75);box-shadow:0 0 calc(var(--lu)*1.6) rgba(var(--lng-ac-rgb),.3);}
-#lng .lng-dot{position:relative;flex-shrink:0;width:max(9px,calc(var(--lu)*.75));height:max(9px,calc(var(--lu)*.75));border-radius:50%;background:var(--lng-ac);box-shadow:0 0 calc(var(--lu)*.9) var(--lng-ac);}
-#lng .lng-live .lng-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--lng-ac);animation:lng-ping 1.6s cubic-bezier(0,0,.2,1) infinite;}
-#lng .lng-name{max-width:100%;font-size:calc(var(--lu)*4.6);font-weight:900;letter-spacing:-.025em;line-height:1.04;overflow-wrap:anywhere;
+:is(#lng,#bs) .lng-dot{position:relative;flex-shrink:0;width:max(9px,calc(var(--lu)*.75));height:max(9px,calc(var(--lu)*.75));border-radius:50%;background:var(--lng-ac);box-shadow:0 0 calc(var(--lu)*.9) var(--lng-ac);}
+:is(#lng,#bs) .lng-live .lng-dot::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--lng-ac);animation:lng-ping 1.6s cubic-bezier(0,0,.2,1) infinite;}
+:is(#lng,#bs) .lng-name{max-width:100%;font-size:calc(var(--lu)*4.6);font-weight:900;letter-spacing:-.025em;line-height:1.04;overflow-wrap:anywhere;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-shadow:0 2px calc(var(--lu)*2) rgba(0,0,0,.35);}
-#lng .lng-name.lng-n-m{font-size:calc(var(--lu)*3.7);}
-#lng .lng-name.lng-n-s{font-size:calc(var(--lu)*2.9);}
-#lng .lng-meta{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--lu)*.7);font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.2));font-weight:700;color:rgba(255,255,255,.8);}
-#lng .lng-booth{font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.8));font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;padding:.3em .85em;border-radius:99px;
+:is(#lng,#bs) .lng-name.lng-n-m{font-size:calc(var(--lu)*3.7);}
+:is(#lng,#bs) .lng-name.lng-n-s{font-size:calc(var(--lu)*2.9);}
+:is(#lng,#bs) .lng-meta{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--lu)*.7);font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.2));font-weight:700;color:rgba(255,255,255,.8);}
+:is(#lng,#bs) .lng-booth{font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.8));font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;padding:.3em .85em;border-radius:99px;
   color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.24);}
-#lng .lng-cdw{margin-top:calc(var(--lu)*.5);}
-#lng .lng-cd-lbl{font-size:max(12px,calc(var(--lu)*.95));font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.68);margin-bottom:calc(var(--lu)*.35);}
-#lng .lng-cd{font-family:var(--ffm);font-size:calc(var(--lu)*8.8);font-weight:700;line-height:.95;letter-spacing:-.045em;font-variant-numeric:tabular-nums;white-space:nowrap;
+:is(#lng,#bs) .lng-cdw{margin-top:calc(var(--lu)*.5);}
+:is(#lng,#bs) .lng-cd-lbl{font-size:max(12px,calc(var(--lu)*.95));font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.68);margin-bottom:calc(var(--lu)*.35);}
+:is(#lng,#bs) .lng-cd{font-family:var(--ffm);font-size:calc(var(--lu)*8.8);font-weight:700;line-height:.95;letter-spacing:-.045em;font-variant-numeric:tabular-nums;white-space:nowrap;
   color:#fff;text-shadow:0 0 calc(var(--lu)*2.4) rgba(255,255,255,.16);}
-#lng .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6.4);}
+:is(#lng,#bs) .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6.4);}
 /* The act's own timeline: start - fill - end, a "now" dot, played / left. */
-#lng .lng-tl{grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.5);}
-#lng .lng-tl-t{font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.25));font-weight:700;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.9);}
-#lng .lng-tl-track{position:relative;height:max(8px,calc(var(--lu)*.8));border-radius:99px;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 2px rgba(0,0,0,.45);}
-#lng .lng-tl-clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;}
-#lng .lng-tl-fill{position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,rgba(var(--lng-ac-rgb),.3),var(--lng-ac));}
-#lng .lng-final .lng-tl-fill{background:linear-gradient(90deg,rgba(245,158,11,.35),#f59e0b);}
-#lng .lng-tl-dot{position:absolute;left:0;top:50%;width:max(14px,calc(var(--lu)*1.5));height:max(14px,calc(var(--lu)*1.5));border-radius:50%;transform:translate(-50%,-50%);
+:is(#lng,#bs) .lng-tl{grid-column:1/-1;grid-row:3;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.5);}
+:is(#lng,#bs) .lng-tl-t{font-family:var(--ffm);font-size:max(13px,calc(var(--lu)*1.25));font-weight:700;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.9);}
+:is(#lng,#bs) .lng-tl-track{position:relative;height:max(8px,calc(var(--lu)*.8));border-radius:99px;background:rgba(255,255,255,.1);box-shadow:inset 0 1px 2px rgba(0,0,0,.45);}
+:is(#lng,#bs) .lng-tl-clip{position:absolute;inset:0;border-radius:inherit;overflow:hidden;}
+:is(#lng,#bs) .lng-tl-fill{position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,rgba(var(--lng-ac-rgb),.3),var(--lng-ac));}
+:is(#lng,#bs) .lng-final .lng-tl-fill{background:linear-gradient(90deg,rgba(245,158,11,.35),#f59e0b);}
+:is(#lng,#bs) .lng-tl-dot{position:absolute;left:0;top:50%;width:max(14px,calc(var(--lu)*1.5));height:max(14px,calc(var(--lu)*1.5));border-radius:50%;transform:translate(-50%,-50%);
   background:#fff;box-shadow:0 0 0 max(3px,calc(var(--lu)*.3)) rgba(var(--lng-ac-rgb),.55),0 0 calc(var(--lu)*1.6) var(--lng-ac);}
-#lng .lng-tl-sub{grid-column:2;display:flex;justify-content:space-between;gap:12px;font-size:max(12px,calc(var(--lu)*1.05));font-weight:700;color:rgba(255,255,255,.7);}
-#lng .lng-tl-sub b{font-family:var(--ffm);font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
+:is(#lng,#bs) .lng-tl-sub{grid-column:2;display:flex;justify-content:space-between;gap:12px;font-size:max(12px,calc(var(--lu)*1.05));font-weight:700;color:rgba(255,255,255,.7);}
+:is(#lng,#bs) .lng-tl-sub b{font-family:var(--ffm);font-weight:700;color:#fff;font-variant-numeric:tabular-nums;}
 /* Artist photo, or the act's initials on the accent colour. */
-#lng .lng-ph{position:relative;flex-shrink:0;aspect-ratio:1;overflow:hidden;container-type:inline-size;
+:is(#lng,#bs) .lng-ph{position:relative;flex-shrink:0;aspect-ratio:1;overflow:hidden;container-type:inline-size;
   background:linear-gradient(135deg,var(--lng-ac) 0%,rgba(var(--lng-ac-rgb),.45) 45%,#16162a 100%);
   box-shadow:0 0 0 1px rgba(255,255,255,.14),0 calc(var(--lu)*.8) calc(var(--lu)*2.6) rgba(0,0,0,.55);}
-#lng .lng-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:38cqw;font-weight:900;letter-spacing:-.04em;line-height:1;color:var(--lng-on-ac);}
-#lng .lng-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
-#lng .lng-ph::after{content:'';position:absolute;inset:0;pointer-events:none;
+:is(#lng,#bs) .lng-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:38cqw;font-weight:900;letter-spacing:-.04em;line-height:1;color:var(--lng-on-ac);}
+:is(#lng,#bs) .lng-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+:is(#lng,#bs) .lng-ph::after{content:'';position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.42) 100%),linear-gradient(135deg,rgba(255,255,255,.14),rgba(255,255,255,0) 42%);}
 /* Up next */
-#lng .lng-col{min-width:0;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*1);overflow:hidden;}
-#lng .lng-h{margin:0;font-size:max(12px,calc(var(--lu)*1));font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.64);}
-#lng .lng-card{position:relative;flex-shrink:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.75);align-items:center;
+:is(#lng,#bs) .lng-col{min-width:0;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*1);overflow:hidden;}
+:is(#lng,#bs) .lng-h{margin:0;font-size:max(12px,calc(var(--lu)*1));font-weight:900;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.64);}
+:is(#lng,#bs) .lng-card{position:relative;flex-shrink:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:calc(var(--lu)*1.2);row-gap:calc(var(--lu)*.75);align-items:center;
   padding:calc(var(--lu)*1.05);border-radius:calc(var(--lu)*1.1);background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);}
-#lng .lng-card .lng-ph{grid-row:1/3;width:calc(var(--lu)*7.2);border-radius:calc(var(--lu)*.8);}
-#lng .lng-card-main{grid-column:2;grid-row:1;min-width:0;}
-#lng .lng-card-name{font-size:max(17px,calc(var(--lu)*1.85));font-weight:900;letter-spacing:-.015em;line-height:1.1;overflow-wrap:anywhere;
+:is(#lng,#bs) .lng-card .lng-ph{grid-row:1/3;width:calc(var(--lu)*7.2);border-radius:calc(var(--lu)*.8);}
+:is(#lng,#bs) .lng-card-main{grid-column:2;grid-row:1;min-width:0;}
+:is(#lng,#bs) .lng-card-name{font-size:max(17px,calc(var(--lu)*1.85));font-weight:900;letter-spacing:-.015em;line-height:1.1;overflow-wrap:anywhere;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-#lng .lng-card-meta{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--lu)*.6);margin-top:calc(var(--lu)*.35);font-family:var(--ffm);font-size:max(12px,calc(var(--lu)*1.05));font-weight:700;color:rgba(255,255,255,.74);}
-#lng .lng-card-cdw{grid-column:3;grid-row:1;text-align:right;}
-#lng .lng-card-lbl{font-size:max(10px,calc(var(--lu)*.75));font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;margin-bottom:calc(var(--lu)*.2);}
-#lng .lng-card-cd{font-family:var(--ffm);font-size:max(22px,calc(var(--lu)*2.6));font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap;}
-#lng .lng-tag{display:none;align-items:center;font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.72));font-weight:900;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;
+:is(#lng,#bs) .lng-card-meta{display:flex;flex-wrap:wrap;align-items:center;gap:calc(var(--lu)*.6);margin-top:calc(var(--lu)*.35);font-family:var(--ffm);font-size:max(12px,calc(var(--lu)*1.05));font-weight:700;color:rgba(255,255,255,.74);}
+:is(#lng,#bs) .lng-card-cdw{grid-column:3;grid-row:1;text-align:right;}
+:is(#lng,#bs) .lng-card-lbl{font-size:max(10px,calc(var(--lu)*.75));font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62);white-space:nowrap;margin-bottom:calc(var(--lu)*.2);}
+:is(#lng,#bs) .lng-card-cd{font-family:var(--ffm);font-size:max(22px,calc(var(--lu)*2.6));font-weight:700;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:#fff;white-space:nowrap;}
+:is(#lng,#bs) .lng-tag{display:none;align-items:center;font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.72));font-weight:900;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;
   padding:.35em .85em;border-radius:99px;background:var(--lng-ac);color:var(--lng-on-ac);}
-#lng .lng-card.lng-soon{border-color:rgba(var(--lng-ac-rgb),.9);background:linear-gradient(120deg,rgba(var(--lng-ac-rgb),.2),rgba(255,255,255,.04) 60%);
+:is(#lng,#bs) .lng-card.lng-soon{border-color:rgba(var(--lng-ac-rgb),.9);background:linear-gradient(120deg,rgba(var(--lng-ac-rgb),.2),rgba(255,255,255,.04) 60%);
   box-shadow:0 0 0 1px rgba(var(--lng-ac-rgb),.5),0 0 calc(var(--lu)*2.4) rgba(var(--lng-ac-rgb),.28);}
-#lng .lng-card.lng-soon .lng-tag{display:inline-flex;}
+:is(#lng,#bs) .lng-card.lng-soon .lng-tag{display:inline-flex;}
 /* Mini timeline: the day on this stage, this act's slot, where "now" is. */
-#lng .lng-mini{grid-column:2/4;grid-row:2;position:relative;height:max(6px,calc(var(--lu)*.5));border-radius:99px;background:rgba(255,255,255,.08);}
-#lng .lng-mini-slot{position:absolute;top:0;bottom:0;border-radius:inherit;background:rgba(var(--lng-ac-rgb),.65);}
-#lng .lng-mini-now{position:absolute;left:0;top:50%;width:max(3px,calc(var(--lu)*.22));height:max(14px,calc(var(--lu)*1.3));border-radius:2px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7);}
-#lng .lng-later{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*.6);font-size:max(13px,calc(var(--lu)*1.25));font-weight:600;color:rgba(255,255,255,.72);}
-#lng .lng-rows{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
-#lng .lng-rows.lng-over{-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent);}
-#lng .lng-rows-in{display:flex;flex-direction:column;gap:calc(var(--lu)*.45);}
-#lng .lng-rows-in.lng-scroll{animation:lng-rows var(--lng-dur,30s) ease-in-out infinite;}
+:is(#lng,#bs) .lng-mini{grid-column:2/4;grid-row:2;position:relative;height:max(6px,calc(var(--lu)*.5));border-radius:99px;background:rgba(255,255,255,.08);}
+:is(#lng,#bs) .lng-mini-slot{position:absolute;top:0;bottom:0;border-radius:inherit;background:rgba(var(--lng-ac-rgb),.65);}
+:is(#lng,#bs) .lng-mini-now{position:absolute;left:0;top:50%;width:max(3px,calc(var(--lu)*.22));height:max(14px,calc(var(--lu)*1.3));border-radius:2px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7);}
+:is(#lng,#bs) .lng-later{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*.6);font-size:max(13px,calc(var(--lu)*1.25));font-weight:600;color:rgba(255,255,255,.72);}
+:is(#lng,#bs) .lng-rows{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
+:is(#lng,#bs) .lng-rows.lng-over{-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent);}
+:is(#lng,#bs) .lng-rows-in{display:flex;flex-direction:column;gap:calc(var(--lu)*.45);}
+:is(#lng,#bs) .lng-rows-in.lng-scroll{animation:lng-rows var(--lng-dur,30s) ease-in-out infinite;}
 @keyframes lng-rows{0%,18%{transform:translateY(0);}50%,68%{transform:translateY(var(--lng-shift,0));}100%{transform:translateY(0);}}
-@media (prefers-reduced-motion:reduce){#lng .lng-rows-in.lng-scroll{animation:none;}}
-#lng .lng-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1);padding:calc(var(--lu)*.55) calc(var(--lu)*.9);border-radius:calc(var(--lu)*.7);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
-#lng .lng-row-n{font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#lng .lng-row .lng-booth{font-size:.75em;}
-#lng .lng-later>b{display:block;margin-right:.8em;font-size:.85em;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.82);}
-
-#lng .lng-later time{white-space:nowrap;font-family:var(--ffm);font-weight:700;color:rgba(255,255,255,.82);}
-#lng .lng-idle{padding:calc(var(--lu)*1.6);border:1px dashed rgba(255,255,255,.2);border-radius:calc(var(--lu)*1.1);font-size:max(15px,calc(var(--lu)*1.3));font-weight:700;color:rgba(255,255,255,.74);}
-#lng .vw-empty{grid-column:1/-1;align-self:center;justify-self:center;margin:0;max-width:min(92%,calc(var(--lu)*58));padding:calc(var(--lu)*2.6) calc(var(--lu)*3);border-radius:calc(var(--lu)*1.4);
+@media (prefers-reduced-motion:reduce){:is(#lng,#bs) .lng-rows-in.lng-scroll{animation:none;}}
+:is(#lng,#bs) .lng-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1);padding:calc(var(--lu)*.55) calc(var(--lu)*.9);border-radius:calc(var(--lu)*.7);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
+:is(#lng,#bs) .lng-row-n{font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+:is(#lng,#bs) .lng-row .lng-booth{font-size:.75em;}
+:is(#lng,#bs) .lng-later>b{display:block;margin-right:.8em;font-size:.85em;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.82);}
+:is(#lng,#bs) .lng-later time{white-space:nowrap;font-family:var(--ffm);font-weight:700;color:rgba(255,255,255,.82);}
+:is(#lng,#bs) .lng-idle{padding:calc(var(--lu)*1.6);border:1px dashed rgba(255,255,255,.2);border-radius:calc(var(--lu)*1.1);font-size:max(15px,calc(var(--lu)*1.3));font-weight:700;color:rgba(255,255,255,.74);}
+:is(#lng,#bs) .vw-empty{grid-column:1/-1;align-self:center;justify-self:center;margin:0;max-width:min(92%,calc(var(--lu)*58));padding:calc(var(--lu)*2.6) calc(var(--lu)*3);border-radius:calc(var(--lu)*1.4);
   border-color:rgba(var(--lng-ac-rgb),.45);background:rgba(255,255,255,.03);}
-#lng .vw-empty-title{font-size:max(22px,calc(var(--lu)*2.8));}
-#lng .vw-empty-sub{font-size:max(15px,calc(var(--lu)*1.35));margin-top:calc(var(--lu)*.8);}
+:is(#lng,#bs) .vw-empty-title{font-size:max(22px,calc(var(--lu)*2.8));}
+:is(#lng,#bs) .vw-empty-sub{font-size:max(15px,calc(var(--lu)*1.35));margin-top:calc(var(--lu)*.8);}
 @keyframes lng-glow{from{opacity:.5;}to{opacity:1;}}
 @keyframes lng-drift{from{transform:translate3d(-8%,-6%,0);}to{transform:translate3d(12%,10%,0);}}
 @keyframes lng-ping{0%{transform:scale(1);opacity:.8;}75%,100%{transform:scale(2.9);opacity:0;}}
 /* Portrait TV (and a tablet on its side): hero on top, the list below. */
 @media (max-aspect-ratio:4/5){
-  #lng{--lu:min(1.9vw,1.05vh);}
-  #lng-body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
-  #lng .lng-hero{container-type:normal;}
-  #lng .lng-hero-in{grid-template-rows:auto auto auto;gap:calc(var(--lu)*2.4) calc(var(--lu)*2.2);}
-  #lng .lng-hero .lng-ph{width:calc(var(--lu)*19);}
-  #lng .lng-cd{font-size:calc(var(--lu)*7.2);}
-  #lng .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6);}
+  :is(#lng,#bs){--lu:min(1.9vw,1.05vh);}
+  :is(#lng-body,#bs-body){grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
+  :is(#lng,#bs) .lng-hero{container-type:normal;}
+  :is(#lng,#bs) .lng-hero-in{grid-template-rows:auto auto auto;gap:calc(var(--lu)*2.4) calc(var(--lu)*2.2);}
+  :is(#lng,#bs) .lng-hero .lng-ph{width:calc(var(--lu)*19);}
+  :is(#lng,#bs) .lng-cd{font-size:calc(var(--lu)*7.2);}
+  :is(#lng,#bs) .lng-cd.lng-cd-h{font-size:calc(var(--lu)*6);}
 }
 /* Phone: one scrolling column, the photo across the top of the hero. */
 @media (max-width:700px){
-  #lng{--lu:min(2vw,1.1vh);}
-  #lng-hdr{flex-wrap:wrap;gap:8px 10px;min-height:0;padding:calc(env(safe-area-inset-top) + 8px) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));}
-  #st-brand-lng{display:inline-flex;}
-  #st-brand-lng .st-brand-mark{display:none;}
-  #lng.vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
-  #lng .vw-st-mark{position:static;order:2;margin-left:auto;}
-  #lng-close-btn,#lng-fs-btn{order:3;}
-  #lng-title{order:4;flex:1 1 55%;}
-  #lng-clockw{order:5;}
-  #lng-sname{font-size:17px;}
-  #lng-clock{font-size:18px;}
-  #lng .vw-st-mark .vw-st-word{height:11px;}
-  #lng-close-btn,#lng-fs-btn{min-height:44px;min-width:44px;font-size:16px;}
-  #lng-ssel{order:6;flex:1 1 100%;min-height:48px;font-size:15px;font-weight:700;}
-  #lng-dtabs{order:7;flex:1 1 100%;min-width:0;}
-  #lng-body{display:flex;flex-direction:column;overflow-y:auto;padding:12px max(12px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 20px) max(12px,env(safe-area-inset-left));gap:16px;}
-  #lng .lng-hero{flex-shrink:0;border-radius:18px;container-type:normal;}
-  #lng .lng-hero-in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto;padding:14px;gap:14px;}
-  #lng .lng-hero-head{gap:8px;}
-  #lng .lng-hero .lng-ph{grid-row:2;width:100%;aspect-ratio:16/10;border-radius:12px;}
-  #lng .lng-hero-main{grid-row:3;gap:8px;}
-  #lng .lng-tl{grid-row:4;}
-  #lng .lng-name{font-size:30px;}
-  #lng .lng-name.lng-n-m{font-size:26px;}
-  #lng .lng-name.lng-n-s{font-size:22px;}
-  #lng .lng-cd{font-size:54px;}
-  #lng .lng-cd.lng-cd-h{font-size:46px;}
-  #lng .lng-col{flex-shrink:0;overflow:visible;gap:10px;}
-  #lng .lng-card{padding:10px;column-gap:10px;row-gap:8px;border-radius:12px;}
-  #lng .lng-card .lng-ph{width:64px;border-radius:9px;}
-  #lng .lng-card-cd{font-size:22px;}
-  #lng .lng-later{white-space:normal;}
+  :is(#lng,#bs){--lu:min(2vw,1.1vh);}
+  :is(#lng-hdr,#bs-hdr){flex-wrap:wrap;gap:8px 10px;min-height:0;padding:calc(env(safe-area-inset-top) + 8px) max(12px,env(safe-area-inset-right)) 10px max(12px,env(safe-area-inset-left));}
+  :is(#st-brand-lng,#st-brand-bs){display:inline-flex;}
+  :is(#st-brand-lng,#st-brand-bs) .st-brand-mark{display:none;}
+  :is(#lng,#bs).vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
+  :is(#lng,#bs) .vw-st-mark{position:static;order:2;margin-left:auto;}
+  :is(#lng-close-btn,#bs-close-btn),:is(#lng-fs-btn,#bs-fs-btn){order:3;}
+  :is(#lng-title,#bs-title){order:4;flex:1 1 55%;}
+  :is(#lng-clockw,#bs-clockw){order:5;}
+  :is(#lng-sname,#bs-sname){font-size:17px;}
+  :is(#lng-clock,#bs-clock){font-size:18px;}
+  :is(#lng,#bs) .vw-st-mark .vw-st-word{height:11px;}
+  :is(#lng-close-btn,#bs-close-btn),:is(#lng-fs-btn,#bs-fs-btn){min-height:44px;min-width:44px;font-size:16px;}
+  :is(#lng-ssel,#bs-ssel){order:6;flex:1 1 100%;min-height:48px;font-size:15px;font-weight:700;}
+  :is(#lng-dtabs,#bs-dtabs){order:7;flex:1 1 100%;min-width:0;}
+  :is(#lng-body,#bs-body){display:flex;flex-direction:column;overflow-y:auto;padding:12px max(12px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 20px) max(12px,env(safe-area-inset-left));gap:16px;}
+  :is(#lng,#bs) .lng-hero{flex-shrink:0;border-radius:18px;container-type:normal;}
+  :is(#lng,#bs) .lng-hero-in{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto;padding:14px;gap:14px;}
+  :is(#lng,#bs) .lng-hero-head{gap:8px;}
+  :is(#lng,#bs) .lng-hero .lng-ph{grid-row:2;width:100%;aspect-ratio:16/10;border-radius:12px;}
+  :is(#lng,#bs) .lng-hero-main{grid-row:3;gap:8px;}
+  :is(#lng,#bs) .lng-tl{grid-row:4;}
+  :is(#lng,#bs) .lng-name{font-size:30px;}
+  :is(#lng,#bs) .lng-name.lng-n-m{font-size:26px;}
+  :is(#lng,#bs) .lng-name.lng-n-s{font-size:22px;}
+  :is(#lng,#bs) .lng-cd{font-size:54px;}
+  :is(#lng,#bs) .lng-cd.lng-cd-h{font-size:46px;}
+  :is(#lng,#bs) .lng-col{flex-shrink:0;overflow:visible;gap:10px;}
+  :is(#lng,#bs) .lng-card{padding:10px;column-gap:10px;row-gap:8px;border-radius:12px;}
+  :is(#lng,#bs) .lng-card .lng-ph{width:64px;border-radius:9px;}
+  :is(#lng,#bs) .lng-card-cd{font-size:22px;}
+  :is(#lng,#bs) .lng-later{white-space:normal;}
 }
 /* Reduced motion: no glow pulse, no drifting light, no ping - a static,
    equally clear picture. */
-@media (prefers-reduced-motion:reduce){#lng *,#lng *::before,#lng *::after{animation:none!important;transition:none!important;}}
+@media (prefers-reduced-motion:reduce){:is(#lng,#bs) *,:is(#lng,#bs) *::before,:is(#lng,#bs) *::after{animation:none!important;transition:none!important;}}
+/* Backstage extras: the act's technical rider and the show note, line breaks
+   kept. Hero: in full (scrolls inside the card when it is very long, the
+   countdown never moves off screen); cards: four lines. The crew's photo is
+   a little smaller than the lounge's to leave the text room. */
+#bs .lng-info{display:flex;flex-direction:column;gap:calc(var(--lu)*.6);min-width:0;max-width:100%;}
+#bs .lng-info-b{min-width:0;padding:calc(var(--lu)*.55) calc(var(--lu)*.9);border-radius:calc(var(--lu)*.7);background:rgba(255,255,255,.05);border-left:3px solid rgba(255,255,255,.3);}
+#bs .lng-info-tech{border-left-color:var(--lng-ac);}
+#bs .lng-info-k{font-size:max(10px,calc(var(--lu)*.72));font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:.35em;}
+#bs .lng-info-v{font-size:max(13px,calc(var(--lu)*1.1));font-weight:600;line-height:1.35;color:rgba(255,255,255,.92);white-space:pre-line;overflow-wrap:anywhere;}
+#bs .lng-hero .lng-ph{width:min(calc(100cqh - var(--lu)*22),34cqw);}
+#bs .lng-hero-main{min-height:0;}
+#bs .lng-hero-main .lng-info{flex:0 1 auto;min-height:0;width:100%;overflow-y:auto;}
+#bs .lng-card{grid-template-rows:auto auto auto;}
+#bs .lng-card .lng-ph{grid-row:1/4;align-self:start;}
+#bs .lng-card .lng-info{grid-column:2/4;grid-row:3;}
+#bs .lng-card .lng-info-v{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+#bs .lng-card[hidden],#bs .lng-later[hidden],#bs .lng-later [hidden]{display:none;}
+#bs .lng-meta .vw-chip,#bs .lng-card-meta .vw-chip,#bs .lng-meta .it-badge,#bs .lng-card-meta .it-badge{font-family:var(--ff);}
+#bs-hdr .vw-sync{margin-left:0;}
+@media (max-aspect-ratio:4/5){#bs .lng-hero .lng-ph{width:calc(var(--lu)*15);}}
+@media (max-width:700px){
+  #bs .lng-hero .lng-ph{width:100%;}
+  #bs .lng-hero-main .lng-info{overflow:visible;}
+  #bs .lng-info-v{font-size:14px;}
+  #bs-hdr .vw-sync{order:5;}
+  /* As Backstage did before: on a phone the customer logo takes the brand's
+     place (the close button is the way out). */
+  #bs.vw-logo-on #st-brand-bs{display:none;}
+}
 @media (max-width:700px){
   #smv-hdr{padding:calc(env(safe-area-inset-top) + 8px) 12px 10px;gap:8px;}
   #st-brand-smv{display:inline-flex;}
@@ -735,7 +766,7 @@ html:fullscreen #lng-hdr:hover #lng-fs-btn,html:-webkit-full-screen #lng-hdr:hov
   .share-copy-btn{min-height:44px;min-width:88px;font-size:13px;margin-left:auto;}
   .share-link-head{width:auto;flex:1 1 0;min-width:0;flex-wrap:wrap;row-gap:4px;}
   .share-copy-msg{order:4;}
-  #foh-hdr .vw-sync, #bs-hdr .vw-sync, #tl-hdr .vw-sync{grid-column:1/-1;grid-row:3;justify-self:start;margin-left:0;}
+  #foh-hdr .vw-sync, #tl-hdr .vw-sync{grid-column:1/-1;grid-row:3;justify-self:start;margin-left:0;}
   .vw-empty{margin:20px 12px;}
 }
 
@@ -1050,36 +1081,9 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
 .csb.otw{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.3);color:#fdba74;}
 .csb.unknown{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.55);}
 
-/* ── BACKSTAGE SCREEN ── */
-#bs{position:fixed;inset:0;z-index:200;background:#050508;display:none;flex-direction:column;}
-#bs.open{display:flex;}
-#bs-hdr{flex-shrink:0;height:50px;display:flex;align-items:center;gap:12px;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.06);}
-#bs-title{font-size:13px;font-weight:800;color:#fff;white-space:nowrap;}
-#bs-clock{font-family:var(--ffm);font-size:13px;color:rgba(255,255,255,.3);margin-left:auto;}
+/* ── BACKSTAGE SCREEN: styled by the Artist lounge block above (:is(#lng,#bs)), crew extras there too. ── */
 .bshbtn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.45);transition:all .15s;white-space:nowrap;}
 .bshbtn:hover{background:rgba(255,255,255,.1);color:#fff;}
-#bs-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;}
-#bs-body::-webkit-scrollbar{width:4px;}
-#bs-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
-
-/* Backstage row */
-.bs-row{border-radius:12px;padding:16px 10px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);position:relative;overflow:hidden;transition:border-color .4s;}
-.bs-row.bs-live{background:rgba(255,255,255,.03);}
-.bs-row.bs-past{opacity:.25;}
-.bs-row-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;}
-.bs-row-left{flex:1;min-width:0;}
-.bs-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;margin-bottom:6px;}
-.bs-badge-dot{width:6px;height:6px;border-radius:50%;}
-.bs-artist{font-size:clamp(18px,2.5vw,30px);font-weight:900;letter-spacing:-.5px;color:#fff;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.bs-meta{font-size:11px;color:rgba(255,255,255,.3);margin-top:3px;font-weight:500;}
-.bs-note-inline{margin-top:6px;font-size:11px;color:rgba(255,255,255,.4);padding:5px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.12);line-height:1.4;}
-.bs-row-right{flex-shrink:0;text-align:right;}
-.bs-cd-lbl{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:3px;}
-.bs-cd{font-family:var(--ffm);font-size:clamp(28px,4vw,46px);font-weight:700;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums;transition:color .4s;}
-/* Progress bar */
-.bs-bar-wrap{width:100%;height:8px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden;}
-.bs-bar{height:100%;border-radius:99px;transition:width .5s linear,background .5s;}
-
 /* ── STAGE VIEW ── */
 #sv{position:fixed;inset:0;z-index:210;background:#000;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:none;}
 #sv.open{display:flex;}
@@ -1220,7 +1224,7 @@ textarea.fi{resize:vertical;min-height:70px;font-family:var(--ff);line-height:1.
    the stagetimer.nl mark (.vw-st-mark) then sits in the same header, so
    the Stagetimer brand never disappears behind a customer logo. Heights stay
    inside the existing header rows: no layout jump when a logo arrives. */
-#bs .vw-logo,#foh .vw-logo,#bs .vw-st-mark,#foh .vw-st-mark{display:none;}
+#foh .vw-logo,#foh .vw-st-mark{display:none;}
 #st-pub-mark{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:7500;display:inline-flex;align-items:center;gap:6px;
   padding:4px 9px 4px 4px;border-radius:8px;background:rgba(10,10,16,.55);border:1px solid rgba(255,255,255,.1);pointer-events:none;line-height:1;}
 #st-pub-mark img:first-child{width:18px;height:18px;}
@@ -1229,23 +1233,23 @@ html.st-pub-mark .vw-st-mark{display:none!important;}
 /* Room for the mark at the end of scrolling share screens (above the Wall
    and check-in, below dialogs). */
 html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
-#bs.vw-logo-on .vw-logo,#foh.vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:30px;max-width:180px;object-fit:contain;}
-#bs.vw-logo-bd .vw-logo,#foh.vw-logo-bd .vw-logo{background:#fff;padding:3px 7px;border-radius:6px;max-height:26px;}
-#bs.vw-logo-on .vw-st-mark,#foh.vw-logo-on .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;
+#foh.vw-logo-on .vw-logo{display:block;flex-shrink:0;width:auto;height:auto;max-height:30px;max-width:180px;object-fit:contain;}
+#foh.vw-logo-bd .vw-logo{background:#fff;padding:3px 7px;border-radius:6px;max-height:26px;}
+#foh.vw-logo-on .vw-st-mark{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;line-height:1;
   padding:4px 9px 4px 4px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
 .vw-st-mark .vw-st-icon{height:20px;width:20px;border-radius:4px;display:block;flex-shrink:0;}
 .vw-st-mark .vw-st-word{height:13px;width:auto;display:block;filter:brightness(0) invert(1);opacity:.85;}
 @media (max-width:1100px){
-  #bs.vw-logo-on .vw-logo,#foh.vw-logo-on .vw-logo{max-width:130px;}
+  #foh.vw-logo-on .vw-logo{max-width:130px;}
   /* Operator copy: the stage select already names the stage; frees the room the logo takes. */
-  body:not(.public-mode) #bs.vw-logo-on #bs-title,body:not(.public-mode) #foh.vw-logo-on #foh-title{display:none;}
+  body:not(.public-mode) #foh.vw-logo-on #foh-title{display:none;}
 }
 /* Narrow phones, operator copy (close button in the same cell): the app icon
    alone, the wordmark does not fit next to the close button. */
 @media (max-width:374px){
-  body:not(.public-mode) #bs .vw-st-mark .vw-st-word,body:not(.public-mode) #foh .vw-st-mark .vw-st-word{display:none;}
-  body:not(.public-mode) #bs .vw-st-mark .vw-st-icon,body:not(.public-mode) #foh .vw-st-mark .vw-st-icon{display:block;height:24px;width:24px;}
-  body:not(.public-mode) #bs.vw-logo-on .vw-st-mark,body:not(.public-mode) #foh.vw-logo-on .vw-st-mark{padding:4px;}
+  body:not(.public-mode) #foh .vw-st-mark .vw-st-word{display:none;}
+  body:not(.public-mode) #foh .vw-st-mark .vw-st-icon{display:block;height:24px;width:24px;}
+  body:not(.public-mode) #foh.vw-logo-on .vw-st-mark{padding:4px;}
 }
 /* Logo dialog (dashboard row + Project settings) */
 .st-logo-prev{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 12px;}
@@ -1787,17 +1791,6 @@ html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
   #admin-body{padding:14px;}
   .admin-cols{grid-template-columns:1fr;}
 
-  /* Backstage rows */
-  #bs-body{padding:10px 12px;}
-  .bs-row{padding:16px 14px 80px!important;margin-bottom:6px;}
-  .bs-row-top{flex-direction:row!important;align-items:center!important;gap:12px!important;margin-bottom:12px!important;}
-  .bs-row-left{flex:1;min-width:0;}
-  .bs-row-right{flex-shrink:0;text-align:right;}
-  .bs-artist{white-space:normal!important;font-size:clamp(18px,5.5vw,26px)!important;line-height:1.2!important;}
-  .bs-badge{font-size:11px!important;margin-bottom:6px!important;}
-  .bs-cd-lbl{font-size:10px!important;margin-bottom:2px!important;}
-  .bs-cd{font-size:clamp(36px,11vw,52px)!important;line-height:1!important;}
-
   /* ═══════════════════════════════════════════════════════════════
      MOBILE FULLSCREEN HEADERS - FOH / Backstage / Timeline
      Locked structure:
@@ -1809,7 +1802,7 @@ html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
      Row 1 is invariant: brand left, close right, no exceptions.
      Row 3's right cell is empty on Backstage / Timeline.
      ═══════════════════════════════════════════════════════════════ */
-  #foh-hdr, #bs-hdr, #tl-hdr{
+  #foh-hdr, #tl-hdr{
     display:grid;
     grid-template-columns:1fr auto 1fr;
     grid-template-rows:auto auto auto;
@@ -1821,7 +1814,7 @@ html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
     align-items:center;
   }
   /* Row 1, col 1: Stagetimer brand (mark + wordmark) */
-  #st-brand-foh, #st-brand-bs, #st-brand-tl{display:inline-flex;grid-column:1;grid-row:1;justify-self:start;}
+  #st-brand-foh, #st-brand-tl{display:inline-flex;grid-column:1;grid-row:1;justify-self:start;}
 
   /* Stage View - same header treatment, fixed at top */
   #sv-hdr{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
@@ -1836,30 +1829,30 @@ html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
   #sv-exit{display:none !important;}
   #sv-clock{display:none !important;}
   /* Row 1, col 2: local time, big and centered */
-  #foh-clock, #bs-clock, #tl-clock{grid-column:2;grid-row:1;justify-self:center;margin:0;
+  #foh-clock, #tl-clock{grid-column:2;grid-row:1;justify-self:center;margin:0;
     font-family:var(--ffm);font-size:18px;font-weight:700;color:#fff;letter-spacing:.02em;
     font-variant-numeric:tabular-nums;min-width:96px;text-align:center;}
   /* Row 1, col 3: close button */
-  #foh-close-btn, #bs-close-btn, #tl-close-btn{grid-column:3;grid-row:1;justify-self:end;min-height:44px;min-width:44px;padding:0;font-size:16px;justify-content:center;}
+  #foh-close-btn, #tl-close-btn{grid-column:3;grid-row:1;justify-self:end;min-height:44px;min-width:44px;padding:0;font-size:16px;justify-content:center;}
   /* Page-title text and project logos are gone - only Stagetimer brand */
-  #foh-title, #bs-title, #tl-title{display:none;}
+  #foh-title, #tl-title{display:none;}
   #co-logo-tl{display:none;}
   /* With a customer logo: the logo takes row 1, col 1; the stagetimer.nl
      mark moves to col 3, left of the close button (alone there on share
      links, which have no close button). */
-  #bs.vw-logo-on #st-brand-bs, #foh.vw-logo-on #st-brand-foh{display:none;}
-  #bs.vw-logo-on .vw-logo, #foh.vw-logo-on .vw-logo{grid-column:1;grid-row:1;justify-self:start;max-width:100%;max-height:32px;}
-  #bs.vw-logo-bd .vw-logo, #foh.vw-logo-bd .vw-logo{max-height:28px;}
-  #bs.vw-logo-on .vw-st-mark, #foh.vw-logo-on .vw-st-mark{grid-column:3;grid-row:1;justify-self:end;margin-right:52px;padding:6px 8px;}
-  #bs .vw-st-mark .vw-st-icon, #foh .vw-st-mark .vw-st-icon{display:none;}
+  #foh.vw-logo-on #st-brand-foh{display:none;}
+  #foh.vw-logo-on .vw-logo{grid-column:1;grid-row:1;justify-self:start;max-width:100%;max-height:32px;}
+  #foh.vw-logo-bd .vw-logo{max-height:28px;}
+  #foh.vw-logo-on .vw-st-mark{grid-column:3;grid-row:1;justify-self:end;margin-right:52px;padding:6px 8px;}
+  #foh .vw-st-mark .vw-st-icon{display:none;}
   /* Share links: same 38px pill as the brand it replaces, so row 1 keeps its height. */
-  body.public-mode #bs.vw-logo-on .vw-st-mark, body.public-mode #foh.vw-logo-on .vw-st-mark{margin-right:0;padding:5px 9px 5px 5px;gap:8px;}
-  body.public-mode #bs .vw-st-mark .vw-st-icon, body.public-mode #foh .vw-st-mark .vw-st-icon{display:block;height:26px;width:26px;border-radius:5px;}
+  body.public-mode #foh.vw-logo-on .vw-st-mark{margin-right:0;padding:5px 9px 5px 5px;gap:8px;}
+  body.public-mode #foh .vw-st-mark .vw-st-icon{display:block;height:26px;width:26px;border-radius:5px;}
   /* Row 2: stage select (cols 1-2) + day picker (col 3) on the SAME row.
      Stage select and day select must match height - both 48px. */
-  #foh-ssel, #bs-ssel{grid-column:1/span 2;grid-row:2;min-height:48px;height:48px;padding:0 32px 0 12px;font-size:15px;font-weight:700;width:100%;border-radius:10px;}
+  #foh-ssel{grid-column:1/span 2;grid-row:2;min-height:48px;height:48px;padding:0 32px 0 12px;font-size:15px;font-weight:700;width:100%;border-radius:10px;}
   #tl-hdr-spacer{display:none;}
-  #foh-dtabs, #bs-dtabs{grid-column:3;grid-row:2;min-width:0;justify-self:stretch;}
+  #foh-dtabs{grid-column:3;grid-row:2;min-width:0;justify-self:stretch;}
   /* Timeline has no stage selector - day picker fills full row 2 */
   #tl-dtabs{grid-column:1/span 3;grid-row:2;min-width:0;}
   /* "+ Show" header button removed from FOH - adding shows happens from the
@@ -6522,18 +6515,22 @@ function renderTbar(){
   <div id="lng-body"></div>
 </div>
 
-<!-- BACKSTAGE -->
+<!-- BACKSTAGE (in-app + share link mode=backstage&pid=..&sid=<stage>): the
+     crew screen of one stage. Same screen as the Artist lounge (shared CSS
+     and renderer, see renderBS), plus each act's technical rider and show
+     note; crew-facing, so it keeps the "Last sync" pill. -->
 <div id="bs">
   <div id="bs-hdr">
     <a class="st-brand" id="st-brand-bs" href="#" onclick="closeBS();return false;" aria-label="Stagetimer home"><img class="st-brand-icon" src="/app-icon.svg" alt=""><img class="st-brand-mark" src="/stagetimer-wordmark.png" alt="Stagetimer"></a>
     <img class="vw-logo" id="vw-logo-bs" alt="" decoding="async" onerror="_vwLogoFailed(this)">
-    <div id="bs-title">Backstage · <span id="bs-sname">-</span></div>
-    <select id="bs-ssel" class="hsel" aria-label="Stage" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.6);"></select>
+    <div id="bs-title"><div id="bs-sname">-</div><div id="bs-day"></div></div>
+    <select id="bs-ssel" class="hsel" aria-label="Stage" onchange="_pickStageBS(this.value)"></select>
     <div id="bs-dtabs"></div>
     <span class="vw-sync" hidden></span>
-    <div id="bs-clock"></div>
     <span class="vw-st-mark" role="img" aria-label="Powered by stagetimer.nl"><img class="vw-st-icon" src="/app-icon.svg" alt=""><img class="vw-st-word" src="/stagetimer-wordmark.png" alt=""></span>
+    <button class="bshbtn" id="bs-fs-btn" data-fs-btn hidden onclick="stFullscreen.toggle()" aria-label="Enter fullscreen" title="Fullscreen (Esc to leave)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
     <button class="bshbtn" id="bs-close-btn" onclick="closeBS()" aria-label="Close Backstage">✕</button>
+    <div id="bs-clockw"><span class="lng-clock-lbl">Local time</span><div id="bs-clock"></div></div>
   </div>
   <div id="bs-body"></div>
 </div>
@@ -6943,7 +6940,8 @@ function setNxt(nxt){
 // import; shown on the operator schedule (chip) and on the check-in and
 // stage manager share screens. Share links: only p_mode checkin /
 // stagemanager receive it (get_shared_project matrix, migration
-// 20261013100000); every other share screen gets the show without it.
+// 20261013100000); backstage gets only {tech} (its tech rider block, 24-10);
+// every other share screen gets the show without it.
 const RIDER_KEYS=['drinks','tech'],RIDER_MAX=2000;
 const RIDER_LABEL={drinks:'Drinks / hospitality',tech:'Technical requirements'};
 // {drinks, tech} as trimmed strings ('' when missing or not text).
@@ -7175,12 +7173,8 @@ function renderHeader(){
   document.getElementById('foh-sname').textContent=activeStageObj().name;
   document.getElementById('foh-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayFOH');
 
-  // Backstage selects
-  const bs=document.getElementById('bs-ssel');
-  bs.innerHTML=G.stages.map(s=>`<option value="${escH(s.id)}">${escH(s.name)}</option>`).join('');
-  bs.value=G.activeStage;bs.onchange=()=>{G.activeStage=bs.value;_selChanged('stage');renderBS();renderAll();};
-  document.getElementById('bs-sname').textContent=activeStageObj().name;
-  document.getElementById('bs-dtabs').innerHTML=_dayPickerHTML(G.activeDay,'_pickDayBS','bshbtn');
+  // Backstage: renderBS fills its own stage select and day tabs (signature-
+  // cached, like the Artist lounge it shares the renderer with).
 
   // Timeline day tabs - signature-cached so we don't destroy an open
   // <select> picker on iOS Safari when an unrelated render happens
@@ -7198,6 +7192,7 @@ function setDay(d){G.activeDay=d;M.idx=0;mReset();_selChanged('day');renderAll()
 // Day-picker handlers - kept thin so they can be referenced from inline onclick/onchange.
 function _pickDayFOH(id){setDay(id);renderFOH();}
 function _pickDayBS(id){setDay(id);renderBS();}
+function _pickStageBS(id){if(PUBLIC_MODE||!id)return;G.activeStage=id;_selChanged('stage');renderBS();renderAll();}
 function _pickDayTL(id){setDay(id);renderTL();}
 function _pickDayOV(id){G.activeDay=id;_selChanged('day');renderOV();}
 // Render BOTH a button pill row (desktop) and a native <select> (mobile).
@@ -7570,172 +7565,22 @@ function _fohBeep(kind){
   }catch(e){console.warn('[foh-cue] beep:',e);}
 }
 
-// ══ BACKSTAGE SCREEN
-function renderBS(){
-  if(!document.getElementById('bs').classList.contains('open'))return;
-  _vwLogo('bs');
-  document.getElementById('bs-sname').textContent=activeStageObj().name;
-  const shows=_bsShows();
-  const now=nowMs();
-  const n=nowSecAdj(),nm=nowMinAdj();
-  const body=document.getElementById('bs-body');
-  // Rebuild only when what is drawn changed (the 8 s operator refresh and
-  // every poll used to rebuild the list and reset its scroll position);
-  // tickBS keeps the countdowns and bars moving.
-  const sig=JSON.stringify([G.activeStage,G.activeDay,activeStageObj().name,
-    shows.map(s=>[s.id,s.artist,s.start,s.end,s.booth,s.type,s.note,s.hidden,vwStatusKey(s,now)])]);
-  if(vwSame(body,sig))return;
+// ══ BACKSTAGE SCREEN - the crew screen of one stage, in the app and as share
+// link mode=backstage&pid=..&sid=<stage>. Since 24-10 (owner: "the Artist
+// lounge, but with the technical info") it is the lounge screen: renderBS /
+// tickBS are the lounge renderer's 'bs' variant (_LNG_V.bs, under ARTIST
+// LOUNGE), which adds each act's technical rider and show note. Timed FOH
+// notes stay off it on purpose: they are front-of-house cues (they count down
+// and alert in the FOH view). Never the drinks rider (the check-in desk's).
+function renderBS(){_lngRender(_LNG_V.bs);}
+function tickBS(){const r=document.getElementById('bs');if(r&&r.classList.contains('open')&&G)_lngRender(_LNG_V.bs);}
 
-  if(!shows.length||shows.every(s=>_showIsPast(s,now))){
-    body.innerHTML=vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!_isPublicView()});
-    return;
-  }
-
-  // Backstage shows the show's own note only. Timed FOH notes are cues for
-  // front of house (they count down and alert in the FOH view) and stay off
-  // the backstage screen on purpose.
-  const notesBlock=s=>{
-    const showNote=(s.note||'').trim();
-    if(!showNote)return'';
-    const items=[];
-    items.push(`<div style="font-size:12px;color:rgba(255,255,255,.55);padding:6px 9px;background:rgba(255,255,255,.04);border-radius:5px;border-left:2px solid rgba(255,255,255,.18);line-height:1.4;margin-top:6px;">${escH(showNote)}</div>`);
-    return`<div class="bs-notes" style="margin-top:8px;">${items.join('')}</div>`;
-  };
-  body.innerHTML=shows.map((s,i)=>{
-    const showIsToday=isShowToday(s);
-    const sm=adjM(t2m(s.start));let em=adjM(t2m(s.end));if(em<=sm)em+=1440;
-    const isNow=_showIsLive(s),isPast=_showIsPast(s);
-    const boothCol=s.booth==='A'?'#6366f1':s.booth==='B'?'#22c55e':'#888';
-    const boothBg=s.booth==='A'?'rgba(99,102,241,.18)':s.booth==='B'?'rgba(34,197,94,.14)':'rgba(255,255,255,.08)';
-
-    if(isNow){
-      // LIVE: bar = set progress, countdown = remaining - timestamp-based
-      const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      const rem=Math.round((ea.getTime()-now)/1000);
-      const dur=Math.round((ea.getTime()-sa.getTime())/1000);
-      const pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
-      const col=tColor(rem);
-      return`<div class="bs-row bs-live" id="bsr-${i}" style="border-color:${col}33;background:${tBg(col,pct/100*0.22)};">
-        <div class="bs-row-top">
-          <div class="bs-row-left">
-            <div class="bs-badge" style="color:${col};">
-              <span class="bs-badge-dot lp" style="background:${col};"></span>${rem<0?VW_STATUS.live+' · '+VW_STATUS.overtime:VW_STATUS.live}${s.hidden?' '+vwChip('hidden'):''}
-              ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
-              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
-            </div>
-            <div class="bs-artist">${escH(s.artist)}</div>
-          </div>
-          <div class="bs-row-right">
-            <div class="bs-cd-lbl">Remaining</div>
-            <div class="bs-cd ${shouldBlink(rem)?'ot':''}" id="bs-cd-${i}" style="color:${col};">${s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1))}</div>
-          </div>
-        </div>
-        <div class="bs-bar-wrap"><div class="bs-bar" id="bs-bar-${i}" style="width:${pct.toFixed(1)}%;background:${col};"></div></div>
-        ${notesBlock(s)}
-      </div>`;
-    } else if(isPast){
-      return'';
-    } else if(!showIsToday){
-      // SCHEDULED (not today): static start time + date, no live countdown
-      const dateLbl=vwDateLabel(showDate(s));
-      return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.05);opacity:.7;">
-        <div class="bs-row-top">
-          <div class="bs-row-left">
-            <div class="bs-badge" style="color:rgba(255,255,255,.3);">
-              ${VW_STATUS.scheduled}${s.hidden?' '+vwChip('hidden'):''}
-              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
-            </div>
-            <div class="bs-artist" style="color:rgba(255,255,255,.7);">${escH(s.artist)}</div>
-          </div>
-          <div class="bs-row-right">
-            <div class="bs-cd-lbl">${dateLbl||'Date unknown'}</div>
-            <div class="bs-cd" style="color:rgba(255,255,255,.55);font-size:clamp(28px,7vw,40px);">${vwTime(s.start)}</div>
-          </div>
-        </div>
-        ${notesBlock(s)}
-      </div>`;
-    } else {
-      // UPCOMING (today): bar fills up as show approaches (0% = far, 100% = starting now)
-      const sa=_showStartsAt(s);
-      const prevShow=shows[i-1];
-      const prevEa=prevShow?_showEndsAt(prevShow):null;
-      const timeUntilStart=sa?Math.max(0,Math.round((sa.getTime()-now)/1000)):(sm-nm)*60;
-      const gapSec=(sa&&prevEa)?Math.max(1,Math.round((sa.getTime()-prevEa.getTime())/1000)):Math.max(1,(sm-(prevShow?adjM(t2m(prevShow.end)):Math.max(0,sm-60)))*60);
-      const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
-      // Color: close = green (about to go on), far = muted blue
-      const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
-      const rank=i-(shows.findIndex(x=>{const ea2=_showEndsAt(x);return ea2?now<ea2.getTime():true;}));
-
-      return`<div class="bs-row" id="bsr-${i}" style="border-color:rgba(255,255,255,.06);">
-        <div class="bs-row-top">
-          <div class="bs-row-left">
-            <div class="bs-badge" style="color:rgba(255,255,255,.3);">
-              ${VW_STATUS.next}${rank>0?' '+rank:''}${s.hidden?' '+vwChip('hidden'):''}
-              ${itemTypeBadge(s)?`<span style="margin-left:6px;display:inline-block;vertical-align:middle;">${itemTypeBadge(s)}</span>`:''}
-              ${s.booth?`<span style="font-size:9px;padding:2px 7px;border-radius:99px;background:${boothBg};color:${boothCol};margin-left:4px;">Booth ${escH(s.booth)}</span>`:''}
-            </div>
-            <div class="bs-artist" style="color:rgba(255,255,255,.75);">${escH(s.artist)}</div>
-          </div>
-          <div class="bs-row-right">
-            <div class="bs-cd-lbl">Starts in</div>
-            <div class="bs-cd" id="bs-cd-${i}" style="color:${upCol};">${s2cdH(Math.ceil(Math.max(0,timeUntilStart)))}</div>
-          </div>
-        </div>
-        <div class="bs-bar-wrap" style="background:rgba(255,255,255,.05);">
-          <div class="bs-bar" id="bs-bar-${i}" style="width:${pct.toFixed(1)}%;background:${upCol};"></div>
-        </div>
-        ${notesBlock(s)}
-      </div>`;
-    }
-  }).join('');
-}
-
-// Backstage list: renderBS and tickBS address rows by index, so both must
-// use exactly this list. Cancelled shows are left out (same rule as the live
-// pick): there is no cancelled styling here, they would read as upcoming.
+// Backstage's acts: like the lounge's, but in the app hidden acts stay on it
+// (with a Hidden chip) for the crew; a share link never gets them. Cancelled
+// acts are left out (same rule as the live pick).
 function _bsShows(){
   return getShows(G.activeStage,G.activeDay,!isActiveDayToday()).filter(s=>showAllowed(s,'live',_isPublicView()));
 }
-// Fast tick for backstage (update just countdowns & bars without full re-render)
-function tickBS(){
-  if(!document.getElementById('bs').classList.contains('open'))return;
-  const shows=_bsShows();
-  const nowMs=window.nowMs(); // festival clock (server-corrected)
-  shows.forEach((s,i)=>{
-    const isNow=_showIsLive(s,nowMs),isPast=_showIsPast(s,nowMs);
-    const cdEl=document.getElementById('bs-cd-'+i);
-    const barEl=document.getElementById('bs-bar-'+i);
-    if(!cdEl||!barEl)return;
-    if(isNow){
-      const sa=_showStartsAt(s),ea=_showEndsAt(s);
-      if(!sa||!ea)return;
-      const rem=Math.round((ea.getTime()-nowMs)/1000);
-      const dur=Math.round((ea.getTime()-sa.getTime())/1000);
-      const pct=Math.max(0,Math.min(100,(1-rem/dur)*100));
-      const col=tColor(rem);
-      cdEl.textContent=s2cdH(Math.ceil(Math.abs(rem))*(rem<0?-1:1));
-      cdEl.style.color=col;
-      cdEl.className='bs-cd'+(shouldBlink(rem)?' ot':'');
-      barEl.style.width=pct.toFixed(1)+'%';
-      barEl.style.background=col;
-      const row=document.getElementById('bsr-'+i);
-      if(row){row.style.borderColor=col+'33';row.style.background=tBg(col,pct/100*0.22);}
-    }else if(!isPast){
-      const sa=_showStartsAt(s);if(!sa)return;
-      const prevShow=shows[i-1];
-      const prevEa=prevShow?_showEndsAt(prevShow):null;
-      const timeUntilStart=Math.max(0,Math.round((sa.getTime()-nowMs)/1000));
-      const gapSec=prevEa?Math.max(1,Math.round((sa.getTime()-prevEa.getTime())/1000)):Math.max(1,timeUntilStart);
-      const pct=Math.max(0,Math.min(100,(1-timeUntilStart/gapSec)*100));
-      const upCol=timeUntilStart<600?'#22c55e':timeUntilStart<1800?'#f97316':'#6366f1';
-      cdEl.textContent=s2cdH(Math.ceil(timeUntilStart));
-      cdEl.style.color=upCol;
-      barEl.style.width=pct.toFixed(1)+'%';
-      barEl.style.background=upCol;
-    }
-  });
-}
-
 // ══ STAGE VIEW
 function renderSV(){
   if(!document.getElementById('sv').classList.contains('open'))return;
@@ -8468,7 +8313,7 @@ function _syncMobNavActive(){
 function openFOH(){_closeAllScreens();document.getElementById('foh').classList.add('open');renderFOH();_acquireWakeLock();_syncMobNavActive();}
 function closeFOH(){document.getElementById('foh').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openBS(){_closeAllScreens();document.getElementById('bs').classList.add('open');renderBS();_acquireWakeLock();_syncMobNavActive();}
-function closeBS(){document.getElementById('bs').classList.remove('open');_releaseWakeLockIfIdle();_syncMobNavActive();}
+function closeBS(){document.getElementById('bs').classList.remove('open');_lngForget(_LNG_V.bs);_releaseWakeLockIfIdle();_syncMobNavActive();}
 function openSV(){_closeAllScreens();_svZoomLock(true);document.getElementById('sv').classList.add('open');renderSV();_acquireWakeLock();_syncMobNavActive();}
 function closeSV(){document.getElementById('sv').classList.remove('open');_svZoomLock(false);_releaseWakeLockIfIdle();_syncMobNavActive();}
 // Pinch-zoom is allowed everywhere (WCAG 1.4.4) except on the booth screen,
@@ -13400,13 +13245,21 @@ function _lngCdText(sec){
   if(sec>=86400){const d=Math.floor(sec/86400);return`${d} day${d===1?'':'s'}`;}
   return s2cdH(sec);
 }
-const _lng={refs:null};
+// The two screens this renderer draws. lng: the lounge (artists). bs:
+// Backstage (crew, owner 24-10): the same screen plus each act's technical
+// rider and show note, hidden acts in the app (Hidden chip), item-type badge,
+// the "Last sync" pill; three cards (the text makes them taller), the rest
+// under "Later". refs: the elements _lngTick moves, per screen.
+const _LNG_V={
+  lng:{id:'lng',crew:false,max:LNG_NEXT_MAX,pickDay:'_pickDayLNG',refs:null},
+  bs:{id:'bs',crew:true,max:3,pickDay:'_pickDayBS',refs:null},
+};
 function _lngShows(){return getShows(G.activeStage,G.activeDay,!isActiveDayToday()).filter(s=>showAllowed(s,'live',true));}
 // hero: the act on stage, else the next one (with c0, the start of its
 // changeover: the end of the act before it, or an hour before). cards / later:
 // the acts after the hero. d0..d1: the day on this stage, for the mini bars.
-function _lngModel(n){
-  const all=_lngShows();
+function _lngModel(n,V){
+  const all=V.crew?_bsShows():_lngShows();
   const cur=pickLiveShow(all,_showIv,n);
   const next=all.filter(s=>_showIsFuture(s,n));
   const hero=cur?{kind:'live',s:cur.s,iv:cur.iv}:next.length?{kind:'next',s:next[0],iv:_showIv(next[0])}:null;
@@ -13418,7 +13271,7 @@ function _lngModel(n){
   const list=cur?next:next.slice(1);
   let d0=Infinity,d1=-Infinity;
   for(const s of all){const iv=_showIv(s);if(iv.startMs<d0)d0=iv.startMs;if(iv.endMs>d1)d1=iv.endMs;}
-  return{all,hero,cards:list.slice(0,LNG_NEXT_MAX),later:list.slice(LNG_NEXT_MAX,LNG_NEXT_MAX+LNG_LATER_MAX),d0,d1};
+  return{all,hero,cards:list.slice(0,V.max),later:list.slice(V.max,V.max+LNG_LATER_MAX),d0,d1};
 }
 // Photo box: the initials always, the photo on top when there is one. Its src
 // goes in through img.src after the markup is built (phs[i]), never into it.
@@ -13428,7 +13281,19 @@ function _lngPhHTML(s,phs){
   return`<div class="lng-ph"><span class="lng-mono" aria-hidden="true">${escH(_lngInitials(s.artist))}</span>${img}</div>`;
 }
 const _lngBooth=s=>s.booth?`<span class="lng-booth">Booth ${escH(s.booth)}</span>`:'';
-function _lngHeroHTML(h,phs){
+// Crew only: Hidden chip (in the app) and the item-type badge after the booth.
+const _lngCrewTags=(s,V)=>V.crew?(s.hidden?vwChip('hidden'):'')+itemTypeBadge(s):'';
+const _lngNote=s=>typeof s.note==='string'?s.note.trim():'';
+// Crew only (Backstage): the technical rider and the show note as text, line
+// breaks kept (CSS pre-line). Never the drinks rider: hospitality is the
+// check-in desk's business, and the backstage share feed does not carry it.
+function _lngInfoHTML(s,V){
+  if(!V.crew)return'';
+  const t=riderOf(s).tech,n=_lngNote(s);if(!t&&!n)return'';
+  const b=(k,lbl,v)=>`<div class="lng-info-b lng-info-${k}"><div class="lng-info-k">${lbl}</div><div class="lng-info-v">${escH(v)}</div></div>`;
+  return`<div class="lng-info">${t?b('tech',RIDER_LABEL.tech,t):''}${n?b('note','Note',n):''}</div>`;
+}
+function _lngHeroHTML(h,phs,V){
   const s=h.s,live=h.kind==='live',lbl=live?'Now on stage':'Next on stage';
   const a=_lngT(live?h.iv.startMs:h.c0),b=_lngT(live?h.iv.endMs:h.iv.startMs);
   return`<section class="lng-hero ${live?'lng-live':'lng-next'}" aria-label="${lbl}"><div class="lng-hero-in"><div class="lng-sheen" aria-hidden="true"></div>
@@ -13437,30 +13302,30 @@ function _lngHeroHTML(h,phs){
       <div class="lng-name ${_lngNameCls(s.artist)}">${escH(s.artist||'(no name)')}</div>
     </div>${_lngPhHTML(s,phs)}
     <div class="lng-hero-main">
-      <div class="lng-meta"><span>${_lngT(h.iv.startMs)}–${_lngT(h.iv.endMs)}</span>${_lngBooth(s)}</div>
-      <div class="lng-cdw"><div class="lng-cd-lbl">${live?'Set ends in':'Starts in'}</div><div class="lng-cd"></div></div>
+      <div class="lng-meta"><span>${_lngT(h.iv.startMs)}–${_lngT(h.iv.endMs)}</span>${_lngBooth(s)}${_lngCrewTags(s,V)}</div>
+      <div class="lng-cdw"><div class="lng-cd-lbl">${live?'Set ends in':'Starts in'}</div><div class="lng-cd"></div></div>${_lngInfoHTML(s,V)}
     </div>
     <div class="lng-tl" aria-hidden="true"><span class="lng-tl-t">${a}</span><div class="lng-tl-track"><div class="lng-tl-clip"><div class="lng-tl-fill"></div></div><i class="lng-tl-dot"></i></div><span class="lng-tl-t">${b}</span>
       <div class="lng-tl-sub">${live?'<span class="lng-tl-el"><b></b> played</span><span class="lng-tl-rem"><b></b> left</span>':`<span>Changeover</span><span>On stage <b>${b}</b></span>`}</div></div>
   </div></section>`;
 }
 // The "Later" rows scroll up and back down slowly when they don't fit (a TV
-// can't be scrolled by hand). Re-measured on every rebuild and on resize.
-function _lngRowsFit(){
-  const box=document.querySelector('#lng .lng-rows'),inn=box&&box.firstElementChild;if(!inn)return;
+// can't be scrolled by hand). Re-measured after every rebuild / fit and on resize.
+function _lngRowsFit(root){
+  const box=root&&root.querySelector('.lng-rows'),inn=box&&box.firstElementChild;if(!inn)return;
   inn.classList.remove('lng-scroll');inn.style.removeProperty('--lng-shift');inn.style.removeProperty('--lng-dur');
   const over=inn.scrollHeight-box.clientHeight;
   if(over>4){inn.style.setProperty('--lng-shift',`-${over}px`);inn.style.setProperty('--lng-dur',`${Math.max(12,Math.round(over/18))*2+8}s`);inn.classList.add('lng-scroll');box.classList.add('lng-over');}
   else box.classList.remove('lng-over');
 }
-window.addEventListener('resize',()=>{if(document.getElementById('lng')?.classList.contains('open'))_lngRowsFit();});
-function _lngCardHTML(s,i,m,phs){
+window.addEventListener('resize',()=>{['lng','bs'].forEach(id=>{if(document.getElementById(id)?.classList.contains('open'))_lngRowsFit(document.getElementById(id+'-body'));});});
+function _lngCardHTML(s,i,m,phs,V){
   const iv=_showIv(s),span=m.d1-m.d0;
   const l=span>0?Math.max(0,Math.min(100,(iv.startMs-m.d0)/span*100)):0,w=span>0?Math.max(.6,Math.min(100-l,(iv.endMs-iv.startMs)/span*100)):0;
   return`<article class="lng-card" data-lng-i="${i}">${_lngPhHTML(s,phs)}
-    <div class="lng-card-main"><div class="lng-card-name">${escH(s.artist||'(no name)')}</div><div class="lng-card-meta"><span class="lng-tag">Up next</span><span>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</span>${_lngBooth(s)}</div></div>
+    <div class="lng-card-main"><div class="lng-card-name">${escH(s.artist||'(no name)')}</div><div class="lng-card-meta"><span class="lng-tag">Up next</span><span>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</span>${_lngBooth(s)}${_lngCrewTags(s,V)}</div></div>
     <div class="lng-card-cdw"><div class="lng-card-lbl">Starts in</div><div class="lng-card-cd"></div></div>
-    <div class="lng-mini" aria-hidden="true"><span class="lng-mini-slot" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"></span><i class="lng-mini-now"></i></div></article>`;
+    <div class="lng-mini" aria-hidden="true"><span class="lng-mini-slot" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"></span><i class="lng-mini-now"></i></div>${_lngInfoHTML(s,V)}</article>`;
 }
 function openLNG(){
   if(!PUBLIC_MODE)_closeAllScreens();
@@ -13469,51 +13334,77 @@ function openLNG(){
 function closeLNG(){
   if(PUBLIC_MODE==='lounge')return;
   const el=document.getElementById('lng');if(!el||!el.classList.contains('open'))return;
-  el.classList.remove('open');_lng.refs=null;_releaseWakeLockIfIdle();_syncMobNavActive();
+  el.classList.remove('open');_lngForget(_LNG_V.lng);_releaseWakeLockIfIdle();_syncMobNavActive();
 }
+// Closed: drop the tick's element refs and the body's signature together, so
+// reopening rebuilds (a kept signature with no refs froze the countdowns).
+function _lngForget(V){V.refs=null;const b=document.getElementById(V.id+'-body');if(b)b._vwSig=null;}
 function _pickStageLNG(id){if(PUBLIC_MODE||!id)return;G.activeStage=id;_selChanged('stage');renderAll();renderLNG();}
 function _pickDayLNG(id){setDay(id);renderLNG();}
-function renderLNG(){
-  const root=document.getElementById('lng');if(!root||!root.classList.contains('open')||!G)return;
-  const pub=!!PUBLIC_MODE,stage=activeStageObj(),n=nowMs();
-  _vwLogo('lng');
+function renderLNG(){_lngRender(_LNG_V.lng);}
+function _lngRender(V){
+  const p=V.id,root=document.getElementById(p);if(!root||!root.classList.contains('open')||!G)return;
+  const pub=V.crew?_isPublicView():!!PUBLIC_MODE,stage=activeStageObj(),n=nowMs(),$=x=>document.getElementById(p+'-'+x);
+  _vwLogo(p);
   const ac=lngAccentOf(G);
   if(root.dataset.ac!==ac){
     root.dataset.ac=ac;
     root.style.setProperty('--lng-ac',ac);root.style.setProperty('--lng-ac-rgb',_lngRgb(ac));root.style.setProperty('--lng-on-ac',_lngLight(ac)?'#0b0b10':'#fff');
   }
-  const sn=document.getElementById('lng-sname');if(sn.textContent!==stage.name)sn.textContent=stage.name;
-  const dl=vwDayById(G.activeDay),de=document.getElementById('lng-day');if(de.textContent!==dl)de.textContent=dl;
+  const sn=$('sname');if(sn.textContent!==stage.name)sn.textContent=stage.name;
+  const dn=vwDayById(G.activeDay),dl=V.crew?(dn?'Backstage · '+dn:'Backstage'):dn,de=$('day');if(de.textContent!==dl)de.textContent=dl;
   // A share link is fixed to its stage (sid) and today's festival day.
-  const ssel=document.getElementById('lng-ssel'),dt=document.getElementById('lng-dtabs');
+  const ssel=$('ssel'),dt=$('dtabs');
   ssel.hidden=pub;dt.hidden=pub;
   if(!pub){
     if(!vwSame(ssel,JSON.stringify((G.stages||[]).map(st=>[st.id,st.name]))))ssel.innerHTML=(G.stages||[]).map(st=>`<option value="${escH(st.id)}">${escH(st.name)}</option>`).join('');
     if(ssel.value!==G.activeStage)ssel.value=G.activeStage;
-    if(!vwSame(dt,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dt.innerHTML=_dayPickerHTML(G.activeDay,'_pickDayLNG','bshbtn');
+    if(!vwSame(dt,JSON.stringify([G.activeDay,(G.days||[]).map(d=>[d.id,d.name,d.date])])))dt.innerHTML=_dayPickerHTML(G.activeDay,V.pickDay,'bshbtn');
   }
-  const m=_lngModel(n),body=document.getElementById('lng-body');
+  const m=_lngModel(n,V),body=$('body');
   const empty=m.hero?'':vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!pub});
-  const k=s=>{const iv=_showIv(s);return[s.id,s.artist,iv.startMs,iv.endMs,s.booth||'',_lngPhKey(s.photo)];};
+  const k=s=>{const iv=_showIv(s);return[s.id,s.artist,iv.startMs,iv.endMs,s.booth||'',_lngPhKey(s.photo),V.crew?[riderOf(s).tech,_lngNote(s),!!s.hidden,s.type||'']:0];};
   const sig=JSON.stringify([G.activeStage,G.activeDay,m.hero&&[m.hero.kind,m.hero.c0||0,k(m.hero.s)],m.cards.map(k),m.later.map(k),m.d0,m.d1,empty]);
-  if(vwSame(body,sig)){_lngTick(n);return;}
-  _lng.refs=null;
+  if(vwSame(body,sig)){_lngTick(n,V);return;}
+  V.refs=null;
   body.classList.toggle('lng-solo',!m.hero);
-  if(!m.hero){body.innerHTML=empty;_lngTick(n);return;}
+  if(!m.hero){body.innerHTML=empty;_lngTick(n,V);return;}
   const phs=[];
-  const later=m.later.length?`<div class="lng-later"><b>Later</b><div class="lng-rows"><div class="lng-rows-in">${m.later.map(s=>{const iv=_showIv(s);return`<div class="lng-row"><time>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</time><span class="lng-row-n">${escH(s.artist||'(no name)')}</span>${_lngBooth(s)}</div>`;}).join('')}</div></div></div>`:'';
-  const list=m.cards.length?m.cards.map((s,i)=>_lngCardHTML(s,i,m,phs)).join('')+later:'<div class="lng-idle">No more acts after this one on this stage.</div>';
-  body.innerHTML=_lngHeroHTML(m.hero,phs)+`<section class="lng-col" aria-label="Coming up"><h2 class="lng-h">Coming up</h2>${list}</section>`;
-  requestAnimationFrame(_lngRowsFit);
+  const row=(s,attr)=>{const iv=_showIv(s);return`<div class="lng-row"${attr||''}><time>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</time><span class="lng-row-n">${escH(s.artist||'(no name)')}</span>${_lngBooth(s)}</div>`;};
+  // Crew: a card that does not fit the TV column moves to "Later" (_lngFit),
+  // so its row is there already, hidden.
+  const lc=V.crew?m.cards.map((s,i)=>row(s,` data-lng-c="${i}" hidden`)).join(''):'';
+  const later=m.later.length||lc?`<div class="lng-later"${m.later.length?'':' hidden'}><b>Later</b><div class="lng-rows"><div class="lng-rows-in">${lc}${m.later.map(s=>row(s)).join('')}</div></div></div>`:'';
+  const list=m.cards.length?m.cards.map((s,i)=>_lngCardHTML(s,i,m,phs,V)).join('')+later:'<div class="lng-idle">No more acts after this one on this stage.</div>';
+  body.innerHTML=_lngHeroHTML(m.hero,phs,V)+`<section class="lng-col" aria-label="Coming up"><h2 class="lng-h">Coming up</h2>${list}</section>`;
+  requestAnimationFrame(()=>_lngRowsFit(body));
   body.querySelectorAll('img[data-lng-ph]').forEach(img=>{
-    img.onerror=()=>{console.warn('[lounge] an artist photo could not be loaded - showing the initials');img.remove();};
+    img.onerror=()=>{console.warn(`[${V.crew?'backstage':'lounge'}] an artist photo could not be loaded - showing the initials`);img.remove();};
     img.src=phs[+img.dataset.lngPh];
   });
   const q=sel=>body.querySelector(sel);
-  _lng.refs={d0:m.d0,d1:m.d1,
+  V.refs={d0:m.d0,d1:m.d1,
     hero:{...m.hero,el:q('.lng-hero'),cd:q('.lng-cd'),fill:q('.lng-tl-fill'),pos:q('.lng-tl-dot'),elT:q('.lng-tl-el b'),remT:q('.lng-tl-rem b')},
     cards:m.cards.map((s,i)=>{const c=q(`[data-lng-i="${i}"]`);return{iv:_showIv(s),el:c,cd:c.querySelector('.lng-card-cd'),pos:c.querySelector('.lng-mini-now')};})};
-  _lngTick(n);
+  V.fitKey=null;
+  _lngTick(n,V);
+}
+// Crew (Backstage): the tech rider and note make cards taller, so on a TV
+// (the column clips, it does not scroll) the last cards that do not fit go
+// to the "Later" line instead of being cut in half. The first card always
+// stays. Re-run when the window size or the fonts change (_lngTick). The
+// phone layout scrolls: everything stays.
+function _lngFit(V){
+  const col=document.querySelector(`#${V.id}-body .lng-col`);if(!col)return;
+  const cards=[...col.querySelectorAll('.lng-card')],later=col.querySelector('.lng-later');
+  cards.forEach(c=>{c.hidden=false;});col.querySelectorAll('[data-lng-c]').forEach(e=>{e.hidden=true;});
+  const lv=()=>{if(later)later.hidden=!later.querySelector('.lng-row:not([hidden])');};
+  lv();
+  if(getComputedStyle(col).overflowY==='visible')return;
+  for(let i=cards.length-1;i>0&&col.scrollHeight>col.clientHeight+1;i--){
+    cards[i].hidden=true;const e=col.querySelector(`[data-lng-c="${i}"]`);if(e)e.hidden=false;lv();
+  }
+  _lngRowsFit(col.closest('[id$="-body"]'));
 }
 const _lngTxt=(el,v)=>{if(el&&el.textContent!==v)el.textContent=v;};
 const _lngTx=(el,v)=>{if(el&&el.style.transform!==v)el.style.transform=v;};
@@ -13523,9 +13414,10 @@ const _lngLeft=(el,v)=>{if(el&&el.style.left!==v)el.style.left=v;};
 // Countdowns, the hero's fill (a transform) + dot, played / left, the "final
 // minutes" and "up next" highlights, the now-ticks on the mini bars. Only
 // written when they changed.
-function _lngTick(n){
-  _lngTxt(document.getElementById('lng-clock'),amsTimeStr(n,true));
-  const R=_lng.refs;if(!R)return;
+function _lngTick(n,V){
+  _lngTxt(document.getElementById(V.id+'-clock'),amsTimeStr(n,true));
+  const R=V.refs;if(!R)return;
+  if(V.crew){const fk=innerWidth+'x'+innerHeight+(document.fonts?document.fonts.status:'');if(V.fitKey!==fk){V.fitKey=fk;_lngFit(V);}}
   const h=R.hero;
   if(h&&h.el){
     const live=h.kind==='live',a=live?h.iv.startMs:h.c0,b=live?h.iv.endMs:h.iv.startMs;
