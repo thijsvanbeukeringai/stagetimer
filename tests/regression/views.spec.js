@@ -256,8 +256,7 @@ test.describe('check-in', () => {
       return { json: JSON.parse(JSON.stringify(be.project(PID).data)) };
     });
     await st.gotoPublic({ mode: 'checkin', at: AT });
-    await expect(page.locator('.ci-legend')).toContainText('Arrived');
-    await expect(page.locator('.ci-legend')).toContainText('Not arrived yet');
+    await expect(page.locator('.ci-legend')).toHaveCount(0);   // no status legend (owner, 24-10: as compact as possible)
     const row = page.locator('.ci-row', { hasText: 'Foxtrot' });
     await expect(row).toContainText('Not arrived yet');
     await row.getByRole('button', { name: 'Mark arrived' }).click();

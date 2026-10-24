@@ -156,6 +156,21 @@ test.describe('check-in in the app', () => {
 
 // ── Check-in share link ───────────────────────────────────────────────────
 test.describe('check-in share link', () => {
+  test('phone: compact top - one header line, day and stage side by side, search below, no legend (owner, 24-10)', async ({ page, st }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await st.gotoPublic({ mode: 'checkin', at: at('15:45') });
+    await expect(page.locator('.ci-row').first()).toBeVisible();
+    await expect(page.locator('#ci-sub')).toBeHidden();
+    await expect(page.locator('.ci-legend')).toHaveCount(0);
+    const [day, stage, search, title, count] = await Promise.all(['#ci-dtabs .day-select', '#ci-ssel', '#ci-search', '#ci-title', '#ci-summary'].map((s) => page.locator(s).boundingBox()));
+    expect(Math.abs(day.y - stage.y)).toBeLessThan(2);   // one row
+    expect(day.x + day.width).toBeLessThanOrEqual(stage.x);
+    expect(search.y).toBeGreaterThanOrEqual(day.y + day.height);
+    expect(Math.abs((title.y + title.height / 2) - (count.y + count.height / 2))).toBeLessThan(6);   // count on the title line
+    expect(search.y + search.height).toBeLessThan(170);   // the whole top under ~170 px
+    await expectNoOverflow(page, ['#ci-hdr', '#ci-tools', '#ci-body']);
+    await shot(page, 'checkin-public-390-compact.png');
+  });
   test('shows the rider, as text', async ({ page, st }) => {
     await st.gotoPublic({ mode: 'checkin', at: at('15:45') });
     await expect(page.locator('#ci-ssel')).toHaveValue('');

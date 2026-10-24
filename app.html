@@ -390,11 +390,6 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
 .tl-lane-ov{position:absolute;right:4px;bottom:3px;font-family:var(--ffm);font-size:9px;font-weight:700;color:rgba(255,255,255,.5);}
 .tl-m-stage{position:sticky;top:0;z-index:2;background:#101018;}
 /* Check-in */
-.ci-legend{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:12px;color:rgba(255,255,255,.72);
-  padding:10px 14px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.02);}
-.ci-legend b{color:#fff;}
-.ci-legend .ci-lg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;border:1.5px solid rgba(255,255,255,.4);}
-.ci-legend .ci-lg-dot.on{background:#22c55e;border-color:#22c55e;}
 .ci-toggle[disabled]{cursor:progress;opacity:.75;}
 .ci-toggle.busy{border-style:dashed;}
 .ci-err{grid-column:1/-1;font-size:12px;font-weight:600;color:#fca5a5;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);
@@ -415,12 +410,20 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
 @media (max-width:700px){
   #ci-head{flex:1 1 calc(100% - 60px);min-width:0;}
   #ci-close-btn{min-height:44px;min-width:44px;justify-content:center;}
-  #ci-dtabs{order:3;flex:1 1 auto;min-width:0;}
-  #ci-summary{order:4;}
-  #ci-hdr .vw-sync{order:5;}
-  #ci-tools{padding:10px 14px;flex-wrap:wrap;}
-  #ci-ssel{flex:1 1 100%;min-height:48px;font-size:16px;}
-  #ci-search{flex:1 1 100%;max-width:none;min-height:48px;font-size:16px;}
+  /* As compact as possible (Thijs, 24-10): one header line (title, count,
+     close), then day and stage side by side, then the search. 16 px text:
+     iOS zooms into a smaller select or input on focus. */
+  #ci-hdr{padding:8px 12px;}
+  #ci-head{flex:1 1 0;}
+  #ci-title{overflow:hidden;text-overflow:ellipsis;}
+  #ci-sub{display:none;}
+  #ci-summary{flex-shrink:0;white-space:nowrap;}
+  #ci-hdr .vw-sync{order:9;margin-left:0;}
+  #ci-tools{padding:8px 12px;flex-wrap:wrap;gap:8px;}
+  #ci-dtabs{flex:1 1 0;min-width:0;}
+  #ci-dtabs .day-picker .day-select{min-height:44px;padding:8px 26px 8px 10px;font-size:16px;background-position:right 8px center;}
+  #ci-ssel{flex:1 1 0;min-width:0;min-height:44px;font-size:16px;}
+  #ci-search{flex:1 1 100%;max-width:none;min-height:44px;font-size:16px;}
   .ci-rider{grid-column:1/-1;grid-template-columns:minmax(0,1fr);}
   /* Phone check-in: drinks only, no technical requirements (Thijs, 24-10). */
   .ci-rider .ci-rider-tech{display:none;}
@@ -6485,13 +6488,13 @@ function renderTbar(){
       <div id="ci-title">Artist check-in</div>
       <div id="ci-sub" style="margin-top:2px;">Changes are saved for everyone</div>
     </div>
-    <div id="ci-dtabs"></div>
     <span class="vw-sync" hidden></span>
     <div id="ci-clock"></div>
     <div id="ci-summary"><strong id="ci-arr">0</strong> / <span id="ci-tot">0</span> arrived</div>
     <button class="fhbtn" id="ci-close-btn" onclick="closeCI()" aria-label="Close check-in">✕</button>
   </div>
   <div id="ci-tools">
+    <div id="ci-dtabs"></div>
     <select id="ci-ssel" class="hsel" aria-label="Stage" onchange="_pickStageCI(this.value)"></select>
     <input id="ci-search" class="fi" type="search" placeholder="Search artist" aria-label="Search artist" autocomplete="off" spellcheck="false" oninput="renderCI()">
   </div>
@@ -12704,10 +12707,9 @@ function renderCI(){
       <div class="ci-stage-list">${rows}</div>
     </div>`;
   }).filter(Boolean).join('');
-  const legend=`<div class="ci-legend"><span><span class="ci-lg-dot on"></span><b>Arrived</b> - the artist is on site</span><span><span class="ci-lg-dot"></span><b>Not arrived yet</b> - tap “Mark arrived” when they report</span><span>Saved for every screen straight away.</span></div>`;
   const ids=stages.map(st=>st.id);
   const noMatch=q&&unfiltered?`<div class="vw-empty vw-inline" role="status"><div class="vw-empty-title">No artist matches “${escH(q)}”</div><div class="vw-empty-sub">Clear the search to see all ${unfiltered} shows.</div></div>`:'';
-  const html=blocks?legend+blocks:(noMatch||vwEmptyHTML(vwEmptyKind(ids,G.activeDay)||'none',{dayId:G.activeDay,stageIds:ids,canPickDay:true}));
+  const html=blocks?blocks:(noMatch||vwEmptyHTML(vwEmptyKind(ids,G.activeDay)||'none',{dayId:G.activeDay,stageIds:ids,canPickDay:true}));
   if(!vwSame(grid,html))grid.innerHTML=html;
   const arrEl=document.getElementById('ci-arr'),totEl=document.getElementById('ci-tot');
   if(arrEl)arrEl.textContent=arrived;
