@@ -215,12 +215,15 @@ test.describe('Later rows in full (owner, 24-10)', () => {
 });
 
 for (const mode of ['backstage', 'lounge']) {
-  test(`phone ${mode}: the clock sits on the stage name's line, right corner, no label`, async ({ page, st }) => {
+  test(`phone ${mode}: the clock sits in the top-right corner, on the logo's line, no label`, async ({ page, st }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await st.gotoPublic({ mode, sid: S.main, at: at('16:00:00'), paused: true });
     const p = mode === 'lounge' ? 'lng' : 'bs';
-    const [name, clock] = [await page.locator(`#${p}-sname`).boundingBox(), await page.locator(`#${p}-clock`).boundingBox()];
-    expect(Math.abs((clock.y + clock.height / 2) - (name.y + name.height / 2))).toBeLessThan(12);
+    // an iPhone has no fullscreen button: the logo is then alone on the top line
+    await page.locator(`#${p}-fs-btn`).evaluate((e) => { e.hidden = true; });
+    const [logo, name, clock] = await Promise.all([`#vw-logo-${p}`, `#${p}-sname`, `#${p}-clock`].map((s) => page.locator(s).boundingBox()));
+    expect(Math.abs((clock.y + clock.height / 2) - (logo.y + logo.height / 2))).toBeLessThan(12);
+    expect(name.y).toBeGreaterThanOrEqual(logo.y + logo.height - 1);   // stage name on the line below
     expect(390 - (clock.x + clock.width)).toBeLessThan(20);
     await expect(page.locator(`#${p} .lng-clock-lbl`)).toBeHidden();
     await shot(page, `390x844-${mode}-hdr.png`);

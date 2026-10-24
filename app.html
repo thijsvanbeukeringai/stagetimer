@@ -670,11 +670,18 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
   :is(#lng,#bs).vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
   :is(#lng,#bs) .vw-st-mark{position:static;order:2;margin-left:auto;}
   :is(#lng-close-btn,#bs-close-btn),:is(#lng-fs-btn,#bs-fs-btn){order:3;}
-  /* Stage name and clock share one line, clock in the right corner without
-     its label (Thijs, 24-10). The title's basis leaves just the clock's width,
-     so it always starts that line instead of squeezing into the top row. */
-  :is(#lng-title,#bs-title){order:4;flex:1 1 calc(100% - 120px);}
-  :is(#lng-clockw,#bs-clockw){order:5;margin-left:auto;}
+  /* The clock in the top-right corner, on the logo's line, without its
+     label (Thijs, 24-10); the stage name gets the full line below. */
+  :is(#lng-clockw,#bs-clockw){order:2;margin-left:auto;}
+  /* In the app the top line holds brand, logo and the buttons (the brand is
+     the stagetimer mark there, the second one goes; Backstage with a customer
+     logo hides the brand, so it keeps the mark): the clock goes to the
+     right of the stage name, the buttons to the right of the top line. */
+  html:not(.st-pub-mark) :is(#lng,#bs:not(.vw-logo-on)) .vw-st-mark{display:none;}
+  html:not(.st-pub-mark) :is(#lng,#bs:not(.vw-logo-on)) :is(#lng-fs-btn,#bs-fs-btn):not([hidden]),html:not(.st-pub-mark) :is(#lng,#bs:not(.vw-logo-on)) :is(#lng-fs-btn,#bs-fs-btn)[hidden]+:is(#lng-close-btn,#bs-close-btn){margin-left:auto;}
+  html:not(.st-pub-mark) :is(#lng-clockw,#bs-clockw){order:5;}
+  html:not(.st-pub-mark) :is(#lng-title,#bs-title){flex-basis:calc(100% - 120px);}
+  :is(#lng-title,#bs-title){order:4;flex:1 1 100%;}
   :is(#lng,#bs) .lng-clock-lbl{display:none;}
   :is(#lng-sname,#bs-sname){font-size:17px;}
   :is(#lng-clock,#bs-clock){font-size:18px;}
