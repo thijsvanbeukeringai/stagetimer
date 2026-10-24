@@ -169,11 +169,57 @@ for (const [w, hgt, vertical] of [[1920, 1080, true], [1280, 720, true], [390, 8
       // phone: hero first, then the list, nothing on top of each other
       const [hb, cb] = [await hero(page).boundingBox(), await page.locator('#bs .lng-col').boundingBox()];
       expect(cb.y).toBeGreaterThanOrEqual(hb.y + hb.height - 0.5);
+      // phone: a long tech rider is clamped; a tap opens it in full, a second closes it (owner, 24-10)
+      const b = card(page, 'The <b>html</b>').locator('.lng-info-tech');
+      const full = () => b.locator('.lng-info-v').evaluate((e) => e.scrollHeight <= e.clientHeight + 1);
+      await expect(b).toHaveClass(/lng-more/);
+      await expect(b).toHaveAttribute('aria-expanded', 'false');
+      expect(await full()).toBe(false);
+      await b.click();
+      await expect(b).toHaveAttribute('aria-expanded', 'true');
+      expect(await full()).toBe(true);
+      expect(await b.evaluate((e) => getComputedStyle(e, '::after').content)).toBe('"Tap to close"');
+      await shot(page, '390x844-open.png');
+      await b.click();
+      expect(await full()).toBe(false);
+      // a short one is not tappable
+      await expect(card(page, 'Headliner').locator('.lng-info-tech')).not.toHaveClass(/lng-more/);
       await shot(page, '390x844-live.png');
       await page.locator('#bs-body').evaluate((e) => { e.scrollTop = e.scrollHeight; });
       await shot(page, '390x844-list.png');
     }
     if (w === 1280) await shot(page, '1280x720-live.png');
+  });
+}
+
+test.describe('Later rows in full (owner, 24-10)', () => {
+  test.use({ stSeed: crew((d) => { showIn(d, 'm4').arrived = true; showIn(d, 'm4').arrivedAt = '2026-07-10T15:40:00Z'; showIn(d, 'm6').arrived = true; showIn(d, 'm6').artist = 'Night Owl with a very long name for the change over to the next set up'; showIn(d, 'm6').rider = { tech: 'Backline: 01x V10\nShow specials: 01x HH' }; }) });
+  test('a Later row keeps the whole name and shows the tech rider', async ({ page, st }) => {
+    await openBSPublic(st, '16:00:00');
+    const row = page.locator('#bs .lng-later .lng-row:not([hidden])');
+    await expect(row).toHaveCount(1);
+    await expect(row.locator('.lng-row-n')).toHaveText(/to the next set up$/);
+    expect(await row.locator('.lng-row-n').evaluate((e) => e.scrollWidth <= e.clientWidth + 1)).toBe(true);
+    await expect(row.locator('.lng-info-tech .lng-info-v')).toHaveText('Backline: 01x V10\nShow specials: 01x HH');
+    await expect(BS(page)).not.toContainText('Espresso');
+    // checked in: the green "Arrived" on the card and on the Later row; not on acts still to arrive
+    await expect(card(page, 'Headliner').locator('.lng-arr')).toHaveText('✓ Arrived');
+    await expect(row.locator('.lng-arr')).toHaveText('✓ Arrived');
+    await expect(card(page, 'The <b>html</b>').locator('.lng-arr')).toHaveCount(0);
+    await shot(page, '1920x1080-later.png');
+  });
+});
+
+for (const mode of ['backstage', 'lounge']) {
+  test(`phone ${mode}: the clock sits on the stage name's line, right corner, no label`, async ({ page, st }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await st.gotoPublic({ mode, sid: S.main, at: at('16:00:00'), paused: true });
+    const p = mode === 'lounge' ? 'lng' : 'bs';
+    const [name, clock] = [await page.locator(`#${p}-sname`).boundingBox(), await page.locator(`#${p}-clock`).boundingBox()];
+    expect(Math.abs((clock.y + clock.height / 2) - (name.y + name.height / 2))).toBeLessThan(12);
+    expect(390 - (clock.x + clock.width)).toBeLessThan(20);
+    await expect(page.locator(`#${p} .lng-clock-lbl`)).toBeHidden();
+    await shot(page, `390x844-${mode}-hdr.png`);
   });
 }
 

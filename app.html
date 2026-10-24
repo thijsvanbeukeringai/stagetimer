@@ -667,8 +667,12 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
   :is(#lng,#bs).vw-logo-on .vw-logo{max-height:34px;max-width:150px;}
   :is(#lng,#bs) .vw-st-mark{position:static;order:2;margin-left:auto;}
   :is(#lng-close-btn,#bs-close-btn),:is(#lng-fs-btn,#bs-fs-btn){order:3;}
-  :is(#lng-title,#bs-title){order:4;flex:1 1 55%;}
-  :is(#lng-clockw,#bs-clockw){order:5;}
+  /* Stage name and clock share one line, clock in the right corner without
+     its label (Thijs, 24-10). The title's basis leaves just the clock's width,
+     so it always starts that line instead of squeezing into the top row. */
+  :is(#lng-title,#bs-title){order:4;flex:1 1 calc(100% - 120px);}
+  :is(#lng-clockw,#bs-clockw){order:5;margin-left:auto;}
+  :is(#lng,#bs) .lng-clock-lbl{display:none;}
   :is(#lng-sname,#bs-sname){font-size:17px;}
   :is(#lng-clock,#bs-clock){font-size:18px;}
   :is(#lng,#bs) .vw-st-mark .vw-st-word{height:11px;}
@@ -712,6 +716,16 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
 #bs .lng-card .lng-ph{grid-row:1/4;align-self:start;}
 #bs .lng-card .lng-info{grid-column:2/4;grid-row:3;}
 #bs .lng-card .lng-info-v{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
+/* Later rows in full (Thijs, 24-10): the whole name and the act's tech rider
+   and note under it; the rows scroll on a TV (_lngRowsFit). */
+#bs .lng-row{row-gap:calc(var(--lu)*.5);align-items:baseline;}
+#bs .lng-row-n{white-space:normal;overflow-wrap:anywhere;}
+#bs .lng-row .lng-info{grid-column:1/-1;}
+/* Checked in at the artist check-in (Thijs, 24-10). Only "arrived" is shown:
+   change overs and the like are never checked in. */
+#bs .lng-arr{display:inline-flex;align-items:center;font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.72));font-weight:900;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
+  padding:.35em .85em;border-radius:99px;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.5);color:#86efac;}
+#bs .lng-row .lng-arr{grid-column:3;justify-self:end;}
 #bs .lng-card[hidden],#bs .lng-later[hidden],#bs .lng-later [hidden]{display:none;}
 #bs .lng-meta .vw-chip,#bs .lng-card-meta .vw-chip,#bs .lng-meta .it-badge,#bs .lng-card-meta .it-badge{font-family:var(--ff);}
 #bs-hdr .vw-sync{margin-left:0;}
@@ -719,8 +733,14 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
 @media (max-width:700px){
   #bs .lng-hero .lng-ph{width:100%;}
   #bs .lng-hero-main .lng-info{overflow:visible;}
+  /* A clamped tech rider / note opens in full on a tap (Thijs, 24-10); the
+     phone scrolls, so the taller card is fine. See _lngMoreFit. */
+  #bs .lng-card .lng-info-b.lng-more{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  #bs .lng-card .lng-info-b.lng-more::after{content:'Tap to read all';display:block;margin-top:6px;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--lng-ac);}
+  #bs .lng-card .lng-info-b.lng-open::after{content:'Tap to close';}
+  #bs .lng-card .lng-info-b.lng-open .lng-info-v{display:block;-webkit-line-clamp:none;overflow:visible;}
   #bs .lng-info-v{font-size:14px;}
-  #bs-hdr .vw-sync{order:5;}
+  #bs-hdr .vw-sync{order:6;}
   /* As Backstage did before: on a phone the customer logo takes the brand's
      place (the close button is the way out). */
   #bs.vw-logo-on #st-brand-bs{display:none;}
@@ -13283,6 +13303,7 @@ function _lngPhHTML(s,phs){
 const _lngBooth=s=>s.booth?`<span class="lng-booth">Booth ${escH(s.booth)}</span>`:'';
 // Crew only: Hidden chip (in the app) and the item-type badge after the booth.
 const _lngCrewTags=(s,V)=>V.crew?(s.hidden?vwChip('hidden'):'')+itemTypeBadge(s):'';
+const _lngArr=(s,V)=>V.crew&&s.arrived?'<span class="lng-arr">✓ Arrived</span>':'';
 const _lngNote=s=>typeof s.note==='string'?s.note.trim():'';
 // Crew only (Backstage): the technical rider and the show note as text, line
 // breaks kept (CSS pre-line). Never the drinks rider: hospitality is the
@@ -13318,12 +13339,30 @@ function _lngRowsFit(root){
   if(over>4){inn.style.setProperty('--lng-shift',`-${over}px`);inn.style.setProperty('--lng-dur',`${Math.max(12,Math.round(over/18))*2+8}s`);inn.classList.add('lng-scroll');box.classList.add('lng-over');}
   else box.classList.remove('lng-over');
 }
-window.addEventListener('resize',()=>{['lng','bs'].forEach(id=>{if(document.getElementById(id)?.classList.contains('open'))_lngRowsFit(document.getElementById(id+'-body'));});});
+window.addEventListener('resize',()=>{['lng','bs'].forEach(id=>{if(document.getElementById(id)?.classList.contains('open')){_lngRowsFit(document.getElementById(id+'-body'));}});});
+// Backstage on a phone: a card's tech rider / note cut off at four lines
+// opens in full on a tap. Only where the list scrolls (phone): on a TV the
+// column clips, so a taller card would push others out of sight.
+function _lngMoreFit(root){
+  const col=root&&root.querySelector('.lng-col');if(!col)return;
+  const on=getComputedStyle(col).overflowY==='visible';
+  col.querySelectorAll('.lng-card .lng-info-b').forEach(b=>{
+    if(b.classList.contains('lng-open'))return;
+    const v=b.querySelector('.lng-info-v'),more=on&&!!v&&v.scrollHeight>v.clientHeight+1;
+    b.classList.toggle('lng-more',more);
+    if(more){b.setAttribute('role','button');b.tabIndex=0;b.setAttribute('aria-expanded','false');}
+    else{b.removeAttribute('role');b.removeAttribute('tabindex');b.removeAttribute('aria-expanded');}
+  });
+  if(!col._lngMore){col._lngMore=1;
+    const tog=e=>{const b=e.target.closest('.lng-info-b.lng-more');if(!b)return;if(e.type==='keydown'){if(e.key!=='Enter'&&e.key!==' ')return;e.preventDefault();}
+      const o=b.classList.toggle('lng-open');b.setAttribute('aria-expanded',String(o));};
+    col.addEventListener('click',tog);col.addEventListener('keydown',tog);}
+}
 function _lngCardHTML(s,i,m,phs,V){
   const iv=_showIv(s),span=m.d1-m.d0;
   const l=span>0?Math.max(0,Math.min(100,(iv.startMs-m.d0)/span*100)):0,w=span>0?Math.max(.6,Math.min(100-l,(iv.endMs-iv.startMs)/span*100)):0;
   return`<article class="lng-card" data-lng-i="${i}">${_lngPhHTML(s,phs)}
-    <div class="lng-card-main"><div class="lng-card-name">${escH(s.artist||'(no name)')}</div><div class="lng-card-meta"><span class="lng-tag">Up next</span><span>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</span>${_lngBooth(s)}${_lngCrewTags(s,V)}</div></div>
+    <div class="lng-card-main"><div class="lng-card-name">${escH(s.artist||'(no name)')}</div><div class="lng-card-meta"><span class="lng-tag">Up next</span><span>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</span>${_lngBooth(s)}${_lngCrewTags(s,V)}${_lngArr(s,V)}</div></div>
     <div class="lng-card-cdw"><div class="lng-card-lbl">Starts in</div><div class="lng-card-cd"></div></div>
     <div class="lng-mini" aria-hidden="true"><span class="lng-mini-slot" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"></span><i class="lng-mini-now"></i></div>${_lngInfoHTML(s,V)}</article>`;
 }
@@ -13363,14 +13402,14 @@ function _lngRender(V){
   }
   const m=_lngModel(n,V),body=$('body');
   const empty=m.hero?'':vwEmptyHTML(vwEmptyKind([G.activeStage],G.activeDay)||'finished',{dayId:G.activeDay,stageIds:[G.activeStage],canPickDay:!pub});
-  const k=s=>{const iv=_showIv(s);return[s.id,s.artist,iv.startMs,iv.endMs,s.booth||'',_lngPhKey(s.photo),V.crew?[riderOf(s).tech,_lngNote(s),!!s.hidden,s.type||'']:0];};
+  const k=s=>{const iv=_showIv(s);return[s.id,s.artist,iv.startMs,iv.endMs,s.booth||'',_lngPhKey(s.photo),V.crew?[riderOf(s).tech,_lngNote(s),!!s.hidden,s.type||'',!!s.arrived]:0];};
   const sig=JSON.stringify([G.activeStage,G.activeDay,m.hero&&[m.hero.kind,m.hero.c0||0,k(m.hero.s)],m.cards.map(k),m.later.map(k),m.d0,m.d1,empty]);
   if(vwSame(body,sig)){_lngTick(n,V);return;}
   V.refs=null;
   body.classList.toggle('lng-solo',!m.hero);
   if(!m.hero){body.innerHTML=empty;_lngTick(n,V);return;}
   const phs=[];
-  const row=(s,attr)=>{const iv=_showIv(s);return`<div class="lng-row"${attr||''}><time>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</time><span class="lng-row-n">${escH(s.artist||'(no name)')}</span>${_lngBooth(s)}</div>`;};
+  const row=(s,attr)=>{const iv=_showIv(s);return`<div class="lng-row"${attr||''}><time>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</time><span class="lng-row-n">${escH(s.artist||'(no name)')}</span>${_lngBooth(s)}${_lngArr(s,V)}${_lngInfoHTML(s,V)}</div>`;};
   // Crew: a card that does not fit the TV column moves to "Later" (_lngFit),
   // so its row is there already, hidden.
   const lc=V.crew?m.cards.map((s,i)=>row(s,` data-lng-c="${i}" hidden`)).join(''):'';
@@ -13417,7 +13456,7 @@ const _lngLeft=(el,v)=>{if(el&&el.style.left!==v)el.style.left=v;};
 function _lngTick(n,V){
   _lngTxt(document.getElementById(V.id+'-clock'),amsTimeStr(n,true));
   const R=V.refs;if(!R)return;
-  if(V.crew){const fk=innerWidth+'x'+innerHeight+(document.fonts?document.fonts.status:'');if(V.fitKey!==fk){V.fitKey=fk;_lngFit(V);}}
+  if(V.crew){const fk=innerWidth+'x'+innerHeight+(document.fonts?document.fonts.status:'');if(V.fitKey!==fk){V.fitKey=fk;_lngFit(V);_lngMoreFit(document.getElementById(V.id+'-body'));}}
   const h=R.hero;
   if(h&&h.el){
     const live=h.kind==='live',a=live?h.iv.startMs:h.c0,b=live?h.iv.endMs:h.iv.startMs;
