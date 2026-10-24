@@ -157,12 +157,13 @@ test.describe('coming up', () => {
 });
 test.describe('coming up (a long day)', () => {
   test.use({ stSeed: lounge((d) => { d.shows.push(show('m9', S.main, FESTIVAL.days.d1, FESTIVAL.dates.d2, '01:30', '03:00', 'Sunrise Session')); }) });
-  test('more acts than fit: four cards, the rest on one "Later" line', async ({ page, st }) => {
+  test('every upcoming act is listed: three cards, the rest as "Later" rows', async ({ page, st }) => {
     await openLounge(st, '13:00:00');
     await expect(hero(page)).toHaveClass(/lng-next/);
     await expect(hero(page).locator('.lng-name')).toHaveText('Opening Act');
-    await expect(cards(page).locator('.lng-card-name')).toHaveText(["DJ O'Neil", BAND, 'Headliner Priority', 'Night Owl']);
-    await expect(page.locator('#lng .lng-later')).toHaveText(/^Later\s*01:30\s*Sunrise Session$/);
+    await expect(cards(page).locator('.lng-card-name')).toHaveText(["DJ O'Neil", BAND, 'Headliner Priority']);
+    await expect(page.locator('#lng .lng-later .lng-row-n')).toHaveText(['Night Owl', 'Sunrise Session']);
+    await expect(page.locator('#lng .lng-later .lng-row').last()).toContainText('01:30–03:00');
     await expectFits(page);
   });
 });

@@ -625,10 +625,19 @@ html:fullscreen #lng-hdr:hover #lng-fs-btn,html:-webkit-full-screen #lng-hdr:hov
 #lng .lng-mini{grid-column:2/4;grid-row:2;position:relative;height:max(6px,calc(var(--lu)*.5));border-radius:99px;background:rgba(255,255,255,.08);}
 #lng .lng-mini-slot{position:absolute;top:0;bottom:0;border-radius:inherit;background:rgba(var(--lng-ac-rgb),.65);}
 #lng .lng-mini-now{position:absolute;left:0;top:50%;width:max(3px,calc(var(--lu)*.22));height:max(14px,calc(var(--lu)*1.3));border-radius:2px;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 6px rgba(255,255,255,.7);}
-#lng .lng-later{flex-shrink:0;font-size:max(12px,calc(var(--lu)*1));font-weight:600;color:rgba(255,255,255,.64);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#lng .lng-later b{margin-right:.8em;font-size:.85em;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.82);}
-#lng .lng-later span{margin-right:1.3em;}
-#lng .lng-later time{margin-right:.45em;font-family:var(--ffm);font-weight:700;color:rgba(255,255,255,.82);}
+#lng .lng-later{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:calc(var(--lu)*.6);font-size:max(13px,calc(var(--lu)*1.25));font-weight:600;color:rgba(255,255,255,.72);}
+#lng .lng-rows{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;}
+#lng .lng-rows.lng-over{-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent);}
+#lng .lng-rows-in{display:flex;flex-direction:column;gap:calc(var(--lu)*.45);}
+#lng .lng-rows-in.lng-scroll{animation:lng-rows var(--lng-dur,30s) ease-in-out infinite;}
+@keyframes lng-rows{0%,18%{transform:translateY(0);}50%,68%{transform:translateY(var(--lng-shift,0));}100%{transform:translateY(0);}}
+@media (prefers-reduced-motion:reduce){#lng .lng-rows-in.lng-scroll{animation:none;}}
+#lng .lng-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:calc(var(--lu)*1);padding:calc(var(--lu)*.55) calc(var(--lu)*.9);border-radius:calc(var(--lu)*.7);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
+#lng .lng-row-n{font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#lng .lng-row .lng-booth{font-size:.75em;}
+#lng .lng-later>b{display:block;margin-right:.8em;font-size:.85em;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.82);}
+
+#lng .lng-later time{white-space:nowrap;font-family:var(--ffm);font-weight:700;color:rgba(255,255,255,.82);}
 #lng .lng-idle{padding:calc(var(--lu)*1.6);border:1px dashed rgba(255,255,255,.2);border-radius:calc(var(--lu)*1.1);font-size:max(15px,calc(var(--lu)*1.3));font-weight:700;color:rgba(255,255,255,.74);}
 #lng .vw-empty{grid-column:1/-1;align-self:center;justify-self:center;margin:0;max-width:min(92%,calc(var(--lu)*58));padding:calc(var(--lu)*2.6) calc(var(--lu)*3);border-radius:calc(var(--lu)*1.4);
   border-color:rgba(var(--lng-ac-rgb),.45);background:rgba(255,255,255,.03);}
@@ -13338,7 +13347,9 @@ function openDres(){
 // schedule (_showIv + nowMs), like every share link. renderLNG rebuilds only
 // when what it draws changed; _lngTick moves countdowns, bars and dots in
 // place (transforms), so photos are not re-decoded every tick.
-const LNG_SOON_SEC=600,LNG_FINAL_SEC=300,LNG_NEXT_MAX=4,LNG_LATER_MAX=6;
+// Every act still to come is listed (Thijs, 24-10): the first ones as cards,
+// the rest as compact rows that scroll slowly when they don't fit the TV.
+const LNG_SOON_SEC=600,LNG_FINAL_SEC=300,LNG_NEXT_MAX=3,LNG_LATER_MAX=Infinity;
 const LNG_ACCENT_DEFAULT='#ef4444';   // live red (Thijs, 23-10): glow, NOW ON STAGE, timeline
 // Presets in the Project logo dialog; any other hex can be typed there.
 const LNG_ACCENTS=[['#ef4444','Live red'],['#22c55e','Festival green'],['#f97316','Orange'],['#facc15','Yellow'],['#06b6d4','Cyan'],['#3b82f6','Blue'],['#a855f7','Purple'],['#ec4899','Pink']];
@@ -13418,6 +13429,16 @@ function _lngHeroHTML(h,phs){
       <div class="lng-tl-sub">${live?'<span class="lng-tl-el"><b></b> played</span><span class="lng-tl-rem"><b></b> left</span>':`<span>Changeover</span><span>On stage <b>${b}</b></span>`}</div></div>
   </div></section>`;
 }
+// The "Later" rows scroll up and back down slowly when they don't fit (a TV
+// can't be scrolled by hand). Re-measured on every rebuild and on resize.
+function _lngRowsFit(){
+  const box=document.querySelector('#lng .lng-rows'),inn=box&&box.firstElementChild;if(!inn)return;
+  inn.classList.remove('lng-scroll');inn.style.removeProperty('--lng-shift');inn.style.removeProperty('--lng-dur');
+  const over=inn.scrollHeight-box.clientHeight;
+  if(over>4){inn.style.setProperty('--lng-shift',`-${over}px`);inn.style.setProperty('--lng-dur',`${Math.max(12,Math.round(over/18))*2+8}s`);inn.classList.add('lng-scroll');box.classList.add('lng-over');}
+  else box.classList.remove('lng-over');
+}
+window.addEventListener('resize',()=>{if(document.getElementById('lng')?.classList.contains('open'))_lngRowsFit();});
 function _lngCardHTML(s,i,m,phs){
   const iv=_showIv(s),span=m.d1-m.d0;
   const l=span>0?Math.max(0,Math.min(100,(iv.startMs-m.d0)/span*100)):0,w=span>0?Math.max(.6,Math.min(100-l,(iv.endMs-iv.startMs)/span*100)):0;
@@ -13465,9 +13486,10 @@ function renderLNG(){
   body.classList.toggle('lng-solo',!m.hero);
   if(!m.hero){body.innerHTML=empty;_lngTick(n);return;}
   const phs=[];
-  const later=m.later.length?`<div class="lng-later"><b>Later</b>${m.later.map(s=>`<span><time>${_lngT(_showIv(s).startMs)}</time>${escH(s.artist||'(no name)')}</span>`).join('')}</div>`:'';
+  const later=m.later.length?`<div class="lng-later"><b>Later</b><div class="lng-rows"><div class="lng-rows-in">${m.later.map(s=>{const iv=_showIv(s);return`<div class="lng-row"><time>${_lngT(iv.startMs)}–${_lngT(iv.endMs)}</time><span class="lng-row-n">${escH(s.artist||'(no name)')}</span>${_lngBooth(s)}</div>`;}).join('')}</div></div></div>`:'';
   const list=m.cards.length?m.cards.map((s,i)=>_lngCardHTML(s,i,m,phs)).join('')+later:'<div class="lng-idle">No more acts after this one on this stage.</div>';
   body.innerHTML=_lngHeroHTML(m.hero,phs)+`<section class="lng-col" aria-label="Coming up"><h2 class="lng-h">Coming up</h2>${list}</section>`;
+  requestAnimationFrame(_lngRowsFit);
   body.querySelectorAll('img[data-lng-ph]').forEach(img=>{
     img.onerror=()=>{console.warn('[lounge] an artist photo could not be loaded - showing the initials');img.remove();};
     img.src=phs[+img.dataset.lngPh];
