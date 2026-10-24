@@ -725,10 +725,10 @@ html:fullscreen :is(#lng-hdr,#bs-hdr):hover :is(#lng-fs-btn,#bs-fs-btn),html:-we
 #bs .lng-row{row-gap:calc(var(--lu)*.5);align-items:baseline;}
 #bs .lng-row-n{white-space:normal;overflow-wrap:anywhere;}
 #bs .lng-row .lng-info{grid-column:1/-1;}
-/* Checked in at the artist check-in (Thijs, 24-10). Only "arrived" is shown:
-   change overs and the like are never checked in. */
+/* Checked in at the artist check-in or not yet (Thijs, 24-10); see _lngArr. */
 #bs .lng-arr{display:inline-flex;align-items:center;font-family:var(--ff);font-size:max(10px,calc(var(--lu)*.72));font-weight:900;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;
   padding:.35em .85em;border-radius:99px;background:rgba(34,197,94,.16);border:1px solid rgba(34,197,94,.5);color:#86efac;}
+#bs .lng-arr-no{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.55);}
 #bs .lng-row .lng-arr{grid-column:3;justify-self:end;}
 #bs .lng-card[hidden],#bs .lng-later[hidden],#bs .lng-later [hidden]{display:none;}
 #bs .lng-meta .vw-chip,#bs .lng-card-meta .vw-chip,#bs .lng-meta .it-badge,#bs .lng-card-meta .it-badge{font-family:var(--ff);}
@@ -13310,7 +13310,11 @@ function _lngPhHTML(s,phs){
 const _lngBooth=(s,V)=>V.crew&&s.booth?`<span class="lng-booth">Booth ${escH(s.booth)}</span>`:'';
 // Crew only: Hidden chip (in the app) and the item-type badge after the booth.
 const _lngCrewTags=(s,V)=>V.crew?(s.hidden?vwChip('hidden'):'')+itemTypeBadge(s):'';
-const _lngArr=(s,V)=>V.crew&&s.arrived?'<span class="lng-arr">✓ Arrived</span>':'';
+// Check-in status for the crew, on every act (Thijs, 24-10: "I can't see
+// whether an artist is here"). A change over is a block in the programme, not
+// an artist, so it gets none (AMF 26 names them "Change over (...)").
+const _lngIsCo=s=>/^\s*change\s*-?\s*over\b/i.test(s.artist||'');
+const _lngArr=(s,V)=>!V.crew||_lngIsCo(s)?'':s.arrived?'<span class="lng-arr">✓ Arrived</span>':'<span class="lng-arr lng-arr-no">Not arrived</span>';
 const _lngNote=s=>typeof s.note==='string'?s.note.trim():'';
 // Crew only (Backstage): the technical rider and the show note as text, line
 // breaks kept (CSS pre-line). Never the drinks rider: hospitality is the
@@ -13330,7 +13334,7 @@ function _lngHeroHTML(h,phs,V){
       <div class="lng-name ${_lngNameCls(s.artist)}">${escH(s.artist||'(no name)')}</div>
     </div>${_lngPhHTML(s,phs)}
     <div class="lng-hero-main">
-      <div class="lng-meta"><span>${_lngT(h.iv.startMs)}–${_lngT(h.iv.endMs)}</span>${_lngBooth(s,V)}${_lngCrewTags(s,V)}</div>
+      <div class="lng-meta"><span>${_lngT(h.iv.startMs)}–${_lngT(h.iv.endMs)}</span>${_lngBooth(s,V)}${_lngCrewTags(s,V)}${_lngArr(s,V)}</div>
       <div class="lng-cdw"><div class="lng-cd-lbl">${live?'Set ends in':'Starts in'}</div><div class="lng-cd"></div></div>${_lngInfoHTML(s,V)}
     </div>
     <div class="lng-tl" aria-hidden="true"><span class="lng-tl-t">${a}</span><div class="lng-tl-track"><div class="lng-tl-clip"><div class="lng-tl-fill"></div></div><i class="lng-tl-dot"></i></div><span class="lng-tl-t">${b}</span>

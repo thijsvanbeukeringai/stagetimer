@@ -136,6 +136,9 @@ test('coming up: photos, countdowns, tech + note clamped to four lines; markup s
 
 test('between acts: NEXT ON STAGE with its own tech rider', async ({ page, st }) => {
   await openBSPublic(st, '16:45:00');
+  // not checked in yet: shown as such, on the hero and the cards (owner, 24-10)
+  await expect(hero(page).locator('.lng-arr.lng-arr-no')).toHaveText('Not arrived');
+  await expect(card(page, 'Headliner').locator('.lng-arr')).toHaveText('Not arrived');
   const h = hero(page);
   await expect(h).toHaveClass(/lng-next/);
   await expect(h.locator('.lng-badge')).toHaveText('Next on stage');
@@ -193,7 +196,7 @@ for (const [w, hgt, vertical] of [[1920, 1080, true], [1280, 720, true], [390, 8
 }
 
 test.describe('Later rows in full (owner, 24-10)', () => {
-  test.use({ stSeed: crew((d) => { showIn(d, 'm4').arrived = true; showIn(d, 'm4').arrivedAt = '2026-07-10T15:40:00Z'; showIn(d, 'm6').arrived = true; showIn(d, 'm6').artist = 'Night Owl with a very long name for the change over to the next set up'; showIn(d, 'm6').rider = { tech: 'Backline: 01x V10\nShow specials: 01x HH' }; }) });
+  test.use({ stSeed: crew((d) => { showIn(d, 'm2').arrived = true; showIn(d, 'm4').arrived = true; showIn(d, 'm4').arrivedAt = '2026-07-10T15:40:00Z'; showIn(d, 'm6').arrived = true; showIn(d, 'm3').artist = 'Change over (to Monolith set up)'; showIn(d, 'm6').artist = 'Night Owl with a very long name for the change over to the next set up'; showIn(d, 'm6').rider = { tech: 'Backline: 01x V10\nShow specials: 01x HH' }; }) });
   test('a Later row keeps the whole name and shows the tech rider', async ({ page, st }) => {
     await openBSPublic(st, '16:00:00');
     const row = page.locator('#bs .lng-later .lng-row:not([hidden])');
@@ -205,7 +208,8 @@ test.describe('Later rows in full (owner, 24-10)', () => {
     // checked in: the green "Arrived" on the card and on the Later row; not on acts still to arrive
     await expect(card(page, 'Headliner').locator('.lng-arr')).toHaveText('✓ Arrived');
     await expect(row.locator('.lng-arr')).toHaveText('✓ Arrived');
-    await expect(card(page, 'The <b>html</b>').locator('.lng-arr')).toHaveCount(0);
+    await expect(hero(page).locator('.lng-arr')).toHaveText('✓ Arrived');   // the act on stage too
+    await expect(card(page, 'Monolith').locator('.lng-arr')).toHaveCount(0);   // a change over is no artist
     await shot(page, '1920x1080-later.png');
   });
 });
