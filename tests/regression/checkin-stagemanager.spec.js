@@ -105,7 +105,7 @@ test.describe('check-in in the app', () => {
     await expect(row).toContainText('Not arrived yet');
     const drinks = row.locator('.ci-rider-drinks .ci-rider-v');
     expect(await innerText(drinks)).toBe('6x Club-Mate\nStill water, no ice');
-    expect(await innerText(row.locator('.ci-rider-tech .ci-rider-v'))).toBe('2x CDJ-3000 + DJM-900NXS2\nBooth monitor left');
+    await expect(row.locator('.ci-rider-tech')).toHaveCount(0);   // drinks only at the check-in (owner, 24-10)
     expect(await drinks.evaluate((e) => getComputedStyle(e).whiteSpace)).toBe('pre-wrap');
     // A show without a rider gets no empty rider box.
     await expect(ciRow(page, 'Opening Act').locator('.ci-rider')).toHaveCount(0);
@@ -179,7 +179,7 @@ test.describe('check-in share link', () => {
     const m4 = ciRow(page, 'Headliner Priority');
     await expect(m4.locator('.ci-rider-drinks .ci-rider-v')).toContainText('Champagne <b>Brut</b> & "ice"');
     await expect(m4.locator('.ci-rider-drinks .ci-rider-v')).toContainText('<img src=x onerror="window.__xss=1">');
-    await expect(m4.locator('.ci-rider-tech .ci-rider-v')).toContainText('<script>window.__xss=1</script>');
+    await expect(m4.locator('.ci-rider-tech')).toHaveCount(0);
     await expect(page.locator('#ci-grid img, #ci-grid script, #ci-grid .ci-rider b')).toHaveCount(0);
     expect(await page.evaluate(() => window.__xss)).toBeUndefined();
     // Search works on the share link too.
@@ -374,12 +374,13 @@ test.describe('share dialog', () => {
   });
 });
 
-// Phone check-in shows the drinks, not the technical requirements (Thijs, 24-10).
-test('check-in on a phone: drinks yes, technical requirements no', async ({ page, st }) => {
+// Check-in shows the drinks, never the technical requirements, on any screen (Thijs, 24-10).
+test('check-in: drinks yes, technical requirements no (phone and desktop)', async ({ page, st }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await st.gotoPublic({ mode: 'checkin', at: require('../support/seed').ams('2026-07-10', '16:00') });
   await expect(page.locator('#ci .ci-rider-drinks').first()).toBeVisible();
-  await expect(page.locator('#ci .ci-rider-tech').first()).toBeHidden();
+  await expect(page.locator('#ci .ci-rider-tech')).toHaveCount(0);
+  await expect(page.locator('#ci')).not.toContainText('Technical requirements');
   await page.setViewportSize({ width: 1440, height: 900 });
-  await expect(page.locator('#ci .ci-rider-tech').first()).toBeVisible();
+  await expect(page.locator('#ci .ci-rider-tech')).toHaveCount(0);
 });

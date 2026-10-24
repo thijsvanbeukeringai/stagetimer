@@ -425,8 +425,6 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
   #ci-ssel{flex:1 1 0;min-width:0;min-height:44px;font-size:16px;}
   #ci-search{flex:1 1 100%;max-width:none;min-height:44px;font-size:16px;}
   .ci-rider{grid-column:1/-1;grid-template-columns:minmax(0,1fr);}
-  /* Phone check-in: drinks only, no technical requirements (Thijs, 24-10). */
-  .ci-rider .ci-rider-tech{display:none;}
 }
 /* ══ STAGE MANAGER (#smv): one stage - now / next, arrivals, rider, crew.
    Dark production style like Backstage; sized to read from 1-2 m. ══ */
@@ -12700,7 +12698,7 @@ function renderCI(){
         <div class="ci-artist"><span class="ci-artist-name">${escH(s.artist||'(no name)')}</span><span class="ci-tags">${vwChips(s,now)}${s.booth?`<span class="ci-booth">Booth ${escH(s.booth)}</span>`:''}</span>${isArr&&arrTime?`<span class="ci-arrived-meta">Checked in at ${escH(arrTime)}</span>`:''}${!isArr&&!busy?`<span class="ci-arrived-meta" style="color:rgba(255,255,255,.5);">Not arrived yet</span>`:''}</div>
         <button class="ci-toggle ${isArr?'on':''}${busy?' busy':''}"${busy?' disabled aria-busy="true"':''} aria-pressed="${isArr}" onclick="ciToggleArrived(${_jsArg(s.id)})">${label}</button>
         ${err?`<div class="ci-err" role="alert">${escH(err)}</div>`:''}
-        ${_riderHTML(s,'ci-rider')}
+        ${_riderHTML(s,'ci-rider',{keys:['drinks']})}
       </div>`;
     }).join('');
     return`<div class="ci-stage">
@@ -12864,9 +12862,11 @@ function copyLink(btn,url){
 // Rider blocks (see RIDER) for Check-in and Stage manager: escaped text in a
 // pre-wrap block, so the rider keeps its line breaks. empty: also draw a
 // part that has no text ("Not specified").
-function _riderHTML(s,cls,{empty=false}={}){
+// keys: the check-in desk gets the drinks only; the technical rider is the
+// crew's (Backstage, Stage manager), Thijs 24-10.
+function _riderHTML(s,cls,{empty=false,keys=RIDER_KEYS}={}){
   const r=riderOf(s);
-  const h=RIDER_KEYS.map(k=>r[k]||empty?`<div class="${cls}-blk ${cls}-${k}"><div class="${cls}-k">${escH(RIDER_LABEL[k])}</div><div class="${cls}-v${r[k]?'':' none'}">${r[k]?escH(r[k]):'Not specified'}</div></div>`:'').join('');
+  const h=keys.map(k=>r[k]||empty?`<div class="${cls}-blk ${cls}-${k}"><div class="${cls}-k">${escH(RIDER_LABEL[k])}</div><div class="${cls}-v${r[k]?'':' none'}">${r[k]?escH(r[k]):'Not specified'}</div></div>`:'').join('');
   return h?`<div class="${cls}">${h}</div>`:'';
 }
 
