@@ -422,6 +422,8 @@ body.public-mode .st-brand{pointer-events:none;cursor:default;}
   #ci-ssel{flex:1 1 100%;min-height:48px;font-size:16px;}
   #ci-search{flex:1 1 100%;max-width:none;min-height:48px;font-size:16px;}
   .ci-rider{grid-column:1/-1;grid-template-columns:minmax(0,1fr);}
+  /* Phone check-in: drinks only, no technical requirements (Thijs, 24-10). */
+  .ci-rider .ci-rider-tech{display:none;}
 }
 /* ══ STAGE MANAGER (#smv): one stage - now / next, arrivals, rider, crew.
    Dark production style like Backstage; sized to read from 1-2 m. ══ */
@@ -1718,6 +1720,20 @@ html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
   #drbody .fg{margin-bottom:14px;}
   #drbody .fi{font-size:15px;padding:11px 13px;min-height:46px;box-sizing:border-box;width:100%;}
   #drbody .fl{font-size:11px;margin-bottom:6px;letter-spacing:.06em;}
+  /* Phone layout of the time rows (Thijs, 24-10: fields ran over each other
+     on iPhone): date on its own line, time + seconds share the next one.
+     iOS gives date/time inputs an intrinsic min-width that ignores the flex
+     basis, so they are reset to plain blocks. */
+  #drbody .st-fset .frow{flex-wrap:wrap;gap:10px;}
+  #drbody .st-fset .frow>.st-sub:nth-child(1){flex:1 1 100%!important;}
+  #drbody .st-fset .frow>.st-sub:nth-child(2){flex:1 1 0!important;min-width:0;}
+  #drbody .st-fset .frow>.st-sub:nth-child(3){flex:0 0 96px!important;}
+  #drbody input[type="date"],#drbody input[type="time"]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left;}
+  #drbody input[type="date"]::-webkit-date-and-time-value,#drbody input[type="time"]::-webkit-date-and-time-value{text-align:left;margin:0;}
+  /* Type on its own line, the booth choice below it. */
+  #drbody .dr-typebooth{flex-wrap:wrap;gap:0 12px;}
+  #drbody .dr-typebooth>.fg{flex:1 1 100%!important;}
+  #drbody .dr-opt{display:none;}
   /* datetime-local: prevent native iOS rendering from overflowing */
   #drbody input[type="datetime-local"]{
     -webkit-appearance:none;appearance:none;
@@ -3185,6 +3201,13 @@ html.st-pub-mark #smv-body,html.st-pub-mark #ci-body{padding-bottom:64px;}
 /* Show editor: dressing room video / background photo */
 #drawer .dr-dres-row{display:flex;gap:6px;align-items:stretch;}
 #drawer .dr-dres-row .fi{flex:1;min-width:0;}
+#drbody input[type="number"]{-moz-appearance:textfield;appearance:textfield;}
+#drbody input[type="number"]::-webkit-inner-spin-button,#drbody input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+/* Safari draws a native select at its own (short) height; a plain one with a
+   chevron matches the other fields. */
+#drbody select.fi{-webkit-appearance:none;appearance:none;padding-right:34px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a1a1aa' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;}
 #drawer .dr-dres-row [hidden]{display:none;}
 #drawer .dr-dres-bg[hidden]{display:none;}
 #drawer .dr-dres-bg{margin-bottom:7px;border-radius:8px;overflow:hidden;height:100px;background:var(--s3);}
@@ -5785,9 +5808,9 @@ function renderTbar(){
          as a hidden input so existing reads/writes continue to work without
          touching downstream display code. -->
     <input type="hidden" id="f-g" value="">
-    <div class="frow">
+    <div class="frow dr-typebooth">
       <div class="fg" style="flex:1;min-width:0;">
-        <label class="fl" for="f-type">Type <span style="color:var(--sub);font-weight:500;">(optional, broadcast use)</span></label>
+        <label class="fl" for="f-type">Type <span class="dr-opt" style="color:var(--sub);font-weight:500;">(optional, broadcast use)</span></label>
         <select id="f-type" class="fi">
           <option value="">-</option>
           <option value="live">LIVE</option>

@@ -358,3 +358,13 @@ test.describe('share dialog', () => {
     await shot(page, 'share-dialog-1440.png');
   });
 });
+
+// Phone check-in shows the drinks, not the technical requirements (Thijs, 24-10).
+test('check-in on a phone: drinks yes, technical requirements no', async ({ page, st }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await st.gotoPublic({ mode: 'checkin', at: require('../support/seed').ams('2026-07-10', '16:00') });
+  await expect(page.locator('#ci .ci-rider-drinks').first()).toBeVisible();
+  await expect(page.locator('#ci .ci-rider-tech').first()).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator('#ci .ci-rider-tech').first()).toBeVisible();
+});
